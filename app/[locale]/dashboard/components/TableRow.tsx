@@ -8,63 +8,47 @@ import LocaleLink from '../../components/LocaleLink'
 
 const TableRow = () => {
     const [projectId, setProjectId] = useState('')
-    const { projects, setProjects, setEditProject, setApps }: any = useStore()
-    const fetchProjects = useCallback(
-        async () => {
-            try {
-                const { data } = await axios.get(`/api/project?type=project`)
-                setProjects(data.data)
-            } catch (error: any) {
-                console.error(error);
-            }
-        }, [setProjects]
-    )
-    useEffect(() => {
-        if (!projects?.length) {
-            fetchProjects()
-        }
-    }, [fetchProjects, projects?.length])
+    const { projects, setProjects, setEditProject }: any = useStore()
 
+    const fetchProjects = useCallback(async () => {
+        try {
+            // Fetch with both languages by not passing lang — API returns all fields
+            const { data } = await axios.get(`/api/project?type=project&dashboard=true`)
+            setProjects(data.data)
+        } catch (error: any) {
+            console.error('[TableRow] fetch error:', error)
+        }
+    }, [setProjects])
+
+    useEffect(() => {
+        if (!projects?.length) fetchProjects()
+    }, [fetchProjects, projects?.length])
 
     return (
         !projects.length ?
-            <tr className="odd:bg-white even:bg-gray-50 border-b ">
-                <td scope="row" colSpan={5} className="px-6 py-4 text-center">
-                    No Project Yet
-                </td>
+            <tr className="odd:bg-white even:bg-gray-50 border-b">
+                <td colSpan={6} className="px-6 py-4 text-center">No Projects Yet</td>
             </tr>
             :
-            projects.map((project: any, index: number) => (
-                <tr key={project.id} className="odd:bg-white even:bg-gray-50 border-b ">
-                    <td scope="row" className="px-6 py-4  ">
-                        <img
-                            src={project.img}
-                            alt={project.title}
-                            width={100}
-                            height={100}
-                        />
-                    </td>
+            projects.map((project: any) => (
+                <tr key={project.id} className="odd:bg-white even:bg-gray-50 border-b">
                     <td className="px-6 py-4">
-                        {project.title}
+                        <img src={project.img} alt={project.title} width={100} height={100} />
                     </td>
-                    <td className="px-6 py-4">
-                        {project.description}
-                    </td>
-                    <td className="px-6 py-4">
-                        {project.titleEn}
-                    </td>
-                    <td className="px-6 py-4">
-                        {project.descriptionEn}
-                    </td>
+                    <td className="px-6 py-4">{project.title}</td>
+                    <td className="px-6 py-4">{project.description}</td>
+                    <td className="px-6 py-4">{project.titleEn}</td>
+                    <td className="px-6 py-4">{project.descriptionEn}</td>
                     <td className="px-6 py-4">
                         <div className='flex gap-2'>
                             <LocaleLink
-                                href={'/dashboard/projects?projectform=true'}
+                                href='/dashboard/projects?projectform=true'
                                 onClick={() => {
                                     document.body.style.overflow = 'hidden'
                                     setEditProject(project)
                                 }}
-                                className="font-medium text-blue-600 hover:underline">
+                                className="font-medium text-blue-600 hover:underline"
+                            >
                                 Edit
                             </LocaleLink>
                             <button
@@ -72,11 +56,14 @@ const TableRow = () => {
                                     document.body.style.overflow = 'hidden'
                                     setProjectId(project.id)
                                 }}
-                                className="font-medium text-red-600 hover:underline">
+                                className="font-medium text-red-600 hover:underline"
+                            >
                                 Delete
                             </button>
                         </div>
-                        {projectId == project.id && <DeleteProject projectId={projectId} setProjectId={setProjectId} />}
+                        {projectId === project.id &&
+                            <DeleteProject projectId={projectId} setProjectId={setProjectId} />
+                        }
                     </td>
                 </tr>
             ))
