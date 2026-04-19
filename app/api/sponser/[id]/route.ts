@@ -1,4 +1,4 @@
-import { deleteImage, uploadImage } from "@/utils/firebase";
+import { deleteImage, uploadImage } from "@/utils/cloudinary";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/prisma/client'
 import { authPredict } from "@/lib/predict";
