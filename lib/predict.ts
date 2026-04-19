@@ -2,24 +2,23 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
 
-export const authPredict = (req: NextRequest) => {
+export const authPredict = (req: NextRequest): boolean => {
     try {
-        let token = ""
+        let token = '';
         if (req) {
-            const tokenBearar = req.headers.get('authorization') as string;
-            if (tokenBearar) {
-                token = tokenBearar?.split(" ")[1]
+            const authHeader = req.headers.get('authorization');
+            if (authHeader?.startsWith('Bearer ')) {
+                token = authHeader.split(' ')[1];
             } else {
-                token = cookies().get('token')?.value as string;
+                token = cookies().get('token')?.value ?? '';
             }
         }
-        const decode = jwt.verify(token as string, process.env.SECRET_JWT as string) as JwtPayload;
-        const id = decode.id;
-        if (id)
-            return true
-        else
-            return false
-    } catch (error) {
-        return false
-    }
-}
+        if (!token) { console.warn('[Auth] ❌ No token'); return false; }
+        const secret = process.env.SECRET_JWT;
+        if (!secret) { console.error('[Auth] ❌ SECRET_JWT not set'); return false; }
+        const decoded = jwt.verify(token, secret) as JwtPayload;
+        const isValid = !!decoded?.id;
+        console.log('[Auth]', isValid ? '✅ Valid' : '❌ Invalid');
+        return isValid;
+    } catch (error: any) { console.error('[Auth] ❌ Verify failed:', error.message); return false; }
+};
