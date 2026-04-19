@@ -4,15 +4,24 @@ import Learingprojects from './components/Learingprojects'
 import CommerceProjects from './components/CommerceProjects'
 import Footer from '../components/Footer'
 
-const page = () => {
+const OurProjectsPage = () => {
     return (
-        <div>
+        <main>
             <OurProjectsHeader />
-            <Learingprojects />
-            <CommerceProjects />
+
+            {/* LMS Platforms section */}
+            <section aria-label="Educational Platforms - منصات تعليمية">
+                <Learingprojects />
+            </section>
+
+            {/* eCommerce Apps section */}
+            <section aria-label="eCommerce Applications - تطبيقات التجارة الإلكترونية">
+                <CommerceProjects />
+            </section>
+
             <Footer />
-        </div>
+        </main>
     )
 }
 
-export default page
+export default OurProjectsPage

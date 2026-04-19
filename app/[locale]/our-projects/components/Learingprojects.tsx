@@ -22,39 +22,42 @@ const Learingprojects = () => {
         }
     }, [locale])
 
-    useEffect(() => {
-        fetchProjects()
-    }, [fetchProjects])
+    useEffect(() => { fetchProjects() }, [fetchProjects])
 
     return (
-        <section className='p-container py-10'>
-            <div className='py-5'>
-                <h2 className='text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-center mb-10'>
+        <section className='p-container py-10 lg:py-16'>
+            <div className='py-5 space-y-3'>
+                <p className='text-center text-sm font-semibold text-[#268F79] tracking-widest uppercase'>
+                    {locale === 'ar' ? 'منصات تعليمية مباشرة' : 'Live Educational Platforms'}
+                </p>
+                <h2 className='text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-center'>
                     {t('item1')}
                 </h2>
+                <p className='text-center text-gray-500 text-sm max-w-xl mx-auto'>
+                    {locale === 'ar'
+                        ? 'منصات Moodle مخصصة تعمل حالياً وتخدم آلاف المستخدمين في مصر والخليج'
+                        : 'Custom Moodle LMS platforms currently live and serving thousands of users across Egypt and the Gulf'}
+                </p>
             </div>
-            <div className='grid grid-cols-12 space-y-10 md:space-y-0 md:gap-10 lg:gap-20'>
-                {!loading ?
-                    <LoadingCard number={6} />
-                    :
-                    projects.map((project: any) => (
+            <div className='grid grid-cols-12 gap-6 md:gap-10 mt-6'>
+                {!loading
+                    ? <LoadingCard number={6} />
+                    : projects.map((project: any) => (
                         <div key={project.id} className='col-span-12 md:col-span-6 lg:col-span-4'>
-                            <div className='space-y-5'>
-                                <Image
-                                    src={project.img}
-                                    alt={locale === 'en' ? project.titleEn : project.title}
-                                    loading='lazy'
-                                    width={700}
-                                    height={700}
-                                    className='w-full h-full'
-                                />
+                            <div className='space-y-4 group'>
+                                <div className='overflow-hidden rounded-xl'>
+                                    <Image
+                                        src={project.img}
+                                        alt={locale === 'en' ? project.titleEn : project.title}
+                                        loading='lazy'
+                                        width={700}
+                                        height={700}
+                                        className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'
+                                    />
+                                </div>
                                 <div>
-                                    <h5 className='font-bold text-xl uppercase'>
-                                        {locale === 'en' ? project.titleEn : project.title}
-                                    </h5>
-                                    <p className='text-lg font-semibold'>
-                                        {locale === 'en' ? project.descriptionEn : project.description}
-                                    </p>
+                                    <h3 className='font-bold text-xl'>{locale === 'en' ? project.titleEn : project.title}</h3>
+                                    <p className='text-gray-500 mt-1'>{locale === 'en' ? project.descriptionEn : project.description}</p>
                                 </div>
                             </div>
                         </div>

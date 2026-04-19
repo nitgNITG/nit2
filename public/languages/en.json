@@ -137,9 +137,12 @@
         }
     },
     "projectPage": {
-        "title": "Our Software and Design Projects are a Manifestation of Our Exceptional Capabilities",
-        "item1": "Platforms",
-        "item2": "Applications"
+        "title": "Our Software & Design Projects — Built for Egypt and the Gulf",
+        "subtitle": "Moodle LMS platforms and eCommerce apps that are live and serving thousands of users",
+        "item1": "Educational Platforms — Moodle LMS",
+        "item1desc": "Custom e-learning platforms for universities, schools and enterprises",
+        "item2": "eCommerce Applications",
+        "item2desc": "Live shopping apps on Google Play and App Store"
     },
     "ContactusPage": {
         "title": {
