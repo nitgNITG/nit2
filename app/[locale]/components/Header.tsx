@@ -1,0 +1,87 @@
+import React from 'react'
+import Navbar from './Navbar'
+import hero from '../../assets/header_hero.png'
+import Image from 'next/image'
+import HeaderHint from './HeaderHint'
+import { useTranslations } from 'next-intl'
+import LocaleLink from './LocaleLink'
+
+const Header = () => {
+    const t = useTranslations('Header');
+    return (
+        <header className=''>
+            <div className='bg-[url("/header_img.jpg")] bg-center bg-cover bg-no-repeat min-h-svh p-container'>
+                <div className='py-10 '>
+                    <Navbar />
+                </div>
+                <div className='pb-96 sm:pb-52 md:pb-32'>
+                    <div className='grid grid-cols-12 space-y-10 '>
+                        <div className='col-span-12 lg:col-span-6 '>
+                            <div className='w-full lg:px-10 py-5'>
+                                <Image
+                                    src={hero}
+                                    alt=''
+                                    width={1000}
+                                    height={1000}
+                                    className='w-full h-full'
+                                />
+                            </div>
+                        </div>
+                        <div className='col-span-12 lg:col-span-6 '>
+                            <div className='space-y-10'>
+                                <h1 className='space-y-5'>
+                                    <span className='block text-white font-bold text-2xl md:text-3xl lg:text-4xl '>
+                                        {t('title.one')}
+                                    </span>
+                                    <span className='block text-white font-bold text-2xl md:text-3xl lg:text-4xl '>
+                                        {t('title.two')}
+                                    </span>
+                                </h1>
+                                <div className='space-y-5'>
+                                    <span className='block text-white font-semibold text-xl md:text-2xl lg:text-3xl'>
+                                        {t('subTitle.start')}<span className='text-[#00FFB2]'> {t('subTitle.heroword')}</span>
+                                    </span>
+                                    <span className='block text-[#00FFB2] font-semibold text-xl md:text-2xl lg:text-3xl'>
+                                        {t('subTitle.end')}
+                                    </span>
+                                </div>
+                                <div className='flex justify-end'>
+                                    <LocaleLink href={'/contact'} target='_blank' className='block w-fit bg-gradient-to-b from-[#268F79] to-[#0B2923] px-5 py-4 rounded-md'>
+                                        <span className='text-[#00FFB2] font-bold'>
+                                            {t('btn')}
+                                        </span>
+                                    </LocaleLink>
+                                </div>
+                                <div className='text-lg lg:text-xl font-semibold flex gap-5 lg:gap-20 justify-end'>
+                                    <span className='flex justify-end'>
+                                        <span className='text-white'>
+                                            {t('delProject')}
+                                        </span>
+                                        <span className='text-white'>
+                                            <span className='text-[#00FFB2] font-bold'>&#160;150+</span>
+                                        </span>
+                                    </span>
+                                    <span className='flex justify-end'>
+                                        <span className='text-white'>
+                                            {t('happyClients')}
+                                        </span>
+                                        <span className='text-white'>
+                                            <span className='text-[#00FFB2] font-bold'>&#160;100%</span>
+                                        </span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div className='relative flex items-center'>
+                <div className='absolute w-full p-container'>
+                    <HeaderHint />
+                </div>
+            </div>
+        </header>
+    )
+}
+
+export default Header

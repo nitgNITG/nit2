@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.p-container {
+  @apply px-5 md:px-10 lg:px-24 xl:px-28;
+}
+.text-shadow {
+  text-shadow: 0px 7px 5px #0000004d;
+}
+.bottomToTop {
+  display: block;
+  animation: anim-bot-top 0.25s ease-in-out;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.hide-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+@keyframes anim-bot-top {
+  0% {
+    transform: translateY(100%);
+    opacity: 0%;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 100%;
+  }
+}
+.topToBottom {
+  display: none;
+  animation: anim-top-bot 0.25s ease-in-out;
+}
+
+@keyframes anim-top-bot {
+  0% {
+    transform: translateY(0);
+    display: block;
+    opacity: 100%;
+  }
+  100% {
+    transform: translateY(100%);
+    display: none;
+    opacity: 0%;
+  }
+}
+.who-us-card {
+  box-shadow: 0px 0px 10px #6c22a64d;
+}
+
+/*------------------loading page-----------------*/
+
+.loader {
+  perspective: 600px;
+  width: 100px;
+  height: 100px;
+}
+
+.cube {
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  animation: rotate 4s linear infinite;
+}
+
+.face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, #268f79, #00ffb2);
+  opacity: 0.8;
+  border: 0.5px solid #fff;
+}
+
+.face:nth-child(1) {
+  transform: rotateX(90deg) translateZ(50px);
+}
+
+.face:nth-child(2) {
+  transform: rotateX(-90deg) translateZ(50px);
+}
+
+.face:nth-child(3) {
+  transform: translateZ(50px);
+}
+
+.face:nth-child(4) {
+  transform: rotateY(90deg) translateZ(50px);
+}
+
+.face:nth-child(5) {
+  transform: rotateY(-90deg) translateZ(50px);
+}
+
+.face:nth-child(6) {
+  transform: rotateY(180deg) translateZ(50px);
+}
+
+@keyframes rotate {
+  0% {
+    transform: rotateX(0deg) rotateY(0deg);
+  }
+  100% {
+    transform: rotateX(360deg) rotateY(360deg);
+  }
+}
+
+/**/

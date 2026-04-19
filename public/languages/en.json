@@ -1,0 +1,161 @@
+{
+    "Navbar": {
+        "item1": "Home",
+        "item2": "About Us",
+        "item3": "Our Projects",
+        "item4": "Blog",
+        "item5": "Contact Us",
+        "btn": "Start Your Project",
+        "item6": "Moodle LMS",
+        "item7": "eCommerce"
+    },
+    "Header": {
+        "title": {
+            "one": "National Software Engineering",
+            "two": "and Information Technology"
+        },
+        "subTitle": {
+            "start": "One of the best global companies in",
+            "heroword": "Programming",
+            "end": "Websites and Applications"
+        },
+        "btn": "Contact Us Now",
+        "happyClients": "Happy Clients",
+        "delProject": "Delivered"
+    },
+    "hitHeader": {
+        "item1": "Projects in Progress",
+        "item2": "Clients",
+        "item3": "Years of Experience",
+        "item4": "Successful Applications"
+    },
+    "services": {
+        "title": {
+            "one": "Best Programming",
+            "hero": "Companies",
+            "two": "in Egypt"
+        },
+        "item1": {
+            "title": "E-Learning",
+            "desc": "The best company specializing in e-learning in Egypt - Educational Websites - Educational Applications - Educational Electronic Games"
+        },
+        "item2": {
+            "title": "E-Commerce",
+            "desc": "The best company specializing in e-commerce in Egypt - Shopping Websites - Shopping Applications - Multivendor - Selling Points"
+        },
+        "item3": {
+            "title": "Digital Marketing",
+            "desc": "The best company specializing in digital marketing in Egypt - Marketing Designs - Marketing Videos - Motion Graphics"
+        }
+    },
+    "experience": {
+        "hint": "The best app development company in Egypt",
+        "title": {
+            "one": "Experience in designing",
+            "hero": "Educational platforms",
+            "two": "since 2013"
+        },
+        "desc": "We are one of the world's leading companies in programming and designing educational websites, as well as creating iPhone and Android apps. We are an Egyptian programming company established in 2013 in Cairo. We started in Cairo, Egypt, and then expanded to the Arab world. In 2014, we launched to create mobile applications, websites, and e-commerce stores for the Gulf countries"
+    },
+    "app": {
+        "hint": "We are one of the best app development companies specializing in creating educational platforms",
+        "title": "See our latest projects in programming educational and commercial platforms and apps",
+        "desc": "The National Software Engineering and Information Technology Company has been developing mobile apps and websites since 2011 in Egypt, with extensive experience. But not only in the field of education, we have also worked with merchants and e-commerce companies. See our portfolio and learn about the capabilities of our development team"
+    },
+    "cost": {
+        "hint": "The best app development companies in Egypt",
+        "title": "The best cost for creating an app in Egypt and the Gulf countries",
+        "desc": "Explore with our company the technical services we offer to businesses to develop their operations and e-commerce stores. Transition to digital transformation now, increase your sales, and expand your market share. You are with the National Software Engineering and Information Technology Company for mobile app programming, an Egyptian programming company specializing in the design and programming of websites and mobile applications, with an extensive portfolio in creating educational and commercial platforms",
+        "more": {
+            "item1": "A company for designing and programming websites and iPhone and Android apps",
+            "item2": "A comprehensive service website and app programming company",
+            "item3": "15 years of experience in website design, app programming, and digital marketing",
+            "desc": "Are you looking for the strongest programming company?! We work with all our efforts for your success and the success of your website. If the answer is yes, don't worry, we are here to serve you. The National Company is a great digital partner to achieve the success you are striving for. With our long experience in digital marketing and online solutions, we guarantee you work with a team of professionals in the world of the internet"
+        },
+        "btn": "Learn more about us"
+    },
+    "contact": {
+        "hint": "Contact us now",
+        "item1": "Contact us now",
+        "item2": "Support email",
+        "item3": {
+            "title": "Our address",
+            "desc": "168 King Faisal Street, Giza, Egypt"
+        },
+        "item4": "WhatsApp",
+        "form": {
+            "name": {
+                "label": "Name",
+                "error": "Please enter your name"
+            },
+            "email": {
+                "label": "Email",
+                "error": "Please enter your email"
+            },
+            "subject": {
+                "label": "Subject",
+                "error": "Please enter the subject"
+            },
+            "message": {
+                "label": "Message",
+                "error": "Please enter the message"
+            },
+            "btn": "Send"
+        }
+    },
+    "footer": {
+        "services": "Our Services",
+        "rights": "Copyright © 2024 N.I.T. National Company. All rights reserved.",
+        "btn": "Start Your Project Now"
+    },
+    "whous": {
+        "hint": "Who We Are",
+        "whyus": {
+            "title": "Why Us",
+            "item1": "Are you looking for a creative company that dedicates all its efforts to your success and the success of your website? If the answer is yes, don't worry, we are here to serve you. The National Company for Software Engineering and Information Technology is an excellent electronic partner to achieve the success you seek. With our extensive experience in programming and digital solutions, we guarantee you will work with a team of professionals in the online world",
+            "item2": "Our company is one of the leading companies in website development and design in Egypt and the Arab world. We have extensive experience in design, programming, website hosting, platform programming, and applications for Android and iPhone"
+        },
+        "security": {
+            "title": "The National Company for Software Engineering and Information Technology",
+            "desc": "We are one of the best global companies in programming and designing educational websites and creating iPhone and Android applications"
+        },
+        "notional": {
+            "title": "The National Company for Software Engineering",
+            "items": {
+                "item1": "N.I.T Company is an excellent electronic partner to achieve the success you seek. With our extensive experience in website design, programming, application programming, and educational content production",
+                "item2": "Our company is one of the leading companies in website design and programming, application programming, and educational content production",
+                "item3": "The National Company for Software Engineering and Information Technology is an Egyptian company established in December 2013",
+                "item4": "The company operates in the fields of providing services and solutions for e-learning content software, electronic training, and learning management systems",
+                "item5": "The company also provides software production services for people with various disabilities, such as the deaf and blind, in addition to producing electronic games and mobile applications for Android",
+                "item6": "The company includes a group of experts capable of providing integrated solutions for software and designs. We always believe that our work and services are the best advertisement for our company"
+            }
+        },
+        "cards": {
+            "card1": "That the learner can get the best educational service online",
+            "card2": "Contributing to providing outstanding educational and pedagogical services using online education technologies",
+            "card3": "To achieve leadership in the field of digital education and to innovate in combining education, technology, and design"
+        }
+    },
+    "projectPage": {
+        "title": "Our Software and Design Projects are a Manifestation of Our Exceptional Capabilities",
+        "item1": "Platforms",
+        "item2": "Applications"
+    },
+    "ContactusPage": {
+        "title": {
+            "sub": "Contact Us",
+            "main": "We are here to help. Whatever you want to discuss, we would love to hear about your business goals and how we can help you achieve them and grow your business."
+        }
+    },
+    "blog": {
+        "title": "Blog"
+    },
+    "moodlePage": {
+        "title": "Moodle LMS Development — Custom E-Learning Platforms",
+        "subtitle": "Expert Moodle development since 2013"
+    },
+    "ecommercePage": {
+        "title": "eCommerce App Development — Mobile & Web",
+        "subtitle": "Live apps on Google Play & App Store"
+    }
+}
