@@ -20,7 +20,11 @@ const Header = () => {
                             <div className='w-full lg:px-10 py-5'>
                                 <Image
                                     src={hero}
-                                    alt=''
+                                    alt='NIT Software Engineering Hero'
+                                    priority
+                                    placeholder="blur"
+                                    quality={90}
+                                    sizes="(max-width: 1024px) 100vw, 50vw"
                                     width={1000}
                                     height={1000}
                                     className='w-full h-full'

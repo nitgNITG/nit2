@@ -8,33 +8,21 @@ const Projects = ({ searchParams }: { searchParams: any }) => {
     return (
         <div className='dashboard-container py-5 lg:py-10 space-y-10'>
             <div className='flex justify-between items-center'>
-                <h4 className='font-bold text-lg md:text-xl lg:text-2xl'>Projects</h4>
-                <ButtonDashboard href='/dashboard/projects?projectform=true' >
+                <h4 className='font-bold text-lg md:text-xl lg:text-2xl'>All Projects</h4>
+                <ButtonDashboard href='/dashboard/projects?projectform=true'>
                     ADD PROJECT
                 </ButtonDashboard>
             </div>
-            <div className=' overflow-auto bg-white'>
-                <table className="w-full text-sm text-left rtl:text-right text-gray-500">
+            <div className='overflow-auto bg-white rounded-lg shadow-sm'>
+                <table className="w-full text-sm text-left text-gray-500">
                     <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                         <tr>
-                            <th scope="col" className="px-6 py-3">
-                                Image
-                            </th>
-                            <th scope="col" className="px-6 py-3">
-                                Title
-                            </th>
-                            <th scope="col" className="px-6 py-3">
-                                description
-                            </th>
-                            <th scope="col" className="px-6 py-3">
-                                Title English
-                            </th>
-                            <th scope="col" className="px-6 py-3">
-                                description English
-                            </th>
-                            <th scope="col" className="px-6 py-3">
-                                Action
-                            </th>
+                            <th className="px-4 py-3">Image</th>
+                            <th className="px-4 py-3">Title (AR / EN)</th>
+                            <th className="px-4 py-3">Description</th>
+                            <th className="px-4 py-3">Types</th>
+                            <th className="px-4 py-3">Links</th>
+                            <th className="px-4 py-3">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -42,9 +30,7 @@ const Projects = ({ searchParams }: { searchParams: any }) => {
                     </tbody>
                 </table>
             </div>
-            {
-                projectform == "true" && <AddEditProject type='project' />
-            }
+            {projectform === 'true' && <AddEditProject />}
         </div>
     )
 }

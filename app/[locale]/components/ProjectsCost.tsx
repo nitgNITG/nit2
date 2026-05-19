@@ -1,12 +1,14 @@
+'use client'
 import React from 'react'
 import img from '../../assets/cost_projects.png'
 import Image from 'next/image'
-import Link from 'next/link'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import LocaleLink from './LocaleLink'
 
 const ProjectsCost = () => {
     const t = useTranslations('cost')
+    const locale = useLocale()
+    const isAr = locale === 'ar'
     return (
         <section className='py-10 p-container'>
             <div className="flex justify-center">
@@ -31,7 +33,7 @@ const ProjectsCost = () => {
                             <h6 className='sm:text-lg md:text-xl lg:text-xl font-bold !leading-loose'>
                                 {t('more.item3')}
                             </h6>
-                            <p className='md:text-lg font-semibold mt-5'>
+                            <p dir={isAr ? 'rtl' : 'ltr'} className='md:text-lg font-semibold mt-5 text-justify'>
                                 {t('more.desc')}
                             </p>
                             <div className='flex justify-end pt-10'>
@@ -46,8 +48,10 @@ const ProjectsCost = () => {
                     <div className='col-span-12 lg:col-span-6'>
                         <Image
                             src={img}
-                            alt=''
+                            alt='Project Cost Estimation'
                             loading='lazy'
+                            placeholder="blur"
+                            quality={85}
                             width={900}
                             height={900}
                             className='w-full h-full'

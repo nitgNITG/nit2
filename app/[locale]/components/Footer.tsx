@@ -22,7 +22,7 @@ const Footer = () => {
                 {/* Logo + CTA */}
                 <div className='flex justify-center w-full sm:justify-normal'>
                     <div className='flex flex-col items-center gap-10'>
-                        <Image src={img} alt='NIT Logo' height={250} width={250} />
+                        <Image src={img} alt='NIT Logo' height={250} width={250} quality={90} sizes="250px" loading='lazy' />
                         <LocaleLink
                             href='/contact'
                             target='_blank'

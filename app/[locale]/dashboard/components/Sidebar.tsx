@@ -17,7 +17,7 @@ const Sidebar = () => {
     const items = [
         { label: 'Dashboard', href: '/dashboard' },
         { label: 'Projects', href: '/dashboard/projects' },
-        { label: 'Apps', href: '/dashboard/application' },
+        { label: 'Project Types', href: '/dashboard/types' },
         { label: 'Sponsers', href: '/dashboard/sponsers' },
         { label: 'Contacts', href: '/dashboard/contacts' },
         { label: 'Blog', href: '/dashboard/blog' },

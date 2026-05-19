@@ -35,6 +35,9 @@ const Projects = ({ searchParams }: { searchParams: any }) => {
                                     description English
                                 </th>
                                 <th scope="col" className="px-6 py-3">
+                                    Links
+                                </th>
+                                <th scope="col" className="px-6 py-3">
                                     Action
                                 </th>
                             </tr>
@@ -46,7 +49,7 @@ const Projects = ({ searchParams }: { searchParams: any }) => {
                 </div>
             </div>
             {
-                applicationform == "true" && <AddEditProject type='app' />
+                applicationform == "true" && <AddEditProject defaultType='ecommerce' />
             }
         </div>
     )

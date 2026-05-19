@@ -65,6 +65,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import sponsersImg from '../../assets/sponsors.png'
 import Marquee from 'react-fast-marquee'
 import axios from 'axios'
+import { cloudinaryOptimized } from '@/utils/cloudinaryUrl'
 
 const Sponsors = () => {
     const [sponsors, setSponsers] = useState([])
@@ -106,10 +107,13 @@ const Sponsors = () => {
                                 sponsors.reverse().map((sponsor: any) => (
                                     <div className='mx-5 sm:mx-10 md:mx-16 lg:mx-28 h-full flex items-center' key={sponsor.id}>
                                         <Image
-                                            src={sponsor.img}
-                                            alt=''
+                                            src={cloudinaryOptimized(sponsor.img, 100)}
+                                            alt='Sponsor logo'
                                             height={100}
                                             width={100}
+                                            quality={80}
+                                            sizes="100px"
+                                            loading='lazy'
                                             className=''
                                         />
                                     </div>
@@ -124,8 +128,11 @@ const Sponsors = () => {
                     <div className='w-full'>
                         <Image
                             src={sponsersImg}
-                            alt=''
+                            alt='NIT Sponsors'
                             loading='lazy'
+                            placeholder="blur"
+                            quality={85}
+                            sizes="(max-width: 768px) 100vw, 90vw"
                             height={1500}
                             width={1500}
                             className='w-full object-contain'

@@ -10,7 +10,9 @@ const ProjectsDetails = () => {
                         <div className='px-20 pt-10'>
                             <Image
                                 src={'/projects/8.png'}
-                                alt=''
+                                alt='أكاديمية التفوق'
+                                loading='lazy'
+                                quality={85}
                                 width={700}
                                 height={700}
                                 className='w-full h-full'
@@ -22,7 +24,7 @@ const ProjectsDetails = () => {
                             <div className='text-white space-y-5'>
                                 <span className='text-xl font-bold'>مشروع</span>
                                 <h5 className='text-2xl font-bold text-aquaMint'>أكاديمية التفوق</h5>
-                                <p className='text-lg font-semibold'>
+                                <p dir='rtl' className='text-lg font-semibold text-justify'>
                                     اكاديمية التفوق هي المنصة الرائده في مجال التعليم الالكتروني ، المشروع مكون من تطبيق وموقع الكتروني حيث يتاح للمدرسين الاشتراك وسهولة الوصول لطلابهم</p>
                             </div>
                         </div>
@@ -38,7 +40,7 @@ const ProjectsDetails = () => {
                                     <div className='text-white space-y-5'>
                                         <span className='text-xl font-bold'>مشروع</span>
                                         <h5 className='text-2xl font-bold text-aquaMint'>أكاديمية التفوق</h5>
-                                        <p className='text-lg font-semibold'>
+                                        <p dir='rtl' className='text-lg font-semibold text-justify'>
                                             اكاديمية التفوق هي المنصة الرائده في مجال التعليم الالكتروني ، المشروع مكون من تطبيق وموقع الكتروني حيث يتاح للمدرسين الاشتراك وسهولة الوصول لطلابهم</p>
                                     </div>
                                 </div>
@@ -47,7 +49,9 @@ const ProjectsDetails = () => {
                                 <div className='flex justify-center'>
                                     <Image
                                         src={'/projects/9.png'}
-                                        alt=''
+                                        alt='أكاديمية التفوق - تطبيق'
+                                        loading='lazy'
+                                        quality={85}
                                         width={700}
                                         height={700}
                                         className='w-96 h-96 object-contain'
@@ -65,7 +69,7 @@ const ProjectsDetails = () => {
                                     <div className='text-white space-y-5'>
                                         <span className='text-xl font-bold'>مشروع</span>
                                         <h5 className='text-2xl font-bold text-aquaMint'>أكاديمية التدريب المهني</h5>
-                                        <p className='text-lg font-semibold'>
+                                        <p dir='rtl' className='text-lg font-semibold text-justify'>
                                             اكاديمية التدريب المهني هي المنصة التابعة لوزارة العمل في مصر لتعليم مجال تعليم الحرف والصناعة للعمال ، المشروع مكون من تطبيق وموقع الكتروني.
                                         </p>
                                     </div>
@@ -75,7 +79,9 @@ const ProjectsDetails = () => {
                                 <div className='px-20 pt-10'>
                                     <Image
                                         src={'/projects/7.png'}
-                                        alt=''
+                                        alt='أكاديمية التدريب المهني'
+                                        loading='lazy'
+                                        quality={85}
                                         width={700}
                                         height={700}
                                         className='w-full h-full object-contain'

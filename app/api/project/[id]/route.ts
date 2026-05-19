@@ -18,6 +18,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         const important = body.get('important')
         const titleEn = body.get('titleEn');
         const descriptionEn = body.get('descriptionEn')
+        const typesRaw = body.get('types') as string | null;
+        const linksRaw = body.get('links') as string | null;
 
         if (img && img != 'undefined') {
             await deleteImage(oldImg as string)
@@ -30,6 +32,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         if (descriptionEn) data.descriptionEn = descriptionEn
         console.log(important);
 
+        if (typesRaw) {
+            try {
+                const parsed = JSON.parse(typesRaw);
+                if (Array.isArray(parsed) && parsed.length > 0) data.types = parsed;
+            } catch { /* ignore */ }
+        }
+        if (linksRaw !== null && linksRaw !== undefined) {
+            try { data.links = JSON.parse(linksRaw); } catch { data.links = []; }
+        }
         if (important == "true") {
             data.important = true
         } else {

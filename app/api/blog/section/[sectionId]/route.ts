@@ -9,10 +9,10 @@ export async function PUT(req: NextRequest, { params }: { params: { sectionId: s
             return NextResponse.json({ message: 'Not allow' }, { status: 400 })
         const body = await req.json();
         const { sectionId } = params;
-        const { title, content, list, articleId } = body;
+        const { title, titleEn, content, contentEn, list, articleId } = body;
         const section = await prisma.section.update({
             where: { id: sectionId },
-            data: { title, content, list, articleId }
+            data: { title, titleEn: titleEn || null, content: content || null, contentEn: contentEn || null, list: list || [], articleId }
         })
         return NextResponse.json({ section, message: "Successfully updated" }, { status: 201 })
     } catch (error: any) {

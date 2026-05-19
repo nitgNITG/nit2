@@ -3,6 +3,7 @@ import axios from 'axios'
 import { useLocale, useTranslations } from 'next-intl'
 import Image from 'next/image'
 import React, { useCallback, useEffect, useState } from 'react'
+import { cloudinaryOptimized, cloudinaryBlurUrl } from '@/utils/cloudinaryUrl'
 
 const Platforms = () => {
     const t = useTranslations('app')
@@ -11,7 +12,7 @@ const Platforms = () => {
     const fetchPlatforms = useCallback(
         async () => {
             try {
-                const { data } = await axios.get(`/api/project?limit=6&type=app&important=true&lang=${locale}`)
+                const { data } = await axios.get(`/api/project?type=ecommerce&important=true&lang=${locale}`)
                 setPlatforms(data.data)
             } catch (error: any) {
                 return { error: error.message, data: null }
@@ -39,11 +40,14 @@ const Platforms = () => {
                         platforms.map((platform: any) => (
                             <div key={platform.id} className='col-span-12 md:col-span-6 lg:col-span-4'>
                                 <div className='space-y-2'>
-                                    <div>
+                                    <div className='bg-gray-100 rounded-lg overflow-hidden'>
                                         <Image
-                                            src={platform.img}
-                                            alt=''
+                                            src={cloudinaryOptimized(platform.img, 700)}
+                                            alt={locale === 'en' ? platform.titleEn : platform.title}
+                                            placeholder='blur'
+                                            blurDataURL={cloudinaryBlurUrl(platform.img)}
                                             loading='lazy'
+                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                                             width={700}
                                             height={700}
                                             className='w-full h-full'
@@ -51,7 +55,7 @@ const Platforms = () => {
                                     </div>
                                     <div className='text-center'>
                                         <h6 className='text-lg font-bold'>{locale == 'en' ? platform.titleEn : platform.title}</h6>
-                                        <p>{locale == 'en' ? platform.descriptionEn : platform.description}</p>
+                                        <p dir={locale === 'ar' ? 'rtl' : 'ltr'} className='text-justify'>{locale == 'en' ? platform.descriptionEn : platform.description}</p>
                                     </div>
                                 </div>
                             </div>

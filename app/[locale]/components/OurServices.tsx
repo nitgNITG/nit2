@@ -24,7 +24,7 @@ const OurServices = () => {
                 {/* Image — يسار للعربي، يمين للإنجليزي */}
                 <div className={clsx('col-span-12 lg:col-span-6 flex items-center h-full', { 'lg:order-last': !isAr })}>
                     <div className='w-full lg:px-10 py-5'>
-                        <Image src={service} alt='Our Services' loading='lazy' width={1000} height={1000} className='w-full h-full' />
+                        <Image src={service} alt='Our Services' priority placeholder="blur" quality={85} sizes="(max-width: 1024px) 100vw, 50vw" width={1000} height={1000} className='w-full h-full' />
                     </div>
                 </div>
 
@@ -49,7 +49,7 @@ const OurServices = () => {
                                         <div className={clsx('flex flex-col gap-2', isAr ? 'items-end' : 'items-start')}>
                                             <h3 className='text-lg font-bold'>{s.title}</h3>
                                             <div className='lg:w-10/12'>
-                                                <p className='text-sm'>{s.desc}</p>
+                                                <p dir={isAr ? 'rtl' : 'ltr'} className='text-sm text-justify'>{s.desc}</p>
                                             </div>
                                         </div>
                                         <div className='text-[88px] bg-clip-text text-transparent bg-gradient-to-b from-[#00FFCD] to-[#00997a9c] flex-shrink-0'>

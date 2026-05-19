@@ -14,59 +14,71 @@ export async function POST(req: NextRequest) {
         const titleEn = body.get('titleEn') as string | null;
         const descriptionEn = body.get('descriptionEn') as string | null;
         const important = body.get('important') as string | null;
-        const type = body.get('type') as string | null;
+        const typesRaw = body.get('types') as string | null;
+        const linksRaw = body.get('links') as string | null;
 
-        console.log('[POST /api/project] Fields:', { title, titleEn, type, hasImg: !!img, imgSize: img?.size });
+        console.log('[POST /api/project] Fields:', { title, titleEn, typesRaw, hasImg: !!img, imgSize: img?.size });
 
         if (!img || !title || !description || !titleEn || !descriptionEn)
-            return NextResponse.json({ message: 'Missing required fields', missing: { img: !img, title: !title, description: !description, titleEn: !titleEn, descriptionEn: !descriptionEn } }, { status: 400 });
+            return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
 
         const url = await uploadImage(img, 'projects');
-        if (!url) { console.error('[POST /api/project] ❌ Upload failed'); return NextResponse.json({ message: 'Failed to upload image — check Cloudinary config' }, { status: 500 }); }
+        if (!url) return NextResponse.json({ message: 'Failed to upload image' }, { status: 500 });
+
+        let types: string[] = [];
+        try { if (typesRaw) types = JSON.parse(typesRaw); } catch { types = ['lms']; }
+        if (types.length === 0) types = ['lms'];
+
+        let links: { headerEn: string; headerAr: string; link: string }[] = [];
+        try { if (linksRaw) links = JSON.parse(linksRaw); } catch { links = []; }
 
         const project = await prisma.project.create({
-            data: { img: url, title, description, titleEn, descriptionEn, type: type || 'project', important: important === 'true' }
+            data: { img: url, title, description, titleEn, descriptionEn, types, important: important === 'true', links }
         });
         console.log('[POST /api/project] ✅ Created:', project.id);
         return NextResponse.json({ project, message: 'Successfully Created' }, { status: 201 });
     } catch (error: any) {
         console.error('[POST /api/project] ❌', error.message);
-        return NextResponse.json({ error: error.message, message: 'Server error — check terminal logs' }, { status: 500 });
+        return NextResponse.json({ error: error.message, message: 'Server error' }, { status: 500 });
     }
 }
 
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
-        const type = searchParams.get('type') || 'project';
+        // type=all (or omitted) → no filter; otherwise filter where types array has the value
+        const typeParam = searchParams.get('type');
         const important = searchParams.get('important');
         const lang = searchParams.get('lang');
         const dashboard = searchParams.get('dashboard');
 
-        // dashboard=true → return ALL fields for the admin table
-        // lang=en → return English fields for public EN pages
-        // default → return Arabic fields for public AR pages
-        const select: any = { img: true, id: true };
+        const select: any = { img: true, id: true, types: true };
         if (dashboard === 'true') {
             select.title = true;
             select.description = true;
             select.titleEn = true;
             select.descriptionEn = true;
             select.important = true;
-            select.type = true;
+            select.links = true;
         } else if (lang === 'en') {
             select.titleEn = true;
             select.descriptionEn = true;
+            select.links = true;
         } else {
             select.title = true;
             select.description = true;
+            select.links = true;
         }
 
-        const where: any = { type };
+        const where: any = {};
+        // Filter by type unless 'all' or omitted (home page marquee shows everything)
+        if (typeParam && typeParam !== 'all') {
+            where.types = { has: typeParam };
+        }
         if (important) where.important = true;
 
         const projects = await prisma.project.findMany({ where, select });
-        console.log(`[GET /api/project] ✅ type=${type} lang=${lang} dashboard=${dashboard} → ${projects.length} results`);
+        console.log(`[GET /api/project] ✅ type=${typeParam ?? 'all'} lang=${lang} dashboard=${dashboard} → ${projects.length} results`);
         return NextResponse.json({ data: projects }, { status: 200 });
     } catch (error: any) {
         console.error('[GET /api/project] ❌', error.message);

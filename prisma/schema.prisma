@@ -20,15 +20,29 @@ model User {
   name     String?
 }
 
+type ProjectLink {
+  headerEn String
+  headerAr String
+  link     String
+}
+
 model Project {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  id            String        @id @default(auto()) @map("_id") @db.ObjectId
   img           String
   title         String
   titleEn       String?
   descriptionEn String?
   description   String
   important     Boolean?
-  type          String?
+  types         String[]
+  links         ProjectLink[]
+}
+
+model ProjectType {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  value   String @unique  // slug used in Project.types[] e.g. "lms", "ecommerce"
+  labelEn String
+  labelAr String
 }
 
 model Sponser {
@@ -47,23 +61,37 @@ model Contact {
 }
 
 model Article {
-  id      String    @id @default(auto()) @map("_id") @db.ObjectId
-  title   String
-  content String
-  img     String
-  Section Section[]
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  // Arabic (primary)
+  title             String
+  content           String           // intro paragraph AR
+  metaDesc          String?          // ≤160 chars for <meta description> AR
+  // English
+  titleEn           String?
+  contentEn         String?          // intro paragraph EN
+  metaDescEn        String?          // ≤160 chars for <meta description> EN
+  // Media & meta
+  img               String
+  publishedAt       DateTime @default(now())
+  Section           Section[]
 }
 
 model Section {
-  id        String        @id @default(auto()) @map("_id") @db.ObjectId
-  title     String
-  content   String?
-  list      Listsection[]
-  article   Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  articleId String        @db.ObjectId
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  // Arabic
+  title       String
+  content     String?
+  // English
+  titleEn     String?
+  contentEn   String?
+  list        Listsection[]
+  article     Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId   String        @db.ObjectId
 }
 
 type Listsection {
-  title   String?
-  content String?
+  title     String?
+  titleEn   String?
+  content   String?
+  contentEn String?
 }
