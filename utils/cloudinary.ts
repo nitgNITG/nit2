@@ -75,19 +75,6 @@ export const deleteImage = async (imageUrl: string): Promise<boolean> => {
     }
 };
 
-/**
- * Inject Cloudinary image optimization transforms into an existing secure_url.
- * Use for displaying already-uploaded images at the right size and format.
- *
- * @param url    Cloudinary secure_url as stored in DB
- * @param width  Target display width in pixels (used for w_ param)
- */
-export function cloudinaryOptimized(url: string, width?: number): string {
-    if (!url || !url.includes('res.cloudinary.com')) return url;
-    // Don't double-inject transforms
-    if (url.includes('f_auto') || url.includes('q_auto')) return url;
-    const transform = width
-        ? `f_auto,q_auto:good,w_${width},c_limit`
-        : `f_auto,q_auto:good`;
-    return url.replace('/upload/', `/upload/${transform}/`);
-}
+// Re-export the canonical client-safe helpers so server code can use the same
+// consistent implementation (with SVG guard + transform-strip logic).
+export { cloudinaryOptimized, cloudinaryBlurUrl } from './cloudinaryUrl';
