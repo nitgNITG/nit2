@@ -39,7 +39,7 @@ const Navbar = () => {
                 <div className='flex justify-between items-center'>
 
                     {/* AR: Logo يمين — EN: Logo شمال */}
-                    <div className={clsx('flex items-center gap-5 lg:gap-10', { 'order-last': !isAr })}>
+                    <div className={clsx('flex items-center gap-5 lg:gap-10', { 'order-last': isAr })}>
                         <Link href='/'>
                             <Logo className='' />
                         </Link>
@@ -61,7 +61,7 @@ const Navbar = () => {
                     </div>
 
                     {/* AR: CTA شمال — EN: CTA يمين */}
-                    <div className={clsx('hidden lg:flex gap-2 items-center', { 'order-first': !isAr })}>
+                    <div className={clsx('hidden lg:flex gap-2 items-center', { 'order-first': isAr })}>
                         <LocalLink
                             href='/contact'
                             target='_blank'

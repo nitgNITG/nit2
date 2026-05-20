@@ -9,6 +9,8 @@
  */
 export function cloudinaryOptimized(url: string, width?: number): string {
     if (!url || !url.includes('res.cloudinary.com')) return url;
+    // SVGs are vectors — raster transforms (f_auto, c_limit, w_N) don't apply
+    if (/\.svg(\?|$)/i.test(url)) return url;
     if (url.includes('f_auto') || url.includes('q_auto')) return url;
     const transform = width
         ? `f_auto,q_auto:good,w_${width},c_limit`
@@ -23,6 +25,8 @@ export function cloudinaryOptimized(url: string, width?: number): string {
  */
 export function cloudinaryBlurUrl(url: string): string {
     if (!url || !url.includes('res.cloudinary.com')) return url;
+    // SVGs are vectors — e_blur and pixel-based transforms don't apply
+    if (/\.svg(\?|$)/i.test(url)) return url;
     if (url.includes('f_auto') || url.includes('q_auto')) return url;
     return url.replace('/upload/', '/upload/w_20,q_30,e_blur:800,f_auto/');
 }
