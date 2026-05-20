@@ -44,7 +44,7 @@ export async function PUT(req: NextRequest, { params }: { params: { aricleId: st
 
         if (img && img != 'undefined') {
             await deleteImage(oldImg as string)
-            const image = await uploadImage(img as File, `${Date.now()}`)
+            const image = await uploadImage(img as File, 'articles')
             data.img = image
         }
         if (title) data.title = title

@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: 'Not allow' }, { status: 400 })
         const body = await req.formData()
         const img = body.get('img');
-        const url = await uploadImage(img as File, `${Date.now()}`);
+        const url = await uploadImage(img as File, 'sponsors');
         if (!url)
             return NextResponse.json({ message: 'Failed to upload image' }, { status: 500 })
         const sponser = await prisma.sponser.create({
