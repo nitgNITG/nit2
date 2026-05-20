@@ -6,7 +6,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import Marquee from 'react-fast-marquee'
 import LocaleLink from './LocaleLink'
 import { useLocale, useTranslations } from 'next-intl'
-import { cloudinaryOptimized, cloudinaryBlurUrl } from '@/utils/cloudinaryUrl'
+import { cloudinaryOptimized } from '@/utils/cloudinaryUrl'
 
 const Projects = () => {
     const t = useTranslations('Navbar')
@@ -42,10 +42,8 @@ const Projects = () => {
                                             <Image
                                                 src={cloudinaryOptimized(project.img, 700)}
                                                 alt={locale == 'en' ? project.titleEn : project.title}
-                                                placeholder='blur'
-                                                blurDataURL={cloudinaryBlurUrl(project.img)}
+                                                unoptimized
                                                 loading='lazy'
-                                                sizes="(max-width: 768px) 90vw, 33vw"
                                                 width={700}
                                                 height={700}
                                                 className='w-full h-full'

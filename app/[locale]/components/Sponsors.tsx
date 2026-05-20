@@ -109,10 +109,9 @@ const Sponsors = () => {
                                         <Image
                                             src={cloudinaryOptimized(sponsor.img, 100)}
                                             alt='Sponsor logo'
+                                            unoptimized
                                             height={100}
                                             width={100}
-                                            quality={80}
-                                            sizes="100px"
                                             loading='lazy'
                                             className=''
                                         />

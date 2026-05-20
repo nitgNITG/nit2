@@ -4,7 +4,7 @@ import Image from 'next/image'
 import React, { useCallback, useEffect, useState } from 'react'
 import LoadingCard from '../../dashboard/components/LoadingCard';
 import { useLocale, useTranslations } from 'next-intl';
-import { cloudinaryOptimized, cloudinaryBlurUrl } from '@/utils/cloudinaryUrl';
+import { cloudinaryOptimized } from '@/utils/cloudinaryUrl';
 
 const Learingprojects = () => {
     const [projects, setProjects] = useState([]);
@@ -40,36 +40,34 @@ const Learingprojects = () => {
                         : 'Custom Moodle LMS platforms currently live and serving thousands of users across Egypt and the Gulf'}
                 </p>
             </div>
-            <div className='grid grid-cols-12 gap-6 md:gap-10 mt-6'>
+            <div className='grid grid-cols-12 gap-6 md:gap-8 mt-6'>
                 {!loading
                     ? <LoadingCard number={6} />
                     : projects.map((project: any, index: number) => (
-                        <div key={project.id} className='col-span-12 md:col-span-6 lg:col-span-4'>
-                            <div className='space-y-4 group'>
-                                <div className='overflow-hidden rounded-xl bg-gray-100'>
+                        <div key={project.id} className='col-span-12 md:col-span-6 lg:col-span-4 flex'>
+                            <div className='flex flex-col w-full border rounded-3xl overflow-hidden bg-white group hover:shadow-lg transition-shadow duration-200'>
+                                {/* Fixed-height image — all cards share the same image row */}
+                                <div className='overflow-hidden bg-gray-100 h-56 flex-shrink-0'>
                                     <Image
                                         src={cloudinaryOptimized(project.img, 700)}
                                         alt={locale === 'en' ? project.titleEn : project.title}
-                                        placeholder='blur'
-                                        blurDataURL={cloudinaryBlurUrl(project.img)}
-                                        priority={index === 0}
-                                        loading={index === 0 ? 'eager' : 'lazy'}
-                                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                        unoptimized
                                         width={700}
                                         height={700}
                                         className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'
                                     />
                                 </div>
-                                <div>
+                                {/* Content flex-col: title + description grow, buttons pinned to bottom */}
+                                <div className='flex flex-col flex-1 px-4 pt-4 pb-5'>
                                     <h3 className='font-bold text-xl'>{locale === 'en' ? project.titleEn : project.title}</h3>
                                     <p
                                         dir={locale === 'ar' ? 'rtl' : 'ltr'}
-                                        className='text-gray-500 mt-1 text-sm text-justify'
+                                        className='text-gray-500 mt-2 text-sm text-justify flex-1'
                                     >
                                         {locale === 'en' ? project.descriptionEn : project.description}
                                     </p>
                                     {project.links?.length > 0 && (
-                                        <div className='flex flex-col gap-2 mt-3'>
+                                        <div className='flex flex-col gap-2 mt-4'>
                                             {project.links.map((l: any, i: number) => (
                                                 <a
                                                     key={i}
