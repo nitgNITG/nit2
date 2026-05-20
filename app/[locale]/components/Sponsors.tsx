@@ -65,7 +65,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import sponsersImg from '../../assets/sponsors.png'
 import Marquee from 'react-fast-marquee'
 import axios from 'axios'
-import { cloudinaryOptimized } from '@/utils/cloudinaryUrl'
+import { cloudinaryOptimized, isCloudinaryUrl } from '@/utils/cloudinaryUrl'
 
 const Sponsors = () => {
     const [sponsors, setSponsers] = useState([])
@@ -109,7 +109,7 @@ const Sponsors = () => {
                                         <Image
                                             src={cloudinaryOptimized(sponsor.img, 100)}
                                             alt='Sponsor logo'
-                                            unoptimized
+                                            unoptimized={isCloudinaryUrl(sponsor.img)}
                                             height={100}
                                             width={100}
                                             loading='lazy'

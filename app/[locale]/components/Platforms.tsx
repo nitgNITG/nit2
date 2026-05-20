@@ -3,7 +3,7 @@ import axios from 'axios'
 import { useLocale, useTranslations } from 'next-intl'
 import Image from 'next/image'
 import React, { useCallback, useEffect, useState } from 'react'
-import { cloudinaryOptimized } from '@/utils/cloudinaryUrl'
+import { cloudinaryOptimized, isCloudinaryUrl } from '@/utils/cloudinaryUrl'
 
 const Platforms = () => {
     const t = useTranslations('app')
@@ -44,7 +44,7 @@ const Platforms = () => {
                                         <Image
                                             src={cloudinaryOptimized(platform.img, 700)}
                                             alt={locale === 'en' ? platform.titleEn : platform.title}
-                                            unoptimized
+                                            unoptimized={isCloudinaryUrl(platform.img)}
                                             loading='lazy'
                                             width={700}
                                             height={700}

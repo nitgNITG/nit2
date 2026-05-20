@@ -4,6 +4,17 @@
  */
 
 /**
+ * Returns true if the URL points to Cloudinary (legacy images).
+ * New images are stored locally and return false.
+ * Use this to conditionally set unoptimized={true} on <Image> — Cloudinary
+ * images must bypass _next/image (Sharp can't handle SVG, and the proxy
+ * fails when the server can't reach Cloudinary CDN).
+ */
+export function isCloudinaryUrl(url: string): boolean {
+    return !!url && url.includes('res.cloudinary.com');
+}
+
+/**
  * Strip any existing Cloudinary transform segment from a URL so we can
  * inject our own. Handles URLs where the upload transformation is already
  * embedded (e.g. when uploadImage sets fetch_format/quality at upload time).

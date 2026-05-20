@@ -35,6 +35,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# uploaded images (stored on server, not tracked in git)
+/public/uploads/*
+!/public/uploads/.gitkeep
+
 .vscodeutils/nextjs-2-2528c-firebase-adminsdk-wj4hg-be09aa6429.json
 .env
 utils/nextjs-2-2528c-firebase-adminsdk-wj4hg-be09aa6429.json
