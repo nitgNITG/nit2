@@ -1,7 +1,6 @@
 'use client'
 // import { projects } from '@/data/projects'
 import axios from 'axios'
-import Image from 'next/image'
 import React, { useCallback, useEffect, useState } from 'react'
 import Marquee from 'react-fast-marquee'
 import LocaleLink from './LocaleLink'
@@ -29,29 +28,36 @@ const Projects = () => {
     return (
         <section className='p-container pb-10'>
             <div dir='ltr'>
-                <Marquee pauseOnHover direction='right' className='hide-scrollbar'>
+                <Marquee pauseOnHover direction='right' className='hide-scrollbar items-stretch'>
                     {
                         projects.map((project: any) => {
+                            const title = locale === 'en' ? project.titleEn : project.title
+                            const desc = locale === 'en' ? project.descriptionEn : project.description
                             return (
                                 <div
                                     key={project.id}
-                                    className='w-[90vw] md:w-[60vw] lg:w-[calc(100vw/3)]'
+                                    className='w-[85vw] md:w-[50vw] lg:w-[calc(100vw/3.2)] px-3 py-2'
                                 >
-                                    <div className='space-y-5 px-5 sm:px-10 md:px-14 lg:px-20'>
-                                        <div className='bg-gray-100 rounded-lg overflow-hidden'>
-                                            <Image
+                                    <div className='flex flex-col bg-white rounded-2xl overflow-hidden shadow-md border border-gray-100 hover:shadow-lg transition-shadow duration-200'>
+                                        {/* Image — plain img for guaranteed height constraint */}
+                                        <div style={{ height: '208px', flexShrink: 0, overflow: 'hidden', background: '#f3f4f6' }}>
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img
                                                 src={cloudinaryOptimized(project.img, 700)}
-                                                alt={locale == 'en' ? project.titleEn : project.title}
-                                                unoptimized={isCloudinaryUrl(project.img)}
+                                                alt={title}
                                                 loading='lazy'
-                                                width={700}
-                                                height={700}
-                                                className='w-full h-full'
+                                                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
                                             />
                                         </div>
-                                        <div>
-                                            <h5 className='font-bold text-lg uppercase'>{locale == 'en' ? project.titleEn : project.title}</h5>
-                                            <p dir={locale === 'ar' ? 'rtl' : 'ltr'} className='font-semibold text-justify'>{locale == 'en' ? project.descriptionEn : project.description}</p>
+                                        {/* Text */}
+                                        <div className='px-5 py-4'>
+                                            <h5 className='font-bold text-base uppercase line-clamp-1 mb-2'>{title}</h5>
+                                            <p
+                                                dir={locale === 'ar' ? 'rtl' : 'ltr'}
+                                                className='text-gray-500 text-sm text-justify line-clamp-3'
+                                            >
+                                                {desc}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>

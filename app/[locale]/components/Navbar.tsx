@@ -17,11 +17,11 @@ const Navbar = () => {
 
     const items = [
         { name: t('item1'), href: '/' },
-        { name: t('item2'), href: '/who-us' },
         { name: t('item3'), href: '/our-projects' },
         { name: t('item6'), href: '/moodle-lms' },
         { name: t('item7'), href: '/ecommerce-app' },
         { name: t('item4'), href: '/blog' },
+        { name: t('item2'), href: '/who-us' },
         { name: t('item5'), href: '/contact' },
     ]
 
@@ -38,13 +38,13 @@ const Navbar = () => {
             <div className='bg-white px-5 sm:px-10 md:px-16 lg:px-20 py-5 lg:py-10 rounded-r-full rounded-l-full lg:shadow-2xl'>
                 <div className='flex justify-between items-center'>
 
-                    {/* AR: Logo يمين — EN: Logo شمال */}
-                    <div className={clsx('flex items-center gap-5 lg:gap-10', { 'order-last': isAr })}>
+                    {/* Logo + Nav */}
+                    <div className='flex items-center gap-5 lg:gap-10'>
                         <Link href='/'>
                             <Logo className='' />
                         </Link>
                         <ul className='hidden lg:flex gap-5'>
-                            {(isAr ? [...items].reverse() : items).map((item) => (
+                            {items.map((item) => (
                                 <li key={item.href}>
                                     <LocalLink
                                         className={clsx(
@@ -60,8 +60,8 @@ const Navbar = () => {
                         </ul>
                     </div>
 
-                    {/* AR: CTA شمال — EN: CTA يمين */}
-                    <div className={clsx('hidden lg:flex gap-2 items-center', { 'order-first': isAr })}>
+                    {/* CTA + LangSwitcher */}
+                    <div className='hidden lg:flex gap-2 items-center'>
                         <LocalLink
                             href='/contact'
                             target='_blank'
