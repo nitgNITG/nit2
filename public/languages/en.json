@@ -30,6 +30,8 @@
         "item4": "Successful Applications"
     },
     "services": {
+        "hint": "Our Services",
+        "btn": "Start Your Project",
         "title": {
             "one": "Best Programming",
             "hero": "Companies",
@@ -60,7 +62,7 @@
     "app": {
         "hint": "We are one of the best app development companies specializing in creating educational platforms",
         "title": "See our latest projects in programming educational and commercial platforms and apps",
-        "desc": "The National Software Engineering and Information Technology Company has been developing mobile apps and websites since 2011 in Egypt, with extensive experience. But not only in the field of education, we have also worked with merchants and e-commerce companies. See our portfolio and learn about the capabilities of our development team"
+        "desc": "The National Software Engineering and Information Technology Company has been developing mobile apps and websites since 2013 in Egypt, with extensive experience. But not only in the field of education, we have also worked with merchants and e-commerce companies. See our portfolio and learn about the capabilities of our development team"
     },
     "cost": {
         "hint": "The best app development companies in Egypt",
@@ -69,7 +71,7 @@
         "more": {
             "item1": "A company for designing and programming websites and iPhone and Android apps",
             "item2": "A comprehensive service website and app programming company",
-            "item3": "15 years of experience in website design, app programming, and digital marketing",
+            "item3": "12+ years of experience in website design, app programming, and digital marketing",
             "desc": "Are you looking for the strongest programming company?! We work with all our efforts for your success and the success of your website. If the answer is yes, don't worry, we are here to serve you. The National Company is a great digital partner to achieve the success you are striving for. With our long experience in digital marketing and online solutions, we guarantee you work with a team of professionals in the world of the internet"
         },
         "btn": "Learn more about us"
@@ -105,7 +107,7 @@
     },
     "footer": {
         "services": "Our Services",
-        "rights": "Copyright © 2024 N.I.T. National Company. All rights reserved.",
+        "rights": "Copyright © 2026 N.I.T. National Company. All rights reserved.",
         "btn": "Start Your Project Now"
     },
     "whous": {
