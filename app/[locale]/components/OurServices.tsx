@@ -1,7 +1,7 @@
 'use client'
 import Image from 'next/image'
 import React from 'react'
-import service from '../../assets/services.png'
+import service from '../../assets/services.webp'
 import clsx from 'clsx'
 import { useTranslations, useLocale } from 'next-intl'
 import LocaleLink from './LocaleLink'

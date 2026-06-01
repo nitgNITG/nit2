@@ -1,6 +1,6 @@
 'use client'
 import React from 'react'
-import img from '../../assets/footer_logo.png'
+import img from '../../assets/footer_logo.webp'
 import Image from 'next/image'
 import Link from 'next/link'
 import LocaleLink from './LocaleLink'

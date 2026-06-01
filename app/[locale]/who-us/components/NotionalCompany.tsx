@@ -1,5 +1,5 @@
 import React from 'react'
-import img from '../../../assets/whouscompany.png'
+import img from '../../../assets/whouscompany.webp'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 const NotionalCompany = () => {

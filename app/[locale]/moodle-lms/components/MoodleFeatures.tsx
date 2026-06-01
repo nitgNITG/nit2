@@ -1,6 +1,6 @@
 import React from 'react'
 import Image from 'next/image'
-import service from '../../../assets/services.png'
+import service from '../../../assets/services.webp'
 import clsx from 'clsx'
 import LocaleLink from '../../components/LocaleLink'
 

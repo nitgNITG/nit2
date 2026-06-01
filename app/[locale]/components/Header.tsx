@@ -1,6 +1,6 @@
 import React from 'react'
 import Navbar from './Navbar'
-import hero from '../../assets/header_hero.png'
+import hero from '../../assets/header_hero.webp'
 import Image from 'next/image'
 import HeaderHint from './HeaderHint'
 import { useTranslations } from 'next-intl'

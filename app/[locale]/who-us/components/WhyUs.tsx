@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import React from 'react'
-import img from '../../../assets/footer_logo.png'
+import img from '../../../assets/footer_logo.webp'
 import SocialMedia from '../../components/SocialMedia'
 import { useTranslations } from 'next-intl'
 

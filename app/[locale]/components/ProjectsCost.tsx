@@ -1,6 +1,6 @@
 'use client'
 import React from 'react'
-import img from '../../assets/cost_projects.png'
+import img from '../../assets/cost_projects.webp'
 import Image from 'next/image'
 import { useTranslations, useLocale } from 'next-intl'
 import LocaleLink from './LocaleLink'

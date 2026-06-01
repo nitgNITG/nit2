@@ -1,6 +1,6 @@
 // import Image from 'next/image'
 // import React, { useCallback, useEffect, useState } from 'react'
-// import sponsersImg from '../../assets/sponsors.png'
+// import sponsersImg from '../../assets/sponsors.webp'
 // import Marquee from 'react-fast-marquee'
 // import axios from 'axios'
 
@@ -62,7 +62,7 @@
 'use client'
 import Image from 'next/image'
 import React, { useCallback, useEffect, useState } from 'react'
-import sponsersImg from '../../assets/sponsors.png'
+import sponsersImg from '../../assets/sponsors.webp'
 import Marquee from 'react-fast-marquee'
 import axios from 'axios'
 import { cloudinaryOptimized, isCloudinaryUrl } from '@/utils/cloudinaryUrl'
