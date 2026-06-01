@@ -1,5 +1,6 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { CloseIcon, Logo, MenuIcon } from './icons'
 import Link from 'next/link'
 import clsx from 'clsx'
@@ -14,6 +15,8 @@ const Navbar = () => {
     const locale = useLocale()
     const isAr = locale === 'ar'
     const [open, setOpen] = useState(false)
+    const [mounted, setMounted] = useState(false)
+    useEffect(() => { setMounted(true) }, [])
 
     const items = [
         { name: t('item1'), href: '/' },
@@ -82,50 +85,54 @@ const Navbar = () => {
                 </div>
             </div>
 
-            {/* Mobile drawer */}
-            <div className={clsx(
-                'fixed w-full h-svh left-0 top-0 z-[9999] bg-gradient-to-r from-[#07221D] to-[#1A8872]',
-                open ? 'bottomToTop pointer-events-auto' : 'topToBottom pointer-events-none',
-            )}>
-                <div className='flex flex-col items-center justify-between h-full pb-10 overflow-y-auto'>
-                    <div className='relative w-full'>
-                        <button
-                            onClick={close}
-                            className={clsx('absolute top-5', isAr ? 'left-5' : 'right-5')}
-                        >
-                            <CloseIcon className='size-8 stroke-white' />
-                        </button>
-                        <div className='pt-20'>
-                            <ul className='text-white text-center space-y-8'>
-                                {items.map((item) => (
-                                    <li key={item.href}>
-                                        <LocalLink
-                                            onClick={close}
-                                            className={clsx(
-                                                'font-semibold',
-                                                { 'font-bold underline text-[#00FFB2]': isActive(item.href) }
-                                            )}
-                                            href={item.href}
-                                        >
-                                            {item.name}
-                                        </LocalLink>
-                                    </li>
-                                ))}
-                            </ul>
+            {/* Mobile drawer — rendered via portal directly on <body> to escape
+                any ancestor overflow-hidden / stacking-context that breaks fixed */}
+            {mounted && createPortal(
+                <div className={clsx(
+                    'fixed inset-0 w-full h-svh z-[9999] bg-gradient-to-r from-[#07221D] to-[#1A8872]',
+                    open ? 'bottomToTop pointer-events-auto' : 'topToBottom pointer-events-none',
+                )}>
+                    <div className='flex flex-col items-center justify-between h-full pb-10 overflow-y-auto'>
+                        <div className='relative w-full'>
+                            <button
+                                onClick={close}
+                                className={clsx('absolute top-5', isAr ? 'left-5' : 'right-5')}
+                            >
+                                <CloseIcon className='size-8 stroke-white' />
+                            </button>
+                            <div className='pt-20'>
+                                <ul className='text-white text-center space-y-8'>
+                                    {items.map((item) => (
+                                        <li key={item.href}>
+                                            <LocalLink
+                                                onClick={close}
+                                                className={clsx(
+                                                    'font-semibold text-xl',
+                                                    { 'font-bold underline text-[#00FFB2]': isActive(item.href) }
+                                                )}
+                                                href={item.href}
+                                            >
+                                                {item.name}
+                                            </LocalLink>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+                        <div className='flex flex-col items-center gap-4'>
+                            <LangSwitcher />
+                            <LocalLink
+                                href='/contact'
+                                target='_blank'
+                                className='block w-fit bg-gradient-to-b from-[#268F79] to-[#0B2923] px-5 py-4 rounded-md'
+                            >
+                                <span className='text-[#00FFB2] font-bold'>{t('btn')}</span>
+                            </LocalLink>
                         </div>
                     </div>
-                    <div className='flex flex-col items-center gap-4'>
-                        <LangSwitcher />
-                        <LocalLink
-                            href='/contact'
-                            target='_blank'
-                            className='block w-fit bg-gradient-to-b from-[#268F79] to-[#0B2923] px-5 py-4 rounded-md'
-                        >
-                            <span className='text-[#00FFB2] font-bold'>{t('btn')}</span>
-                        </LocalLink>
-                    </div>
-                </div>
-            </div>
+                </div>,
+                document.body
+            )}
         </nav>
     )
 }
