@@ -1,28 +1,38 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-    title: "eCommerce App Development | تطوير تطبيقات التجارة الإلكترونية | N.I.T Egypt",
-    description: "Custom eCommerce app development in Egypt. Native iOS & Android shopping apps on Google Play & App Store. Multivendor marketplaces, Fawry/PayMob/Stripe payment integration, POS systems. تطوير تطبيقات التجارة الإلكترونية في مصر والخليج.",
-    keywords: "eCommerce app development Egypt, mobile shopping app, multivendor marketplace, Fawry PayMob integration, تجارة إلكترونية مصر, تطبيق متجر, Google Play App Store Egypt, POS system Egypt",
-    alternates: {
-        canonical: "https://nitg-eg.com/ar/ecommerce-app",
-        languages: {
-            ar: "https://nitg-eg.com/ar/ecommerce-app",
-            en: "https://nitg-eg.com/en/ecommerce-app",
+export async function generateMetadata({
+    params: { locale },
+}: {
+    params: { locale: string };
+}): Promise<Metadata> {
+    const isAr = locale === "ar";
+    return {
+        title: "eCommerce App Development | تطوير تطبيقات التجارة الإلكترونية | N.I.T Egypt",
+        description: isAr
+            ? "تطوير تطبيقات التجارة الإلكترونية في مصر والخليج. تطبيقات iOS وAndroid على Google Play وApp Store. متاجر متعددة البائعين، تكامل فوري وباي موب وسترايب، أنظمة نقاط البيع."
+            : "Custom eCommerce app development in Egypt. Native iOS & Android shopping apps on Google Play & App Store. Multivendor marketplaces, Fawry/PayMob/Stripe payment integration, POS systems.",
+        keywords: "eCommerce app development Egypt, mobile shopping app, multivendor marketplace, Fawry PayMob integration, تجارة إلكترونية مصر, تطبيق متجر, Google Play App Store Egypt, POS system Egypt",
+        alternates: {
+            canonical: `https://nitg-eg.com/${locale}/ecommerce-app`,
+            languages: {
+                ar: "https://nitg-eg.com/ar/ecommerce-app",
+                en: "https://nitg-eg.com/en/ecommerce-app",
+            },
         },
-    },
-    openGraph: {
-        title: "eCommerce App Development | N.I.T Egypt",
-        description: "Live eCommerce apps on Google Play & App Store. Multivendor, single-store, POS and payment gateway solutions built in Egypt since 2013.",
-        url: "https://nitg-eg.com/en/ecommerce-app",
-        type: "website",
-    },
-    twitter: {
-        card: "summary_large_image",
-        title: "eCommerce App Development | N.I.T Egypt",
-        description: "iOS & Android eCommerce apps with Fawry, PayMob & Stripe — built in Egypt since 2013.",
-    },
-};
+        openGraph: {
+            title: "eCommerce App Development | N.I.T Egypt",
+            description: "Live eCommerce apps on Google Play & App Store. Multivendor, single-store, POS and payment gateway solutions built in Egypt since 2013.",
+            url: `https://nitg-eg.com/${locale}/ecommerce-app`,
+            type: "website",
+            locale: isAr ? "ar_EG" : "en_US",
+        },
+        twitter: {
+            card: "summary_large_image",
+            title: "eCommerce App Development | N.I.T Egypt",
+            description: "iOS & Android eCommerce apps with Fawry, PayMob & Stripe — built in Egypt since 2013.",
+        },
+    };
+}
 
 export default function EcommerceLayout({ children }: { children: React.ReactNode }) {
     return (
@@ -36,11 +46,7 @@ export default function EcommerceLayout({ children }: { children: React.ReactNod
                         "@type": "Service",
                         name: "eCommerce App Development",
                         alternateName: "تطوير تطبيقات التجارة الإلكترونية",
-                        provider: {
-                            "@type": "Organization",
-                            name: "N.I.T Egypt",
-                            url: "https://nitg-eg.com",
-                        },
+                        provider: { "@type": "Organization", name: "N.I.T Egypt", url: "https://nitg-eg.com" },
                         areaServed: ["EG", "SA", "AE", "KW", "QA", "BH", "OM"],
                         description: "Native iOS and Android eCommerce apps with multivendor support, Fawry/PayMob/Stripe payment integration, and POS systems.",
                         serviceType: "eCommerce App Development",
