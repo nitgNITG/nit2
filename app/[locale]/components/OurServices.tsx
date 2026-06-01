@@ -24,7 +24,7 @@ const OurServices = () => {
                 {/* Image — يسار للعربي، يمين للإنجليزي */}
                 <div className={clsx('col-span-12 lg:col-span-6 flex items-center h-full', { 'lg:order-last': !isAr })}>
                     <div className='w-full lg:px-10 py-5'>
-                        <Image src={service} alt='Our Services' priority placeholder="blur" quality={85} sizes="(max-width: 1024px) 100vw, 50vw" width={1000} height={1000} className='w-full h-full' />
+                        <Image src={service} alt='Our Services' priority placeholder="blur" quality={85} sizes="(max-width: 1024px) calc(100vw - 2.5rem), 45vw" width={1000} height={1000} className='w-full h-full' />
                     </div>
                 </div>
 

@@ -40,13 +40,15 @@ const Platforms = () => {
                         platforms.map((platform: any) => (
                             <div key={platform.id} className='col-span-12 md:col-span-6 lg:col-span-4'>
                                 <div className='space-y-2'>
-                                    <div style={{ height: '220px', overflow: 'hidden', background: '#f3f4f6', borderRadius: '8px' }}>
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img
-                                            src={cloudinaryOptimized(platform.img, 700)}
+                                    <div style={{ position: 'relative', height: '220px', overflow: 'hidden', background: '#f3f4f6', borderRadius: '8px' }}>
+                                        <Image
+                                            src={cloudinaryOptimized(platform.img, 500)}
                                             alt={locale === 'en' ? platform.titleEn : platform.title}
+                                            fill
                                             loading='lazy'
-                                            style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                                            unoptimized={isCloudinaryUrl(platform.img)}
+                                            sizes="(max-width: 768px) calc(100vw - 2.5rem), (max-width: 1024px) 50vw, 33vw"
+                                            className='object-contain'
                                         />
                                     </div>
                                     <div className='text-center'>
