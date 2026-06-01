@@ -27,6 +27,15 @@
     "sharp": "^0.34.5",
     "zustand": "^4.5.4"
   },
+  "browserslist": [
+    "chrome >= 90",
+    "firefox >= 90",
+    "safari >= 14",
+    "edge >= 90",
+    "ios_saf >= 14",
+    "samsung >= 14",
+    "not dead"
+  ],
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
     "@types/jsonwebtoken": "^9.0.6",

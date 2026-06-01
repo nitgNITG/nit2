@@ -49,11 +49,12 @@ const Learingprojects = () => {
                                 {/* Fixed-height image — all cards share the same image row */}
                                 <div className='overflow-hidden bg-gray-100 h-56 flex-shrink-0'>
                                     <Image
-                                        src={cloudinaryOptimized(project.img, 700)}
+                                        src={cloudinaryOptimized(project.img, 600)}
                                         alt={locale === 'en' ? project.titleEn : project.title}
                                         unoptimized={isCloudinaryUrl(project.img)}
-                                        width={700}
-                                        height={700}
+                                        width={600}
+                                        height={400}
+                                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                                         className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'
                                     />
                                 </div>

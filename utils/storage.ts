@@ -61,10 +61,10 @@ export const uploadImage = async (file: File, folder: string): Promise<string | 
         const filename = `${Date.now()}.webp`;
         const filepath = path.join(dir, filename);
 
-        // Resize to max 1200px on either axis, convert to WebP quality 85
+        // Resize to max 800px on either axis (cards display ~300px, 800 = 2.5× retina headroom)
         await sharp(buffer)
-            .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
-            .webp({ quality: 85 })
+            .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: 82 })
             .toFile(filepath);
 
         // Ensure nginx (www-data) can read the file and directory
