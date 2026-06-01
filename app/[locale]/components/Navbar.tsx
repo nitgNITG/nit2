@@ -84,11 +84,10 @@ const Navbar = () => {
 
             {/* Mobile drawer */}
             <div className={clsx(
-                'fixed w-full h-full left-0 top-0 z-[9999] bg-gradient-to-r from-[#07221D] to-[#1A8872]',
-                { 'bottomToTop': open },
-                { 'topToBottom': !open },
+                'fixed w-full h-svh left-0 top-0 z-[9999] bg-gradient-to-r from-[#07221D] to-[#1A8872]',
+                open ? 'bottomToTop pointer-events-auto' : 'topToBottom pointer-events-none',
             )}>
-                <div className='flex flex-col items-center justify-between h-full pb-10'>
+                <div className='flex flex-col items-center justify-between h-full pb-10 overflow-y-auto'>
                     <div className='relative w-full'>
                         <button
                             onClick={close}
