@@ -35,7 +35,7 @@ const Header = () => {
                                     priority
                                     placeholder="blur"
                                     quality={75}
-                                    sizes="(max-width: 1024px) calc(100vw - 2.5rem), 45vw"
+                                    sizes="(max-width: 1024px) 100vw, 50vw"
                                     width={1000}
                                     height={1000}
                                     className='w-full h-full'
