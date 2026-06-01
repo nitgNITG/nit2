@@ -7,7 +7,7 @@ import { Toaster } from "react-hot-toast";
 import clsx from "clsx";
 import Script from "next/script";
 
-const cairo = Cairo({ subsets: ["latin", "arabic"] });
+const cairo = Cairo({ subsets: ["latin", "arabic"], display: "swap" });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://nitg-eg.com"),
@@ -47,6 +47,12 @@ export default async function LocaleLayout({
   const messages = await getMessages();
   return (
     <html lang={locale} dir={locale === "ar" ? "rtl" : "ltr"}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://res.cloudinary.com" />
+        <link rel="dns-prefetch" href="https://jswidget.isharat.net" />
+      </head>
       <body
         className={clsx(
           `${cairo.className}`,
@@ -86,7 +92,7 @@ export default async function LocaleLayout({
           }}
         />
         <Script
-          type="module"
+          strategy="lazyOnload"
           crossOrigin="anonymous"
           id="IsharatJSWidget"
           data-icon="bottom-20,right-20"

@@ -10,11 +10,22 @@ const Header = () => {
     const t = useTranslations('Header');
     return (
         <header className=''>
-            <div className='bg-[url("/header_img.jpg")] bg-center bg-cover bg-no-repeat min-h-svh p-container'>
-                <div className='py-10 '>
+            <div className='relative min-h-svh p-container overflow-hidden'>
+                {/* Background — preloaded by Next.js, served as WebP/AVIF */}
+                <Image
+                    src="/header_img.jpg"
+                    alt=""
+                    fill
+                    priority
+                    quality={75}
+                    sizes="100vw"
+                    className="object-cover object-center -z-10"
+                    aria-hidden="true"
+                />
+                <div className='relative z-10 py-10'>
                     <Navbar />
                 </div>
-                <div className='pb-96 sm:pb-52 md:pb-32'>
+                <div className='relative z-10 pb-96 sm:pb-52 md:pb-32'>
                     <div className='grid grid-cols-12 space-y-10 '>
                         <div className='col-span-12 lg:col-span-6 '>
                             <div className='w-full lg:px-10 py-5'>
@@ -23,7 +34,7 @@ const Header = () => {
                                     alt='NIT Software Engineering Hero'
                                     priority
                                     placeholder="blur"
-                                    quality={90}
+                                    quality={75}
                                     sizes="(max-width: 1024px) 100vw, 50vw"
                                     width={1000}
                                     height={1000}
@@ -79,7 +90,7 @@ const Header = () => {
                     </div>
                 </div>
             </div>
-            <div className='relative flex items-center'>
+            <div className='relative z-10 flex items-center'>
                 <div className='absolute w-full p-container'>
                     <HeaderHint />
                 </div>
