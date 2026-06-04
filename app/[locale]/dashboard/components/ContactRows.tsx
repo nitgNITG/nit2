@@ -174,7 +174,7 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
 
                     {/* Pain + Message */}
                     <td className="px-4 py-3 text-xs max-w-[200px]">
-                        {c.pain && <p className='text-gray-700 mb-1 italic'>"{c.pain}"</p>}
+                        {c.pain && <p className='text-gray-700 mb-1 italic'>&ldquo;{c.pain}&rdquo;</p>}
                         <p className='text-gray-500 line-clamp-2'>{c.message}</p>
                     </td>
 
