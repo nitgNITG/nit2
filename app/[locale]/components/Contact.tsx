@@ -16,12 +16,6 @@ const Contact = () => {
         },
         {
             id: 1,
-            icon: <EmailIcon />,
-            text: t('item2'),
-            desc: "info@nitg-eg.com",
-        },
-        {
-            id: 1,
             icon: <LocationIcon />,
             text: t('item3.title'),
             desc: t('item3.desc'),
