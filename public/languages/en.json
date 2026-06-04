@@ -86,23 +86,55 @@
         },
         "item4": "WhatsApp",
         "form": {
-            "name": {
-                "label": "Name",
-                "error": "Please enter your name"
+            "name":    { "label": "Name",    "error": "Please enter your name" },
+            "email":   { "label": "Email",   "error": "Please enter your email" },
+            "phone":   { "label": "Phone / WhatsApp (optional)" },
+            "subject": { "label": "Subject", "error": "Please enter the subject" },
+            "message": { "label": "Message", "error": "Please enter the message" },
+            "service": {
+                "label": "Service needed (optional)",
+                "placeholder": "Select a service",
+                "options": {
+                    "moodle":    "Moodle LMS Platform",
+                    "ecommerce": "eCommerce App",
+                    "custom":    "Custom Development",
+                    "other":     "Other"
+                }
             },
-            "email": {
-                "label": "Email",
-                "error": "Please enter your email"
+            "budget": {
+                "label": "Approximate budget (optional)",
+                "placeholder": "Select a range",
+                "options": {
+                    "under5k":  "Under $5,000",
+                    "5to20k":   "$5,000 – $20,000",
+                    "20to50k":  "$20,000 – $50,000",
+                    "above50k": "Above $50,000",
+                    "unknown":  "Not decided yet"
+                }
             },
-            "subject": {
-                "label": "Subject",
-                "error": "Please enter the subject"
+            "timeline": {
+                "label": "Project timeline (optional)",
+                "placeholder": "When do you need it?",
+                "options": {
+                    "immediate":   "Immediately (within a month)",
+                    "1to3months":  "1 – 3 months",
+                    "3to6months":  "3 – 6 months",
+                    "exploring":   "Just exploring"
+                }
             },
-            "message": {
-                "label": "Message",
-                "error": "Please enter the message"
+            "role": {
+                "label": "Your decision role (optional)",
+                "placeholder": "What is your role?",
+                "options": {
+                    "owner":    "Owner / CEO",
+                    "manager":  "Department Manager",
+                    "employee": "Employee passing the inquiry",
+                    "other":    "Other"
+                }
             },
-            "btn": "Send"
+            "pain": { "label": "What is your biggest challenge right now? (optional)", "placeholder": "Describe the problem or opportunity you want to address..." },
+            "btn": "Send",
+            "qualify": "Help us understand your needs better"
         }
     },
     "footer": {

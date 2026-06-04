@@ -52,10 +52,24 @@ model Sponser {
 
 model Contact {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  // Core fields
   name      String
   email     String
+  phone     String?
   subject   String
   message   String
+  // Qualifying fields
+  service   String?   // "moodle" | "ecommerce" | "custom" | "other"
+  budget    String?   // "under5k" | "5to20k" | "20to50k" | "above50k" | "unknown"
+  timeline  String?   // "immediate" | "1to3months" | "3to6months" | "exploring"
+  role      String?   // "owner" | "manager" | "employee" | "other"
+  pain      String?
+  // Auto-scored
+  score     Int      @default(0)
+  stage     String   @default("lead")   // "lead" | "mql" | "sql" | "opportunity"
+  // Admin
+  status    String   @default("new")    // "new" | "contacted" | "won" | "lost"
+  notes     String?
   isReaded  Boolean  @default(false)
   createdAt DateTime @default(now())
 }
