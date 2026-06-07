@@ -8,7 +8,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 const fixes = [
-    { id: '6a0d17a24c487ec84645d8d4', img: '/blog/ecommerce-app-cost.svg' },
+    { id: '6a0d17a26c1734c8e49722e5', img: '/blog/ecommerce-app-cost.svg' },
     { id: '6a0cca724c487ec84645d8da', img: '/blog/moodle-egypt-2025.svg' },
     { id: '6a0cca6c4c487ec84645d8d4', img: '/blog/build-ecommerce-app.svg' },
 ];
