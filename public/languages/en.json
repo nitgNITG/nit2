@@ -88,7 +88,7 @@
         "form": {
             "name":    { "label": "Name",    "error": "Please enter your name" },
             "email":   { "label": "Email",   "error": "Please enter your email" },
-            "phone":   { "label": "Phone / WhatsApp (optional)" },
+            "phone":   { "label": "Phone / WhatsApp", "error": "Phone number is required" },
             "subject": { "label": "Subject", "error": "Please enter the subject" },
             "message": { "label": "Message", "error": "Please enter the message" },
             "service": {

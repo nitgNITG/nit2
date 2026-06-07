@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const { name, email, phone, subject, message, service, budget, timeline, role, pain } = body;
 
-        if (!name || !email || !subject || !message)
+        if (!name || !email || !phone || !subject || !message)
             return NextResponse.json({ message: 'يرجي ادخال جميع البيانات' }, { status: 400 });
 
         const { score, stage } = computeLeadScore({ email, phone, role, service, budget, timeline, pain, message });
@@ -71,6 +71,20 @@ export async function PUT(req: NextRequest) {
         if (!authPredict(req)) return NextResponse.json({ message: 'Not allowed' }, { status: 401 });
         await prisma.contact.updateMany({ data: { isReaded: true } });
         return NextResponse.json({ message: 'Successfully updated' }, { status: 200 });
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message, message: 'Server error' }, { status: 500 });
+    }
+}
+
+// Delete a contact by id
+export async function DELETE(req: NextRequest) {
+    try {
+        if (!authPredict(req)) return NextResponse.json({ message: 'Not allowed' }, { status: 401 });
+        const { searchParams } = new URL(req.url);
+        const id = searchParams.get('id');
+        if (!id) return NextResponse.json({ message: 'id required' }, { status: 400 });
+        await prisma.contact.delete({ where: { id } });
+        return NextResponse.json({ message: 'Deleted' }, { status: 200 });
     } catch (error: any) {
         return NextResponse.json({ error: error.message, message: 'Server error' }, { status: 500 });
     }

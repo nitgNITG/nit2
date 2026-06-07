@@ -60,10 +60,11 @@ const ContactForm = () => {
                 <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                     <div>
                         <label className='space-y-2 block'>
-                            <span className='block font-bold text-sm'>{t('phone.label')}</span>
+                            <span className='block font-bold text-sm'>{t('phone.label')} <span className='text-red-500'>*</span></span>
                             <input className={clsx(inputCls, 'text-left')}
-                                {...register('phone')} type='tel' dir='ltr' />
+                                {...register('phone', { required: t('phone.error') })} type='tel' dir='ltr' />
                         </label>
+                        <ErrorMsg message={errors?.phone?.message as string} />
                     </div>
                     <div>
                         <label className='space-y-2 block'>

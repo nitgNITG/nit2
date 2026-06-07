@@ -121,12 +121,23 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
         }
     };
 
+    // Delete contact
+    const deleteContact = async (id: string) => {
+        if (!window.confirm('Delete this lead? This cannot be undone.')) return;
+        setLocalContacts(prev => prev.filter(c => c.id !== id));
+        try {
+            await axios.delete(`/api/contact?id=${id}`);
+        } catch {
+            fetchContacts();
+        }
+    };
+
     const rows = stageFilter ? localContacts : (contacts ?? []);
 
     if (!rows.length)
         return (
             <tr>
-                <td colSpan={13} className="px-6 py-8 text-center text-gray-400">
+                <td colSpan={14} className="px-6 py-8 text-center text-gray-400">
                     {loading ? 'Loading…' : 'No leads yet'}
                 </td>
             </tr>
@@ -194,6 +205,17 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
                     {/* Date */}
                     <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
                         {new Date(c.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}
+                    </td>
+
+                    {/* Delete */}
+                    <td className="px-4 py-3">
+                        <button
+                            onClick={() => deleteContact(c.id)}
+                            className="text-red-400 hover:text-red-600 transition-colors text-xs font-semibold px-2 py-1 rounded hover:bg-red-50"
+                            title="Delete lead"
+                        >
+                            🗑
+                        </button>
                     </td>
                 </tr>
             ))}
