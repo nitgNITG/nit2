@@ -23,7 +23,7 @@ const links = [
     { id: '6a0d17b36c1734c8e49722f7', img: '/blog/boost-store-sales.svg' },
     { id: '6a0d17ad6c1734c8e49722f1', img: '/blog/shopify-vs-custom.svg' },
     { id: '6a0d17a86c1734c8e49722eb', img: '/blog/payment-gateways.svg' },
-    { id: '6a0d17a24c487ec84645d8da', img: '/blog/ecommerce-app-cost.svg' },
+    { id: '6a0d17a24c487ec84645d8d4', img: '/blog/ecommerce-app-cost.svg' },
     { id: '6a0cca724c487ec84645d8da', img: '/blog/moodle-egypt-2025.svg' },
     { id: '6a0cca6c4c487ec84645d8d4', img: '/blog/build-ecommerce-app.svg' },
 ];
