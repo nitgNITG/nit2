@@ -25,6 +25,7 @@ export async function generateMetadata({
             url: `https://nitg-eg.com/${locale}/moodle-lms`,
             type: "website",
             locale: isAr ? "ar_EG" : "en_US",
+            images: [{ url: "https://nitg-eg.com/logo.svg", width: 512, height: 512, alt: "Moodle LMS Development — N.I.T Egypt" }],
         },
         twitter: {
             card: "summary_large_image",

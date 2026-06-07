@@ -50,10 +50,10 @@ export async function generateMetadata(
         title,
         description: desc,
         alternates: {
-            canonical: `/${params.locale}/blog/${params.articleId}`,
+            canonical: `https://nitg-eg.com/${params.locale}/blog/${params.articleId}`,
             languages: {
-                ar: `/ar/blog/${params.articleId}`,
-                en: `/en/blog/${params.articleId}`,
+                ar: `https://nitg-eg.com/ar/blog/${params.articleId}`,
+                en: `https://nitg-eg.com/en/blog/${params.articleId}`,
             },
         },
         openGraph: {

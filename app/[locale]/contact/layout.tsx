@@ -28,6 +28,14 @@ export async function generateMetadata({
             url: `https://nitg-eg.com/${locale}/contact`,
             type: "website",
             locale: isAr ? "ar_EG" : "en_US",
+            images: [{ url: "https://nitg-eg.com/logo.svg", width: 512, height: 512, alt: "N.I.T Egypt" }],
+        },
+        twitter: {
+            card: "summary_large_image",
+            title: isAr ? "تواصل معنا | N.I.T Egypt" : "Contact N.I.T Egypt",
+            description: isAr
+                ? "اتصل بنا الآن — +201091568240 | الجيزة، مصر"
+                : "Get in touch — +201091568240 | Giza, Egypt.",
         },
     };
 }

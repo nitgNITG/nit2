@@ -28,6 +28,14 @@ export async function generateMetadata({
             url: `https://nitg-eg.com/${locale}/blog`,
             type: "website",
             locale: isAr ? "ar_EG" : "en_US",
+            images: [{ url: "https://nitg-eg.com/logo.svg", width: 512, height: 512, alt: "N.I.T Egypt Blog" }],
+        },
+        twitter: {
+            card: "summary_large_image",
+            title: isAr ? "المدونة | N.I.T Egypt" : "Blog | N.I.T Egypt",
+            description: isAr
+                ? "مقالات متخصصة في Moodle والتجارة الإلكترونية والتحول الرقمي"
+                : "Expert articles on Moodle LMS, eCommerce development, and digital transformation.",
         },
     };
 }

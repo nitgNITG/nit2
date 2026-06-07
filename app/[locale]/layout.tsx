@@ -92,6 +92,51 @@ export default async function LocaleLayout({
           }}
         />
         <Script
+          id="localbusiness-jsonld"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "LocalBusiness",
+              "@id": "https://nitg-eg.com/#localbusiness",
+              name: "N.I.T Egypt — National Software Engineering",
+              alternateName: "الشركة الوطنية لهندسة البرمجيات",
+              url: "https://nitg-eg.com",
+              logo: "https://nitg-eg.com/logo.svg",
+              image: "https://nitg-eg.com/logo.svg",
+              description: "شركة مصرية متخصصة في تطوير منصات Moodle التعليمية وتطبيقات التجارة الإلكترونية لمصر والخليج منذ 2013.",
+              foundingDate: "2013",
+              telephone: ["+201091568240", "+201149830855"],
+              email: "info@nitg-eg.com",
+              address: {
+                "@type": "PostalAddress",
+                streetAddress: "168 King Faisal Street",
+                addressLocality: "Giza",
+                addressRegion: "Giza",
+                addressCountry: "EG",
+              },
+              geo: {
+                "@type": "GeoCoordinates",
+                latitude: 30.0120,
+                longitude: 31.2050,
+              },
+              areaServed: [
+                { "@type": "Country", name: "Egypt" },
+                { "@type": "Country", name: "Saudi Arabia" },
+                { "@type": "Country", name: "United Arab Emirates" },
+                { "@type": "Country", name: "Kuwait" },
+                { "@type": "Country", name: "Qatar" },
+              ],
+              priceRange: "$$",
+              openingHours: "Mo-Fr 09:00-17:00",
+              sameAs: [
+                "https://www.facebook.com/nitgEgypt",
+                "https://www.linkedin.com/company/nitgEgypt",
+              ],
+            }),
+          }}
+        />
+        <Script
           strategy="lazyOnload"
           crossOrigin="anonymous"
           id="IsharatJSWidget"

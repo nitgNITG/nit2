@@ -28,6 +28,14 @@ export async function generateMetadata({
             url: `https://nitg-eg.com/${locale}/who-us`,
             type: "website",
             locale: isAr ? "ar_EG" : "en_US",
+            images: [{ url: "https://nitg-eg.com/logo.svg", width: 512, height: 512, alt: "N.I.T Egypt" }],
+        },
+        twitter: {
+            card: "summary_large_image",
+            title: isAr ? "من نحن | الشركة الوطنية لهندسة البرمجيات" : "About N.I.T Egypt",
+            description: isAr
+                ? "شركة مصرية تأسست 2013 — متخصصون في منصات Moodle وتطبيقات التجارة الإلكترونية"
+                : "Founded in Cairo 2013 — Moodle LMS & eCommerce app specialists.",
         },
     };
 }

@@ -25,6 +25,7 @@ export async function generateMetadata({
             url: `https://nitg-eg.com/${locale}/ecommerce-app`,
             type: "website",
             locale: isAr ? "ar_EG" : "en_US",
+            images: [{ url: "https://nitg-eg.com/logo.svg", width: 512, height: 512, alt: "eCommerce App Development — N.I.T Egypt" }],
         },
         twitter: {
             card: "summary_large_image",
