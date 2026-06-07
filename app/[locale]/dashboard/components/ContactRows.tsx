@@ -59,12 +59,16 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
     const [hasMore, setHasMore] = useState(true);
     const [localContacts, setLocalContacts] = useState<any[]>([]);
 
-    // Reset on filter change
+    // Reset on filter change — pre-seed from global store when switching to "All"
     useEffect(() => {
         setSkip(0);
         setHasMore(true);
-        setLocalContacts([]);
-    }, [stageFilter]);
+        if (!stageFilter && contacts?.length) {
+            setLocalContacts(contacts);
+        } else {
+            setLocalContacts([]);
+        }
+    }, [stageFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const fetchContacts = useCallback(async () => {
         try {
@@ -121,10 +125,11 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
         }
     };
 
-    // Delete contact
+    // Delete contact — update both localContacts and global store
     const deleteContact = async (id: string) => {
         if (!window.confirm('Delete this lead? This cannot be undone.')) return;
         setLocalContacts(prev => prev.filter(c => c.id !== id));
+        setContacts((contacts ?? []).filter((c: any) => c.id !== id));
         try {
             await axios.delete(`/api/contact?id=${id}`);
         } catch {
@@ -132,7 +137,8 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
         }
     };
 
-    const rows = stageFilter ? localContacts : (contacts ?? []);
+    // Always drive display from localContacts; seed it from global store when no filter
+    const rows = localContacts;
 
     if (!rows.length)
         return (

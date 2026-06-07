@@ -65,13 +65,18 @@ const Contacts = () => {
                         {(() => {
                             const s = summary.services ?? {};
                             const total = (s.moodle ?? 0) + (s.ecommerce ?? 0) + (s.custom ?? 0) + (s.other ?? 0);
+                            if (total === 0) return (
+                                <p className="text-sm text-gray-400 py-4 text-center">
+                                    No service data yet — will populate as new leads come in.
+                                </p>
+                            );
                             return (
                                 <div className="space-y-3">
                                     <ServiceBar label="Moodle LMS" count={s.moodle ?? 0} total={total} color="bg-emerald-500" />
                                     <ServiceBar label="eCommerce" count={s.ecommerce ?? 0} total={total} color="bg-blue-500" />
                                     <ServiceBar label="Custom Dev" count={s.custom ?? 0} total={total} color="bg-purple-400" />
                                     <ServiceBar label="Other" count={s.other ?? 0} total={total} color="bg-gray-400" />
-                                    <p className="text-xs text-gray-400 pt-1">* Only contacts who selected a service</p>
+                                    <p className="text-xs text-gray-400 pt-1">* Contacts who selected a service only</p>
                                 </div>
                             );
                         })()}
@@ -96,8 +101,9 @@ const Contacts = () => {
             </div>
 
             {/* Table */}
-            <div className='overflow-auto bg-white rounded-xl shadow-sm border border-gray-100'>
-                <table className="w-full text-sm text-left rtl:text-right text-gray-600 min-w-[900px]">
+            <div className='bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto'
+                 style={{ WebkitOverflowScrolling: 'touch' }}>
+                <table className="text-sm text-left text-gray-600" style={{ minWidth: '1100px', width: '100%' }}>
                     <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
                         <tr>
                             <th className="px-4 py-3">#</th>
