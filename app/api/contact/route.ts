@@ -3,13 +3,67 @@ import prisma from '@/prisma/client';
 import { authPredict } from "@/lib/predict";
 import { computeLeadScore } from "@/utils/leadScore";
 
+// ── Disposable / known-spam email domains ─────────────────────────────────────
+const BLOCKED_DOMAINS = new Set([
+    'mailinator.com', 'guerrillamail.com', 'tempmail.com', 'throwam.com',
+    'yopmail.com', 'sharklasers.com', 'guerrillamailblock.com', 'grr.la',
+    'guerrillamail.info', 'guerrillamail.biz', 'guerrillamail.de',
+    'guerrillamail.net', 'guerrillamail.org', 'spam4.me', 'trashmail.me',
+    'trashmail.at', 'trashmail.io', 'trashmail.xyz', 'fakeinbox.com',
+    'dispostable.com', 'mailnull.com', 'maildrop.cc', 'spamgourmet.com',
+    '10minutemail.com', 'temp-mail.org', 'getnada.com', 'discard.email',
+    'spamhereplease.com', 'spamthisplease.com',
+]);
+
+// ── Simple in-memory rate limiter: max 3 submissions per IP per 10 min ────────
+const ipCache = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT = 3;
+const RATE_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+
+function checkRateLimit(ip: string): boolean {
+    const now = Date.now();
+    const entry = ipCache.get(ip);
+    if (!entry || now > entry.resetAt) {
+        ipCache.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
+        return true; // allowed
+    }
+    if (entry.count >= RATE_LIMIT) return false; // blocked
+    entry.count++;
+    return true;
+}
+
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { name, email, phone, subject, message, service, budget, timeline, role, pain } = body;
+        const { name, email, phone, subject, message, service, budget, timeline, role, pain, _hp } = body;
+
+        // ── Honeypot check (bots fill hidden fields, humans don't) ────────────
+        if (_hp) {
+            console.warn('[Contact] 🍯 Honeypot triggered');
+            return NextResponse.json({ message: 'تم الارسال بنجاح' }, { status: 201 }); // fake success
+        }
+
+        // ── Rate limit by IP ──────────────────────────────────────────────────
+        const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+        if (!checkRateLimit(ip)) {
+            console.warn(`[Contact] 🚫 Rate limit hit: ${ip}`);
+            return NextResponse.json({ message: 'لقد تجاوزت الحد المسموح. يرجى المحاولة لاحقاً.' }, { status: 429 });
+        }
 
         if (!name || !email || !phone || !subject || !message)
             return NextResponse.json({ message: 'يرجي ادخال جميع البيانات' }, { status: 400 });
+
+        // ── Blocked / disposable email domain ────────────────────────────────
+        const domain = email.split('@')[1]?.toLowerCase();
+        if (!domain || BLOCKED_DOMAINS.has(domain)) {
+            console.warn(`[Contact] 🚫 Blocked domain: ${domain}`);
+            return NextResponse.json({ message: 'يرجى استخدام بريد إلكتروني صحيح' }, { status: 400 });
+        }
+
+        // ── Message too short (likely spam) ──────────────────────────────────
+        if (message.trim().length < 10) {
+            return NextResponse.json({ message: 'يرجى كتابة رسالة أكثر تفصيلاً' }, { status: 400 });
+        }
 
         const { score, stage } = computeLeadScore({ email, phone, role, service, budget, timeline, pain, message });
 
@@ -37,15 +91,19 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ count }, { status: 200 });
         }
 
-        // Funnel summary
+        // Funnel summary + service breakdown
         if (searchParams.get('summary')) {
-            const [lead, mql, sql, opportunity] = await Promise.all([
+            const [lead, mql, sql, opportunity, moodle, ecommerce, custom, other] = await Promise.all([
                 prisma.contact.count({ where: { stage: 'lead' } }),
                 prisma.contact.count({ where: { stage: 'mql' } }),
                 prisma.contact.count({ where: { stage: 'sql' } }),
                 prisma.contact.count({ where: { stage: 'opportunity' } }),
+                prisma.contact.count({ where: { service: 'moodle' } }),
+                prisma.contact.count({ where: { service: 'ecommerce' } }),
+                prisma.contact.count({ where: { service: 'custom' } }),
+                prisma.contact.count({ where: { service: 'other' } }),
             ]);
-            return NextResponse.json({ lead, mql, sql, opportunity }, { status: 200 });
+            return NextResponse.json({ lead, mql, sql, opportunity, services: { moodle, ecommerce, custom, other } }, { status: 200 });
         }
 
         // Paginated list (with optional stage/status filter)

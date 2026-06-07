@@ -5,10 +5,14 @@ import axios from 'axios'
 import React, { useCallback, useEffect, useState } from 'react'
 import LocaleLink from '../../components/LocaleLink'
 import LoadingCard from '../../dashboard/components/LoadingCard'
+import { useLocale } from 'next-intl'
 
 const Articles = () => {
     const [articles, setArticles] = useState([])
     const [loading, setLoading] = useState(false)
+    const locale = useLocale()
+    const isAr = locale === 'ar'
+
     const fetchArticles = useCallback(
         async () => {
             try {
@@ -32,26 +36,35 @@ const Articles = () => {
                     !loading ?
                         <LoadingCard number={6} />
                         :
-                        articles.map((article: any, index: number) => (
-                            <div
-                                key={article.id}
-                                className="col-span-12 md:col-span-6 lg:col-span-4 border bg-white overflow-hidden rounded-xl h-full relative group"
-                            >
-                                <LocaleLink href={`/blog/${article.id}`} className='block'>
-                                    <div>
-                                        <img
-                                            src={article.img}
-                                            alt={article.title}
-                                            className='size-full '
-                                        />
-                                    </div>
-                                    <div className='p-3 text-right'>
-                                        <h2 className="text-lg font-bold">{article.title}</h2>
-                                        <p className="text-sm text-gray-600">{sliceText(article.content, 130)}</p>
-                                    </div>
-                                </LocaleLink>
+                        articles.length === 0 ? (
+                            <div className="col-span-12 text-center text-gray-400 py-16 text-lg">
+                                {isAr ? 'لا توجد مقالات حتى الآن' : 'No articles yet'}
                             </div>
-                        ))
+                        ) :
+                        articles.map((article: any) => {
+                            const title = isAr ? article.title : (article.titleEn || article.title)
+                            const content = isAr ? article.content : (article.contentEn || article.content)
+                            return (
+                                <div
+                                    key={article.id}
+                                    className="col-span-12 md:col-span-6 lg:col-span-4 border bg-white overflow-hidden rounded-xl h-full relative group"
+                                >
+                                    <LocaleLink href={`/blog/${article.id}`} className='block'>
+                                        <div className='overflow-hidden'>
+                                            <img
+                                                src={article.img}
+                                                alt={title}
+                                                className='w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300'
+                                            />
+                                        </div>
+                                        <div className={`p-4 ${isAr ? 'text-right' : 'text-left'}`}>
+                                            <h2 className="text-base font-bold mb-2 leading-snug line-clamp-2">{title}</h2>
+                                            <p className="text-sm text-gray-500 line-clamp-3">{sliceText(content, 130)}</p>
+                                        </div>
+                                    </LocaleLink>
+                                </div>
+                            )
+                        })
                 }
             </div >
         </div>

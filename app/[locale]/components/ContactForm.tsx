@@ -35,6 +35,8 @@ const ContactForm = () => {
 
     return (
         <form onSubmit={handleSubmit(onSubmit)} dir={dir}>
+            {/* Honeypot — hidden from humans, bots fill this field */}
+            <input type="text" {...register('_hp')} style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
             <div className='bg-[#E5E8EF] py-10 px-5 lg:px-10 rounded-lg space-y-5 shadow-lg'>
 
                 {/* ── Required fields ──────────────────────── */}
