@@ -238,7 +238,7 @@ const articles: ArticleImg[] = [
         slug: 'ios-android-web',
         accent: '#3B82F6',
         icon: ICONS['three-screens'],
-        label: 'Mobile & Web',
+        label: 'Mobile / Web',
     },
     {
         id: '6a24e802b778f410a3acf0c6',
