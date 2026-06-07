@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <!-- Background -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#071a16"/>
+      <stop offset="100%" stop-color="#0f2e28"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Decorative circles -->
+  <circle cx="100"  cy="100"  r="180" fill="#268F79" opacity="0.07"/>
+  <circle cx="1100" cy="530"  r="220" fill="#268F79" opacity="0.07"/>
+  <circle cx="600"  cy="315"  r="300" fill="#268F79" opacity="0.04"/>
+
+  <!-- Accent top bar -->
+  <rect x="0" y="0" width="6" height="630" fill="#268F79" opacity="0.8"/>
+
+  <!-- Icon group (centered at 600,290) -->
+  <g transform="translate(600,290)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+
+    <polygon points="0,-90 -90,-45 0,0 90,-45" stroke="#00FFB2" stroke-width="4" fill="#00FFB2" opacity="0.15"/>
+    <line x1="0" y1="-90" x2="0" y2="-45" stroke="#00FFB2" stroke-width="4"/>
+    <line x1="90" y1="-45" x2="90" y2="0" stroke="white" stroke-width="4" opacity="0.7"/>
+    <circle cx="0" cy="5" r="28" stroke="#00FFB2" stroke-width="4"/>
+    <rect x="-85" y="35" width="35" height="55" rx="4" fill="white" opacity="0.25"/>
+    <rect x="-35" y="20" width="35" height="70" rx="4" fill="#00FFB2" opacity="0.4"/>
+    <rect x="15"  y="10" width="35" height="80" rx="4" fill="white" opacity="0.6"/>
+    <rect x="65"  y="5"  width="35" height="85" rx="4" fill="#00FFB2" opacity="0.8"/>
+  </g>
+
+  <!-- Bottom label strip -->
+  <rect x="0" y="575" width="1200" height="55" fill="#268F79" opacity="0.12"/>
+  <text x="60" y="608" font-family="Arial,sans-serif" font-size="20" font-weight="bold"
+        fill="#268F79" opacity="0.9" letter-spacing="2">N.I.T EGYPT</text>
+  <text x="1140" y="608" font-family="Arial,sans-serif" font-size="16"
+        fill="white" opacity="0.5" text-anchor="end">Moodle LMS</text>
+</svg>
