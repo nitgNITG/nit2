@@ -25,12 +25,12 @@ const GetQuotePage = () => {
     return (
         <div>
             {/* ── Header ───────────────────────────────────────────── */}
-            <header className='bg-gradient-to-br from-[#0B2923] via-[#0d3329] to-[#1a4f40] text-white'>
+            <header className='bg-gradient-to-br from-[#0B2923] via-[#0d3329] to-[#1a4f40]'>
                 <div className='p-container'>
                     <div className='py-10'>
                         <Navbar />
                     </div>
-                    <div className='pb-14 text-center max-w-3xl mx-auto'>
+                    <div className='pb-14 text-center max-w-3xl mx-auto text-white'>
                         {/* Badge */}
                         <span className='inline-block bg-[#268F79]/30 border border-[#268F79] text-[#00FFB2] text-xs font-bold px-4 py-1.5 rounded-full mb-6 tracking-wider uppercase'>
                             {t('badge')}
