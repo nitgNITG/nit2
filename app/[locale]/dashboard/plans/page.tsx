@@ -114,7 +114,7 @@ const PlansPage = () => {
             <div className='flex justify-between items-center'>
                 <div>
                     <h4 className='font-bold text-lg md:text-xl lg:text-2xl'>💰 Plans & Pricing</h4>
-                    <p className='text-sm text-gray-500 mt-1'>Manage the "Starting From" prices shown on service pages</p>
+                    <p className='text-sm text-gray-500 mt-1'>Manage the &ldquo;Starting From&rdquo; prices shown on service pages</p>
                 </div>
                 <button onClick={openAdd}
                     className='bg-gradient-to-r from-[#268F79] to-[#0B2923] text-[#00FFB2] font-bold px-5 py-2 rounded-md'>
