@@ -1,0 +1,24 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "khatema-frontend",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd /Users/greest/Downloads/khatema/frontend && npm run dev -- --port 3000"],
+      "port": 3000
+    },
+    {
+      "name": "nit-leads-web",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd /Users/greest/Downloads/AILeadsDetection && PORT=3010 pnpm --filter @nit/web dev"],
+      "port": 3010,
+      "autoPort": false
+    }
+  ,{
+      "name": "nit-profile",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "/Users/greest/Downloads/nit2-v3", "-l", "8765", "--no-clipboard"],
+      "port": 8765
+    }
+  ]
+}

@@ -62,9 +62,8 @@ const OurServices = () => {
 
                         <div className={clsx('flex', isAr ? 'justify-end' : 'justify-start')}>
                             <LocaleLink
-                                href='/contact'
-                                target='_blank'
-                                className='hidden lg:block bg-gradient-to-r from-[#268F79] to-[#0B2923] px-5 py-3 rounded-md'
+                                href='/get-quote'
+                                className='hidden lg:block bg-gradient-to-r from-[#268F79] to-[#0B2923] px-5 py-3 rounded-md hover:opacity-90 transition-opacity'
                             >
                                 <span className='text-[#00FFB2] font-bold'>{t('btn')}</span>
                             </LocaleLink>

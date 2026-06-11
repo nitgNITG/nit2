@@ -11,17 +11,18 @@
     },
     "Header": {
         "title": {
-            "one": "National Software Engineering",
-            "two": "and Information Technology"
+            "one": "Launch Your Moodle Platform",
+            "two": "or eCommerce App with N.I.T"
         },
         "subTitle": {
             "start": "We build Moodle LMS & eCommerce apps",
             "heroword": "for universities & businesses",
-            "end": "across Egypt & the Gulf since 2013"
+            "end": "Saudi Arabia • UAE • Qatar • Kuwait • Egypt — 150+ projects since 2013"
         },
-        "btn": "Start Your Project Now",
+        "btn": "Get a Quote — within 24 Hours",
+        "btnWa": "Free WhatsApp Consultation",
         "happyClients": "Happy Clients",
-        "delProject": "Delivered"
+        "delProject": "Projects Delivered"
     },
     "hitHeader": {
         "item1": "Projects in Progress",
@@ -31,50 +32,50 @@
     },
     "services": {
         "hint": "Our Services",
-        "btn": "Start Your Project",
+        "btn": "Get a Quote within 24 Hours",
         "title": {
-            "one": "Best Software",
-            "hero": "Development",
-            "two": "in Egypt & the Gulf"
+            "one": "Professional Tech",
+            "hero": "Solutions",
+            "two": "for the Gulf & Egypt"
         },
         "item1": {
-            "title": "E-Learning",
-            "desc": "The best company specializing in e-learning in Egypt - Educational Websites - Educational Applications - Educational Electronic Games"
+            "title": "Moodle LMS Platforms",
+            "desc": "We develop Moodle platforms for universities and educational institutions across Saudi Arabia, UAE, Qatar, Kuwait and Egypt — fully Arabic LMS with custom branding, integrations, and team training included"
         },
         "item2": {
-            "title": "E-Commerce",
-            "desc": "The best company specializing in e-commerce in Egypt - Shopping Websites - Shopping Applications - Multivendor - Selling Points"
+            "title": "eCommerce Applications",
+            "desc": "We build iOS & Android shopping apps for Gulf and Egyptian businesses — supporting local payment gateways (Mada, STC Pay, Apple Pay, KNET), multi-vendor, and a full admin dashboard"
         },
         "item3": {
-            "title": "Digital Marketing",
-            "desc": "The best company specializing in digital marketing in Egypt - Marketing Designs - Marketing Videos - Motion Graphics"
+            "title": "Custom Development",
+            "desc": "Tailored software solutions for your business needs — corporate websites, mobile apps, ERP systems, and process automation for companies and institutions across the Arab world"
         }
     },
     "experience": {
-        "hint": "The best app development company in Egypt",
+        "hint": "Your digital transformation partner",
         "title": {
-            "one": "Experience in designing",
-            "hero": "Educational platforms",
+            "one": "Building platforms &",
+            "hero": "apps that perform",
             "two": "since 2013"
         },
-        "desc": "We are one of the world's leading companies in programming and designing educational websites, as well as creating iPhone and Android apps. We are an Egyptian programming company established in 2013 in Cairo. We started in Cairo, Egypt, and then expanded to the Arab world. In 2014, we launched to create mobile applications, websites, and e-commerce stores for the Gulf countries"
+        "desc": "N.I.T — National Software Engineering — is your trusted tech partner for Moodle LMS and eCommerce development. Founded in 2013, we have delivered 150+ successful projects for universities and businesses across Saudi Arabia, UAE, Qatar, Kuwait, Bahrain, Oman, Jordan and Egypt. Our team understands the Arab market inside out and delivers on time, every time."
     },
     "app": {
-        "hint": "We are one of the best app development companies specializing in creating educational platforms",
-        "title": "See our latest projects in programming educational and commercial platforms and apps",
-        "desc": "The National Software Engineering and Information Technology Company has been developing mobile apps and websites since 2013 in Egypt, with extensive experience. But not only in the field of education, we have also worked with merchants and e-commerce companies. See our portfolio and learn about the capabilities of our development team"
+        "hint": "Live projects in Saudi Arabia, UAE, Qatar & Egypt",
+        "title": "Our Moodle LMS & eCommerce Projects — See What We've Built",
+        "desc": "We've delivered 150+ projects for universities and companies across the Gulf and Egypt — live LMS platforms, eCommerce apps on Google Play & App Store. Browse our portfolio and see our team's capabilities for yourself."
     },
     "cost": {
-        "hint": "The best app development companies in Egypt",
-        "title": "The best cost for creating an app in Egypt and the Gulf countries",
-        "desc": "Explore with our company the technical services we offer to businesses to develop their operations and e-commerce stores. Transition to digital transformation now, increase your sales, and expand your market share. You are with the National Software Engineering and Information Technology Company for mobile app programming, an Egyptian programming company specializing in the design and programming of websites and mobile applications, with an extensive portfolio in creating educational and commercial platforms",
+        "hint": "Your tech partner in the Gulf & Egypt",
+        "title": "Professional software solutions — starting from $5,000",
+        "desc": "Step into digital transformation with a company that has delivered 150+ successful projects. Whether you're building an LMS for your university or an eCommerce app for your business — we offer the right solution at the right price, delivered on time.",
         "more": {
-            "item1": "A company for designing and programming websites and iPhone and Android apps",
-            "item2": "A comprehensive service website and app programming company",
-            "item3": "12+ years of experience in website design, app programming, and digital marketing",
-            "desc": "Are you looking for the strongest programming company?! We work with all our efforts for your success and the success of your website. If the answer is yes, don't worry, we are here to serve you. The National Company is a great digital partner to achieve the success you are striving for. With our long experience in digital marketing and online solutions, we guarantee you work with a team of professionals in the world of the internet"
+            "item1": "Moodle LMS from $5,000 — eCommerce app from $7,000",
+            "item2": "Specialized team with 12+ years in the Gulf & Arab market",
+            "item3": "Full handover with 1-year warranty and team training included",
+            "desc": "Looking for a tech partner who truly understands the Arab market? N.I.T is the first choice for universities and companies in Saudi Arabia, UAE, Qatar, Kuwait and Egypt. Our engineers build platforms and apps that deliver real results — with ongoing post-launch support."
         },
-        "btn": "Learn more about us"
+        "btn": "Get a Free Quote"
     },
     "contact": {
         "hint": "Contact us now",

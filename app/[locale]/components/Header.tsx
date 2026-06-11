@@ -60,12 +60,24 @@ const Header = () => {
                                         {t('subTitle.end')}
                                     </span>
                                 </div>
-                                <div className='flex justify-end'>
-                                    <LocaleLink href={'/contact'} target='_blank' className='block w-fit bg-gradient-to-b from-[#268F79] to-[#0B2923] px-5 py-4 rounded-md'>
-                                        <span className='text-[#00FFB2] font-bold'>
+                                <div className='flex flex-wrap gap-3 justify-end'>
+                                    {/* Primary CTA — get quote */}
+                                    <LocaleLink href={'/get-quote'} className='block w-fit bg-gradient-to-b from-[#268F79] to-[#0B2923] px-5 py-3.5 rounded-md hover:opacity-90 transition-opacity'>
+                                        <span className='text-[#00FFB2] font-bold text-sm md:text-base'>
                                             {t('btn')}
                                         </span>
                                     </LocaleLink>
+                                    {/* Secondary CTA — WhatsApp */}
+                                    <a
+                                        href='https://wa.me/201091568240?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D8%8C%20%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1%20%D8%B9%D9%86%20%D9%85%D8%B4%D8%B1%D9%88%D8%B9%D9%8A'
+                                        target='_blank'
+                                        rel='noreferrer'
+                                        className='block w-fit border-2 border-green-400 px-5 py-3.5 rounded-md hover:bg-green-400/10 transition-colors'
+                                    >
+                                        <span className='text-green-400 font-bold text-sm md:text-base flex items-center gap-2'>
+                                            💬 {t('btnWa')}
+                                        </span>
+                                    </a>
                                 </div>
                                 <div className='text-lg lg:text-xl font-semibold flex gap-5 lg:gap-20 justify-end'>
                                     <span className='flex justify-end'>

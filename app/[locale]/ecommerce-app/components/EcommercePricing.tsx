@@ -71,9 +71,9 @@ const EcommercePricing = () => {
                                 </ul>
                             </div>
                             <div className='p-4 pt-0 space-y-2'>
-                                <LocaleLink href='/contact'
+                                <LocaleLink href='/get-quote'
                                     className='block text-center bg-gradient-to-r from-[#268F79] to-[#0B2923] text-[#00FFB2] font-bold py-2.5 rounded-lg hover:opacity-90 transition-opacity text-sm'>
-                                    {isAr ? 'اطلب عرض سعر' : 'Request a Quote'}
+                                    {isAr ? 'احصل على عرض سعر' : 'Get a Quote'}
                                 </LocaleLink>
                                 <a href={`https://wa.me/${WHATSAPP_NUMBER}?text=${WHATSAPP_MSG}`}
                                     target='_blank' rel='noreferrer'

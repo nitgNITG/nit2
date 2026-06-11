@@ -1,0 +1,13 @@
+{
+  "name": "carrefour-scraper",
+  "version": "1.0.0",
+  "description": "Carrefour Egypt product image scraper",
+  "main": "scrape.js",
+  "scripts": {
+    "list": "node scrape.js",
+    "scrape": "node scrape.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.2"
+  }
+}

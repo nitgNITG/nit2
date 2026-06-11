@@ -36,12 +36,22 @@ const ProjectsCost = () => {
                             <p dir={isAr ? 'rtl' : 'ltr'} className='md:text-lg font-semibold mt-5 text-justify'>
                                 {t('more.desc')}
                             </p>
-                            <div className='flex justify-end pt-10'>
-                                <LocaleLink href={'/contact'} target='_blank' className='block bg-gradient-to-r from-[#268F79] to-[#0B2923] px-5 py-3 rounded-md'>
+                            <div className='flex justify-end pt-10 gap-3 flex-wrap'>
+                                <LocaleLink href={'/get-quote'} className='block bg-gradient-to-r from-[#268F79] to-[#0B2923] px-5 py-3 rounded-md hover:opacity-90 transition-opacity'>
                                     <span className='text-[#00FFB2] font-bold'>
                                         {t('btn')}
                                     </span>
                                 </LocaleLink>
+                                <a
+                                    href='https://wa.me/201091568240?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D8%8C%20%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1%20%D8%B9%D9%86%20%D9%85%D8%B4%D8%B1%D9%88%D8%B9%D9%8A'
+                                    target='_blank'
+                                    rel='noreferrer'
+                                    className='block border-2 border-green-500 px-5 py-3 rounded-md hover:bg-green-50 transition-colors'
+                                >
+                                    <span className='text-green-600 font-bold flex items-center gap-2'>
+                                        💬 {isAr ? 'استشارة واتساب' : 'WhatsApp Us'}
+                                    </span>
+                                </a>
                             </div>
                         </div>
                     </div>
