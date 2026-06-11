@@ -65,6 +65,12 @@ model Contact {
   timeline  String?   // "immediate" | "1to3months" | "3to6months" | "exploring"
   role      String?   // "owner" | "manager" | "employee" | "other"
   pain      String?
+  // Traffic tracking
+  sourcePage    String?   // page where form was submitted (/contact | /moodle-lms | /)
+  sourceRef     String?   // document.referrer (e.g. google.com)
+  utmSource     String?   // ?utm_source=
+  utmMedium     String?   // ?utm_medium=
+  utmCampaign   String?   // ?utm_campaign=
   // Auto-scored
   score     Int      @default(0)
   stage     String   @default("lead")   // "lead" | "mql" | "sql" | "opportunity"

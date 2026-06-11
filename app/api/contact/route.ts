@@ -35,7 +35,8 @@ function checkRateLimit(ip: string): boolean {
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { name, email, phone, subject, message, country, service, budget, timeline, role, pain, _hp } = body;
+        const { name, email, phone, subject, message, country, service, budget, timeline, role, pain, _hp,
+                sourcePage, sourceRef, utmSource, utmMedium, utmCampaign } = body;
 
         // ── Honeypot check (bots fill hidden fields, humans don't) ────────────
         if (_hp) {
@@ -68,10 +69,25 @@ export async function POST(req: NextRequest) {
         const { score, stage } = computeLeadScore({ email, phone, role, service, budget, timeline, pain, message });
 
         await prisma.contact.create({
-            data: { name, email, phone, subject, message, country, service, budget, timeline, role, pain, score, stage },
+            data: {
+                name, email, phone, subject, message, country, service, budget, timeline, role, pain, score, stage,
+                sourcePage, sourceRef, utmSource, utmMedium, utmCampaign,
+            },
         });
 
-        console.log(`[Contact] ✅ ${email} → stage:${stage} score:${score}`);
+        console.log(`[Contact] ✅ ${email} → stage:${stage} score:${score} | from:${sourcePage} ref:${sourceRef ?? 'direct'} utm:${utmSource ?? '-'}`);
+
+        // WhatsApp notification for hot leads (SQL / Opportunity)
+        if (stage === 'sql' || stage === 'opportunity') {
+            const NOTIFY_NUMBER = process.env.WHATSAPP_NOTIFY_NUMBER; // e.g. +201091568240
+            if (NOTIFY_NUMBER) {
+                const msg = encodeURIComponent(
+                    `🔥 Lead جديد!\nالاسم: ${name}\nالخدمة: ${service ?? '—'}\nالميزانية: ${budget ?? '—'}\nالدولة: ${country ?? '—'}\nالهاتف: ${phone ?? '—'}\nمن: ${sourcePage ?? '/'}`
+                );
+                // Log the WhatsApp link — can be used with any WA gateway/webhook
+                console.log(`[Contact] 🔔 Hot lead WA link: https://wa.me/${NOTIFY_NUMBER.replace('+','')}?text=${msg}`);
+            }
+        }
         return NextResponse.json({ message: 'تم الارسال بنجاح' }, { status: 201 });
     } catch (error: any) {
         console.error('[Contact POST]', error.message);
@@ -94,7 +110,8 @@ export async function GET(req: NextRequest) {
         // Funnel summary + service breakdown + country breakdown
         if (searchParams.get('summary')) {
             const COUNTRIES = ['sa', 'ae', 'qa', 'kw', 'bh', 'om', 'jo', 'eg', 'other'];
-            const [lead, mql, sql, opportunity, moodle, ecommerce, custom, other, ...countryCounts] = await Promise.all([
+            const SOURCE_PAGES = ['/', '/contact', '/moodle-lms', '/ecommerce-app', '/get-quote', '/blog', '/who-us', '/our-projects'];
+            const [lead, mql, sql, opportunity, moodle, ecommerce, custom, svcOther, ...rest] = await Promise.all([
                 prisma.contact.count({ where: { stage: 'lead' } }),
                 prisma.contact.count({ where: { stage: 'mql' } }),
                 prisma.contact.count({ where: { stage: 'sql' } }),
@@ -104,11 +121,17 @@ export async function GET(req: NextRequest) {
                 prisma.contact.count({ where: { service: 'custom' } }),
                 prisma.contact.count({ where: { service: 'other' } }),
                 ...COUNTRIES.map(c => prisma.contact.count({ where: { country: c } })),
+                ...SOURCE_PAGES.map(p => prisma.contact.count({ where: { sourcePage: { contains: p } } })),
             ]);
+            const countryCounts = rest.slice(0, COUNTRIES.length);
+            const pageCounts    = rest.slice(COUNTRIES.length);
             const countries = Object.fromEntries(
                 COUNTRIES.map((c, i) => [c, countryCounts[i]]).filter(([, v]) => (v as number) > 0)
             );
-            return NextResponse.json({ lead, mql, sql, opportunity, services: { moodle, ecommerce, custom, other }, countries }, { status: 200 });
+            const pages = Object.fromEntries(
+                SOURCE_PAGES.map((p, i) => [p, pageCounts[i]]).filter(([, v]) => (v as number) > 0)
+            );
+            return NextResponse.json({ lead, mql, sql, opportunity, services: { moodle, ecommerce, custom, other: svcOther }, countries, pages }, { status: 200 });
         }
 
         // Paginated list (with optional stage/status filter)

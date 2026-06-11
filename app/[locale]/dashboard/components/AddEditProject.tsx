@@ -134,7 +134,7 @@ const AddEditProject = ({ defaultType }: { defaultType?: string }) => {
                                 <button ref={btnRef} className='absolute hidden group-hover:flex items-center gap-1 bg-white/80 px-3 py-1.5 rounded-full text-sm'>
                                     <ImageIcon className='size-4 stroke-gray-600' /> Change
                                 </button>
-                                <input id='input-project-img' {...register('file', { onChange: (e) => setImage(URL.createObjectURL(e.target.files[0])) })} type="file" accept="image/*" className='hidden' />
+                                <input id='input-project-img' {...register('file' as any, { onChange: (e: any) => setImage(URL.createObjectURL(e.target.files[0])) })} type="file" accept="image/*" className='hidden' />
                             </div>
                         ) : (
                             <>
@@ -145,10 +145,10 @@ const AddEditProject = ({ defaultType }: { defaultType?: string }) => {
                                     </button>
                                     : <div className='h-48 rounded-md overflow-hidden'><img src={image} className='w-full h-full object-cover' alt='' /></div>
                                 }
-                                <input id='input-project-img' {...register('file', { required: 'Please select an image', onChange: (e) => setImage(URL.createObjectURL(e.target.files[0])) })} type="file" accept="image/*" className='hidden' />
+                                <input id='input-project-img' {...register('file' as any, { required: 'Please select an image', onChange: (e: any) => setImage(URL.createObjectURL(e.target.files[0])) })} type="file" accept="image/*" className='hidden' />
                             </>
                         )}
-                        <ErrorMsg message={errors?.file?.message as string} />
+                        <ErrorMsg message={(errors as any)?.file?.message as string} />
                     </div>
 
                     {/* ── Project Types ── */}

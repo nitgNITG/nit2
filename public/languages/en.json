@@ -209,5 +209,28 @@
     "ecommercePage": {
         "title": "eCommerce App Development — Mobile & Web",
         "subtitle": "Live apps on Google Play & App Store"
+    },
+    "getQuote": {
+        "badge": "Free · No obligation",
+        "title": "Get a Quote for Your Project",
+        "subtitle": "Tell us about your project and we'll send you a detailed proposal within 24 hours",
+        "✓ free": "✓ Free quote",
+        "✓ no-obligation": "✓ No obligation",
+        "✓ reply24": "✓ Reply within 24 hours",
+        "why1": "12+ years in e-learning platforms",
+        "why2": "Live eCommerce apps in app stores",
+        "why3": "Serving Egypt & the Gulf region",
+        "why4": "Fast delivery, high quality",
+        "servicesTitle": "What can we build for you?",
+        "svc1Title": "Moodle LMS Platform",
+        "svc1Desc": "Custom e-learning platforms for universities, schools and enterprises",
+        "svc2Title": "eCommerce App",
+        "svc2Desc": "iOS & Android shopping apps with a full admin dashboard",
+        "svc3Title": "Custom Development",
+        "svc3Desc": "Tailored software solutions for your unique business needs",
+        "stat1": "Years experience",
+        "stat2": "Projects delivered",
+        "stat3": "Response time",
+        "stat4": "Client satisfaction"
     }
 }

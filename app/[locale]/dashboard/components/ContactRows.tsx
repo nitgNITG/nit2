@@ -64,14 +64,12 @@ function ContactModal({ contact: c, onClose, onStatusChange, onNotesChange }: {
     const [notes, setNotes] = useState(c.notes ?? '');
     const [savingNotes, setSavingNotes] = useState(false);
 
-    // Close on Escape key
     useEffect(() => {
         const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
         document.addEventListener('keydown', handler);
         return () => document.removeEventListener('keydown', handler);
     }, [onClose]);
 
-    // Prevent body scroll
     useEffect(() => {
         document.body.style.overflow = 'hidden';
         return () => { document.body.style.overflow = ''; };
@@ -135,6 +133,18 @@ function ContactModal({ contact: c, onClose, onStatusChange, onNotesChange }: {
                         <Row label='Country' value={COUNTRY_LABEL[c.country] ?? c.country} />
                         <Row label='Role' value={ROLE_LABEL[c.role] ?? c.role} />
                     </div>
+
+                    {/* Traffic source */}
+                    {(c.sourcePage || c.sourceRef || c.utmSource) && (
+                        <div className='bg-purple-50 border border-purple-100 rounded-xl p-4 space-y-2'>
+                            <p className='text-xs font-bold uppercase text-purple-400 mb-3 tracking-wider'>Traffic Source</p>
+                            <Row label='Page' value={c.sourcePage} />
+                            <Row label='Referrer' value={c.sourceRef} />
+                            <Row label='UTM Source' value={c.utmSource} />
+                            <Row label='UTM Medium' value={c.utmMedium} />
+                            <Row label='UTM Campaign' value={c.utmCampaign} />
+                        </div>
+                    )}
 
                     {/* Project info */}
                     <div className='bg-gray-50 rounded-xl p-4 space-y-2'>
@@ -215,6 +225,94 @@ function ContactModal({ contact: c, onClose, onStatusChange, onNotesChange }: {
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+    );
+}
+
+// ── Mobile Contact Card ───────────────────────────────────────────────────────
+
+function ContactCard({ c, onView, onStatusChange, onDelete }: {
+    c: any;
+    onView: () => void;
+    onStatusChange: (id: string, status: string) => void;
+    onDelete: (id: string) => void;
+}) {
+    return (
+        <div className='bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3'>
+            {/* Top row: stage + score + date */}
+            <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-2'>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STAGE_STYLE[c.stage] ?? 'bg-gray-100 text-gray-600'}`}>
+                        {STAGE_LABEL[c.stage] ?? c.stage}
+                    </span>
+                    <ScoreBar score={c.score ?? 0} />
+                </div>
+                <span className='text-xs text-gray-400'>
+                    {new Date(c.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}
+                </span>
+            </div>
+
+            {/* Name */}
+            <div>
+                <p className='font-bold text-gray-900'>{c.name}</p>
+                <p className='text-xs text-blue-600'>{c.email}</p>
+                {c.phone && <p className='text-xs text-gray-500'>{c.phone}</p>}
+            </div>
+
+            {/* Meta chips */}
+            <div className='flex flex-wrap gap-1.5'>
+                {c.country && (
+                    <span className='bg-gray-100 text-gray-700 text-xs px-2 py-0.5 rounded-full'>
+                        {COUNTRY_LABEL[c.country] ?? c.country}
+                    </span>
+                )}
+                {c.service && (
+                    <span className='bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full'>
+                        {SERVICE_LABEL[c.service] ?? c.service}
+                    </span>
+                )}
+                {c.budget && c.budget !== 'unknown' && (
+                    <span className='bg-green-50 text-green-700 text-xs px-2 py-0.5 rounded-full'>
+                        {BUDGET_LABEL[c.budget] ?? c.budget}
+                    </span>
+                )}
+                {c.sourcePage && (
+                    <span className='bg-purple-50 text-purple-700 text-xs px-2 py-0.5 rounded-full'>
+                        📍 {c.sourcePage}
+                    </span>
+                )}
+            </div>
+
+            {/* Message preview */}
+            {c.message && (
+                <p className='text-xs text-gray-500 line-clamp-2 italic'>&ldquo;{c.message}&rdquo;</p>
+            )}
+
+            {/* Actions */}
+            <div className='flex items-center gap-2 pt-1 border-t border-gray-100'>
+                <button
+                    onClick={onView}
+                    className='flex-1 bg-[#268F79]/10 hover:bg-[#268F79]/20 text-[#268F79] font-bold text-xs px-3 py-2 rounded-lg transition-colors'
+                >
+                    👁 View Details
+                </button>
+                <select
+                    value={c.status ?? 'new'}
+                    onChange={e => onStatusChange(c.id, e.target.value)}
+                    className={`text-xs px-2 py-2 rounded-lg border-0 font-semibold cursor-pointer ${STATUS_STYLE[c.status] ?? 'bg-gray-100'}`}
+                >
+                    {STATUS_OPTIONS.map(s => (
+                        <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                    ))}
+                </select>
+                <button
+                    onClick={() => onDelete(c.id)}
+                    className='text-red-400 hover:text-red-600 text-xs p-2 rounded-lg hover:bg-red-50 transition-colors'
+                    title='Delete'
+                >
+                    🗑
+                </button>
             </div>
         </div>
     );
@@ -313,14 +411,11 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
 
     const rows = localContacts;
 
-    if (!rows.length)
-        return (
-            <tr>
-                <td colSpan={16} className="px-6 py-8 text-center text-gray-400">
-                    {loading ? 'Loading…' : 'No leads yet'}
-                </td>
-            </tr>
-        );
+    const emptyState = (
+        <div className='py-10 text-center text-gray-400'>
+            {loading ? 'Loading…' : 'No leads yet'}
+        </div>
+    );
 
     return (
         <>
@@ -334,108 +429,170 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
                 />
             )}
 
-            {rows.map((c: any, i: number) => (
-                <tr key={c.id} className="border-b hover:bg-gray-50 transition-colors align-top">
-                    {/* Sticky view button — always visible without scrolling */}
-                    <td className="px-3 py-3 sticky left-0 bg-white hover:bg-gray-50 z-10 shadow-[2px_0_4px_rgba(0,0,0,0.06)]">
-                        <button
-                            onClick={() => setSelectedContact(c)}
-                            className="flex items-center gap-1 bg-[#268F79]/10 hover:bg-[#268F79]/20 text-[#268F79] font-bold text-xs px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap"
-                        >
-                            👁 View
-                        </button>
-                    </td>
-                    <td className="px-4 py-3 text-gray-400 text-xs">{i + 1}</td>
+            {/* ── Mobile card list (< md) ──────────────────────────────────── */}
+            <div className='block md:hidden space-y-3'>
+                {!rows.length ? emptyState : rows.map((c: any) => (
+                    <ContactCard
+                        key={c.id}
+                        c={c}
+                        onView={() => setSelectedContact(c)}
+                        onStatusChange={updateStatus}
+                        onDelete={deleteContact}
+                    />
+                ))}
+                {loading && (
+                    <div className='text-center text-gray-400 text-sm py-4'>Loading more…</div>
+                )}
+            </div>
 
-                    {/* Stage badge */}
-                    <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STAGE_STYLE[c.stage] ?? 'bg-gray-100 text-gray-600'}`}>
-                            {STAGE_LABEL[c.stage] ?? c.stage}
-                        </span>
-                    </td>
+            {/* ── Desktop table (≥ md) ─────────────────────────────────────── */}
+            <div
+                className='hidden md:block bg-white rounded-xl shadow-sm border border-gray-100'
+                style={{ overflowX: 'scroll', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'thin', scrollbarColor: '#268F79 #f1f5f9' }}
+            >
+                <table className='text-sm text-left text-gray-600' style={{ minWidth: '1300px', width: '100%' }}>
+                    <thead className='text-xs text-gray-700 uppercase bg-gray-50 border-b'>
+                        <tr>
+                            <th className='px-4 py-3 sticky left-0 bg-gray-50 z-10 shadow-[2px_0_4px_rgba(0,0,0,0.06)]'>View</th>
+                            <th className='px-4 py-3'>#</th>
+                            <th className='px-4 py-3'>Stage</th>
+                            <th className='px-4 py-3'>Score</th>
+                            <th className='px-4 py-3'>Name</th>
+                            <th className='px-4 py-3'>Email / Phone</th>
+                            <th className='px-4 py-3'>Country</th>
+                            <th className='px-4 py-3'>Service</th>
+                            <th className='px-4 py-3'>Budget</th>
+                            <th className='px-4 py-3'>Timeline</th>
+                            <th className='px-4 py-3'>Role</th>
+                            <th className='px-4 py-3'>Source</th>
+                            <th className='px-4 py-3'>Subject</th>
+                            <th className='px-4 py-3'>Pain / Message</th>
+                            <th className='px-4 py-3'>Status</th>
+                            <th className='px-4 py-3'>Date</th>
+                            <th className='px-4 py-3'></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {!rows.length ? (
+                            <tr>
+                                <td colSpan={17} className='px-6 py-8 text-center text-gray-400'>
+                                    {loading ? 'Loading…' : 'No leads yet'}
+                                </td>
+                            </tr>
+                        ) : rows.map((c: any, i: number) => (
+                            <tr key={c.id} className='border-b hover:bg-gray-50 transition-colors align-top'>
+                                {/* Sticky view button */}
+                                <td className='px-3 py-3 sticky left-0 bg-white hover:bg-gray-50 z-10 shadow-[2px_0_4px_rgba(0,0,0,0.06)]'>
+                                    <button
+                                        onClick={() => setSelectedContact(c)}
+                                        className='flex items-center gap-1 bg-[#268F79]/10 hover:bg-[#268F79]/20 text-[#268F79] font-bold text-xs px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap'
+                                    >
+                                        👁 View
+                                    </button>
+                                </td>
+                                <td className='px-4 py-3 text-gray-400 text-xs'>{i + 1}</td>
 
-                    {/* Score bar */}
-                    <td className="px-4 py-3"><ScoreBar score={c.score ?? 0} /></td>
+                                {/* Stage badge */}
+                                <td className='px-4 py-3'>
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STAGE_STYLE[c.stage] ?? 'bg-gray-100 text-gray-600'}`}>
+                                        {STAGE_LABEL[c.stage] ?? c.stage}
+                                    </span>
+                                </td>
 
-                    {/* Name */}
-                    <td className="px-4 py-3 font-semibold whitespace-nowrap">{c.name}</td>
+                                {/* Score bar */}
+                                <td className='px-4 py-3'><ScoreBar score={c.score ?? 0} /></td>
 
-                    {/* Email + Phone */}
-                    <td className="px-4 py-3 text-xs">
-                        <div className='text-blue-600'>{c.email}</div>
-                        {c.phone && <div className='text-gray-500 mt-0.5'>{c.phone}</div>}
-                    </td>
+                                {/* Name */}
+                                <td className='px-4 py-3 font-semibold whitespace-nowrap'>{c.name}</td>
 
-                    {/* Country */}
-                    <td className="px-4 py-3 text-xs font-medium">{COUNTRY_LABEL[c.country] ?? (c.country || '—')}</td>
+                                {/* Email + Phone */}
+                                <td className='px-4 py-3 text-xs'>
+                                    <div className='text-blue-600'>{c.email}</div>
+                                    {c.phone && <div className='text-gray-500 mt-0.5'>{c.phone}</div>}
+                                </td>
 
-                    {/* Service */}
-                    <td className="px-4 py-3 text-xs">{SERVICE_LABEL[c.service] ?? '—'}</td>
+                                {/* Country */}
+                                <td className='px-4 py-3 text-xs font-medium'>{COUNTRY_LABEL[c.country] ?? (c.country || '—')}</td>
 
-                    {/* Budget */}
-                    <td className="px-4 py-3 text-xs font-medium">{BUDGET_LABEL[c.budget] ?? '—'}</td>
+                                {/* Service */}
+                                <td className='px-4 py-3 text-xs'>{SERVICE_LABEL[c.service] ?? '—'}</td>
 
-                    {/* Timeline */}
-                    <td className="px-4 py-3 text-xs">{TIMELINE_LABEL[c.timeline] ?? '—'}</td>
+                                {/* Budget */}
+                                <td className='px-4 py-3 text-xs font-medium'>{BUDGET_LABEL[c.budget] ?? '—'}</td>
 
-                    {/* Role */}
-                    <td className="px-4 py-3 text-xs">{ROLE_LABEL[c.role] ?? '—'}</td>
+                                {/* Timeline */}
+                                <td className='px-4 py-3 text-xs'>{TIMELINE_LABEL[c.timeline] ?? '—'}</td>
 
-                    {/* Subject */}
-                    <td className="px-4 py-3 text-xs max-w-[150px] truncate">{c.subject}</td>
+                                {/* Role */}
+                                <td className='px-4 py-3 text-xs'>{ROLE_LABEL[c.role] ?? '—'}</td>
 
-                    {/* Message preview — click to open modal */}
-                    <td className="px-4 py-3 text-xs max-w-[200px]">
-                        <button
-                            onClick={() => setSelectedContact(c)}
-                            className='text-left w-full hover:text-[#268F79] transition-colors group'
-                            title='Click to view full message'
-                        >
-                            {c.pain && <p className='text-gray-500 mb-1 italic line-clamp-1'>&ldquo;{c.pain}&rdquo;</p>}
-                            <p className='text-gray-500 line-clamp-2 group-hover:text-[#268F79]'>{c.message}</p>
-                            <span className='text-[10px] text-[#268F79] opacity-0 group-hover:opacity-100 transition-opacity'>👁 view full</span>
-                        </button>
-                    </td>
+                                {/* Source page */}
+                                <td className='px-4 py-3 text-xs'>
+                                    {c.sourcePage ? (
+                                        <div>
+                                            <div className='font-medium text-purple-700'>{c.sourcePage}</div>
+                                            {c.sourceRef && c.sourceRef !== 'direct' && (
+                                                <div className='text-gray-400'>{c.sourceRef}</div>
+                                            )}
+                                            {c.utmSource && (
+                                                <div className='text-green-600'>utm: {c.utmSource}</div>
+                                            )}
+                                        </div>
+                                    ) : '—'}
+                                </td>
 
-                    {/* Status dropdown */}
-                    <td className="px-4 py-3">
-                        <select
-                            value={c.status ?? 'new'}
-                            onChange={e => updateStatus(c.id, e.target.value)}
-                            className={`text-xs px-2 py-1 rounded-lg border-0 font-semibold cursor-pointer ${STATUS_STYLE[c.status] ?? 'bg-gray-100'}`}
-                        >
-                            {STATUS_OPTIONS.map(s => (
-                                <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-                            ))}
-                        </select>
-                    </td>
+                                {/* Subject */}
+                                <td className='px-4 py-3 text-xs max-w-[150px] truncate'>{c.subject}</td>
 
-                    {/* Date */}
-                    <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
-                        {new Date(c.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}
-                    </td>
+                                {/* Message preview */}
+                                <td className='px-4 py-3 text-xs max-w-[200px]'>
+                                    <button
+                                        onClick={() => setSelectedContact(c)}
+                                        className='text-left w-full hover:text-[#268F79] transition-colors group'
+                                        title='Click to view full message'
+                                    >
+                                        {c.pain && <p className='text-gray-500 mb-1 italic line-clamp-1'>&ldquo;{c.pain}&rdquo;</p>}
+                                        <p className='text-gray-500 line-clamp-2 group-hover:text-[#268F79]'>{c.message}</p>
+                                        <span className='text-[10px] text-[#268F79] opacity-0 group-hover:opacity-100 transition-opacity'>👁 view full</span>
+                                    </button>
+                                </td>
 
-                    {/* View + Delete */}
-                    <td className="px-4 py-3">
-                        <div className='flex items-center gap-1'>
-                            <button
-                                onClick={() => setSelectedContact(c)}
-                                className="text-[#268F79] hover:text-[#0B2923] transition-colors text-xs font-semibold px-2 py-1 rounded hover:bg-[#268F79]/10"
-                                title="View full message"
-                            >
-                                👁
-                            </button>
-                            <button
-                                onClick={() => deleteContact(c.id)}
-                                className="text-red-400 hover:text-red-600 transition-colors text-xs font-semibold px-2 py-1 rounded hover:bg-red-50"
-                                title="Delete lead"
-                            >
-                                🗑
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            ))}
+                                {/* Status */}
+                                <td className='px-4 py-3'>
+                                    <select
+                                        value={c.status ?? 'new'}
+                                        onChange={e => updateStatus(c.id, e.target.value)}
+                                        className={`text-xs px-2 py-1 rounded-lg border-0 font-semibold cursor-pointer ${STATUS_STYLE[c.status] ?? 'bg-gray-100'}`}
+                                    >
+                                        {STATUS_OPTIONS.map(s => (
+                                            <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                                        ))}
+                                    </select>
+                                </td>
+
+                                {/* Date */}
+                                <td className='px-4 py-3 text-xs text-gray-400 whitespace-nowrap'>
+                                    {new Date(c.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}
+                                </td>
+
+                                {/* Delete */}
+                                <td className='px-4 py-3'>
+                                    <button
+                                        onClick={() => deleteContact(c.id)}
+                                        className='text-red-400 hover:text-red-600 transition-colors text-xs font-semibold px-2 py-1 rounded hover:bg-red-50'
+                                        title='Delete lead'
+                                    >
+                                        🗑
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                {loading && (
+                    <div className='text-center text-gray-400 text-sm py-4 border-t'>Loading more…</div>
+                )}
+            </div>
         </>
     );
 };

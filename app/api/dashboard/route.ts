@@ -8,8 +8,8 @@ export async function GET(req: NextRequest) {
         if (!isPredict)
             return NextResponse.json({ message: 'Not allow' }, { status: 400 })
         const [projects, apps, sponsers, articles, contacts] = await prisma.$transaction([
-            prisma.project.count({ where: { type: 'project' } }),
-            prisma.project.count({ where: { type: 'app' } }),
+            prisma.project.count({ where: { types: { has: 'lms' } } }),
+            prisma.project.count({ where: { types: { has: 'ecommerce' } } }),
             prisma.sponser.count(),
             prisma.article.count(),
             prisma.contact.count(),

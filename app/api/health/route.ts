@@ -25,8 +25,8 @@ export async function GET() {
     try {
         const [users, projects, apps, articles, contacts, sponsers] = await prisma.$transaction([
             prisma.user.count(),
-            prisma.project.count({ where: { type: 'project' } }),
-            prisma.project.count({ where: { type: 'app' } }),
+            prisma.project.count({ where: { types: { has: 'lms' } } }),
+            prisma.project.count({ where: { types: { has: 'ecommerce' } } }),
             prisma.article.count(),
             prisma.contact.count(),
             prisma.sponser.count(),

@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import ErrorMsg from './ErrorMsg';
 import toast from 'react-hot-toast';
@@ -23,6 +23,30 @@ const COUNTRY_CODES = [
     { code: 'other', flag: '🌍', name: '...' },
 ];
 
+/** Capture UTM params + referrer from the browser */
+function useTrackingData() {
+    const [tracking, setTracking] = useState({
+        sourcePage: '',
+        sourceRef: '',
+        utmSource: '',
+        utmMedium: '',
+        utmCampaign: '',
+    });
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        setTracking({
+            sourcePage:  window.location.pathname,
+            sourceRef:   document.referrer ? new URL(document.referrer).hostname : 'direct',
+            utmSource:   params.get('utm_source')   ?? '',
+            utmMedium:   params.get('utm_medium')   ?? '',
+            utmCampaign: params.get('utm_campaign') ?? '',
+        });
+    }, []);
+
+    return tracking;
+}
+
 const ContactForm = () => {
     const t = useTranslations('contact.form');
     const locale = useLocale();
@@ -30,6 +54,7 @@ const ContactForm = () => {
     const [loading, setLoading] = useState(false);
     const [dialCode, setDialCode] = useState('+20');
     const [customDial, setCustomDial] = useState('');
+    const tracking = useTrackingData();
     const { register, handleSubmit, formState: { errors }, reset } = useForm();
 
     const onSubmit = async (formData: any) => {
@@ -39,6 +64,12 @@ const ContactForm = () => {
             const payload = {
                 ...formData,
                 phone: resolvedDial ? `${resolvedDial}${formData.phone}` : formData.phone,
+                // tracking
+                sourcePage:  tracking.sourcePage,
+                sourceRef:   tracking.sourceRef,
+                utmSource:   tracking.utmSource   || undefined,
+                utmMedium:   tracking.utmMedium   || undefined,
+                utmCampaign: tracking.utmCampaign || undefined,
             };
             const { data } = await axios.post('/api/contact', payload);
             toast.success(data.message as string);
@@ -87,7 +118,6 @@ const ContactForm = () => {
                         <label className='space-y-2 block'>
                             <span className='block font-bold text-sm'>{t('phone.label')} <span className='text-red-500'>*</span></span>
                             <div className='flex gap-2' dir='ltr'>
-                                {/* Dial-code dropdown */}
                                 <select
                                     value={dialCode}
                                     onChange={e => setDialCode(e.target.value)}
@@ -100,7 +130,6 @@ const ContactForm = () => {
                                         </option>
                                     ))}
                                 </select>
-                                {/* Custom code input (shown when "other" selected) */}
                                 {dialCode === 'other' && (
                                     <input
                                         type='text'
@@ -111,7 +140,6 @@ const ContactForm = () => {
                                         dir='ltr'
                                     />
                                 )}
-                                {/* Phone number */}
                                 <input
                                     className='flex-1 py-2 rounded-lg outline-none px-3 bg-white'
                                     {...register('phone', { required: t('phone.error') })}
@@ -138,7 +166,6 @@ const ContactForm = () => {
                     <p className='text-sm font-semibold text-[#268F79]'>— {t('qualify')} —</p>
 
                     <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                        {/* Country */}
                         <div>
                             <label className='space-y-2 block'>
                                 <span className='block font-bold text-sm'>{t('country.label')}</span>
@@ -156,8 +183,6 @@ const ContactForm = () => {
                                 </select>
                             </label>
                         </div>
-
-                        {/* Service */}
                         <div>
                             <label className='space-y-2 block'>
                                 <span className='block font-bold text-sm'>{t('service.label')}</span>
@@ -170,8 +195,6 @@ const ContactForm = () => {
                                 </select>
                             </label>
                         </div>
-
-                        {/* Budget */}
                         <div>
                             <label className='space-y-2 block'>
                                 <span className='block font-bold text-sm'>{t('budget.label')}</span>
@@ -185,8 +208,6 @@ const ContactForm = () => {
                                 </select>
                             </label>
                         </div>
-
-                        {/* Timeline */}
                         <div>
                             <label className='space-y-2 block'>
                                 <span className='block font-bold text-sm'>{t('timeline.label')}</span>
@@ -199,8 +220,6 @@ const ContactForm = () => {
                                 </select>
                             </label>
                         </div>
-
-                        {/* Role */}
                         <div>
                             <label className='space-y-2 block'>
                                 <span className='block font-bold text-sm'>{t('role.label')}</span>
@@ -215,7 +234,6 @@ const ContactForm = () => {
                         </div>
                     </div>
 
-                    {/* Pain / Challenge */}
                     <div>
                         <label className='space-y-2 block'>
                             <span className='block font-bold text-sm'>{t('pain.label')}</span>

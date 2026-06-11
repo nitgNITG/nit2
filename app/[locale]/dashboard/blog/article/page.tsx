@@ -58,7 +58,7 @@ const Blog = () => {
         <div className='dashboard-container py-5 lg:py-10 space-y-8'>
             <div>
                 <h4 className='font-bold text-lg md:text-xl lg:text-2xl'>New Article</h4>
-                <p className='text-sm text-gray-400 mt-1'>After saving, you'll be redirected to add sections (H2 headings with paragraphs and H3 list items)</p>
+                <p className='text-sm text-gray-400 mt-1'>After saving, you&apos;ll be redirected to add sections (H2 headings with paragraphs and H3 list items)</p>
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -200,7 +200,7 @@ const Blog = () => {
                 <div className='bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700 space-y-1'>
                     <p className='font-semibold'>📋 SEO checklist for a great article:</p>
                     <ul className='list-disc list-inside space-y-0.5 text-xs'>
-                        <li>H1 title contains your main keyword (e.g. "تطبيق تجارة إلكترونية مصر")</li>
+                        <li>H1 title contains your main keyword (e.g. &ldquo;تطبيق تجارة إلكترونية مصر&rdquo;)</li>
                         <li>Meta description is 120-155 chars and includes a call to action</li>
                         <li>Intro paragraph mentions the keyword in the first 2 sentences</li>
                         <li>After saving, add 4-6 sections (H2 headings) with 2-4 list items (H3) each</li>
