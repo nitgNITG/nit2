@@ -316,7 +316,7 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
     if (!rows.length)
         return (
             <tr>
-                <td colSpan={15} className="px-6 py-8 text-center text-gray-400">
+                <td colSpan={16} className="px-6 py-8 text-center text-gray-400">
                     {loading ? 'Loading…' : 'No leads yet'}
                 </td>
             </tr>
@@ -336,6 +336,15 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
 
             {rows.map((c: any, i: number) => (
                 <tr key={c.id} className="border-b hover:bg-gray-50 transition-colors align-top">
+                    {/* Sticky view button — always visible without scrolling */}
+                    <td className="px-3 py-3 sticky left-0 bg-white hover:bg-gray-50 z-10 shadow-[2px_0_4px_rgba(0,0,0,0.06)]">
+                        <button
+                            onClick={() => setSelectedContact(c)}
+                            className="flex items-center gap-1 bg-[#268F79]/10 hover:bg-[#268F79]/20 text-[#268F79] font-bold text-xs px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+                        >
+                            👁 View
+                        </button>
+                    </td>
                     <td className="px-4 py-3 text-gray-400 text-xs">{i + 1}</td>
 
                     {/* Stage badge */}

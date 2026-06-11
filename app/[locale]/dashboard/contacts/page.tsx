@@ -143,11 +143,12 @@ const Contacts = () => {
             </div>
 
             {/* Table */}
-            <div className='bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto'
-                 style={{ WebkitOverflowScrolling: 'touch' }}>
-                <table className="text-sm text-left text-gray-600" style={{ minWidth: '1100px', width: '100%' }}>
+            <div className='bg-white rounded-xl shadow-sm border border-gray-100'
+                 style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'thin', scrollbarColor: '#268F79 #f1f5f9' }}>
+                <table className="text-sm text-left text-gray-600" style={{ minWidth: '1200px', width: '100%' }}>
                     <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
                         <tr>
+                            <th className="px-4 py-3 sticky left-0 bg-gray-50 z-10 shadow-[2px_0_4px_rgba(0,0,0,0.06)]">View</th>
                             <th className="px-4 py-3">#</th>
                             <th className="px-4 py-3">Stage</th>
                             <th className="px-4 py-3">Score</th>
