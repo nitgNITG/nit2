@@ -59,6 +59,7 @@ model Contact {
   subject   String
   message   String
   // Qualifying fields
+  country   String?   // "sa" | "ae" | "qa" | "kw" | "bh" | "om" | "jo" | "eg" | "other"
   service   String?   // "moodle" | "ecommerce" | "custom" | "other"
   budget    String?   // "under5k" | "5to20k" | "20to50k" | "above50k" | "unknown"
   timeline  String?   // "immediate" | "1to3months" | "3to6months" | "exploring"
@@ -71,6 +72,20 @@ model Contact {
   status    String   @default("new")    // "new" | "contacted" | "won" | "lost"
   notes     String?
   isReaded  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model ServicePlan {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  service   String   // "moodle" | "ecommerce" | "mobile"
+  nameAr    String
+  nameEn    String
+  price     Int      // starting price in USD
+  currency  String   @default("USD")
+  featuresAr String[] // Arabic feature list
+  featuresEn String[] // English feature list
+  isActive  Boolean  @default(true)
+  order     Int      @default(0)
   createdAt DateTime @default(now())
 }
 

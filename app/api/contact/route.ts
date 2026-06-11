@@ -35,7 +35,7 @@ function checkRateLimit(ip: string): boolean {
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { name, email, phone, subject, message, service, budget, timeline, role, pain, _hp } = body;
+        const { name, email, phone, subject, message, country, service, budget, timeline, role, pain, _hp } = body;
 
         // ── Honeypot check (bots fill hidden fields, humans don't) ────────────
         if (_hp) {
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
         const { score, stage } = computeLeadScore({ email, phone, role, service, budget, timeline, pain, message });
 
         await prisma.contact.create({
-            data: { name, email, phone, subject, message, service, budget, timeline, role, pain, score, stage },
+            data: { name, email, phone, subject, message, country, service, budget, timeline, role, pain, score, stage },
         });
 
         console.log(`[Contact] ✅ ${email} → stage:${stage} score:${score}`);
@@ -91,9 +91,10 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ count }, { status: 200 });
         }
 
-        // Funnel summary + service breakdown
+        // Funnel summary + service breakdown + country breakdown
         if (searchParams.get('summary')) {
-            const [lead, mql, sql, opportunity, moodle, ecommerce, custom, other] = await Promise.all([
+            const COUNTRIES = ['sa', 'ae', 'qa', 'kw', 'bh', 'om', 'jo', 'eg', 'other'];
+            const [lead, mql, sql, opportunity, moodle, ecommerce, custom, other, ...countryCounts] = await Promise.all([
                 prisma.contact.count({ where: { stage: 'lead' } }),
                 prisma.contact.count({ where: { stage: 'mql' } }),
                 prisma.contact.count({ where: { stage: 'sql' } }),
@@ -102,8 +103,12 @@ export async function GET(req: NextRequest) {
                 prisma.contact.count({ where: { service: 'ecommerce' } }),
                 prisma.contact.count({ where: { service: 'custom' } }),
                 prisma.contact.count({ where: { service: 'other' } }),
+                ...COUNTRIES.map(c => prisma.contact.count({ where: { country: c } })),
             ]);
-            return NextResponse.json({ lead, mql, sql, opportunity, services: { moodle, ecommerce, custom, other } }, { status: 200 });
+            const countries = Object.fromEntries(
+                COUNTRIES.map((c, i) => [c, countryCounts[i]]).filter(([, v]) => (v as number) > 0)
+            );
+            return NextResponse.json({ lead, mql, sql, opportunity, services: { moodle, ecommerce, custom, other }, countries }, { status: 200 });
         }
 
         // Paginated list (with optional stage/status filter)

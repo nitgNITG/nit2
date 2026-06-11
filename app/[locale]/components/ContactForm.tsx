@@ -11,19 +11,40 @@ import clsx from 'clsx';
 const inputCls = 'w-full py-2 rounded-lg outline-none px-3 bg-white';
 const selectCls = 'w-full py-2 rounded-lg outline-none px-3 bg-white appearance-none cursor-pointer';
 
+const COUNTRY_CODES = [
+    { code: '+966', flag: '🇸🇦', name: 'السعودية' },
+    { code: '+971', flag: '🇦🇪', name: 'الإمارات' },
+    { code: '+974', flag: '🇶🇦', name: 'قطر' },
+    { code: '+965', flag: '🇰🇼', name: 'الكويت' },
+    { code: '+973', flag: '🇧🇭', name: 'البحرين' },
+    { code: '+968', flag: '🇴🇲', name: 'عُمان' },
+    { code: '+962', flag: '🇯🇴', name: 'الأردن' },
+    { code: '+20',  flag: '🇪🇬', name: 'مصر' },
+    { code: 'other', flag: '🌍', name: '...' },
+];
+
 const ContactForm = () => {
     const t = useTranslations('contact.form');
     const locale = useLocale();
     const isAr = locale === 'ar';
     const [loading, setLoading] = useState(false);
+    const [dialCode, setDialCode] = useState('+20');
+    const [customDial, setCustomDial] = useState('');
     const { register, handleSubmit, formState: { errors }, reset } = useForm();
 
     const onSubmit = async (formData: any) => {
         try {
             setLoading(true);
-            const { data } = await axios.post('/api/contact', formData);
+            const resolvedDial = dialCode === 'other' ? customDial.trim() : dialCode;
+            const payload = {
+                ...formData,
+                phone: resolvedDial ? `${resolvedDial}${formData.phone}` : formData.phone,
+            };
+            const { data } = await axios.post('/api/contact', payload);
             toast.success(data.message as string);
             reset();
+            setDialCode('+20');
+            setCustomDial('');
         } catch (error: any) {
             toast.error(error?.response?.data?.message || 'There is an Error');
         } finally {
@@ -35,11 +56,12 @@ const ContactForm = () => {
 
     return (
         <form onSubmit={handleSubmit(onSubmit)} dir={dir}>
-            {/* Honeypot — hidden from humans, bots fill this field */}
+            {/* Honeypot */}
             <input type="text" {...register('_hp')} style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+
             <div className='bg-[#E5E8EF] py-10 px-5 lg:px-10 rounded-lg space-y-5 shadow-lg'>
 
-                {/* ── Required fields ──────────────────────── */}
+                {/* ── Name + Email ─────────────────────────── */}
                 <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                     <div>
                         <label className='space-y-2 block'>
@@ -59,12 +81,45 @@ const ContactForm = () => {
                     </div>
                 </div>
 
+                {/* ── Phone + Subject ──────────────────────── */}
                 <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                     <div>
                         <label className='space-y-2 block'>
                             <span className='block font-bold text-sm'>{t('phone.label')} <span className='text-red-500'>*</span></span>
-                            <input className={clsx(inputCls, 'text-left')}
-                                {...register('phone', { required: t('phone.error') })} type='tel' dir='ltr' />
+                            <div className='flex gap-2' dir='ltr'>
+                                {/* Dial-code dropdown */}
+                                <select
+                                    value={dialCode}
+                                    onChange={e => setDialCode(e.target.value)}
+                                    className='py-2 rounded-lg outline-none px-2 bg-white border border-gray-200 text-sm font-semibold cursor-pointer flex-shrink-0'
+                                    style={{ minWidth: '100px' }}
+                                >
+                                    {COUNTRY_CODES.map(c => (
+                                        <option key={c.code} value={c.code}>
+                                            {c.flag} {c.code === 'other' ? t('phone.other') : c.code}
+                                        </option>
+                                    ))}
+                                </select>
+                                {/* Custom code input (shown when "other" selected) */}
+                                {dialCode === 'other' && (
+                                    <input
+                                        type='text'
+                                        value={customDial}
+                                        onChange={e => setCustomDial(e.target.value)}
+                                        placeholder='+??'
+                                        className='w-16 py-2 rounded-lg outline-none px-2 bg-white border border-gray-200 text-sm text-center'
+                                        dir='ltr'
+                                    />
+                                )}
+                                {/* Phone number */}
+                                <input
+                                    className='flex-1 py-2 rounded-lg outline-none px-3 bg-white'
+                                    {...register('phone', { required: t('phone.error') })}
+                                    type='tel'
+                                    dir='ltr'
+                                    placeholder='5xxxxxxxx'
+                                />
+                            </div>
                         </label>
                         <ErrorMsg message={errors?.phone?.message as string} />
                     </div>
@@ -83,6 +138,25 @@ const ContactForm = () => {
                     <p className='text-sm font-semibold text-[#268F79]'>— {t('qualify')} —</p>
 
                     <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                        {/* Country */}
+                        <div>
+                            <label className='space-y-2 block'>
+                                <span className='block font-bold text-sm'>{t('country.label')}</span>
+                                <select className={clsx(selectCls, isAr ? 'text-right' : 'text-left')} {...register('country')}>
+                                    <option value=''>{t('country.placeholder')}</option>
+                                    <option value='sa'>{t('country.options.sa')}</option>
+                                    <option value='ae'>{t('country.options.ae')}</option>
+                                    <option value='qa'>{t('country.options.qa')}</option>
+                                    <option value='kw'>{t('country.options.kw')}</option>
+                                    <option value='bh'>{t('country.options.bh')}</option>
+                                    <option value='om'>{t('country.options.om')}</option>
+                                    <option value='jo'>{t('country.options.jo')}</option>
+                                    <option value='eg'>{t('country.options.eg')}</option>
+                                    <option value='other'>{t('country.options.other')}</option>
+                                </select>
+                            </label>
+                        </div>
+
                         {/* Service */}
                         <div>
                             <label className='space-y-2 block'>

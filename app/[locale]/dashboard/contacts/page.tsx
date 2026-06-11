@@ -32,6 +32,9 @@ const Contacts = () => {
         axios.get('/api/contact?summary=1').then(r => setSummary(r.data)).catch(() => {});
     }, []);
 
+    // 3-column analytics grid when summary is loaded
+    const analyticsGridCols = summary ? 'md:grid-cols-3' : '';
+
     return (
         <div className='dashboard-container py-5 lg:py-10 space-y-6'>
             <div className='flex justify-between items-center'>
@@ -40,7 +43,7 @@ const Contacts = () => {
 
             {/* Service interest analytics */}
             {summary && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className={`grid grid-cols-1 gap-4 ${analyticsGridCols}`}>
                     {/* Funnel */}
                     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
                         <h5 className="text-xs font-bold uppercase text-gray-400 mb-4 tracking-wider">Lead Funnel</h5>
@@ -81,6 +84,45 @@ const Contacts = () => {
                             );
                         })()}
                     </div>
+
+                    {/* Country breakdown */}
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+                        <h5 className="text-xs font-bold uppercase text-gray-400 mb-4 tracking-wider">Leads by Country</h5>
+                        {(() => {
+                            const c = summary.countries ?? {};
+                            const total = Object.values(c).reduce((a: any, b: any) => a + b, 0) as number;
+                            const FLAGS: Record<string, string> = {
+                                sa: '🇸🇦 السعودية', ae: '🇦🇪 الإمارات', qa: '🇶🇦 قطر',
+                                kw: '🇰🇼 الكويت', bh: '🇧🇭 البحرين', om: '🇴🇲 عُمان',
+                                jo: '🇯🇴 الأردن', eg: '🇪🇬 مصر', other: '🌍 أخرى',
+                            };
+                            const COLORS: Record<string, string> = {
+                                sa: 'bg-green-500', ae: 'bg-red-400', qa: 'bg-purple-500',
+                                kw: 'bg-blue-500', bh: 'bg-red-500', om: 'bg-emerald-500',
+                                jo: 'bg-yellow-500', eg: 'bg-orange-400', other: 'bg-gray-400',
+                            };
+                            if (total === 0) return (
+                                <p className="text-sm text-gray-400 py-4 text-center">
+                                    No country data yet — will populate as new leads come in.
+                                </p>
+                            );
+                            return (
+                                <div className="space-y-3">
+                                    {Object.entries(c)
+                                        .sort(([, a], [, b]) => (b as number) - (a as number))
+                                        .map(([key, count]) => (
+                                            <ServiceBar
+                                                key={key}
+                                                label={FLAGS[key] ?? key}
+                                                count={count as number}
+                                                total={total}
+                                                color={COLORS[key] ?? 'bg-gray-400'}
+                                            />
+                                        ))}
+                                </div>
+                            );
+                        })()}
+                    </div>
                 </div>
             )}
 
@@ -111,6 +153,7 @@ const Contacts = () => {
                             <th className="px-4 py-3">Score</th>
                             <th className="px-4 py-3">Name</th>
                             <th className="px-4 py-3">Email / Phone</th>
+                            <th className="px-4 py-3">Country</th>
                             <th className="px-4 py-3">Service</th>
                             <th className="px-4 py-3">Budget</th>
                             <th className="px-4 py-3">Timeline</th>

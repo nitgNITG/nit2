@@ -15,11 +15,11 @@
             "two": "and Information Technology"
         },
         "subTitle": {
-            "start": "One of the best global companies in",
-            "heroword": "Programming",
-            "end": "Websites and Applications"
+            "start": "We build Moodle LMS & eCommerce apps",
+            "heroword": "for universities & businesses",
+            "end": "across Egypt & the Gulf since 2013"
         },
-        "btn": "Contact Us Now",
+        "btn": "Start Your Project Now",
         "happyClients": "Happy Clients",
         "delProject": "Delivered"
     },
@@ -33,9 +33,9 @@
         "hint": "Our Services",
         "btn": "Start Your Project",
         "title": {
-            "one": "Best Programming",
-            "hero": "Companies",
-            "two": "in Egypt"
+            "one": "Best Software",
+            "hero": "Development",
+            "two": "in Egypt & the Gulf"
         },
         "item1": {
             "title": "E-Learning",
@@ -88,9 +88,24 @@
         "form": {
             "name":    { "label": "Name",    "error": "Please enter your name" },
             "email":   { "label": "Email",   "error": "Please enter your email" },
-            "phone":   { "label": "Phone / WhatsApp", "error": "Phone number is required" },
+            "phone":   { "label": "Phone / WhatsApp", "error": "Phone number is required", "other": "Other" },
             "subject": { "label": "Subject", "error": "Please enter the subject" },
             "message": { "label": "Message", "error": "Please enter the message" },
+            "country": {
+                "label": "Country (optional)",
+                "placeholder": "Select your country",
+                "options": {
+                    "sa": "🇸🇦 Saudi Arabia",
+                    "ae": "🇦🇪 UAE",
+                    "qa": "🇶🇦 Qatar",
+                    "kw": "🇰🇼 Kuwait",
+                    "bh": "🇧🇭 Bahrain",
+                    "om": "🇴🇲 Oman",
+                    "jo": "🇯🇴 Jordan",
+                    "eg": "🇪🇬 Egypt",
+                    "other": "🌍 Other"
+                }
+            },
             "service": {
                 "label": "Service needed (optional)",
                 "placeholder": "Select a service",

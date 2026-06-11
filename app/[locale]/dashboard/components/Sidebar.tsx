@@ -21,6 +21,7 @@ const Sidebar = () => {
         { label: 'Sponsers', href: '/dashboard/sponsers' },
         { label: 'Contacts', href: '/dashboard/contacts' },
         { label: 'Blog', href: '/dashboard/blog' },
+        { label: '💰 Plans & Pricing', href: '/dashboard/plans' },
         { label: '⚙️ Setup & Health', href: '/dashboard/setup' },
     ]
     const eleRef = useClickOutside(() => { setOpen(false) }, open)

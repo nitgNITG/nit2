@@ -26,6 +26,11 @@ const STATUS_STYLE: Record<string, string> = {
 const SERVICE_LABEL: Record<string, string> = {
     moodle: 'Moodle LMS', ecommerce: 'eCommerce', custom: 'Custom', other: 'Other',
 };
+const COUNTRY_LABEL: Record<string, string> = {
+    sa: '🇸🇦 السعودية', ae: '🇦🇪 الإمارات', qa: '🇶🇦 قطر',
+    kw: '🇰🇼 الكويت', bh: '🇧🇭 البحرين', om: '🇴🇲 عُمان',
+    jo: '🇯🇴 الأردن', eg: '🇪🇬 مصر', other: '🌍 أخرى',
+};
 const BUDGET_LABEL: Record<string, string> = {
     under5k: '<$5K', '5to20k': '$5–20K', '20to50k': '$20–50K', above50k: '>$50K', unknown: '—',
 };
@@ -143,7 +148,7 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
     if (!rows.length)
         return (
             <tr>
-                <td colSpan={14} className="px-6 py-8 text-center text-gray-400">
+                <td colSpan={15} className="px-6 py-8 text-center text-gray-400">
                     {loading ? 'Loading…' : 'No leads yet'}
                 </td>
             </tr>
@@ -173,6 +178,9 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
                         <div className='text-blue-600'>{c.email}</div>
                         {c.phone && <div className='text-gray-500 mt-0.5'>{c.phone}</div>}
                     </td>
+
+                    {/* Country */}
+                    <td className="px-4 py-3 text-xs font-medium">{COUNTRY_LABEL[c.country] ?? (c.country || '—')}</td>
 
                     {/* Service */}
                     <td className="px-4 py-3 text-xs">{SERVICE_LABEL[c.service] ?? '—'}</td>
