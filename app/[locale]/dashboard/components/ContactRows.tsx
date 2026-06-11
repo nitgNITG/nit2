@@ -53,7 +53,174 @@ function ScoreBar({ score }: { score: number }) {
     );
 }
 
-// ── component ────────────────────────────────────────────────────────────────
+// ── Contact Detail Modal ─────────────────────────────────────────────────────
+
+function ContactModal({ contact: c, onClose, onStatusChange, onNotesChange }: {
+    contact: any;
+    onClose: () => void;
+    onStatusChange: (id: string, status: string) => void;
+    onNotesChange: (id: string, notes: string) => void;
+}) {
+    const [notes, setNotes] = useState(c.notes ?? '');
+    const [savingNotes, setSavingNotes] = useState(false);
+
+    // Close on Escape key
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+        document.addEventListener('keydown', handler);
+        return () => document.removeEventListener('keydown', handler);
+    }, [onClose]);
+
+    // Prevent body scroll
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = ''; };
+    }, []);
+
+    const saveNotes = async () => {
+        setSavingNotes(true);
+        try {
+            await axios.patch('/api/contact', { id: c.id, notes });
+            onNotesChange(c.id, notes);
+        } catch { /* ignore */ }
+        finally { setSavingNotes(false); }
+    };
+
+    const Row = ({ label, value }: { label: string; value?: string | null }) =>
+        value ? (
+            <div className='flex gap-3'>
+                <span className='text-xs font-semibold text-gray-400 w-24 shrink-0 pt-0.5'>{label}</span>
+                <span className='text-sm text-gray-800 flex-1'>{value}</span>
+            </div>
+        ) : null;
+
+    return (
+        <div
+            className='fixed inset-0 z-50 flex items-center justify-center p-4'
+            style={{ background: 'rgba(0,0,0,0.55)' }}
+            onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+        >
+            <div className='bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto'>
+
+                {/* Header */}
+                <div className='flex items-start justify-between p-6 border-b sticky top-0 bg-white z-10'>
+                    <div className='flex items-center gap-3'>
+                        <div className='w-10 h-10 rounded-full bg-gradient-to-br from-[#268F79] to-[#0B2923] flex items-center justify-center text-white font-bold text-lg'>
+                            {c.name?.[0]?.toUpperCase()}
+                        </div>
+                        <div>
+                            <h2 className='font-bold text-lg text-gray-900'>{c.name}</h2>
+                            <div className='flex items-center gap-2 mt-0.5'>
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STAGE_STYLE[c.stage] ?? 'bg-gray-100'}`}>
+                                    {STAGE_LABEL[c.stage] ?? c.stage}
+                                </span>
+                                <span className='text-xs text-gray-400'>Score: <b>{c.score}</b></span>
+                                <span className='text-xs text-gray-400'>
+                                    {new Date(c.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <button onClick={onClose}
+                        className='text-gray-400 hover:text-gray-700 text-xl leading-none p-1'>✕</button>
+                </div>
+
+                <div className='p-6 space-y-6'>
+
+                    {/* Contact info */}
+                    <div className='bg-gray-50 rounded-xl p-4 space-y-2'>
+                        <p className='text-xs font-bold uppercase text-gray-400 mb-3 tracking-wider'>Contact Info</p>
+                        <Row label='Email' value={c.email} />
+                        <Row label='Phone' value={c.phone} />
+                        <Row label='Country' value={COUNTRY_LABEL[c.country] ?? c.country} />
+                        <Row label='Role' value={ROLE_LABEL[c.role] ?? c.role} />
+                    </div>
+
+                    {/* Project info */}
+                    <div className='bg-gray-50 rounded-xl p-4 space-y-2'>
+                        <p className='text-xs font-bold uppercase text-gray-400 mb-3 tracking-wider'>Project Info</p>
+                        <Row label='Service' value={SERVICE_LABEL[c.service] ?? c.service} />
+                        <Row label='Budget' value={BUDGET_LABEL[c.budget] ?? c.budget} />
+                        <Row label='Timeline' value={TIMELINE_LABEL[c.timeline] ?? c.timeline} />
+                        <Row label='Subject' value={c.subject} />
+                    </div>
+
+                    {/* Pain / Challenge */}
+                    {c.pain && (
+                        <div className='bg-amber-50 border border-amber-100 rounded-xl p-4'>
+                            <p className='text-xs font-bold uppercase text-amber-500 mb-2 tracking-wider'>Challenge / Pain</p>
+                            <p className='text-sm text-gray-800 leading-relaxed'>{c.pain}</p>
+                        </div>
+                    )}
+
+                    {/* Full message */}
+                    <div className='bg-blue-50 border border-blue-100 rounded-xl p-4'>
+                        <p className='text-xs font-bold uppercase text-blue-400 mb-2 tracking-wider'>Message</p>
+                        <p className='text-sm text-gray-800 leading-relaxed whitespace-pre-wrap'>{c.message}</p>
+                    </div>
+
+                    {/* Status + Actions */}
+                    <div className='flex flex-wrap items-center gap-3'>
+                        <span className='text-xs font-semibold text-gray-500'>Status:</span>
+                        {STATUS_OPTIONS.map(s => (
+                            <button
+                                key={s}
+                                onClick={() => onStatusChange(c.id, s)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                                    c.status === s
+                                        ? STATUS_STYLE[s] + ' border-current ring-2 ring-offset-1 ring-current/30'
+                                        : 'border-gray-200 text-gray-500 hover:border-gray-400'
+                                }`}
+                            >
+                                {s.charAt(0).toUpperCase() + s.slice(1)}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Quick actions */}
+                    <div className='flex flex-wrap gap-2'>
+                        {c.phone && (
+                            <a
+                                href={`https://wa.me/${c.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`مرحباً ${c.name}، شكراً على تواصلك مع شركة N.I.T`)}`}
+                                target='_blank' rel='noreferrer'
+                                className='flex items-center gap-1.5 bg-green-500 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-green-600 transition-colors'
+                            >
+                                💬 WhatsApp
+                            </a>
+                        )}
+                        <a
+                            href={`mailto:${c.email}?subject=Re: ${c.subject}`}
+                            className='flex items-center gap-1.5 bg-blue-500 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors'
+                        >
+                            ✉️ Reply Email
+                        </a>
+                    </div>
+
+                    {/* Notes */}
+                    <div>
+                        <p className='text-xs font-bold uppercase text-gray-400 mb-2 tracking-wider'>Internal Notes</p>
+                        <textarea
+                            className='w-full border border-gray-200 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#268F79]/30'
+                            rows={3}
+                            placeholder='Add internal notes here…'
+                            value={notes}
+                            onChange={e => setNotes(e.target.value)}
+                        />
+                        <button
+                            onClick={saveNotes}
+                            disabled={savingNotes}
+                            className='mt-2 bg-gradient-to-r from-[#268F79] to-[#0B2923] text-[#00FFB2] text-xs font-bold px-4 py-2 rounded-lg disabled:opacity-50'
+                        >
+                            {savingNotes ? 'Saving…' : 'Save Notes'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ── main component ────────────────────────────────────────────────────────────
 
 interface Props { stageFilter?: string }
 
@@ -63,8 +230,8 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
     const [loading, setLoading] = useState(false);
     const [hasMore, setHasMore] = useState(true);
     const [localContacts, setLocalContacts] = useState<any[]>([]);
+    const [selectedContact, setSelectedContact] = useState<any>(null);
 
-    // Reset on filter change — pre-seed from global store when switching to "All"
     useEffect(() => {
         setSkip(0);
         setHasMore(true);
@@ -101,7 +268,6 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
 
     useEffect(() => { if (hasMore) fetchContacts(); }, [fetchContacts, hasMore]);
 
-    // Infinite scroll
     useEffect(() => {
         const onScroll = () => {
             const { scrollY, innerHeight } = window;
@@ -113,16 +279,15 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
         return () => window.removeEventListener('scroll', onScroll);
     }, [hasMore, loading]);
 
-    // Mark all read
     useEffect(() => {
         if (unReadContact) {
             axios.put('/api/contact').then(() => setUnReadContact(0));
         }
     }, [setUnReadContact, unReadContact]);
 
-    // Update status optimistically
     const updateStatus = async (id: string, status: string) => {
         setLocalContacts(prev => prev.map(c => c.id === id ? { ...c, status } : c));
+        if (selectedContact?.id === id) setSelectedContact((p: any) => ({ ...p, status }));
         try {
             await axios.patch('/api/contact', { id, status });
         } catch {
@@ -130,11 +295,15 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
         }
     };
 
-    // Delete contact — update both localContacts and global store
+    const updateNotes = (id: string, notes: string) => {
+        setLocalContacts(prev => prev.map(c => c.id === id ? { ...c, notes } : c));
+    };
+
     const deleteContact = async (id: string) => {
         if (!window.confirm('Delete this lead? This cannot be undone.')) return;
         setLocalContacts(prev => prev.filter(c => c.id !== id));
         setContacts((contacts ?? []).filter((c: any) => c.id !== id));
+        if (selectedContact?.id === id) setSelectedContact(null);
         try {
             await axios.delete(`/api/contact?id=${id}`);
         } catch {
@@ -142,7 +311,6 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
         }
     };
 
-    // Always drive display from localContacts; seed it from global store when no filter
     const rows = localContacts;
 
     if (!rows.length)
@@ -156,6 +324,16 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
 
     return (
         <>
+            {/* Detail modal */}
+            {selectedContact && (
+                <ContactModal
+                    contact={selectedContact}
+                    onClose={() => setSelectedContact(null)}
+                    onStatusChange={updateStatus}
+                    onNotesChange={updateNotes}
+                />
+            )}
+
             {rows.map((c: any, i: number) => (
                 <tr key={c.id} className="border-b hover:bg-gray-50 transition-colors align-top">
                     <td className="px-4 py-3 text-gray-400 text-xs">{i + 1}</td>
@@ -197,10 +375,17 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
                     {/* Subject */}
                     <td className="px-4 py-3 text-xs max-w-[150px] truncate">{c.subject}</td>
 
-                    {/* Pain + Message */}
+                    {/* Message preview — click to open modal */}
                     <td className="px-4 py-3 text-xs max-w-[200px]">
-                        {c.pain && <p className='text-gray-700 mb-1 italic'>&ldquo;{c.pain}&rdquo;</p>}
-                        <p className='text-gray-500 line-clamp-2'>{c.message}</p>
+                        <button
+                            onClick={() => setSelectedContact(c)}
+                            className='text-left w-full hover:text-[#268F79] transition-colors group'
+                            title='Click to view full message'
+                        >
+                            {c.pain && <p className='text-gray-500 mb-1 italic line-clamp-1'>&ldquo;{c.pain}&rdquo;</p>}
+                            <p className='text-gray-500 line-clamp-2 group-hover:text-[#268F79]'>{c.message}</p>
+                            <span className='text-[10px] text-[#268F79] opacity-0 group-hover:opacity-100 transition-opacity'>👁 view full</span>
+                        </button>
                     </td>
 
                     {/* Status dropdown */}
@@ -221,15 +406,24 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
                         {new Date(c.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}
                     </td>
 
-                    {/* Delete */}
+                    {/* View + Delete */}
                     <td className="px-4 py-3">
-                        <button
-                            onClick={() => deleteContact(c.id)}
-                            className="text-red-400 hover:text-red-600 transition-colors text-xs font-semibold px-2 py-1 rounded hover:bg-red-50"
-                            title="Delete lead"
-                        >
-                            🗑
-                        </button>
+                        <div className='flex items-center gap-1'>
+                            <button
+                                onClick={() => setSelectedContact(c)}
+                                className="text-[#268F79] hover:text-[#0B2923] transition-colors text-xs font-semibold px-2 py-1 rounded hover:bg-[#268F79]/10"
+                                title="View full message"
+                            >
+                                👁
+                            </button>
+                            <button
+                                onClick={() => deleteContact(c.id)}
+                                className="text-red-400 hover:text-red-600 transition-colors text-xs font-semibold px-2 py-1 rounded hover:bg-red-50"
+                                title="Delete lead"
+                            >
+                                🗑
+                            </button>
+                        </div>
                     </td>
                 </tr>
             ))}
