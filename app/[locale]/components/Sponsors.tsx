@@ -1,165 +1,86 @@
-// import Image from 'next/image'
-// import React, { useCallback, useEffect, useState } from 'react'
-// import sponsersImg from '../../assets/sponsors.webp'
-// import Marquee from 'react-fast-marquee'
-// import axios from 'axios'
-
-// const Sponsors = async () => {
-//     const fetchSponsors = async () => {
-//         try {
-//             const res = await fetch(`${process.env.BASE_URL}/api/sponser`, {
-//                 method: "GET",
-//             });
-//             if (!res.ok) {
-//                 console.error(`Error: ${res.status} ${res.statusText}`);
-//             }
-//             const data = await res.json();
-//             return data.sponsers;
-//         } catch (error) {
-//             console.error('Fetch failed:', error);
-//         }
-//     }
-//     const sponsers = await fetchSponsors()
-//     return (
-//         <section>
-//             <div className='bg-gradient-to-l from-[#268F79] to-[#0B2923]'>
-//                 <div className='h-44'>
-//                     <Marquee direction='right' className='py-10 '>
-//                         {
-//                             sponsers?.reverse()?.map((sponsor: any) => (
-//                                 <div className='mx-5 sm:mx-10 md:mx-16 lg:mx-28 h-full flex items-center' key={sponsor.id}>
-//                                     <Image
-//                                         src={sponsor.img}
-//                                         alt=''
-//                                         height={100}
-//                                         width={100}
-//                                         className=''
-//                                     />
-//                                 </div>
-//                             ))
-//                         }
-//                     </Marquee>
-//                 </div>
-//             </div>
-//             <div className='p-container bg-[#F2F3FA] pt-10 lg:pt-20'>
-//                 <div className=' bg-[url("/bg_logo.png")] bg-center bg-no-repeat bg-contain'>
-//                     <div className='w-full'>
-//                         <Image
-//                             src={sponsersImg}
-//                             alt=''
-//                             height={1500}
-//                             width={1500}
-//                             className='w-full object-contain'
-//                         />
-//                     </div>
-//                 </div>
-//             </div>
-//         </section>
-//     )
-// }
-
-// export default Sponsors
+/* eslint-disable @next/next/no-img-element */
 'use client'
-import Image from 'next/image'
 import React, { useCallback, useEffect, useState } from 'react'
+import Image from 'next/image'
 import sponsersImg from '../../assets/sponsors.webp'
 import Marquee from 'react-fast-marquee'
 import axios from 'axios'
-import { cloudinaryOptimized } from '@/utils/cloudinaryUrl'
-
-/**
- * Returns true when the image should bypass _next/image optimisation.
- * - Cloudinary URLs: the server-side optimisation proxy can't reach CDN internally
- * - Local /uploads/ paths: they live outside /public in production (UPLOAD_DIR),
- *   so the internal fetch that _next/image does to localhost:3000 returns 404.
- *   The browser can fetch them fine because nginx serves /uploads/ directly.
- */
-function shouldBypassOptimization(url: string): boolean {
-    if (!url) return true;
-    if (url.includes('res.cloudinary.com')) return true;       // legacy Cloudinary
-    if (url.startsWith('/uploads/')) return true;              // local storage path
-    if (url.includes('/uploads/')) return true;                // full URL with /uploads/
-    return false;
-}
 
 const Sponsors = () => {
-    const [sponsors, setSponsers] = useState([])
-    const fetchsponsers = useCallback(
-        async () => {
-            try {
-                const { data } = await axios.get('/api/sponser')
-                setSponsers(data.sponsers)
-            } catch (error: any) {
-                return { error: error.message, data: null }
+    const [sponsors, setSponsors] = useState<any[]>([])
+
+    const fetchSponsors = useCallback(async () => {
+        try {
+            const { data } = await axios.get('/api/sponser')
+            if (Array.isArray(data.sponsers)) {
+                setSponsors(data.sponsers)
             }
-        }, []
-    )
+        } catch (error: any) {
+            console.error('[Sponsors] fetch error:', error.message)
+        }
+    }, [])
+
     useEffect(() => {
-        fetchsponsers()
-    }, [fetchsponsers])
+        fetchSponsors()
+    }, [fetchSponsors])
+
     return (
         <section>
+            {/* ── Marquee strip ── */}
             <div className='bg-gradient-to-l from-[#268F79] to-[#0B2923]'>
-                {/* <div className='p-container grid grid-cols-12 py-10  space-y-10 sm:space-y-0 sm:gap-5'>
-                    {
-                        sponsors.reverse().map(sponsor => (
-                            <div className='col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-3 xl:col-span-2 w-full flex justify-center' key={sponsor.id}>
-                                <Image
-                                    src={sponsor.img}
-                                    alt=''
-                                    height={100}
-                                    width={100}
-                                    className=''
-                                />
-                            </div>
-                        ))
-                    }
-                </div> */}
-                <div dir='ltr'>
-                    <div className='h-44'>
-                        <Marquee direction='right' className='py-6'>
-                            {
-                                sponsors.reverse().map((sponsor: any) => (
-                                    /* White card — unified background for all logos regardless of
-                                       their original background colour, looks clean on green */
-                                    <div
-                                        key={sponsor.id}
-                                        className='mx-4 sm:mx-6 md:mx-8 lg:mx-10 flex items-center justify-center
-                                                   bg-white rounded-2xl shadow-md
-                                                   w-[110px] h-[80px] sm:w-[130px] sm:h-[88px]
-                                                   px-4 py-3 flex-shrink-0'
-                                    >
-                                        <Image
-                                            src={cloudinaryOptimized(sponsor.img, 200)}
-                                            alt='Sponsor logo'
-                                            unoptimized={shouldBypassOptimization(sponsor.img)}
-                                            height={64}
-                                            width={100}
-                                            loading='lazy'
-                                            className='object-contain w-full h-full'
-                                        />
-                                    </div>
-                                ))
-                            }
+                <div dir='ltr' style={{ height: 120, display: 'flex', alignItems: 'center' }}>
+                    {sponsors.length === 0 ? (
+                        // Keep height even when empty so the green strip shows
+                        <div style={{ width: '100%' }} />
+                    ) : (
+                        <Marquee direction='right' speed={40} gradient={false}>
+                            {sponsors.map((sponsor: any) => (
+                                <div
+                                    key={sponsor.id}
+                                    style={{
+                                        background: '#ffffff',
+                                        borderRadius: 16,
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                                        width: 130,
+                                        height: 80,
+                                        margin: '0 20px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: '10px 14px',
+                                        flexShrink: 0,
+                                    }}
+                                >
+                                    <img
+                                        src={sponsor.img}
+                                        alt='Sponsor logo'
+                                        style={{
+                                            width: '100%',
+                                            height: '100%',
+                                            objectFit: 'contain',
+                                        }}
+                                    />
+                                </div>
+                            ))}
                         </Marquee>
-                    </div>
+                    )}
                 </div>
             </div>
+
+            {/* ── Static sponsors image below ── */}
             <div className='p-container bg-[#F2F3FA] pt-10 lg:pt-20'>
-                <div className='  bg-center bg-no-repeat bg-contain'>
-                    <div className='w-full'>
-                        <Image
-                            src={sponsersImg}
-                            alt='NIT Sponsors'
-                            loading='lazy'
-                            placeholder="blur"
-                            quality={85}
-                            sizes="(max-width: 768px) 100vw, 90vw"
-                            height={1500}
-                            width={1500}
-                            className='w-full object-contain'
-                        />
-                    </div>
+                <div className='w-full'>
+                    <Image
+                        src={sponsersImg}
+                        alt='NIT Sponsors'
+                        loading='lazy'
+                        placeholder='blur'
+                        quality={85}
+                        sizes='(max-width: 768px) 100vw, 90vw'
+                        height={1500}
+                        width={1500}
+                        className='w-full object-contain'
+                    />
                 </div>
             </div>
         </section>
