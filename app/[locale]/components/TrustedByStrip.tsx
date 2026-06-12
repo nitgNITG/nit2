@@ -17,47 +17,32 @@ export default async function TrustedByStrip() {
     const isAr = locale === 'ar'
 
     return (
-        <div className='bg-white border-b border-gray-100 shadow-sm'>
-            <div className='p-container py-5'>
-                <div className={`flex flex-wrap items-center gap-x-5 gap-y-4 ${isAr ? 'flex-row-reverse' : ''}`}>
+        <div className='bg-[#f8faf9] border-b border-gray-200'>
+            <div className='p-container py-6'>
 
-                    {/* Label */}
-                    <div className={`flex items-center gap-2 flex-shrink-0 ${isAr ? 'flex-row-reverse' : ''}`}>
-                        <span className='inline-block w-2 h-2 rounded-full bg-[#268F79]' />
-                        <span className='text-xs font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap'>
-                            {isAr ? 'موثوق من قِبَل' : 'Trusted by'}
-                        </span>
-                    </div>
+                {/* Label */}
+                <p className={`text-xs font-bold text-gray-400 uppercase tracking-widest mb-5 ${isAr ? 'text-right' : 'text-left'}`}>
+                    {isAr ? 'موثوق من قِبَل' : 'Trusted by'}
+                </p>
 
-                    {/* Divider */}
-                    <div className='hidden sm:block w-px h-8 bg-gray-200 flex-shrink-0' />
-
-                    {/* Logos */}
-                    <div className={`flex flex-wrap items-center gap-3 sm:gap-4 lg:gap-5 flex-1 min-w-0 ${isAr ? 'flex-row-reverse justify-end' : 'justify-start'}`}>
-                        {LOGOS.map((logo) => (
-                            <div
-                                key={logo.file}
-                                title={isAr ? logo.ar : logo.en}
-                                className='group flex-shrink-0 flex items-center justify-center bg-white rounded-lg border border-gray-100 hover:border-[#268F79]/30 hover:shadow-md transition-all duration-300'
-                                style={{ width: 88, height: 50, padding: '6px 10px' }}
-                            >
-                                <img
-                                    src={`/trusted/${logo.file}`}
-                                    alt={isAr ? logo.ar : logo.en}
-                                    className='w-full h-full object-contain grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300'
-                                />
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Gov badge — end of row, large screens only */}
-                    <div className={`${isAr ? 'mr-auto' : 'ml-auto'} flex-shrink-0 hidden xl:block`}>
-                        <span className='text-xs bg-[#268F79]/10 text-[#268F79] border border-[#268F79]/20 font-semibold px-3 py-1 rounded-full whitespace-nowrap'>
-                            {isAr ? '🏛️ شريك حكومي موثوق منذ 2013' : '🏛️ Trusted Government Partner since 2013'}
-                        </span>
-                    </div>
-
+                {/* Logos grid */}
+                <div className={`flex flex-wrap items-center justify-center gap-4 sm:gap-6`}>
+                    {LOGOS.map((logo) => (
+                        <div
+                            key={logo.file}
+                            title={isAr ? logo.ar : logo.en}
+                            className='flex items-center justify-center bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300'
+                            style={{ width: 110, height: 64, padding: '10px 14px' }}
+                        >
+                            <img
+                                src={`/trusted/${logo.file}`}
+                                alt={isAr ? logo.ar : logo.en}
+                                className='w-full h-full object-contain'
+                            />
+                        </div>
+                    ))}
                 </div>
+
             </div>
         </div>
     )
