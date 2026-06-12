@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import FAQSchema from "./components/FAQSchema";
 import Header from "./components/Header";
 import OurServices from "./components/OurServices";
 import Sponsors from "./components/Sponsors";
@@ -41,6 +42,7 @@ export async function generateMetadata({ params: { locale } }: { params: { local
 export default function Home() {
   return (
     <div className="overflow-y-hidden">
+      <FAQSchema page="home" />
       <Header />
       <OurServices />
       <ServiceCards />

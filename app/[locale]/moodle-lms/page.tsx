@@ -1,4 +1,5 @@
 import React from 'react'
+import FAQSchema from '../components/FAQSchema'
 import MoodleHeader from './components/MoodleHeader'
 import MoodleFeatures from './components/MoodleFeatures'
 import MoodleProjects from './components/MoodleProjects'
@@ -12,6 +13,7 @@ import DownSide from '../components/DownSide'
 export default function MoodlePage() {
     return (
         <div className='overflow-y-hidden'>
+            <FAQSchema page="moodle" />
             <MoodleHeader />
             <MoodleFeatures />
             <MoodleMarkets />

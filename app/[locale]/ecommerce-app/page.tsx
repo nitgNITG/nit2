@@ -1,4 +1,5 @@
 import React from 'react'
+import FAQSchema from '../components/FAQSchema'
 import EcommerceHeader from './components/EcommerceHeader'
 import EcommerceFeatures from './components/EcommerceFeatures'
 import EcommerceApps from './components/EcommerceApps'
@@ -12,6 +13,7 @@ import DownSide from '../components/DownSide'
 export default function EcommercePage() {
     return (
         <div className='overflow-y-hidden'>
+            <FAQSchema page="ecommerce" />
             <EcommerceHeader />
             <EcommerceFeatures />
             <EcommerceMarkets />
