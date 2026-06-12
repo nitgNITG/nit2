@@ -2,6 +2,18 @@ import { uploadImage } from "@/utils/cloudinary";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/prisma/client'
 import { authPredict } from "@/lib/predict";
+import { slugify } from "@/utils/slugify";
+
+/** Generate a slug that doesn't already exist in the DB */
+async function uniqueSlug(title: string): Promise<string> {
+    const base = slugify(title);
+    let slug = base;
+    let counter = 1;
+    while (await prisma.article.findUnique({ where: { slug } })) {
+        slug = `${base}-${++counter}`;
+    }
+    return slug;
+}
 
 export async function POST(req: NextRequest) {
     try {
@@ -23,8 +35,11 @@ export async function POST(req: NextRequest) {
         const url = await uploadImage(img as File, 'articles');
         if (!url) return NextResponse.json({ message: 'Failed to upload image' }, { status: 500 })
 
+        const slug = await uniqueSlug(title);
+
         const article = await prisma.article.create({
             data: {
+                slug,
                 img: url,
                 title,
                 content,
@@ -46,6 +61,7 @@ export async function GET() {
             orderBy: { publishedAt: 'desc' },
             select: {
                 id: true,
+                slug: true,
                 img: true,
                 title: true,
                 titleEn: true,

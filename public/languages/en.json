@@ -201,7 +201,18 @@
         }
     },
     "blog": {
-        "title": "Blog"
+        "title": "Blog",
+        "badge": "Expert Knowledge",
+        "heading": "Moodle LMS & eCommerce Insights",
+        "subheading": "Guides, pricing breakdowns, and case studies on Moodle platforms and eCommerce apps — from Egypt's leading software company since 2013.",
+        "topic1": "Moodle LMS",
+        "topic2": "eCommerce Apps",
+        "topic3": "Gulf Market",
+        "topic4": "Pricing & Timelines",
+        "homeTeaserBadge": "From Our Blog",
+        "homeTeaserTitle": "Insights & Guides",
+        "homeTeaserSub": "Expert articles on Moodle LMS, eCommerce development, and the Gulf tech market.",
+        "viewAll": "View All Articles"
     },
     "moodlePage": {
         "title": "Moodle LMS Development — Custom E-Learning Platforms",

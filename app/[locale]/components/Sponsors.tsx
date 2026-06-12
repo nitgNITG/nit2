@@ -65,7 +65,22 @@ import React, { useCallback, useEffect, useState } from 'react'
 import sponsersImg from '../../assets/sponsors.webp'
 import Marquee from 'react-fast-marquee'
 import axios from 'axios'
-import { cloudinaryOptimized, isCloudinaryUrl } from '@/utils/cloudinaryUrl'
+import { cloudinaryOptimized } from '@/utils/cloudinaryUrl'
+
+/**
+ * Returns true when the image should bypass _next/image optimisation.
+ * - Cloudinary URLs: the server-side optimisation proxy can't reach CDN internally
+ * - Local /uploads/ paths: they live outside /public in production (UPLOAD_DIR),
+ *   so the internal fetch that _next/image does to localhost:3000 returns 404.
+ *   The browser can fetch them fine because nginx serves /uploads/ directly.
+ */
+function shouldBypassOptimization(url: string): boolean {
+    if (!url) return true;
+    if (url.includes('res.cloudinary.com')) return true;       // legacy Cloudinary
+    if (url.startsWith('/uploads/')) return true;              // local storage path
+    if (url.includes('/uploads/')) return true;                // full URL with /uploads/
+    return false;
+}
 
 const Sponsors = () => {
     const [sponsors, setSponsers] = useState([])
@@ -102,18 +117,26 @@ const Sponsors = () => {
                 </div> */}
                 <div dir='ltr'>
                     <div className='h-44'>
-                        <Marquee direction='right' className='py-10 '>
+                        <Marquee direction='right' className='py-6'>
                             {
                                 sponsors.reverse().map((sponsor: any) => (
-                                    <div className='mx-5 sm:mx-10 md:mx-16 lg:mx-28 h-full flex items-center' key={sponsor.id}>
+                                    /* White card — unified background for all logos regardless of
+                                       their original background colour, looks clean on green */
+                                    <div
+                                        key={sponsor.id}
+                                        className='mx-4 sm:mx-6 md:mx-8 lg:mx-10 flex items-center justify-center
+                                                   bg-white rounded-2xl shadow-md
+                                                   w-[110px] h-[80px] sm:w-[130px] sm:h-[88px]
+                                                   px-4 py-3 flex-shrink-0'
+                                    >
                                         <Image
-                                            src={cloudinaryOptimized(sponsor.img, 100)}
+                                            src={cloudinaryOptimized(sponsor.img, 200)}
                                             alt='Sponsor logo'
-                                            unoptimized={isCloudinaryUrl(sponsor.img)}
-                                            height={100}
+                                            unoptimized={shouldBypassOptimization(sponsor.img)}
+                                            height={64}
                                             width={100}
                                             loading='lazy'
-                                            className=''
+                                            className='object-contain w-full h-full'
                                         />
                                     </div>
                                 ))

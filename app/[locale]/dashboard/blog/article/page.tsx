@@ -3,6 +3,7 @@
 import ErrorMsg from "@/app/[locale]/components/ErrorMsg";
 import { ImageIcon, LoadingIcon } from "@/app/[locale]/components/icons";
 import { useStore } from "@/lib/zustand";
+import { slugify } from "@/utils/slugify";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -110,6 +111,12 @@ const Blog = () => {
                                 {titleAr.length}/60 chars ideal
                             </span>
                         </div>
+                        {titleAr && (
+                            <div className='mt-1.5 flex items-center gap-2 text-xs text-gray-400 bg-gray-50 rounded px-2 py-1'>
+                                <span className='font-medium text-gray-500'>URL slug:</span>
+                                <span className='font-mono text-blue-600'>/blog/{slugify(titleAr)}</span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Meta description Arabic */}

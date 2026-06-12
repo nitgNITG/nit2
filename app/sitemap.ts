@@ -31,13 +31,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     let articleEntries: MetadataRoute.Sitemap = [];
     try {
         const articles = await prisma.article.findMany({
-            select: { id: true, publishedAt: true },
+            select: { id: true, slug: true, publishedAt: true },
             orderBy: { publishedAt: "desc" },
         });
 
         articleEntries = articles.flatMap((article) =>
             locales.map((locale) => ({
-                url: `${BASE_URL}/${locale}/blog/${article.id}`,
+                // Use SEO-friendly slug when available, fall back to MongoDB id
+                url: `${BASE_URL}/${locale}/blog/${article.slug ?? article.id}`,
                 lastModified: article.publishedAt ?? now,
                 changeFrequency: "monthly" as const,
                 priority: 0.6,

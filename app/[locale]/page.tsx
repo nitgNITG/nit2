@@ -14,6 +14,7 @@ import SocialMedia from "./components/SocialMedia";
 import DownSide from "./components/DownSide";
 import ServiceCards from "./components/ServiceCards";
 import HomepageServices from "./components/HomepageServices";
+import HomepageBlog from "./components/HomepageBlog";
 
 export async function generateMetadata({ params: { locale } }: { params: { locale: string } }): Promise<Metadata> {
   const isAr = locale === "ar";
@@ -52,6 +53,7 @@ export default function Home() {
       <Projects />
       <Platforms />
       <ProjectsCost />
+      <HomepageBlog />
       <Contact key="home-contact" />
       <Location />
       <Footer />

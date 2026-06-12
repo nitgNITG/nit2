@@ -31,7 +31,7 @@ const Articles = () => {
 
     return (
         <div className='p-container py-10 lg:py-16'>
-            <div className='grid grid-cols-12 space-y-5 md:space-y-0 md:gap-5 lg:gap-10'>
+            <div className='grid grid-cols-12 gap-6'>
                 {
                     !loading ?
                         <LoadingCard number={6} />
@@ -44,29 +44,59 @@ const Articles = () => {
                         articles.map((article: any) => {
                             const title = isAr ? article.title : (article.titleEn || article.title)
                             const content = isAr ? article.content : (article.contentEn || article.content)
+                            // Use slug for SEO-friendly URL, fall back to id for old articles
+                            const href = `/blog/${article.slug || article.id}`
+                            const date = article.publishedAt
+                                ? new Date(article.publishedAt).toLocaleDateString(
+                                    isAr ? 'ar-EG' : 'en-US',
+                                    { year: 'numeric', month: 'long', day: 'numeric' }
+                                )
+                                : null
+
                             return (
                                 <div
                                     key={article.id}
-                                    className="col-span-12 md:col-span-6 lg:col-span-4 border bg-white overflow-hidden rounded-xl h-full relative group"
+                                    className="col-span-12 md:col-span-6 lg:col-span-4 bg-white border border-gray-100 overflow-hidden rounded-2xl shadow-sm hover:shadow-md transition-shadow group"
                                 >
-                                    <LocaleLink href={`/blog/${article.id}`} className='block'>
-                                        <div className='overflow-hidden'>
+                                    <LocaleLink href={href} className='block h-full'>
+                                        {/* Thumbnail */}
+                                        <div className='overflow-hidden h-48'>
                                             <img
                                                 src={article.img}
                                                 alt={title}
-                                                className='w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300'
+                                                className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'
                                             />
                                         </div>
-                                        <div className={`p-4 ${isAr ? 'text-right' : 'text-left'}`}>
-                                            <h2 className="text-base font-bold mb-2 leading-snug line-clamp-2">{title}</h2>
-                                            <p className="text-sm text-gray-500 line-clamp-3">{sliceText(content, 130)}</p>
+
+                                        <div className={`p-5 flex flex-col gap-3 ${isAr ? 'text-right' : 'text-left'}`}>
+                                            {/* Date */}
+                                            {date && (
+                                                <time className="text-xs text-[#268F79] font-semibold tracking-wide">
+                                                    {date}
+                                                </time>
+                                            )}
+
+                                            {/* Title */}
+                                            <h2 className="text-base font-bold leading-snug line-clamp-2 text-gray-900">
+                                                {title}
+                                            </h2>
+
+                                            {/* Excerpt */}
+                                            <p className="text-sm text-gray-500 leading-relaxed line-clamp-3">
+                                                {sliceText(content, 130)}
+                                            </p>
+
+                                            {/* Read more */}
+                                            <span className="text-sm font-semibold text-[#268F79] mt-auto">
+                                                {isAr ? 'اقرأ المزيد ←' : 'Read more →'}
+                                            </span>
                                         </div>
                                     </LocaleLink>
                                 </div>
                             )
                         })
                 }
-            </div >
+            </div>
         </div>
     )
 }

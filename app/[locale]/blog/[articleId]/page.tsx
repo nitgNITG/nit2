@@ -5,35 +5,47 @@ import prisma from '@/prisma/client'
 import Footer from '../../components/Footer'
 import Navbar from '../../components/Navbar'
 
-// ── Data fetcher (reused by both generateMetadata and the page) ──────────
-async function getArticle(articleId: string) {
-    return prisma.article.findFirst({
-        where: { id: articleId },
+const ARTICLE_SELECT = {
+    id: true,
+    slug: true,
+    title: true,
+    titleEn: true,
+    content: true,
+    contentEn: true,
+    metaDesc: true,
+    metaDescEn: true,
+    img: true,
+    publishedAt: true,
+    Section: {
         select: {
             id: true,
             title: true,
             titleEn: true,
             content: true,
             contentEn: true,
-            metaDesc: true,
-            metaDescEn: true,
-            img: true,
-            publishedAt: true,
-            Section: {
-                select: {
-                    id: true,
-                    title: true,
-                    titleEn: true,
-                    content: true,
-                    contentEn: true,
-                    list: true,
-                }
-            }
+            list: true,
         }
-    })
+    }
 }
 
-// ── Dynamic metadata (Google reads this) ─────────────────────────────────
+// ── Data fetcher — tries slug first, then falls back to MongoDB id ─────────
+async function getArticle(slugOrId: string) {
+    // 1. Try as slug
+    const bySlug = await prisma.article.findUnique({
+        where: { slug: slugOrId },
+        select: ARTICLE_SELECT,
+    }).catch(() => null);
+    if (bySlug) return bySlug;
+
+    // 2. Fallback: try as ObjectId (old bookmarks / backward compat)
+    return prisma.article.findUnique({
+        where: { id: slugOrId },
+        select: ARTICLE_SELECT,
+    }).catch(() => null);
+}
+
+// ── Dynamic metadata is handled by layout.tsx ─────────────────────────────
+// (kept here as a no-op stub so the route doesn't lose metadata if layout fails)
 export async function generateMetadata(
     { params }: { params: { articleId: string; locale: string } }
 ): Promise<Metadata> {
@@ -211,15 +223,28 @@ export default async function ArticlePage(
 
                 {/* ── CTA at end of article ── */}
                 <div className="mt-14 p-6 bg-gradient-to-r from-[#0B2923] to-[#268F79] rounded-xl text-center">
-                    <p className="text-white font-bold text-lg mb-3">
-                        {isAr ? 'هل تحتاج مشروعًا مثل هذا؟' : 'Ready to build your project?'}
+                    <p className="text-white font-bold text-lg mb-2">
+                        {isAr ? 'هل تحتاج منصة Moodle أو تطبيق تجارة إلكترونية؟' : 'Need a Moodle platform or eCommerce app?'}
                     </p>
-                    <a
-                        href={`/${params.locale}/contact`}
-                        className="inline-block bg-[#00FFB2] text-[#0B2923] font-bold px-6 py-2.5 rounded-lg hover:opacity-90 transition-opacity"
-                    >
-                        {isAr ? 'تواصل معنا الآن' : 'Contact us now'}
-                    </a>
+                    <p className="text-white/70 text-sm mb-5">
+                        {isAr ? 'نرد عليك بعرض سعر مفصّل خلال 24 ساعة' : "We'll send you a detailed proposal within 24 hours"}
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-3">
+                        <a
+                            href={`/${params.locale}/get-quote`}
+                            className="inline-block bg-[#00FFB2] text-[#0B2923] font-bold px-6 py-2.5 rounded-lg hover:opacity-90 transition-opacity"
+                        >
+                            {isAr ? 'احصل على عرض سعر' : 'Get a Free Quote'}
+                        </a>
+                        <a
+                            href="https://wa.me/201091568240"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-block border-2 border-green-400 text-green-300 font-bold px-6 py-2.5 rounded-lg hover:bg-green-400/10 transition-colors"
+                        >
+                            💬 WhatsApp
+                        </a>
+                    </div>
                 </div>
             </article>
 

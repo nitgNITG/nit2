@@ -97,6 +97,8 @@ model ServicePlan {
 
 model Article {
   id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  // SEO-friendly URL slug (auto-generated from Arabic title)
+  slug              String?   @unique
   // Arabic (primary)
   title             String
   content           String           // intro paragraph AR
