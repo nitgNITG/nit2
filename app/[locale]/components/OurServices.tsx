@@ -32,7 +32,6 @@ const OurServices = () => {
                 <div className='col-span-12 lg:col-span-6'>
                     <div className='space-y-10'>
                         <div className='space-y-3'>
-                            <p className={isAr ? 'text-right' : 'text-left'}>{t('hint')}</p>
                             <div className={clsx('flex items-center', isAr ? 'justify-end -space-x-5 lg:-space-x-8' : 'justify-start space-x-3')}>
                                 {!isAr && <div className='size-12 md:size-14 rotate-45 rounded-lg bg-aquaMint border-2 border-black flex-shrink-0' />}
                                 <h2 className={clsx('text-2xl md:text-3xl font-bold text-shadow', isAr ? 'text-right' : 'text-left')}>
