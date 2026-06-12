@@ -20,10 +20,10 @@ const HomepageServices = async () => {
                             ? 'حلول برمجية لمصر والخليج'
                             : 'Software Solutions for Egypt & the Gulf'}
                     </h2>
-                    <p className='text-gray-500 max-w-lg mx-auto text-sm'>
+                    <p className='text-gray-500 max-w-xl mx-auto text-sm'>
                         {isAr
-                            ? 'نتخصص في نوعين من المشاريع الكبيرة — منصات التعليم الإلكتروني وتطبيقات التجارة الإلكترونية'
-                            : 'We specialize in two high-impact project types — e-learning platforms and eCommerce applications'}
+                            ? 'منصات Moodle، تطبيقات ذكاء اصطناعي، محاكاة 3D، وتطبيقات تجارة إلكترونية — حلول رقمية متكاملة لمصر والخليج'
+                            : 'Moodle platforms, AI-powered apps, 3D simulations & eCommerce — full-stack digital solutions for Egypt and the Gulf'}
                     </p>
                 </div>
 
