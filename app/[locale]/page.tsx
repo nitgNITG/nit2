@@ -48,6 +48,7 @@ export default function Home() {
       <FAQSchema page="home" />
       <Header />
       <TrustedByStrip />
+      <OurServices />
       <ServiceCards />
       <HomepageServices />
       <GovernmentProjects />
