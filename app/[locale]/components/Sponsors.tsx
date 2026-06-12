@@ -23,7 +23,7 @@ const Sponsors = () => {
     }, [fetchSponsors])
 
     return (
-        <section className='pt-96 sm:pt-52 md:pt-32'>
+        <section>
             {/* ── Marquee strip ── */}
             <div className='bg-gradient-to-l from-[#268F79] to-[#0B2923]'>
                 <div dir='ltr' style={{ height: 120, display: 'flex', alignItems: 'center' }}>
