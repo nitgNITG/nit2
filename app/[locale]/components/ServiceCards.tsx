@@ -36,7 +36,6 @@ const ServiceCards = () => {
         <section className='bg-[#0F1922] p-container py-14 lg:py-20'>
             {/* Section header */}
             <div className='flex flex-col items-end gap-3 mb-10'>
-                <p className='text-[#00FFB2]/70 text-sm font-semibold'>خدماتنا المتخصصة · Our Specialized Services</p>
                 <div className='flex -space-x-5 lg:-space-x-8 items-center justify-end'>
                     <div className='z-10'>
                         <h2 className='text-2xl md:text-3xl font-bold text-white text-shadow'>
