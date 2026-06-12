@@ -102,8 +102,8 @@ const Header = () => {
                     </div>
                 </div>
             </div>
-            <div className='relative z-10'>
-                <div className='w-full p-container -mt-16 sm:-mt-20 md:-mt-24'>
+            <div className='relative z-10 flex items-center'>
+                <div className='absolute w-full p-container'>
                     <HeaderHint />
                 </div>
             </div>

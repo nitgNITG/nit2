@@ -16,7 +16,6 @@ import ServiceCards from "./components/ServiceCards";
 import HomepageServices from "./components/HomepageServices";
 import HomepageBlog from "./components/HomepageBlog";
 import GovernmentProjects from "./components/GovernmentProjects";
-import TrustedByStrip from "./components/TrustedByStrip";
 
 export async function generateMetadata({ params: { locale } }: { params: { locale: string } }): Promise<Metadata> {
   const isAr = locale === "ar";
@@ -47,7 +46,6 @@ export default function Home() {
     <div className="overflow-y-hidden">
       <FAQSchema page="home" />
       <Header />
-      <TrustedByStrip />
       <OurServices />
       <ServiceCards />
       <HomepageServices />
