@@ -46,11 +46,11 @@ export default function Home() {
     <div className="overflow-y-hidden">
       <FAQSchema page="home" />
       <Header />
-      <GovernmentProjects />
-      <Sponsors />
       <OurServices />
       <ServiceCards />
       <HomepageServices />
+      <GovernmentProjects />
+      <Sponsors />
       <Experience />
       <Projects />
       <Platforms />
