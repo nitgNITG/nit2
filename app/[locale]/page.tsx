@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import FAQSchema from "./components/FAQSchema";
+import FAQSection from "./components/FAQSection";
 import Header from "./components/Header";
 import OurServices from "./components/OurServices";
 import Sponsors from "./components/Sponsors";
@@ -56,6 +57,7 @@ export default function Home() {
       <Platforms />
       <ProjectsCost />
       <HomepageBlog />
+      <FAQSection page="home" />
       <Contact key="home-contact" />
       <Location />
       <Footer />

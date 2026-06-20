@@ -1,7 +1,7 @@
-/* eslint-disable @next/next/no-img-element */
 'use client'
 import React, { useCallback, useEffect, useState } from 'react'
 import Marquee from 'react-fast-marquee'
+import Image from 'next/image'
 import axios from 'axios'
 
 const Sponsors = () => {
@@ -48,11 +48,15 @@ const Sponsors = () => {
                                         flexShrink: 0,
                                     }}
                                 >
-                                    <img
-                                        src={sponsor.img}
-                                        alt='Sponsor logo'
-                                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                                    />
+                                    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                                        <Image
+                                            src={sponsor.img}
+                                            alt='شعار أحد شركاء وعملاء شركة NIT'
+                                            fill
+                                            sizes='130px'
+                                            style={{ objectFit: 'contain' }}
+                                        />
+                                    </div>
                                 </div>
                             ))}
                         </Marquee>

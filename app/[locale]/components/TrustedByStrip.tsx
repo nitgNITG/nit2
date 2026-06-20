@@ -1,5 +1,5 @@
-/* eslint-disable @next/next/no-img-element */
 import { getLocale } from 'next-intl/server'
+import Image from 'next/image'
 
 const LOGOS = [
     { file: 'telecom.png',   ar: 'وزارة الاتصالات',        en: 'Ministry of Communications' },
@@ -41,9 +41,11 @@ export default async function TrustedByStrip() {
                                 className='group flex-shrink-0 flex items-center justify-center bg-white rounded-lg border border-gray-100 hover:border-[#268F79]/30 hover:shadow-md transition-all duration-300'
                                 style={{ width: 88, height: 50, padding: '6px 10px' }}
                             >
-                                <img
+                                <Image
                                     src={`/trusted/${logo.file}`}
                                     alt={isAr ? logo.ar : logo.en}
+                                    width={88}
+                                    height={50}
                                     className='w-full h-full object-contain grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300'
                                 />
                             </div>

@@ -4,6 +4,7 @@ import Image from 'next/image'
 import prisma from '@/prisma/client'
 import Footer from '../../components/Footer'
 import Navbar from '../../components/Navbar'
+import BreadcrumbsJsonLd from '../../components/BreadcrumbsJsonLd'
 
 const ARTICLE_SELECT = {
     id: true,
@@ -132,6 +133,12 @@ export default async function ArticlePage(
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+            />
+            <BreadcrumbsJsonLd
+                items={[
+                    { path: 'blog', ar: 'المدونة', en: 'Blog' },
+                    { path: `blog/${params.articleId}`, ar: displayTitle, en: displayTitle },
+                ]}
             />
 
             <Navbar />

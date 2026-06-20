@@ -33,7 +33,7 @@ const WhyUs = () => {
                     <div className='w-full lg:px-10 py-5 relative'>
                         <Image
                             src={img}
-                            alt=''
+                            alt='شعار شركة NIT للبرمجيات'
                             width={1000}
                             height={1000}
                             className='w-full h-full'

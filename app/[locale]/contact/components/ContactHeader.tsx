@@ -18,10 +18,14 @@ const ContactHeader = () => {
                     <div className='lg:absolute top-20 left-0 lg:w-[600px]'>
                         <div className='relative flex justify-center items-center py-10 lg:py-10 px-5'>
                             <div className='w-full absolute text-white bg-white/10 py-20 rounded-lg blur-[2px] ' />
-                            <p className='text-white font-bold text-lg text-center'>
-                                {t('title.sub')}<br />
-                                {t('title.main')}
-                            </p>
+                            <div className='text-center'>
+                                <h1 className='text-white font-bold text-2xl md:text-3xl'>
+                                    {t('title.sub')}
+                                </h1>
+                                <p className='text-white font-bold text-base md:text-lg mt-3'>
+                                    {t('title.main')}
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>

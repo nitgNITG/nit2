@@ -1,4 +1,3 @@
-'use client'
 import { useTranslations, useLocale } from "next-intl";
 import Navbar from "../../components/Navbar"
 import LocaleLink from "../../components/LocaleLink";

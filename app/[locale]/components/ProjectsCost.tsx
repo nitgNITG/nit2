@@ -1,4 +1,3 @@
-'use client'
 import React from 'react'
 import img from '../../assets/cost_projects.webp'
 import Image from 'next/image'

@@ -19,7 +19,7 @@ const NotionalCompany = () => {
                     <div className='w-full lg:px-10 py-5'>
                         <Image
                             src={img}
-                            alt=''
+                            alt='فريق عمل شركة NIT لتطوير البرمجيات'
                             width={1000}
                             height={1000}
                             className='w-full h-full'

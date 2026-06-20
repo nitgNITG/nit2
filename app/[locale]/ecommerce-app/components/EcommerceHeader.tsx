@@ -35,11 +35,9 @@ const EcommerceHeader = () => {
                         </div>
 
                         <div>
-                            <h1 className='text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight drop-shadow-lg'>
-                                eCommerce Apps
-                            </h1>
-                            <h1 className='text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mt-2 drop-shadow-lg' style={{ color: '#00FFCD' }}>
-                                تطبيقات التجارة الإلكترونية
+                            <h1 className='text-4xl md:text-5xl lg:text-6xl font-bold leading-tight drop-shadow-lg'>
+                                <span className='text-white'>eCommerce Apps</span>
+                                <span className='block mt-2' style={{ color: '#00FFCD' }}>تطبيقات التجارة الإلكترونية</span>
                             </h1>
                         </div>
 

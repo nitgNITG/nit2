@@ -20,5 +20,12 @@
       "runtimeArgs": ["serve", "/Users/greest/Downloads/nit2-v3", "-l", "8765", "--no-clipboard"],
       "port": 8765
     }
+  ,{
+      "name": "dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000,
+      "autoPort": true
+    }
   ]
 }

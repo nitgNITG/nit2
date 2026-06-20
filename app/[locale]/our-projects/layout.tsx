@@ -9,7 +9,7 @@ export async function generateMetadata({
     const isAr = locale === "ar";
     return {
         title: isAr
-            ? "مشاريعنا | منصات Moodle وتطبيقات التجارة الإلكترونية | الشركة الوطنية NIT"
+            ? "مشاريعنا | منصات Moodle والتجارة الإلكترونية | NIT"
             : "Our Projects | Moodle LMS & eCommerce Apps | N.I.T Egypt",
         description: isAr
             ? "شاهد أعمال الشركة الوطنية لهندسة البرمجيات: منصات Moodle التعليمية، تطبيقات التجارة الإلكترونية على Google Play وApp Store. خبرة 12+ سنة وأكثر من 100 مشروع ناجح."

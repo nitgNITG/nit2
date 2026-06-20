@@ -1,4 +1,3 @@
-'use client'
 import Image from 'next/image'
 import React from 'react'
 import service from '../../assets/services.webp'
@@ -24,7 +23,7 @@ const OurServices = () => {
                 {/* Image — يسار للعربي، يمين للإنجليزي */}
                 <div className={clsx('col-span-12 lg:col-span-6 flex items-center h-full', { 'lg:order-last': !isAr })}>
                     <div className='w-full lg:px-10 py-5'>
-                        <Image src={service} alt='Our Services' loading="lazy" placeholder="blur" quality={75} sizes="(max-width: 1024px) 95vw, 45vw" width={1000} height={1000} className='w-full h-full' />
+                        <Image src={service} alt='خدمات شركة NIT في تطوير البرمجيات والمتاجر الإلكترونية' loading="lazy" placeholder="blur" quality={75} sizes="(max-width: 1024px) 95vw, 45vw" width={1000} height={1000} className='w-full h-full' />
                     </div>
                 </div>
 

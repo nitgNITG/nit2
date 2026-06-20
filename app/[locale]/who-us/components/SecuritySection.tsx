@@ -10,7 +10,7 @@ const SecuritySection = () => {
             <div className='absolute right-0 h-full'>
                 <Image
                     src={img}
-                    alt=''
+                    alt='أمان وحماية البيانات في مشاريع البرمجيات'
                     height={400}
                     width={400}
                     className='h-full object-contain'

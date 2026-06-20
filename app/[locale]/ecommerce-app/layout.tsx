@@ -7,7 +7,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const isAr = locale === "ar";
     return {
-        title: "eCommerce App Development | تطوير تطبيقات التجارة الإلكترونية | N.I.T Egypt",
+        title: isAr
+            ? "تطوير تطبيقات التجارة الإلكترونية | N.I.T Egypt"
+            : "eCommerce App Development | N.I.T Egypt",
         description: isAr
             ? "تطوير تطبيقات التجارة الإلكترونية في مصر والخليج. تطبيقات iOS وAndroid على Google Play وApp Store. متاجر متعددة البائعين، تكامل فوري وباي موب وسترايب، أنظمة نقاط البيع."
             : "Custom eCommerce app development in Egypt. Native iOS & Android shopping apps on Google Play & App Store. Multivendor marketplaces, Fawry/PayMob/Stripe payment integration, POS systems.",

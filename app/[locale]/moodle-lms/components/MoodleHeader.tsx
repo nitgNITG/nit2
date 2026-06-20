@@ -32,11 +32,9 @@ const MoodleHeader = () => {
                         </div>
 
                         <div>
-                            <h1 className='text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight drop-shadow-lg'>
-                                Moodle LMS
-                            </h1>
-                            <h1 className='text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mt-2 drop-shadow-lg' style={{ color: '#00FFCD' }}>
-                                تطوير منصات التعلم
+                            <h1 className='text-4xl md:text-5xl lg:text-6xl font-bold leading-tight drop-shadow-lg'>
+                                <span className='text-white'>Moodle LMS</span>
+                                <span className='block mt-2' style={{ color: '#00FFCD' }}>تطوير منصات التعلم</span>
                             </h1>
                         </div>
 

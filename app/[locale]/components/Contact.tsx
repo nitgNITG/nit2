@@ -36,7 +36,7 @@ const Contact = () => {
                             <div>
                                 <Image
                                     src={phonIcon}
-                                    alt=''
+                                    alt='تواصل مع فريق تطوير شركة NIT'
                                     height={300}
                                     width={300}
                                     className='size-16 opacity-95'

@@ -1,7 +1,7 @@
-/* eslint-disable @next/next/no-img-element */
 import { getLocale, getTranslations } from 'next-intl/server'
 import prisma from '@/prisma/client'
 import Link from 'next/link'
+import Image from 'next/image'
 
 // Fetch the 3 most recent articles at build/request time (Server Component)
 async function getLatestArticles() {
@@ -72,11 +72,13 @@ export default async function HomepageBlog() {
                             className='group bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow block'
                         >
                             {/* Thumbnail */}
-                            <div className='overflow-hidden h-44'>
-                                <img
+                            <div className='relative overflow-hidden h-44'>
+                                <Image
                                     src={article.img}
                                     alt={title}
-                                    className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'
+                                    fill
+                                    sizes='(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw'
+                                    className='object-cover group-hover:scale-105 transition-transform duration-300'
                                 />
                             </div>
 

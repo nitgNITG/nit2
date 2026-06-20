@@ -1,8 +1,8 @@
-/* eslint-disable @next/next/no-img-element */
 'use client'
 import { sliceText } from '@/utils/sliceText'
 import axios from 'axios'
 import React, { useCallback, useEffect, useState } from 'react'
+import Image from 'next/image'
 import LocaleLink from '../../components/LocaleLink'
 import LoadingCard from '../../dashboard/components/LoadingCard'
 import { useLocale } from 'next-intl'
@@ -60,11 +60,13 @@ const Articles = () => {
                                 >
                                     <LocaleLink href={href} className='block h-full'>
                                         {/* Thumbnail */}
-                                        <div className='overflow-hidden h-48'>
-                                            <img
+                                        <div className='relative overflow-hidden h-48'>
+                                            <Image
                                                 src={article.img}
                                                 alt={title}
-                                                className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'
+                                                fill
+                                                sizes='(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw'
+                                                className='object-cover group-hover:scale-105 transition-transform duration-300'
                                             />
                                         </div>
 

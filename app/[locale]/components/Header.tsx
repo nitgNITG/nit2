@@ -14,7 +14,7 @@ const Header = () => {
                 {/* Background — preloaded by Next.js, served as WebP/AVIF */}
                 <Image
                     src="/header_img.jpg"
-                    alt=""
+                    alt="خلفية برمجية لتقنيات الويب والتطبيقات"
                     fill
                     priority
                     quality={75}

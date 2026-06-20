@@ -9,8 +9,8 @@ export async function generateMetadata({
     const isAr = locale === "ar";
     return {
         title: isAr
-            ? "طلب عرض سعر | N.I.T Egypt — تطوير Moodle وتطبيقات التجارة الإلكترونية"
-            : "Get a Quote | N.I.T Egypt — Moodle LMS & eCommerce Development",
+            ? "طلب عرض سعر | تطوير Moodle وتطبيقات | N.I.T Egypt"
+            : "Get a Quote | Moodle LMS & eCommerce | N.I.T Egypt",
         description: isAr
             ? "احصل على عرض سعر مجاني لمشروعك من الشركة الوطنية N.I.T Egypt. تطوير منصات Moodle، تطبيقات التجارة الإلكترونية، وبرمجة مخصصة لمصر والخليج."
             : "Get a free project quote from N.I.T Egypt. We develop Moodle LMS platforms, eCommerce apps, and custom software for Egypt and the Gulf region.",

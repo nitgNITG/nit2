@@ -44,20 +44,16 @@ const OurProjectsHeader = () => {
                         <div>
                             {locale === 'ar' ? (
                                 <>
-                                    <h1 className='text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight drop-shadow-lg'>
-                                        مشاريعنا البرمجية
-                                    </h1>
-                                    <h1 className='text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mt-2 drop-shadow-lg' style={{ color: '#00FFCD' }}>
-                                        والتصميمية
+                                    <h1 className='text-4xl md:text-5xl lg:text-6xl font-bold leading-tight drop-shadow-lg'>
+                                        <span className='text-white'>مشاريعنا البرمجية</span>
+                                        <span className='block mt-2' style={{ color: '#00FFCD' }}>والتصميمية</span>
                                     </h1>
                                 </>
                             ) : (
                                 <>
-                                    <h1 className='text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight drop-shadow-lg'>
-                                        Our Software &amp;
-                                    </h1>
-                                    <h1 className='text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mt-2 drop-shadow-lg' style={{ color: '#00FFCD' }}>
-                                        Design Projects
+                                    <h1 className='text-4xl md:text-5xl lg:text-6xl font-bold leading-tight drop-shadow-lg'>
+                                        <span className='text-white'>Our Software &amp;</span>
+                                        <span className='block mt-2' style={{ color: '#00FFCD' }}>Design Projects</span>
                                     </h1>
                                 </>
                             )}

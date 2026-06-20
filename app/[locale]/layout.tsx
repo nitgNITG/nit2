@@ -12,7 +12,7 @@ const cairo = Cairo({ subsets: ["latin", "arabic"], display: "swap" });
 export const metadata: Metadata = {
   metadataBase: new URL("https://nitg-eg.com"),
   title: {
-    default: "N.I.T Egypt — شركة برمجة مواقع وتطبيقات | National Software Engineering",
+    default: "N.I.T Egypt | شركة برمجة مواقع وتطبيقات في مصر",
     template: "%s | N.I.T Egypt",
   },
   description:
