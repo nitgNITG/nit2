@@ -13,10 +13,7 @@ export const FAQS: Record<FAQPageKey, { ar: FAQ[]; en: FAQ[] }> = {
     home: {
         ar: [
 
-            {
-                q: 'كم تكلفة تطوير تطبيق تجارة إلكترونية في مصر؟',
-                a: 'تبدأ تكلفة تطوير تطبيق تجارة إلكترونية من 3,000 دولار لتطبيق iOS وAndroid مع لوحة تحكم متكاملة ودعم بوابات الدفع الخليجية (مدى، STC Pay، Apple Pay).',
-            },
+
             {
                 q: 'هل تخدمون السعودية والخليج العربي؟',
                 a: 'نعم، ننفذ مشاريع في السعودية والإمارات وقطر والكويت والبحرين وعُمان والأردن ومصر منذ 2013. لدينا خبرة واسعة بمتطلبات السوق الخليجي، بوابات الدفع المحلية، والأنظمة الحكومية.',
@@ -36,10 +33,7 @@ export const FAQS: Record<FAQPageKey, { ar: FAQ[]; en: FAQ[] }> = {
         ],
         en: [
 
-            {
-                q: 'How much does eCommerce app development cost in Egypt?',
-                a: 'eCommerce app development starts from $3,000 for a full iOS & Android app with admin dashboard and Gulf payment gateway support (Mada, STC Pay, Apple Pay, KNET).',
-            },
+
             {
                 q: 'Do you serve Saudi Arabia and the Gulf region?',
                 a: 'Yes, we deliver projects in Saudi Arabia, UAE, Qatar, Kuwait, Bahrain, Oman, Jordan and Egypt since 2013. We have extensive experience with Gulf market requirements, local payment gateways, and government systems.',
