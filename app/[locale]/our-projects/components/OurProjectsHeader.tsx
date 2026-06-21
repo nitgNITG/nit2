@@ -45,14 +45,14 @@ const OurProjectsHeader = () => {
                         <div>
                             {locale === 'ar' ? (
                                 <>
-                                    <h1 className='text-4xl md:text-5xl lg:text-6xl font-bold leading-tight drop-shadow-lg'>
+                                    <h1 className='text-xl md:text-2xl lg:text-3xl 2xl:text-5xl font-bold leading-tight drop-shadow-lg'>
                                         <span className='text-white'>مشاريعنا البرمجية</span>
                                         <span className='block mt-2' style={{ color: '#00FFCD' }}>والتصميمية</span>
                                     </h1>
                                 </>
                             ) : (
                                 <>
-                                    <h1 className='text-4xl md:text-5xl lg:text-6xl font-bold leading-tight drop-shadow-lg'>
+                                    <h1 className='text-xl md:text-2xl lg:text-3xl 2xl:text-5xl font-bold leading-tight drop-shadow-lg'>
                                         <span className='text-white'>Our Software &amp;</span>
                                         <span className='block mt-2' style={{ color: '#00FFCD' }}>Design Projects</span>
                                     </h1>
@@ -68,17 +68,17 @@ const OurProjectsHeader = () => {
 
                         <div className='flex flex-wrap gap-8 justify-center pt-2'>
                             <div className='text-center'>
-                                <div className='text-3xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={100} suffix="+" /></div>
+                                <div className='text-lg md:text-xl 2xl:text-2xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={100} suffix="+" /></div>
                                 <div className='text-white/70 text-sm'>{locale === 'ar' ? 'مشروع ناجح' : 'Successful Projects'}</div>
                             </div>
                             <div className='w-px bg-white/20 self-stretch' />
                             <div className='text-center'>
-                                <div className='text-3xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={15} suffix="+" /></div>
+                                <div className='text-lg md:text-xl 2xl:text-2xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={15} suffix="+" /></div>
                                 <div className='text-white/70 text-sm'>{locale === 'ar' ? 'سنة خبرة' : 'Years Experience'}</div>
                             </div>
                             <div className='w-px bg-white/20 self-stretch' />
                             <div className='text-center'>
-                                <div className='text-3xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={90} suffix="+" /></div>
+                                <div className='text-lg md:text-xl 2xl:text-2xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={90} suffix="+" /></div>
                                 <div className='text-white/70 text-sm'>{locale === 'ar' ? 'عميل راضٍ' : 'Happy Clients'}</div>
                             </div>
                         </div>

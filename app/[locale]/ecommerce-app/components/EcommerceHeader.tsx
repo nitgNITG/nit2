@@ -44,7 +44,7 @@ const EcommerceHeader = () => {
                         </div>
 
                         <div>
-                            <h1 className='text-4xl md:text-5xl lg:text-6xl font-bold leading-tight drop-shadow-lg'>
+                            <h1 className='text-xl md:text-2xl lg:text-3xl 2xl:text-5xl font-bold leading-tight drop-shadow-lg'>
                                 <span className='text-white'>eCommerce Apps</span>
                                 <span className='block mt-2' style={{ color: '#00FFCD' }}>تطبيقات التجارة الإلكترونية</span>
                             </h1>
@@ -59,17 +59,17 @@ const EcommerceHeader = () => {
 
                         <div className='flex flex-wrap gap-8 justify-center pt-2'>
                             <div className='text-center'>
-                                <div className='text-3xl font-bold drop-shadow' style={{ color: '#00FFCD' }}>iOS</div>
+                                <div className='text-lg md:text-xl 2xl:text-2xl font-bold drop-shadow' style={{ color: '#00FFCD' }}>iOS</div>
                                 <div className='text-white/70 text-sm'>App Store</div>
                             </div>
                             <div className='w-px bg-white/20 self-stretch' />
                             <div className='text-center'>
-                                <div className='text-3xl font-bold drop-shadow' style={{ color: '#00FFCD' }}>Android</div>
+                                <div className='text-lg md:text-xl 2xl:text-2xl font-bold drop-shadow' style={{ color: '#00FFCD' }}>Android</div>
                                 <div className='text-white/70 text-sm'>Google Play</div>
                             </div>
                             <div className='w-px bg-white/20 self-stretch' />
                             <div className='text-center'>
-                                <div className='text-3xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={50} suffix="+" /></div>
+                                <div className='text-lg md:text-xl 2xl:text-2xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={50} suffix="+" /></div>
                                 <div className='text-white/70 text-sm'>تطبيق ناجح</div>
                             </div>
                         </div>

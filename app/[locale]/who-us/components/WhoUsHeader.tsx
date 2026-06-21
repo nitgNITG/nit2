@@ -17,7 +17,7 @@ const WhoUsHeader = () => {
                     <Navbar />
                 </div>
                 <div className='flex justify-center items-center mt-20 lg:mt-32'>
-                    <h1 className='text-4xl md:text-5xl lg:text-6xl font-bold text-white text-center drop-shadow-lg'>
+                    <h1 className='text-xl md:text-2xl lg:text-3xl 2xl:text-5xl font-bold text-white text-center drop-shadow-lg'>
                         {t('hint')}
                     </h1>
                 </div>
@@ -65,7 +65,7 @@ const WhoUsHeader = () => {
                             </span>
                         </div>
 
-                        <h1 className='text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight drop-shadow-lg'>
+                        <h1 className='text-xl md:text-2xl lg:text-3xl 2xl:text-5xl font-bold text-white leading-tight drop-shadow-lg'>
                             {t('hint')}
                         </h1>
 
@@ -76,17 +76,17 @@ const WhoUsHeader = () => {
                         {/* Stats */}
                         <div className='flex flex-wrap gap-8 justify-center pt-2'>
                             <div className='text-center'>
-                                <div className='text-3xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={2013} /></div>
+                                <div className='text-lg md:text-xl 2xl:text-2xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={2013} /></div>
                                 <div className='text-white/70 text-sm'>{isAr ? 'منذ سنة' : 'Established'}</div>
                             </div>
                             <div className='w-px bg-white/20 self-stretch' />
                             <div className='text-center'>
-                                <div className='text-3xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={100} suffix="+" /></div>
+                                <div className='text-lg md:text-xl 2xl:text-2xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={100} suffix="+" /></div>
                                 <div className='text-white/70 text-sm'>{isAr ? 'مشروع ناجح' : 'Projects Delivered'}</div>
                             </div>
                             <div className='w-px bg-white/20 self-stretch' />
                             <div className='text-center'>
-                                <div className='text-3xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={100} suffix="%" /></div>
+                                <div className='text-lg md:text-xl 2xl:text-2xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={100} suffix="%" /></div>
                                 <div className='text-white/70 text-sm'>{isAr ? 'عملاء راضون' : 'Happy Clients'}</div>
                             </div>
                         </div>

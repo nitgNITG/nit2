@@ -96,7 +96,7 @@ const BlogHeader = () => {
                             </span>
                         </div>
 
-                        <h1 className='text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight drop-shadow-lg'>
+                        <h1 className='text-xl md:text-2xl lg:text-3xl 2xl:text-5xl font-bold text-white leading-tight drop-shadow-lg'>
                             {t('heading')}
                         </h1>
 
