@@ -65,7 +65,7 @@ const EcommerceFeatures = () => {
                             <div className='flex -space-x-5 lg:-space-x-8 items-center justify-end'>
                                 <div className='z-10'>
                                     <h2 className='text-2xl md:text-3xl font-bold text-shadow'>
-                                        eCommerce <span className='text-aquaMint'>App</span> Development
+                                        eCommerce <span className='text-darkAquaMint'>App</span> Development
                                     </h2>
                                 </div>
                                 <div className='size-12 md:size-14 rotate-45 rounded-lg bg-aquaMint border-2 border-black' />

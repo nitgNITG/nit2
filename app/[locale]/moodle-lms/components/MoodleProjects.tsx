@@ -34,7 +34,7 @@ const MoodleProjects = () => {
                     <div className='size-12 md:size-14 rotate-45 rounded-lg bg-aquaMint border-2 border-black' />
                     <div className='z-10'>
                         <h2 className='text-2xl md:text-3xl font-bold text-shadow text-center px-4'>
-                            Live <span className='text-aquaMint'>Moodle</span> Deployments
+                            Live <span className='text-darkAquaMint'>Moodle</span> Deployments
                         </h2>
                     </div>
                     <div className='size-12 md:size-14 rotate-45 rounded-lg bg-aquaMint border-2 border-black' />

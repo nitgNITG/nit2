@@ -34,7 +34,7 @@ const OurServices = () => {
                             <div className={clsx('flex items-center', isAr ? 'justify-end -space-x-5 lg:-space-x-8' : 'justify-start space-x-3')}>
                                 {!isAr && <div className='size-12 md:size-14 rotate-45 rounded-lg bg-aquaMint border-2 border-black flex-shrink-0' />}
                                 <h2 className={clsx('text-2xl md:text-3xl font-bold text-shadow', isAr ? 'text-right' : 'text-left')}>
-                                    {t('title.one')}<span className='text-aquaMint'>{' ' + t('title.hero') + ' '}</span>{t('title.two')}
+                                    {t('title.one')}<span className='text-darkAquaMint'>{' ' + t('title.hero') + ' '}</span>{t('title.two')}
                                 </h2>
                                 {isAr && <div className='size-12 md:size-14 rotate-45 rounded-lg bg-aquaMint border-2 border-black flex-shrink-0' />}
                             </div>

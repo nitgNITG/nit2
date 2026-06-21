@@ -16,7 +16,7 @@ const Experience = () => {
                         <div className='space-y-2'>
                             <p className='text-lg lg:text-xl'>{t('hint')}</p>
                             <h3 className='text-2xl md:text-3xl font-bold leading-loose'>
-                                {t('title.one')}<span className='text-aquaMint'>{" " + t("title.hero") + " "}</span>{t('title.two')}
+                                {t('title.one')}<span className='text-darkAquaMint'>{" " + t("title.hero") + " "}</span>{t('title.two')}
                             </h3>
                         </div>
                         <div className='flex justify-end'>

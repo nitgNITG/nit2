@@ -9,7 +9,8 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        aquaMint: '#00FFCD'
+        aquaMint: '#00FFCD',
+        darkAquaMint: '#00997A'
       }
     },
   },
