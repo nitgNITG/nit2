@@ -1,6 +1,7 @@
 import React from 'react'
 import Navbar from '../../components/Navbar'
 import { useTranslations, useLocale } from 'next-intl'
+import CountUp from '../../components/CountUp'
 
 const WhoUsHeader = () => {
     const t = useTranslations('whous')
@@ -75,17 +76,17 @@ const WhoUsHeader = () => {
                         {/* Stats */}
                         <div className='flex flex-wrap gap-8 justify-center pt-2'>
                             <div className='text-center'>
-                                <div className='text-3xl font-bold drop-shadow' style={{ color: '#00FFCD' }}>2013</div>
+                                <div className='text-3xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={2013} /></div>
                                 <div className='text-white/70 text-sm'>{isAr ? 'منذ سنة' : 'Established'}</div>
                             </div>
                             <div className='w-px bg-white/20 self-stretch' />
                             <div className='text-center'>
-                                <div className='text-3xl font-bold drop-shadow' style={{ color: '#00FFCD' }}>100+</div>
+                                <div className='text-3xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={100} suffix="+" /></div>
                                 <div className='text-white/70 text-sm'>{isAr ? 'مشروع ناجح' : 'Projects Delivered'}</div>
                             </div>
                             <div className='w-px bg-white/20 self-stretch' />
                             <div className='text-center'>
-                                <div className='text-3xl font-bold drop-shadow' style={{ color: '#00FFCD' }}>100%</div>
+                                <div className='text-3xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={100} suffix="%" /></div>
                                 <div className='text-white/70 text-sm'>{isAr ? 'عملاء راضون' : 'Happy Clients'}</div>
                             </div>
                         </div>

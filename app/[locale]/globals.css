@@ -2,6 +2,76 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ╔══════════════════ animate.css tuning ══════════════════╗
+   animate.css is imported in layout.tsx BEFORE this file, so the
+   @keyframes redefinitions below win and apply globally.
+
+   Why: animate.css's default fade/slide entrances translate by 100% of
+   the element's OWN height/width. On full-page sections that's a huge,
+   janky slide (and a transient scrollbar). We redefine them with a small,
+   fixed offset so every section reveals in the same smooth, cohesive way.
+   ╚════════════════════════════════════════════════════════╝ */
+:root {
+  --animate-duration: 800ms;          /* one shared duration → cohesion */
+  --animate-delay: 0ms;
+}
+/* Shared easing for every reveal — keeps all motion feeling related */
+.animate__animated {
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); /* easeOutExpo-ish */
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translate3d(0, 44px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translate3d(0, -44px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes fadeInLeft {
+  from { opacity: 0; transform: translate3d(-44px, 0, 0); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes fadeInRight {
+  from { opacity: 0; transform: translate3d(44px, 0, 0); }
+  to   { opacity: 1; transform: none; }
+}
+/* Before a ScrollReveal block enters the viewport it must be hidden,
+   otherwise off-screen content flashes in then animates. */
+.reveal-pending { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* animate.css already neutralises its own animations here; make sure
+     pending reveals are simply shown rather than left invisible. */
+  .reveal-pending { opacity: 1 !important; }
+}
+
+/* ── Navbar logo intro (replays on every visit to the home page) ────────
+   A flourish to draw the visitor's eye to the brand: the logo springs in
+   and pulses a teal glow. No overflow clipping — the full logo (and its
+   glow) stays visible at rest. */
+.logo-intro-wrap {
+  display: inline-flex;
+  vertical-align: middle;
+}
+.logo-intro {
+  animation: logoEntrance 1.1s cubic-bezier(0.22, 1, 0.36, 1) both,
+             logoGlow 1.4s ease-in-out 0.9s 1 both;
+  transform-origin: center;
+}
+@keyframes logoEntrance {
+  0%   { opacity: 0; transform: scale(0.4) rotate(-14deg); }
+  55%  { opacity: 1; transform: scale(1.14) rotate(5deg); }
+  75%  { transform: scale(0.96) rotate(-2deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+@keyframes logoGlow {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(0, 255, 178, 0)); }
+  50%      { filter: drop-shadow(0 0 12px rgba(0, 255, 178, 0.85)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo-intro { animation: none; }
+}
+
 .p-container {
   @apply px-5 md:px-10 lg:px-24 xl:px-28;
 }

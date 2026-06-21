@@ -1,5 +1,6 @@
 import React from 'react'
 import Navbar from '../../components/Navbar'
+import CountUp from '../../components/CountUp'
 
 const EcommerceHeader = () => {
     /* ── First-section background + length — toggle by swapping which line is commented ── */
@@ -68,7 +69,7 @@ const EcommerceHeader = () => {
                             </div>
                             <div className='w-px bg-white/20 self-stretch' />
                             <div className='text-center'>
-                                <div className='text-3xl font-bold drop-shadow' style={{ color: '#00FFCD' }}>50+</div>
+                                <div className='text-3xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={50} suffix="+" /></div>
                                 <div className='text-white/70 text-sm'>تطبيق ناجح</div>
                             </div>
                         </div>

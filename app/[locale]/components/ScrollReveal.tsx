@@ -2,7 +2,18 @@
 import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 
-type Variant = 'up' | 'zoom' | 'left' | 'right'
+type Variant = 'up' | 'zoom' | 'left' | 'right' | 'fade'
+
+/** Maps our friendly variant names to animate.css entrance classes.
+ *  The fade/slide distances are tamed in globals.css so every section
+ *  reveals with the same smooth, cohesive motion. */
+const VARIANT_CLASS: Record<Variant, string> = {
+    up: 'animate__fadeInUp',
+    zoom: 'animate__zoomIn',
+    left: 'animate__fadeInLeft',
+    right: 'animate__fadeInRight',
+    fade: 'animate__fadeIn',
+}
 
 interface ScrollRevealProps {
     children: React.ReactNode
@@ -16,12 +27,13 @@ interface ScrollRevealProps {
 }
 
 /**
- * Reveal-on-scroll wrapper.
- * - Animates ONLY opacity + transform (GPU-composited, no layout/repaint cost).
+ * Reveal-on-scroll wrapper powered by animate.css.
+ * - Stays hidden (`.reveal-pending`) until it scrolls into view, then plays an
+ *   animate.css entrance (opacity + transform only — GPU-composited).
  * - Uses IntersectionObserver (no scroll listeners) and disconnects after the
  *   first reveal, so there's no ongoing work while scrolling.
- * - Honors `prefers-reduced-motion` (handled in globals.css) and degrades to
- *   fully-visible without JS (see <noscript> fallback in layout.tsx).
+ * - Honors `prefers-reduced-motion` (animate.css + globals.css fallback) and
+ *   degrades to fully-visible without JS.
  */
 export default function ScrollReveal({
     children,
@@ -59,8 +71,13 @@ export default function ScrollReveal({
     return (
         <div
             ref={ref}
-            className={clsx('reveal', `reveal-${variant}`, { 'is-visible': visible }, className)}
-            style={delay ? { transitionDelay: `${delay}ms` } : undefined}
+            className={clsx(
+                visible
+                    ? ['animate__animated', VARIANT_CLASS[variant]]
+                    : 'reveal-pending',
+                className
+            )}
+            style={delay ? { animationDelay: `${delay}ms` } : undefined}
         >
             {children}
         </div>

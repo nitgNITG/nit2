@@ -18,6 +18,20 @@ const Navbar = () => {
     const [mounted, setMounted] = useState(false)
     useEffect(() => { setMounted(true) }, [])
 
+    // Replay the attention-grabbing logo flourish every time the visitor lands
+    // on the home page (الرئيسية). Toggling off→on across two frames restarts
+    // the CSS animation even when the Navbar instance is reused.
+    const isHome = pathname === `/${locale}`
+    const [logoIntro, setLogoIntro] = useState(false)
+    useEffect(() => {
+        if (!isHome) { setLogoIntro(false); return }
+        setLogoIntro(false)
+        const id = requestAnimationFrame(() =>
+            requestAnimationFrame(() => setLogoIntro(true))
+        )
+        return () => cancelAnimationFrame(id)
+    }, [pathname, locale, isHome])
+
     const items = [
         { name: t('item1'), href: '/' },
         { name: t('item3'), href: '/our-projects' },
@@ -71,8 +85,10 @@ const Navbar = () => {
 
                     {/* Logo + Nav */}
                     <div className='flex items-center gap-5 lg:gap-10'>
-                        <Link href='/'>
-                            <Logo className='' />
+                        <Link href='/' aria-label='N.I.T home'>
+                            <span className={clsx('logo-intro-wrap', { 'logo-intro': logoIntro })}>
+                                <Logo className='' />
+                            </span>
                         </Link>
                         <ul className='hidden lg:flex gap-1 items-center'>
                             {items.map((item) => (
