@@ -54,18 +54,18 @@ const Header = () => {
                         <div className='col-span-12 lg:col-span-6 '>
                             <div className='space-y-10'>
                                 <h1 className='space-y-5'>
-                                    <span className='block text-white font-bold text-2xl md:text-3xl lg:text-4xl '>
+                                    <span className='block text-white font-bold text-xl md:text-2xl lg:text-3xl 2xl:text-4xl'>
                                         {t('title.one')}
                                     </span>
-                                    <span className='block text-white font-bold text-2xl md:text-3xl lg:text-4xl '>
+                                    <span className='block text-white font-bold text-xl md:text-2xl lg:text-3xl 2xl:text-4xl'>
                                         {t('title.two')}
                                     </span>
                                 </h1>
                                 <div className='space-y-5'>
-                                    <span className='block text-white font-semibold text-xl md:text-2xl lg:text-3xl'>
+                                    <span className='block text-white font-semibold text-lg md:text-xl lg:text-2xl 2xl:text-3xl'>
                                         {t('subTitle.start')}<span className='text-[#00FFB2]'> {t('subTitle.heroword')}</span>
                                     </span>
-                                    <span className='block text-[#00FFB2] font-semibold text-xl md:text-2xl lg:text-3xl'>
+                                    <span className='block text-[#00FFB2] font-semibold text-lg md:text-xl lg:text-2xl 2xl:text-3xl'>
                                         {t('subTitle.end')}
                                     </span>
                                 </div>
@@ -88,7 +88,7 @@ const Header = () => {
                                         </span>
                                     </a>
                                 </div>
-                                <div className='text-lg lg:text-xl font-semibold flex gap-5 lg:gap-20 justify-end'>
+                                <div className='text-base lg:text-lg 2xl:text-xl font-semibold flex gap-5 lg:gap-20 justify-end'>
                                     <span className='flex justify-end'>
                                         <span className='text-white'>
                                             {t('delProject')}

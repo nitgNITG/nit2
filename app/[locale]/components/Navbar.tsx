@@ -53,7 +53,7 @@ const Navbar = () => {
     // OLD (taller — original):
     // const NAV_BAR_CLASS = 'bg-white px-5 sm:px-10 md:px-16 lg:px-20 py-5 lg:py-10 rounded-r-full rounded-l-full lg:shadow-2xl'
     // NEW (slimmer height):
-    const NAV_BAR_CLASS = 'bg-white px-5 sm:px-10 md:px-16 lg:px-20 py-3 lg:py-5 rounded-r-full rounded-l-full lg:shadow-2xl'
+    const NAV_BAR_CLASS = 'bg-white px-5 sm:px-10 md:px-16 lg:px-4 xl:px-8 2xl:px-20 py-3 lg:py-5 rounded-r-full rounded-l-full lg:shadow-2xl'
 
     /* ── Active link indicator — DESKTOP navbar (white bg) ── */
     // The selected page used an underline + light mint (#00FFB2) → ugly + low contrast.
@@ -62,7 +62,7 @@ const Navbar = () => {
     // const NAV_LINK_BASE = 'font-semibold'
     // const ACTIVE_LINK_CLASS = 'font-bold underline text-[#00FFB2]'
     // NEW (pill highlight, accessible teal, no underline):
-    const NAV_LINK_BASE = 'font-semibold px-4 py-2 rounded-full transition-colors hover:bg-[#1E7D67]/5'
+    const NAV_LINK_BASE = 'text-sm 2xl:text-base font-semibold whitespace-nowrap px-2 xl:px-3 2xl:px-4 py-2 rounded-full transition-colors hover:bg-[#1E7D67]/5'
     const ACTIVE_LINK_CLASS = 'bg-[#1E7D67]/10 text-[#1E7D67] font-bold ring-1 ring-[#1E7D67]/20'
 
     /* ── Active link indicator — MOBILE drawer (dark green bg) ── */
@@ -112,9 +112,9 @@ const Navbar = () => {
                         <LocalLink
                             href='/contact'
                             target='_blank'
-                            className='block bg-gradient-to-b from-[#1E7D67] to-[#0B2923] px-5 py-3 rounded-md'
+                            className='block bg-gradient-to-b from-[#1E7D67] to-[#0B2923] px-3 2xl:px-5 py-2 2xl:py-3 rounded-md whitespace-nowrap'
                         >
-                            <span className='text-[#00FFB2] font-bold'>{t('btn')}</span>
+                            <span className='text-sm 2xl:text-base text-[#00FFB2] font-bold'>{t('btn')}</span>
                         </LocalLink>
                         <LangSwitcher />
                     </div>
