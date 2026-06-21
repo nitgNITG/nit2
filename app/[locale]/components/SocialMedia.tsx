@@ -7,17 +7,20 @@ const SocialMedia = () => {
         {
             id: 2,
             icon: <FacebookIcon className='size-8 stroke-white fill-white' />,
-            href: "https://www.facebook.com/successAcdmy?mibextid=JRoKGi"
+            href: "https://www.facebook.com/successAcdmy?mibextid=JRoKGi",
+            label: "Facebook"
         },
         {
             id: 3,
             icon: <WhatSappIcon className='size-8 stroke-white fill-white' />,
-            href: "https://wa.me/+201091568240"
+            href: "https://wa.me/+201091568240",
+            label: "WhatsApp"
         },
         {
             id: 4,
             icon: <LinkedInIcon className='size-8 stroke-white fill-white' />,
-            href: "https://www.linkedin.com/company/the-national-company-for-sw-engineering-and-information-technology---nit/"
+            href: "https://www.linkedin.com/company/the-national-company-for-sw-engineering-and-information-technology---nit/",
+            label: "LinkedIn"
         },
     ]
     return (
@@ -26,7 +29,7 @@ const SocialMedia = () => {
                 <div className='hidden group-hover:block space-y-2'>
                     {socailMedia.map((socail => {
                         return (
-                            <Link href={socail.href} target='_blank' key={socail.id} className='bg-gradient-to-l from-[#1E7D67] to-[#0B2923] size-14 flex justify-center items-center rounded-full cursor-pointer'>
+                            <Link href={socail.href} target='_blank' key={socail.id} aria-label={socail.label} className='bg-gradient-to-l from-[#1E7D67] to-[#0B2923] size-14 flex justify-center items-center rounded-full cursor-pointer'>
                                 {socail.icon}
                             </Link>
                         )

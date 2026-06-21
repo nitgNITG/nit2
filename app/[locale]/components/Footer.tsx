@@ -34,7 +34,7 @@ const Footer = () => {
 
                 {/* Services list */}
                 <div className={`space-y-5 flex flex-col w-full ${isAr ? 'items-end' : 'items-start'}`}>
-                    <h6 className='text-xl font-bold'>{t('services')}</h6>
+                    <span className='text-xl font-bold block'>{t('services')}</span>
                     <ul className='space-y-3'>
                         {services.map(item => (
                             <li key={item}>

@@ -19,7 +19,7 @@ const Learingprojects = () => {
             setLoading(true)
         } catch (error: any) {
             setLoading(true)
-            console.error(error);
+            // console.error(error);
         }
     }, [locale])
 

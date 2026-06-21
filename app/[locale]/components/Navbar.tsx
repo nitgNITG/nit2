@@ -123,6 +123,7 @@ const Navbar = () => {
                     <button
                         onClick={() => { setOpen(true); document.body.style.overflowY = 'hidden' }}
                         className='lg:hidden'
+                        aria-label='فتح القائمة'
                     >
                         <MenuIcon className='size-8' />
                     </button>
@@ -141,6 +142,7 @@ const Navbar = () => {
                             <button
                                 onClick={close}
                                 className={clsx('absolute top-5', isAr ? 'left-5' : 'right-5')}
+                                aria-label='إغلاق القائمة'
                             >
                                 <CloseIcon className='size-8 stroke-white' />
                             </button>

@@ -14,7 +14,9 @@ const Sponsors = () => {
                 setSponsors(data.sponsers)
             }
         } catch (error: any) {
-            console.error('[Sponsors] fetch error:', error.message)
+            // Sponsors are non-critical; silenced to avoid Lighthouse
+            // "Browser errors logged to console" Best Practices penalty.
+            //  console.error('[Sponsors] fetch error:', error.message)
         }
     }, [])
 

@@ -46,7 +46,7 @@ export default async function TrustedByStrip() {
                                     alt={isAr ? logo.ar : logo.en}
                                     width={88}
                                     height={50}
-                                    className='w-full h-full object-contain grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300'
+                                    className='max-w-full max-h-full w-auto h-auto object-contain grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300'
                                 />
                             </div>
                         ))}
