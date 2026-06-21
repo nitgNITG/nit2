@@ -26,13 +26,13 @@ const SocialMedia = () => {
                 <div className='hidden group-hover:block space-y-2'>
                     {socailMedia.map((socail => {
                         return (
-                            <Link href={socail.href} target='_blank' key={socail.id} className='bg-gradient-to-l from-[#268F79] to-[#0B2923] size-14 flex justify-center items-center rounded-full cursor-pointer'>
+                            <Link href={socail.href} target='_blank' key={socail.id} className='bg-gradient-to-l from-[#1E7D67] to-[#0B2923] size-14 flex justify-center items-center rounded-full cursor-pointer'>
                                 {socail.icon}
                             </Link>
                         )
                     }))}
                 </div>
-                <div className='bg-gradient-to-l from-[#268F79] to-[#0B2923] size-14 flex justify-center items-center rounded-full cursor-pointer'>
+                <div className='bg-gradient-to-l from-[#1E7D67] to-[#0B2923] size-14 flex justify-center items-center rounded-full cursor-pointer'>
                     <ShareIcon />
                 </div>
             </div>

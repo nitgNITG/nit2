@@ -148,7 +148,7 @@ const Contacts = () => {
                                                 label={PAGE_LABELS[page] ?? page}
                                                 count={count as number}
                                                 total={total}
-                                                color="bg-[#268F79]"
+                                                color="bg-[#1E7D67]"
                                             />
                                         ))}
                                 </div>
@@ -167,7 +167,7 @@ const Contacts = () => {
                         onClick={() => setActiveStage(s.key)}
                         className={`px-4 py-1.5 rounded-full text-sm font-semibold border transition-all
                             ${activeStage === s.key
-                                ? 'border-[#268F79] ring-2 ring-[#268F79]/30 ' + s.color
+                                ? 'border-[#1E7D67] ring-2 ring-[#1E7D67]/30 ' + s.color
                                 : 'border-gray-200 bg-white text-gray-500 hover:border-gray-400'}`}
                     >
                         {s.label}

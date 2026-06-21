@@ -68,7 +68,7 @@ const Projects = () => {
                     }
                 </Marquee>
                 <div className='flex justify-center pt-14'>
-                    <LocaleLink href={'/contact'} target='_blank' className='hidden lg:block bg-gradient-to-r from-[#268F79] to-[#0B2923] px-5 py-3 rounded-md'>
+                    <LocaleLink href={'/contact'} target='_blank' className='hidden lg:block bg-gradient-to-r from-[#1E7D67] to-[#0B2923] px-5 py-3 rounded-md'>
                         <span className='text-[#00FFB2] font-bold'>
                             {t('btn')}
                         </span>

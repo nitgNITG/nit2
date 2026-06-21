@@ -12,6 +12,7 @@ import Contact from '../components/Contact'
 import Footer from '../components/Footer'
 import SocialMedia from '../components/SocialMedia'
 import DownSide from '../components/DownSide'
+import ScrollReveal from '../components/ScrollReveal'
 
 export default function MoodlePage() {
     return (
@@ -19,13 +20,13 @@ export default function MoodlePage() {
             <FAQSchema page="moodle" />
             <BreadcrumbsJsonLd items={[{ path: 'moodle-lms', ar: 'تطوير منصات Moodle', en: 'Moodle LMS Development' }]} />
             <MoodleHeader />
-            <MoodleFeatures />
-            <MoodleMarkets />
-            <MoodleProjects />
-            <MoodleProcess />
-            <MoodlePricing />
-            <FAQSection page="moodle" />
-            <Contact key='moodle-contact' />
+            <ScrollReveal><MoodleFeatures /></ScrollReveal>
+            <ScrollReveal><MoodleMarkets /></ScrollReveal>
+            <ScrollReveal><MoodleProjects /></ScrollReveal>
+            <ScrollReveal><MoodleProcess /></ScrollReveal>
+            <ScrollReveal><MoodlePricing /></ScrollReveal>
+            <ScrollReveal><FAQSection page="moodle" /></ScrollReveal>
+            <ScrollReveal><Contact key='moodle-contact' /></ScrollReveal>
             <Footer />
             <SocialMedia />
             <DownSide />

@@ -23,7 +23,7 @@ export default async function TrustedByStrip() {
 
                     {/* Label */}
                     <div className={`flex items-center gap-2 flex-shrink-0 ${isAr ? 'flex-row-reverse' : ''}`}>
-                        <span className='inline-block w-2 h-2 rounded-full bg-[#268F79]' />
+                        <span className='inline-block w-2 h-2 rounded-full bg-[#1E7D67]' />
                         <span className='text-xs font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap'>
                             {isAr ? 'موثوق من قِبَل' : 'Trusted by'}
                         </span>
@@ -38,7 +38,7 @@ export default async function TrustedByStrip() {
                             <div
                                 key={logo.file}
                                 title={isAr ? logo.ar : logo.en}
-                                className='group flex-shrink-0 flex items-center justify-center bg-white rounded-lg border border-gray-100 hover:border-[#268F79]/30 hover:shadow-md transition-all duration-300'
+                                className='group flex-shrink-0 flex items-center justify-center bg-white rounded-lg border border-gray-100 hover:border-[#1E7D67]/30 hover:shadow-md transition-all duration-300'
                                 style={{ width: 88, height: 50, padding: '6px 10px' }}
                             >
                                 <Image
@@ -54,7 +54,7 @@ export default async function TrustedByStrip() {
 
                     {/* Gov badge — end of row, large screens only */}
                     <div className={`${isAr ? 'mr-auto' : 'ml-auto'} flex-shrink-0 hidden xl:block`}>
-                        <span className='text-xs bg-[#268F79]/10 text-[#268F79] border border-[#268F79]/20 font-semibold px-3 py-1 rounded-full whitespace-nowrap'>
+                        <span className='text-xs bg-[#1E7D67]/10 text-[#1E7D67] border border-[#1E7D67]/20 font-semibold px-3 py-1 rounded-full whitespace-nowrap'>
                             {isAr ? '🏛️ شريك حكومي موثوق منذ 2013' : '🏛️ Trusted Government Partner since 2013'}
                         </span>
                     </div>

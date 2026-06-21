@@ -163,7 +163,7 @@ const ContactForm = () => {
 
                 {/* ── Qualifying fields ────────────────────── */}
                 <div className='border-t border-gray-300 pt-4 space-y-4'>
-                    <p className='text-sm font-semibold text-[#268F79]'>— {t('qualify')} —</p>
+                    <p className='text-sm font-semibold text-[#1E7D67]'>— {t('qualify')} —</p>
 
                     <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                         <div>
@@ -259,7 +259,7 @@ const ContactForm = () => {
                 </div>
 
                 <div className='flex justify-center pt-2'>
-                    <button disabled={loading} className='bg-gradient-to-r from-[#268F79] to-[#0B2923] px-8 py-3 rounded-md'>
+                    <button disabled={loading} className='bg-gradient-to-r from-[#1E7D67] to-[#0B2923] px-8 py-3 rounded-md'>
                         <span className='text-[#00FFB2] font-bold'>
                             {loading ? <LoadingIcon className='animate-spin size-5' /> : t('btn')}
                         </span>

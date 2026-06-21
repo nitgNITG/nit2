@@ -65,7 +65,7 @@ const ServiceTeaser = ({ type, locale }: TeaserProps) => {
         : (isAr ? ECOMMERCE_CONTENT.ar : ECOMMERCE_CONTENT.en)
 
     const isMoodle = type === 'moodle'
-    const accentColor = isMoodle ? '#268F79' : '#1a6b58'
+    const accentColor = isMoodle ? '#1E7D67' : '#1a6b58'
 
     return (
         <div className={`rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white`}>
@@ -74,14 +74,14 @@ const ServiceTeaser = ({ type, locale }: TeaserProps) => {
 
             <div className='p-6 md:p-8 space-y-5'>
                 {/* Badge */}
-                <span className='inline-block text-xs font-semibold tracking-widest uppercase text-[#268F79] border border-[#268F79]/30 px-3 py-1 rounded-full bg-[#268F79]/5'>
+                <span className='inline-block text-xs font-semibold tracking-widest uppercase text-[#1E7D67] border border-[#1E7D67]/30 px-3 py-1 rounded-full bg-[#1E7D67]/5'>
                     {c.badge}
                 </span>
 
                 {/* Title */}
                 <div>
                     <h3 className='text-xl md:text-2xl font-bold text-[#0B2923]'>{c.title}</h3>
-                    <p className='text-[#268F79] font-semibold text-sm mt-1'>{c.subtitle}</p>
+                    <p className='text-[#1E7D67] font-semibold text-sm mt-1'>{c.subtitle}</p>
                 </div>
 
                 {/* Description */}
@@ -91,7 +91,7 @@ const ServiceTeaser = ({ type, locale }: TeaserProps) => {
                 <div className='grid grid-cols-2 gap-2'>
                     {c.points.map((p, i) => (
                         <div key={i} className='flex items-center gap-2 text-sm text-gray-700'>
-                            <span className='text-[#268F79] font-bold'>✓</span>
+                            <span className='text-[#1E7D67] font-bold'>✓</span>
                             <span>{p}</span>
                         </div>
                     ))}
@@ -107,12 +107,12 @@ const ServiceTeaser = ({ type, locale }: TeaserProps) => {
                 {/* CTAs */}
                 <div className='flex gap-3 pt-2'>
                     <LocaleLink href={c.href}
-                        className='flex-1 text-center bg-gradient-to-r from-[#268F79] to-[#0B2923] text-[#00FFB2] font-bold py-2.5 rounded-lg text-sm hover:opacity-90 transition-opacity'>
+                        className='flex-1 text-center bg-gradient-to-r from-[#1E7D67] to-[#0B2923] text-[#00FFB2] font-bold py-2.5 rounded-lg text-sm hover:opacity-90 transition-opacity'>
                         {c.cta}
                     </LocaleLink>
                     <a href={`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(c.wa)}`}
                         target='_blank' rel='noreferrer'
-                        className='border border-green-500 text-green-600 font-semibold px-4 py-2.5 rounded-lg hover:bg-green-50 transition-colors text-sm flex items-center gap-1.5'>
+                        className='border border-green-500 text-green-700 font-semibold px-4 py-2.5 rounded-lg hover:bg-green-50 transition-colors text-sm flex items-center gap-1.5'>
                         💬
                     </a>
                 </div>

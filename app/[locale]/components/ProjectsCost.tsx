@@ -12,7 +12,7 @@ const ProjectsCost = () => {
         <section className='py-10 p-container'>
             <div className="flex justify-center">
                 <div className='text-center lg:w-11/12 space-y-4'>
-                    <p className='text-[#268F79] text-lg'>{t('hint')}</p>
+                    <p className='text-[#1E7D67] text-lg'>{t('hint')}</p>
                     <h3 className='text-xl lg:text-2xl font-bold'>{t('title')}</h3>
                     <p className="text-lg font-semibold">
                         {t('desc')}
@@ -36,7 +36,7 @@ const ProjectsCost = () => {
                                 {t('more.desc')}
                             </p>
                             <div className='flex justify-end pt-10 gap-3 flex-wrap'>
-                                <LocaleLink href={'/get-quote'} className='block bg-gradient-to-r from-[#268F79] to-[#0B2923] px-5 py-3 rounded-md hover:opacity-90 transition-opacity'>
+                                <LocaleLink href={'/get-quote'} className='block bg-gradient-to-r from-[#1E7D67] to-[#0B2923] px-5 py-3 rounded-md hover:opacity-90 transition-opacity'>
                                     <span className='text-[#00FFB2] font-bold'>
                                         {t('btn')}
                                     </span>
@@ -47,7 +47,7 @@ const ProjectsCost = () => {
                                     rel='noreferrer'
                                     className='block border-2 border-green-500 px-5 py-3 rounded-md hover:bg-green-50 transition-colors'
                                 >
-                                    <span className='text-green-600 font-bold flex items-center gap-2'>
+                                    <span className='text-green-700 font-bold flex items-center gap-2'>
                                         💬 {isAr ? 'استشارة واتساب' : 'WhatsApp Us'}
                                     </span>
                                 </a>

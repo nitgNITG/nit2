@@ -17,6 +17,7 @@ import ServiceCards from "./components/ServiceCards";
 import HomepageServices from "./components/HomepageServices";
 import HomepageBlog from "./components/HomepageBlog";
 import GovernmentProjects from "./components/GovernmentProjects";
+import ScrollReveal from "./components/ScrollReveal";
 
 export async function generateMetadata({ params: { locale } }: { params: { locale: string } }): Promise<Metadata> {
   const isAr = locale === "ar";
@@ -47,19 +48,19 @@ export default function Home() {
     <div className="overflow-y-hidden">
       <FAQSchema page="home" />
       <Header />
-      <OurServices />
-      <ServiceCards />
-      <HomepageServices />
-      <GovernmentProjects />
-      <Sponsors />
-      <Experience />
-      <Projects />
-      <Platforms />
-      <ProjectsCost />
-      <HomepageBlog />
-      <FAQSection page="home" />
-      <Contact key="home-contact" />
-      <Location />
+      <ScrollReveal><OurServices /></ScrollReveal>
+      <ScrollReveal><ServiceCards /></ScrollReveal>
+      <ScrollReveal><HomepageServices /></ScrollReveal>
+      <ScrollReveal><GovernmentProjects /></ScrollReveal>
+      <ScrollReveal><Sponsors /></ScrollReveal>
+      <ScrollReveal><Experience /></ScrollReveal>
+      <ScrollReveal><Projects /></ScrollReveal>
+      <ScrollReveal><Platforms /></ScrollReveal>
+      <ScrollReveal><ProjectsCost /></ScrollReveal>
+      <ScrollReveal><HomepageBlog /></ScrollReveal>
+      <ScrollReveal><FAQSection page="home" /></ScrollReveal>
+      <ScrollReveal><Contact key="home-contact" /></ScrollReveal>
+      <ScrollReveal><Location /></ScrollReveal>
       <Footer />
       <SocialMedia />
       <DownSide />

@@ -25,7 +25,7 @@ const Sponsors = () => {
     return (
         <section>
             {/* ── Marquee strip ── */}
-            <div className='bg-gradient-to-l from-[#268F79] to-[#0B2923]'>
+            <div className='bg-gradient-to-l from-[#1E7D67] to-[#0B2923]'>
                 <div dir='ltr' style={{ height: 120, display: 'flex', alignItems: 'center' }}>
                     {sponsors.length === 0 ? (
                         <div style={{ width: '100%' }} />

@@ -210,7 +210,7 @@ export default async function ArticlePage(
                                             const itemTitle = isAr ? item.title : (item.titleEn || item.title)
                                             const itemContent = isAr ? item.content : (item.contentEn || item.content)
                                             return (
-                                                <li key={i} className={`border-r-4 border-[#268F79] pr-4 ${isAr ? 'text-right' : 'border-r-0 border-l-4 pl-4 text-left'}`}>
+                                                <li key={i} className={`border-r-4 border-[#1E7D67] pr-4 ${isAr ? 'text-right' : 'border-r-0 border-l-4 pl-4 text-left'}`}>
                                                     {/* ── H3: list item title (supporting point) ── */}
                                                     <h3 className="text-lg font-bold text-gray-800 mb-1">
                                                         {itemTitle}
@@ -229,7 +229,7 @@ export default async function ArticlePage(
                 </div>
 
                 {/* ── CTA at end of article ── */}
-                <div className="mt-14 p-6 bg-gradient-to-r from-[#0B2923] to-[#268F79] rounded-xl text-center">
+                <div className="mt-14 p-6 bg-gradient-to-r from-[#0B2923] to-[#1E7D67] rounded-xl text-center">
                     <p className="text-white font-bold text-lg mb-2">
                         {isAr ? 'هل تحتاج منصة Moodle أو تطبيق تجارة إلكترونية؟' : 'Need a Moodle platform or eCommerce app?'}
                     </p>

@@ -25,7 +25,7 @@ const Footer = () => {
                         <LocaleLink
                             href='/contact'
                             target='_blank'
-                            className='block bg-gradient-to-b from-[#268F79] to-[#0B2923] px-5 py-4 rounded-md'
+                            className='block bg-gradient-to-b from-[#1E7D67] to-[#0B2923] px-5 py-4 rounded-md'
                         >
                             <span className='text-[#00FFB2] font-bold'>{t('btn')}</span>
                         </LocaleLink>

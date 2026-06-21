@@ -17,7 +17,7 @@ export default async function FAQSection({ page }: { page: FAQPageKey }) {
             aria-labelledby='faq-heading'
         >
             <div className={`mb-8 ${isAr ? 'text-right' : 'text-left'}`}>
-                <span className='inline-block bg-[#268F79]/10 border border-[#268F79]/30 text-[#268F79] text-xs font-bold px-4 py-1.5 rounded-full mb-4 tracking-wider uppercase'>
+                <span className='inline-block bg-[#1E7D67]/10 border border-[#1E7D67]/30 text-[#1E7D67] text-xs font-bold px-4 py-1.5 rounded-full mb-4 tracking-wider uppercase'>
                     {isAr ? 'الأسئلة الشائعة' : 'FAQ'}
                 </span>
                 <h2
@@ -39,7 +39,7 @@ export default async function FAQSection({ page }: { page: FAQPageKey }) {
                         >
                             <span>{q}</span>
                             <span
-                                className='flex-shrink-0 text-[#268F79] text-xl transition-transform duration-300 group-open:rotate-45'
+                                className='flex-shrink-0 text-[#1E7D67] text-xl transition-transform duration-300 group-open:rotate-45'
                                 aria-hidden='true'
                             >
                                 +

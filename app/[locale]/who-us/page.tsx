@@ -6,16 +6,17 @@ import SecuritySection from './components/SecuritySection'
 import NotionalCompany from './components/NotionalCompany'
 import WhoUsCards from './components/WhoUsCards'
 import BreadcrumbsJsonLd from '../components/BreadcrumbsJsonLd'
+import ScrollReveal from '../components/ScrollReveal'
 
 const page = () => {
     return (
         <div>
             <BreadcrumbsJsonLd items={[{ path: 'who-us', ar: 'من نحن', en: 'About Us' }]} />
             <WhoUsHeader />
-            <WhyUs />
-            <SecuritySection />
-            <NotionalCompany />
-            <WhoUsCards />
+            <ScrollReveal><WhyUs /></ScrollReveal>
+            <ScrollReveal><SecuritySection /></ScrollReveal>
+            <ScrollReveal><NotionalCompany /></ScrollReveal>
+            <ScrollReveal><WhoUsCards /></ScrollReveal>
             <Footer />
         </div>
     )

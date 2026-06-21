@@ -9,7 +9,7 @@ const cards = [
         descEn: 'Custom Moodle platforms for universities, schools & corporates. Arabic RTL, mobile apps, SCORM, and full hosting.',
         descAr: 'منصات Moodle مخصصة للجامعات والمدارس والمؤسسات. دعم عربي، تطبيقات جوال، SCORM واستضافة كاملة.',
         href: '/moodle-lms',
-        color: 'from-[#268F79] to-[#0B2923]',
+        color: 'from-[#1E7D67] to-[#0B2923]',
     },
     {
         num: '02',
@@ -18,7 +18,7 @@ const cards = [
         descEn: 'Mobile shopping apps live on Google Play & App Store. Multivendor, single-store, POS & payment integration.',
         descAr: 'تطبيقات تسوق حية على Google Play وApp Store. متعدد البائعين، متاجر فردية، نقاط بيع وتكامل الدفع.',
         href: '/ecommerce-app',
-        color: 'from-[#268F79] to-[#0B2923]',
+        color: 'from-[#1E7D67] to-[#0B2923]',
     },
     {
         num: '03',
@@ -27,7 +27,7 @@ const cards = [
         descEn: 'Read our expert articles on Moodle LMS, eCommerce development, and digital transformation in Egypt & Gulf.',
         descAr: 'اقرأ مقالاتنا المتخصصة في Moodle وتطوير التجارة الإلكترونية والتحول الرقمي في مصر والخليج.',
         href: '/blog',
-        color: 'from-[#268F79] to-[#0B2923]',
+        color: 'from-[#1E7D67] to-[#0B2923]',
     },
 ]
 
@@ -56,7 +56,7 @@ const ServiceCards = () => {
                             className='group relative block h-full bg-white/5 border border-white/10 rounded-xl p-7 hover:bg-white/10 hover:border-[#00FFB2]/30 transition-all duration-200 overflow-hidden'
                         >
                             {/* Number watermark */}
-                            <div className='absolute -top-3 -right-3 text-[80px] font-black text-white/5 leading-none select-none'>
+                            <div aria-hidden='true' className='absolute -top-3 -right-3 text-[80px] font-black text-white/5 leading-none select-none'>
                                 {card.num}
                             </div>
 
@@ -70,7 +70,7 @@ const ServiceCards = () => {
 
                             <div className='space-y-1 mb-6'>
                                 <p className='text-white/50 text-sm text-right leading-relaxed'>{card.descAr}</p>
-                                <p className='text-white/40 text-sm text-left leading-relaxed'>{card.descEn}</p>
+                                <p className='text-white/60 text-sm text-left leading-relaxed'>{card.descEn}</p>
                             </div>
 
                             <div className='flex items-center justify-between'>

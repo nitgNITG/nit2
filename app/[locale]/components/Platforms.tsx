@@ -27,7 +27,7 @@ const Platforms = () => {
         <section className='bg-[#F2F3FA] p-container py-10'>
             <div className="flex justify-center">
                 <div className='text-center lg:w-11/12 space-y-4'>
-                    <p className='text-[#268F79] text-lg'>{t('hint')}</p>
+                    <p className='text-[#1E7D67] text-lg'>{t('hint')}</p>
                     <h3 className='text-xl lg:text-3xl font-bold'>{t('title')}</h3>
                     <p className="text-lg">
                         {t('desc')}

@@ -41,7 +41,7 @@ export default async function HomepageBlog() {
         <section className='p-container py-14 lg:py-20'>
             {/* ── Section header ── */}
             <div className={`mb-10 ${isAr ? 'text-right' : 'text-left'}`}>
-                <span className='inline-block bg-[#268F79]/10 border border-[#268F79]/30 text-[#268F79] text-xs font-bold px-4 py-1.5 rounded-full mb-4 tracking-wider uppercase'>
+                <span className='inline-block bg-[#1E7D67]/10 border border-[#1E7D67]/30 text-[#1E7D67] text-xs font-bold px-4 py-1.5 rounded-full mb-4 tracking-wider uppercase'>
                     {t('homeTeaserBadge')}
                 </span>
                 <h2 className='text-2xl md:text-3xl font-bold text-[#0B2923] mb-2'>
@@ -84,7 +84,7 @@ export default async function HomepageBlog() {
 
                             <div className={`p-5 flex flex-col gap-2 ${isAr ? 'text-right' : 'text-left'}`}>
                                 {date && (
-                                    <time className='text-xs text-[#268F79] font-semibold'>
+                                    <time className='text-xs text-[#1E7D67] font-semibold'>
                                         {date}
                                     </time>
                                 )}
@@ -94,7 +94,7 @@ export default async function HomepageBlog() {
                                 <p className='text-sm text-gray-500 line-clamp-2 leading-relaxed'>
                                     {excerpt}
                                 </p>
-                                <span className='text-sm font-semibold text-[#268F79] mt-1'>
+                                <span className='text-sm font-semibold text-[#1E7D67] mt-1'>
                                     {isAr ? 'اقرأ المزيد ←' : 'Read more →'}
                                 </span>
                             </div>
@@ -107,7 +107,7 @@ export default async function HomepageBlog() {
             <div className={`mt-8 ${isAr ? 'text-right' : 'text-left'}`}>
                 <Link
                     href={`/${locale}/blog`}
-                    className='inline-block border-2 border-[#268F79] text-[#268F79] font-bold px-6 py-2.5 rounded-lg hover:bg-[#268F79] hover:text-white transition-colors text-sm'
+                    className='inline-block border-2 border-[#1E7D67] text-[#1E7D67] font-bold px-6 py-2.5 rounded-lg hover:bg-[#1E7D67] hover:text-white transition-colors text-sm'
                 >
                     {t('viewAll')} →
                 </Link>

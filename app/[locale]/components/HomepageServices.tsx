@@ -12,7 +12,7 @@ const HomepageServices = async () => {
 
                 {/* Section header */}
                 <div className='text-center space-y-3'>
-                    <span className='inline-block text-xs font-semibold tracking-widest uppercase text-[#268F79] border border-[#268F79]/30 px-4 py-1.5 rounded-full bg-[#268F79]/5'>
+                    <span className='inline-block text-xs font-semibold tracking-widest uppercase text-[#1E7D67] border border-[#1E7D67]/30 px-4 py-1.5 rounded-full bg-[#1E7D67]/5'>
                         {isAr ? 'تخصصاتنا' : 'Our Specializations'}
                     </span>
                     <h2 className='text-2xl md:text-3xl font-bold text-[#0B2923]'>

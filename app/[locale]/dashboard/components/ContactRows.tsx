@@ -103,7 +103,7 @@ function ContactModal({ contact: c, onClose, onStatusChange, onNotesChange }: {
                 {/* Header */}
                 <div className='flex items-start justify-between p-6 border-b sticky top-0 bg-white z-10'>
                     <div className='flex items-center gap-3'>
-                        <div className='w-10 h-10 rounded-full bg-gradient-to-br from-[#268F79] to-[#0B2923] flex items-center justify-center text-white font-bold text-lg'>
+                        <div className='w-10 h-10 rounded-full bg-gradient-to-br from-[#1E7D67] to-[#0B2923] flex items-center justify-center text-white font-bold text-lg'>
                             {c.name?.[0]?.toUpperCase()}
                         </div>
                         <div>
@@ -210,7 +210,7 @@ function ContactModal({ contact: c, onClose, onStatusChange, onNotesChange }: {
                     <div>
                         <p className='text-xs font-bold uppercase text-gray-400 mb-2 tracking-wider'>Internal Notes</p>
                         <textarea
-                            className='w-full border border-gray-200 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#268F79]/30'
+                            className='w-full border border-gray-200 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#1E7D67]/30'
                             rows={3}
                             placeholder='Add internal notes here…'
                             value={notes}
@@ -219,7 +219,7 @@ function ContactModal({ contact: c, onClose, onStatusChange, onNotesChange }: {
                         <button
                             onClick={saveNotes}
                             disabled={savingNotes}
-                            className='mt-2 bg-gradient-to-r from-[#268F79] to-[#0B2923] text-[#00FFB2] text-xs font-bold px-4 py-2 rounded-lg disabled:opacity-50'
+                            className='mt-2 bg-gradient-to-r from-[#1E7D67] to-[#0B2923] text-[#00FFB2] text-xs font-bold px-4 py-2 rounded-lg disabled:opacity-50'
                         >
                             {savingNotes ? 'Saving…' : 'Save Notes'}
                         </button>
@@ -293,7 +293,7 @@ function ContactCard({ c, onView, onStatusChange, onDelete }: {
             <div className='flex items-center gap-2 pt-1 border-t border-gray-100'>
                 <button
                     onClick={onView}
-                    className='flex-1 bg-[#268F79]/10 hover:bg-[#268F79]/20 text-[#268F79] font-bold text-xs px-3 py-2 rounded-lg transition-colors'
+                    className='flex-1 bg-[#1E7D67]/10 hover:bg-[#1E7D67]/20 text-[#1E7D67] font-bold text-xs px-3 py-2 rounded-lg transition-colors'
                 >
                     👁 View Details
                 </button>
@@ -448,7 +448,7 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
             {/* ── Desktop table (≥ md) ─────────────────────────────────────── */}
             <div
                 className='hidden md:block bg-white rounded-xl shadow-sm border border-gray-100'
-                style={{ overflowX: 'scroll', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'thin', scrollbarColor: '#268F79 #f1f5f9' }}
+                style={{ overflowX: 'scroll', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'thin', scrollbarColor: '#1E7D67 #f1f5f9' }}
             >
                 <table className='text-sm text-left text-gray-600' style={{ minWidth: '1300px', width: '100%' }}>
                     <thead className='text-xs text-gray-700 uppercase bg-gray-50 border-b'>
@@ -485,7 +485,7 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
                                 <td className='px-3 py-3 sticky left-0 bg-white hover:bg-gray-50 z-10 shadow-[2px_0_4px_rgba(0,0,0,0.06)]'>
                                     <button
                                         onClick={() => setSelectedContact(c)}
-                                        className='flex items-center gap-1 bg-[#268F79]/10 hover:bg-[#268F79]/20 text-[#268F79] font-bold text-xs px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap'
+                                        className='flex items-center gap-1 bg-[#1E7D67]/10 hover:bg-[#1E7D67]/20 text-[#1E7D67] font-bold text-xs px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap'
                                     >
                                         👁 View
                                     </button>
@@ -548,12 +548,12 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
                                 <td className='px-4 py-3 text-xs max-w-[200px]'>
                                     <button
                                         onClick={() => setSelectedContact(c)}
-                                        className='text-left w-full hover:text-[#268F79] transition-colors group'
+                                        className='text-left w-full hover:text-[#1E7D67] transition-colors group'
                                         title='Click to view full message'
                                     >
                                         {c.pain && <p className='text-gray-500 mb-1 italic line-clamp-1'>&ldquo;{c.pain}&rdquo;</p>}
-                                        <p className='text-gray-500 line-clamp-2 group-hover:text-[#268F79]'>{c.message}</p>
-                                        <span className='text-[10px] text-[#268F79] opacity-0 group-hover:opacity-100 transition-opacity'>👁 view full</span>
+                                        <p className='text-gray-500 line-clamp-2 group-hover:text-[#1E7D67]'>{c.message}</p>
+                                        <span className='text-[10px] text-[#1E7D67] opacity-0 group-hover:opacity-100 transition-opacity'>👁 view full</span>
                                     </button>
                                 </td>
 

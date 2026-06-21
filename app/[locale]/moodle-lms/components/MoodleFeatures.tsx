@@ -89,7 +89,7 @@ const MoodleFeatures = () => {
                             ))}
                         </ul>
                         <div className='flex justify-end'>
-                            <LocaleLink href='/contact' target='_blank' className='bg-gradient-to-r from-[#268F79] to-[#0B2923] px-5 py-3 rounded-md'>
+                            <LocaleLink href='/contact' target='_blank' className='bg-gradient-to-r from-[#1E7D67] to-[#0B2923] px-5 py-3 rounded-md'>
                                 <span className='text-[#00FFB2] font-bold'>ابدأ مشروعك الأن · Start Your Project</span>
                             </LocaleLink>
                         </div>

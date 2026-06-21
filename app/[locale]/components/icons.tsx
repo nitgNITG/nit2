@@ -56,7 +56,7 @@ export const Logo: React.FC<classNameInterface> = ({ className }) => {
                     <stop offset="0.55" stopColor="#163B3B" />
                     <stop offset="0.73" stopColor="#1B564F" />
                     <stop offset="0.9" stopColor="#227968" />
-                    <stop offset="1" stopColor="#268F79" />
+                    <stop offset="1" stopColor="#1E7D67" />
                 </linearGradient>
                 <linearGradient id="paint1_linear_2_381" x1="17.8943" y1="21.6764" x2="17.8943" y2="54.8494" gradientUnits="userSpaceOnUse">
                     <stop stopColor="#0F1922" />
@@ -65,7 +65,7 @@ export const Logo: React.FC<classNameInterface> = ({ className }) => {
                     <stop offset="0.55" stopColor="#163B3B" />
                     <stop offset="0.73" stopColor="#1B564F" />
                     <stop offset="0.9" stopColor="#227968" />
-                    <stop offset="1" stopColor="#268F79" />
+                    <stop offset="1" stopColor="#1E7D67" />
                 </linearGradient>
                 <linearGradient id="paint2_linear_2_381" x1="60.5856" y1="22.2889" x2="60.5856" y2="55.4497" gradientUnits="userSpaceOnUse">
                     <stop stopColor="#0F1922" />
@@ -74,7 +74,7 @@ export const Logo: React.FC<classNameInterface> = ({ className }) => {
                     <stop offset="0.55" stopColor="#163B3B" />
                     <stop offset="0.73" stopColor="#1B564F" />
                     <stop offset="0.9" stopColor="#227968" />
-                    <stop offset="1" stopColor="#268F79" />
+                    <stop offset="1" stopColor="#1E7D67" />
                 </linearGradient>
             </defs>
         </svg>

@@ -73,7 +73,7 @@ const Articles = () => {
                                         <div className={`p-5 flex flex-col gap-3 ${isAr ? 'text-right' : 'text-left'}`}>
                                             {/* Date */}
                                             {date && (
-                                                <time className="text-xs text-[#268F79] font-semibold tracking-wide">
+                                                <time className="text-xs text-[#1E7D67] font-semibold tracking-wide">
                                                     {date}
                                                 </time>
                                             )}
@@ -89,7 +89,7 @@ const Articles = () => {
                                             </p>
 
                                             {/* Read more */}
-                                            <span className="text-sm font-semibold text-[#268F79] mt-auto">
+                                            <span className="text-sm font-semibold text-[#1E7D67] mt-auto">
                                                 {isAr ? 'اقرأ المزيد ←' : 'Read more →'}
                                             </span>
                                         </div>

@@ -9,23 +9,31 @@ import LocaleLink from './LocaleLink'
 const Header = () => {
     const t = useTranslations('Header');
     return (
-        <header className=''>
-            <div className='relative min-h-svh p-container overflow-hidden'>
-                {/* Background — preloaded by Next.js, served as WebP/AVIF */}
-                <Image
-                    src="/header_img.jpg"
-                    alt="خلفية برمجية لتقنيات الويب والتطبيقات"
-                    fill
-                    priority
-                    quality={75}
-                    sizes="100vw"
-                    className="object-cover object-center -z-10"
-                    aria-hidden="true"
-                />
-                <div className='relative z-10 py-10'>
+        <header>
+            <div className='relative overflow-hidden min-h-svh flex flex-col bg-[url("/header_img.jpg")] bg-center bg-cover bg-no-repeat p-container'>
+                
+                {/* Overlay — same as subpages */}
+                <div className='absolute inset-0' style={{ background: 'linear-gradient(135deg, rgba(10,21,32,0.55) 0%, rgba(15,31,46,0.45) 50%, rgba(13,40,24,0.50) 100%)' }} />
+
+                {/* Subtle diamond accents */}
+                <div className='absolute -top-10 -right-10 w-64 h-64 opacity-20 pointer-events-none'>
+                    <div className='absolute inset-0 rotate-45 rounded-2xl border-2 border-[#00FFCD]' />
+                    <div className='absolute inset-6 rotate-45 rounded-xl border border-[#1E7D67]' />
+                </div>
+                <div className='absolute bottom-10 left-10 w-40 h-40 opacity-10 pointer-events-none'>
+                    <div className='absolute inset-0 rotate-45 rounded-xl border border-[#00FFCD]' />
+                </div>
+
+                {/* Top accent line */}
+                <div className='absolute top-0 left-0 right-0 h-[2px] z-10'
+                    style={{ background: 'linear-gradient(90deg, transparent, #1E7D67, #00FFCD, #1E7D67, transparent)' }} />
+
+                {/* Navbar */}
+                <div className='py-10 relative z-10'>
                     <Navbar />
                 </div>
-                <div className='relative z-10 pb-96 sm:pb-52 md:pb-32'>
+                
+                <div className='relative z-10 flex-1 pb-96 sm:pb-52 md:pb-32'>
                     <div className='grid grid-cols-12 space-y-10 '>
                         <div className='col-span-12 lg:col-span-6 '>
                             <div className='w-full lg:px-10 py-5'>
@@ -62,7 +70,7 @@ const Header = () => {
                                 </div>
                                 <div className='flex flex-wrap gap-3 justify-end'>
                                     {/* Primary CTA — get quote */}
-                                    <LocaleLink href={'/get-quote'} className='block w-fit bg-gradient-to-b from-[#268F79] to-[#0B2923] px-5 py-3.5 rounded-md hover:opacity-90 transition-opacity'>
+                                    <LocaleLink href={'/get-quote'} className='block w-fit bg-gradient-to-b from-[#1E7D67] to-[#0B2923] px-5 py-3.5 rounded-md hover:opacity-90 transition-opacity'>
                                         <span className='text-[#00FFB2] font-bold text-sm md:text-base'>
                                             {t('btn')}
                                         </span>

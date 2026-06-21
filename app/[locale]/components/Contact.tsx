@@ -43,7 +43,7 @@ const Contact = () => {
                                 />
                             </div>
                             <div>
-                                <span className='text-xl lg:text-2xl font-bold text-aquaMint'>{t('hint')}</span>
+                                <span className='text-xl lg:text-2xl font-bold text-[#1E7D67]'>{t('hint')}</span>
                             </div>
                         </div>
                         <div className='space-y-5'>

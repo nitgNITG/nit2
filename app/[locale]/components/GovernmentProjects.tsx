@@ -12,7 +12,7 @@ const PROJECTS = [
             en: 'Step English app teaches pronunciation, grammar & conversation via AI — structured paths from beginner to advanced',
         },
         tags: ['AI', 'Flutter', 'iOS & Android'],
-        color: '#268F79',
+        color: '#1E7D67',
     },
     {
         icon: '📚',

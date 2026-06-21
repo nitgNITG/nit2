@@ -2,12 +2,20 @@ import React from 'react'
 import Navbar from '../../components/Navbar'
 
 const MoodleHeader = () => {
+    /* ── First-section background + length — toggle by swapping which line is commented ── */
+    // OLD (original — header_whous.jpg + teal-tinted overlay):
+    // const HEADER_CONTAINER = 'relative overflow-hidden min-h-svh lg:min-h-[77svh] flex flex-col bg-[url("/header_whous.jpg")] bg-center bg-cover bg-no-repeat p-container'
+    // const HEADER_OVERLAY = 'linear-gradient(135deg, rgba(10,21,32,0.70) 0%, rgba(15,40,30,0.60) 50%, rgba(13,40,24,0.65) 100%)'
+    // NEW (matches "مشروعاتنا" / our-projects — same image, overlay & length):
+    const HEADER_CONTAINER = 'relative overflow-hidden min-h-svh lg:min-h-[77svh] flex flex-col bg-[url("/header_img.jpg")] bg-center bg-cover bg-no-repeat p-container'
+    const HEADER_OVERLAY = 'linear-gradient(135deg, rgba(10,21,32,0.55) 0%, rgba(15,31,46,0.45) 50%, rgba(13,40,24,0.50) 100%)'
+
     return (
         <header>
-            <div className='relative overflow-hidden min-h-svh lg:min-h-[77svh] flex flex-col bg-[url("/header_whous.jpg")] bg-center bg-cover bg-no-repeat p-container'>
+            <div className={HEADER_CONTAINER}>
 
-                {/* Overlay — teal-tinted */}
-                <div className='absolute inset-0' style={{ background: 'linear-gradient(135deg, rgba(10,21,32,0.70) 0%, rgba(15,40,30,0.60) 50%, rgba(13,40,24,0.65) 100%)' }} />
+                {/* Overlay */}
+                <div className='absolute inset-0' style={{ background: HEADER_OVERLAY }} />
 
                 <div className='absolute -top-10 -right-10 w-64 h-64 opacity-20 pointer-events-none'>
                     <div className='absolute inset-0 rotate-45 rounded-2xl border-2 border-[#00FFCD]' />
@@ -25,7 +33,7 @@ const MoodleHeader = () => {
                     <div className='text-center space-y-6 max-w-3xl px-4'>
 
                         <div className='flex justify-center'>
-                            <span className='inline-flex items-center gap-2 border border-[#268F79] text-[#00FFCD] text-xs font-semibold tracking-widest uppercase px-4 py-2 rounded-full bg-[#268F79]/10 backdrop-blur-sm'>
+                            <span className='inline-flex items-center gap-2 border border-[#1E7D67] text-[#00FFCD] text-xs font-semibold tracking-widest uppercase px-4 py-2 rounded-full bg-[#1E7D67]/10 backdrop-blur-sm'>
                                 <span className='w-1.5 h-1.5 rounded-full bg-[#00FFCD] animate-pulse' />
                                 E-Learning · منصات تعليمية
                             </span>

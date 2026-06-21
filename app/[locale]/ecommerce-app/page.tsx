@@ -12,6 +12,7 @@ import Contact from '../components/Contact'
 import Footer from '../components/Footer'
 import SocialMedia from '../components/SocialMedia'
 import DownSide from '../components/DownSide'
+import ScrollReveal from '../components/ScrollReveal'
 
 export default function EcommercePage() {
     return (
@@ -19,13 +20,13 @@ export default function EcommercePage() {
             <FAQSchema page="ecommerce" />
             <BreadcrumbsJsonLd items={[{ path: 'ecommerce-app', ar: 'تطوير تطبيقات التجارة الإلكترونية', en: 'eCommerce App Development' }]} />
             <EcommerceHeader />
-            <EcommerceFeatures />
-            <EcommerceMarkets />
-            <EcommerceApps />
-            <EcommerceProcess />
-            <EcommercePricing />
-            <FAQSection page="ecommerce" />
-            <Contact key='ecommerce-contact' />
+            <ScrollReveal><EcommerceFeatures /></ScrollReveal>
+            <ScrollReveal><EcommerceMarkets /></ScrollReveal>
+            <ScrollReveal><EcommerceApps /></ScrollReveal>
+            <ScrollReveal><EcommerceProcess /></ScrollReveal>
+            <ScrollReveal><EcommercePricing /></ScrollReveal>
+            <ScrollReveal><FAQSection page="ecommerce" /></ScrollReveal>
+            <ScrollReveal><Contact key='ecommerce-contact' /></ScrollReveal>
             <Footer />
             <SocialMedia />
             <DownSide />

@@ -33,12 +33,40 @@ const Navbar = () => {
         document.body.style.overflowY = 'auto'
     }
 
+    /* ╔══════════════ UI TWEAKS — toggle by swapping which line is commented ══════════════╗ */
+
+    /* ── Navbar bar (white pill): the py-* values control the navbar HEIGHT ── */
+    // OLD (taller — original):
+    // const NAV_BAR_CLASS = 'bg-white px-5 sm:px-10 md:px-16 lg:px-20 py-5 lg:py-10 rounded-r-full rounded-l-full lg:shadow-2xl'
+    // NEW (slimmer height):
+    const NAV_BAR_CLASS = 'bg-white px-5 sm:px-10 md:px-16 lg:px-20 py-3 lg:py-5 rounded-r-full rounded-l-full lg:shadow-2xl'
+
+    /* ── Active link indicator — DESKTOP navbar (white bg) ── */
+    // The selected page used an underline + light mint (#00FFB2) → ugly + low contrast.
+    // Now: every link is a pill; the active one gets a soft teal "chip" highlight (no underline).
+    // OLD (original — underline + mint):
+    // const NAV_LINK_BASE = 'font-semibold'
+    // const ACTIVE_LINK_CLASS = 'font-bold underline text-[#00FFB2]'
+    // NEW (pill highlight, accessible teal, no underline):
+    const NAV_LINK_BASE = 'font-semibold px-4 py-2 rounded-full transition-colors hover:bg-[#1E7D67]/5'
+    const ACTIVE_LINK_CLASS = 'bg-[#1E7D67]/10 text-[#1E7D67] font-bold ring-1 ring-[#1E7D67]/20'
+
+    /* ── Active link indicator — MOBILE drawer (dark green bg) ── */
+    // OLD (underline):
+    // const MOBILE_LINK_BASE = 'font-semibold text-xl'
+    // const MOBILE_ACTIVE_CLASS = 'font-bold underline text-[#00FFB2]'
+    // NEW (pill highlight on dark, no underline):
+    const MOBILE_LINK_BASE = 'inline-block font-semibold text-xl px-5 py-2 rounded-full transition-colors'
+    const MOBILE_ACTIVE_CLASS = 'bg-[#00FFB2]/15 text-[#00FFB2] font-bold ring-1 ring-[#00FFB2]/30'
+
+    /* ╚════════════════════════════════════════════════════════════════════════════════════╝ */
+
     const isActive = (href: string) =>
         href === '/' ? pathname === `/${locale}` : `/${locale}${href}` === pathname
 
     return (
         <nav>
-            <div className='bg-white px-5 sm:px-10 md:px-16 lg:px-20 py-5 lg:py-10 rounded-r-full rounded-l-full lg:shadow-2xl'>
+            <div className={NAV_BAR_CLASS}>
                 <div className='flex justify-between items-center'>
 
                     {/* Logo + Nav */}
@@ -46,13 +74,13 @@ const Navbar = () => {
                         <Link href='/'>
                             <Logo className='' />
                         </Link>
-                        <ul className='hidden lg:flex gap-5'>
+                        <ul className='hidden lg:flex gap-1 items-center'>
                             {items.map((item) => (
                                 <li key={item.href}>
                                     <LocalLink
                                         className={clsx(
-                                            'font-semibold',
-                                            { 'font-bold underline text-[#00FFB2]': isActive(item.href) }
+                                            NAV_LINK_BASE,
+                                            { [ACTIVE_LINK_CLASS]: isActive(item.href) }
                                         )}
                                         href={item.href}
                                     >
@@ -68,7 +96,7 @@ const Navbar = () => {
                         <LocalLink
                             href='/contact'
                             target='_blank'
-                            className='block bg-gradient-to-b from-[#268F79] to-[#0B2923] px-5 py-3 rounded-md'
+                            className='block bg-gradient-to-b from-[#1E7D67] to-[#0B2923] px-5 py-3 rounded-md'
                         >
                             <span className='text-[#00FFB2] font-bold'>{t('btn')}</span>
                         </LocalLink>
@@ -107,8 +135,8 @@ const Navbar = () => {
                                             <LocalLink
                                                 onClick={close}
                                                 className={clsx(
-                                                    'font-semibold text-xl',
-                                                    { 'font-bold underline text-[#00FFB2]': isActive(item.href) }
+                                                    MOBILE_LINK_BASE,
+                                                    { [MOBILE_ACTIVE_CLASS]: isActive(item.href) }
                                                 )}
                                                 href={item.href}
                                             >
@@ -124,7 +152,7 @@ const Navbar = () => {
                             <LocalLink
                                 href='/contact'
                                 target='_blank'
-                                className='block w-fit bg-gradient-to-b from-[#268F79] to-[#0B2923] px-5 py-4 rounded-md'
+                                className='block w-fit bg-gradient-to-b from-[#1E7D67] to-[#0B2923] px-5 py-4 rounded-md'
                             >
                                 <span className='text-[#00FFB2] font-bold'>{t('btn')}</span>
                             </LocalLink>
