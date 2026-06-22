@@ -24,7 +24,7 @@ const SocialMedia = () => {
         },
     ]
     return (
-        <div className='fixed right-10 bottom-10 md:bottom-14 z-[999] hidden sm:block'>
+        <div className='fixed right-7 bottom-20 md:bottom-24 z-[999] hidden sm:block'>
             <div className='group space-y-3 transition duration-200'>
                 <div className='hidden group-hover:block space-y-2'>
                     {socailMedia.map((socail => {
