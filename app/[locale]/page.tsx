@@ -26,8 +26,8 @@ export async function generateMetadata({ params: { locale } }: { params: { local
       ? "الشركة الوطنية لهندسة البرمجيات | برمجة مواقع وتطبيقات مصر والخليج"
       : "N.I.T Egypt | Moodle LMS & eCommerce App Development Since 2013",
     description: isAr
-      ? "الشركة الوطنية لهندسة البرمجيات وتكنولوجيا المعلومات — أفضل شركة برمجة في مصر. متخصصون في تطوير منصات Moodle التعليمية، تطبيقات التجارة الإلكترونية، وتصميم المواقع لمصر والخليج منذ 2013."
-      : "Egypt's leading software company specializing in Moodle LMS platforms and eCommerce app development for Egypt and Gulf markets. 100+ projects, 12+ years experience since 2013.",
+      ? "الشركة الوطنية لهندسة البرمجيات وتكنولوجيا المعلومات — أفضل شركة برمجة في مصر. نطوّر منصات Moodle التعليمية، تطبيقات التوصيل والمطاعم، المتاجر الإلكترونية، وأنظمة ولاء العملاء لمصر والخليج منذ 2013."
+      : "Egypt's leading software company building Moodle LMS platforms, delivery & restaurant apps, eCommerce stores and customer loyalty systems for Egypt and the Gulf. 100+ projects, 12+ years since 2013.",
     alternates: {
       canonical: `https://nitg-eg.com/${locale}`,
       languages: { ar: "https://nitg-eg.com/ar", en: "https://nitg-eg.com/en" },

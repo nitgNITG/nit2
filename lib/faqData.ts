@@ -6,7 +6,7 @@
 // user actually sees — a requirement for valid FAQ rich results.
 
 export type FAQ = { q: string; a: string }
-export type FAQPageKey = 'home' | 'moodle' | 'ecommerce'
+export type FAQPageKey = 'home' | 'moodle' | 'ecommerce' | 'delivery' | 'restaurant' | 'loyalty'
 
 export const FAQS: Record<FAQPageKey, { ar: FAQ[]; en: FAQ[] }> = {
 
@@ -69,6 +69,14 @@ export const FAQS: Record<FAQPageKey, { ar: FAQ[]; en: FAQ[] }> = {
                 q: 'هل Moodle مناسب للجامعات في السعودية والخليج؟',
                 a: 'نعم، نفذنا منصات Moodle للجامعات والمؤسسات التعليمية في السعودية والإمارات وقطر والكويت. نفهم متطلبات السوق الخليجي واشتراطات وزارات التعليم.',
             },
+            {
+                q: 'كم تكلفة إنشاء منصة تعليمية؟',
+                a: 'تختلف تكلفة إنشاء منصة تعليمية حسب عدد المستخدمين والمميزات (تطبيق جوال، بث مباشر، اختبارات، تكامل أنظمة). نقدم باقات مرنة تبدأ من إعداد منصة Moodle أساسية وحتى منصة مخصصة كاملة — تواصل معنا لعرض سعر مفصّل خلال 24 ساعة.',
+            },
+            {
+                q: 'كيف أنشئ منصة تعليمية إلكترونية لمدرستي أو جامعتي؟',
+                a: 'نتولى عنك كل خطوات إنشاء المنصة التعليمية: تحليل احتياجك، إعداد وتخصيص Moodle، تصميم الواجهة بالعربية RTL، إضافة المقررات وأنظمة الاختبارات والشهادات، تطبيق جوال iOS وAndroid، ثم الاستضافة والتدريب والدعم.',
+            },
         ],
         en: [
             {
@@ -86,6 +94,14 @@ export const FAQS: Record<FAQPageKey, { ar: FAQ[]; en: FAQ[] }> = {
             {
                 q: 'Is Moodle suitable for universities in Saudi Arabia and the Gulf?',
                 a: 'Yes, we have delivered Moodle platforms for universities and educational institutions in Saudi Arabia, UAE, Qatar and Kuwait. We understand Gulf market requirements and Ministry of Education standards.',
+            },
+            {
+                q: 'How much does it cost to build an e-learning platform?',
+                a: 'The cost of building an e-learning platform depends on the number of users and features (mobile app, live streaming, quizzes, integrations). We offer flexible packages from a basic Moodle setup to a fully custom platform — contact us for a detailed quote within 24 hours.',
+            },
+            {
+                q: 'How do I create an e-learning platform for my school or university?',
+                a: 'We handle every step: analyzing your needs, installing and customizing Moodle, designing the Arabic RTL interface, adding courses, quizzes and certificates, building iOS & Android apps, then hosting, training and support.',
             },
         ],
     },
@@ -112,6 +128,10 @@ export const FAQS: Record<FAQPageKey, { ar: FAQ[]; en: FAQ[] }> = {
                 q: 'هل تدعمون multi-vendor (متعدد البائعين)؟',
                 a: 'نعم، نطور منصات تجارة إلكترونية multi-vendor (مثل أمازون وجملة) تتيح لعدة بائعين البيع على نفس المنصة مع لوحة تحكم مستقلة لكل بائع.',
             },
+            {
+                q: 'كم تكلفة تصميم متجر إلكتروني احترافي؟',
+                a: 'تعتمد تكلفة تصميم متجر إلكتروني على نوعه (متجر فردي أم متعدد التجار)، المميزات، وبوابات الدفع والشحن المطلوبة. نقدم باقات تناسب المشاريع الناشئة والمؤسسات — تواصل معنا لعرض سعر مفصّل خلال 24 ساعة.',
+            },
         ],
         en: [
             {
@@ -137,6 +157,143 @@ export const FAQS: Record<FAQPageKey, { ar: FAQ[]; en: FAQ[] }> = {
             {
                 q: 'Do you support multi-vendor eCommerce?',
                 a: 'Yes, we develop multi-vendor eCommerce platforms (like Amazon or Jumia) that allow multiple sellers on the same platform, each with their own independent dashboard.',
+            },
+        ],
+    },
+
+    delivery: {
+        ar: [
+            {
+                q: 'هل تطوّرون تطبيقات توصيل مثل مرسول وهنقرستيشن وجاهز؟',
+                a: 'نعم، نطوّر تطبيقات توصيل طلبات متكاملة مشابهة لمرسول وهنقرستيشن وجاهز، تشمل تطبيق العميل وتطبيق السائق ولوحة تحكم إدارية، مع تتبع مباشر للطلب على الخريطة.',
+            },
+            {
+                q: 'هل يشمل التطبيق تطبيقاً خاصاً للسائق؟',
+                a: 'نعم، نسلّم منظومة من ثلاثة أطراف: تطبيق للعميل لطلب الخدمة، تطبيق للسائق لاستلام وتوصيل الطلبات، ولوحة تحكم ويب لإدارة الطلبات والسائقين والعمولات.',
+            },
+            {
+                q: 'هل يمكن للتطبيق توصيل أكثر من نوع (طعام، بقالة، صيدلية)؟',
+                a: 'نعم، نطوّر تطبيقات توصيل متعددة الخدمات والفئات تجمع الطعام والبقالة والصيدلية والتوريدات في تطبيق واحد مع بائعين متعددين.',
+            },
+            {
+                q: 'هل تدعمون الدفع الإلكتروني ومحافظ السائقين؟',
+                a: 'نعم، ندعم مدى وSTC Pay وKNET وفوري والدفع عند الاستلام، مع نظام محافظ للسائقين وتسوية تلقائية للأرباح.',
+            },
+            {
+                q: 'كم تكلفة تطبيق توصيل مثل هنقرستيشن أو مرسول؟',
+                a: 'تختلف تكلفة تطبيق التوصيل حسب عدد التطبيقات (عميل، سائق، تاجر)، نوع الخدمة (توصيل طلبات أو ركاب)، والمميزات مثل التتبع المباشر وبوابات الدفع. نبني نسخة أولية (MVP) قابلة للتوسّع — تواصل معنا لعرض سعر مفصّل.',
+            },
+        ],
+        en: [
+            {
+                q: 'Do you build delivery apps like Mrsool, HungerStation and Jahez?',
+                a: 'Yes, we build complete delivery apps similar to Mrsool, HungerStation and Jahez — including a customer app, a driver app, and an admin dashboard, with live map order tracking.',
+            },
+            {
+                q: 'Does the solution include a dedicated driver app?',
+                a: 'Yes, we deliver a 3-sided system: a customer ordering app, a driver app to accept and deliver orders, and a web admin dashboard to manage orders, drivers and commissions.',
+            },
+            {
+                q: 'Can one app deliver multiple categories (food, grocery, pharmacy)?',
+                a: 'Yes, we build multi-service, multi-category delivery apps that combine food, groceries, pharmacy and supplies in a single app with multiple vendors.',
+            },
+            {
+                q: 'Do you support online payments and driver wallets?',
+                a: 'Yes, we support Mada, STC Pay, KNET, Fawry and cash on delivery, with a driver wallet system and automated earnings settlement.',
+            },
+            {
+                q: 'How much does a delivery app like HungerStation or Mrsool cost?',
+                a: 'The cost depends on the number of apps (customer, driver, merchant), the service type (parcel or ride-hailing) and features like live tracking and payment gateways. We build a scalable MVP first — contact us for a detailed quote.',
+            },
+        ],
+    },
+
+    restaurant: {
+        ar: [
+            {
+                q: 'هل تطوّرون تطبيق طلبات باسم مطعمي الخاص؟',
+                a: 'نعم، نطوّر تطبيق طلب ودليفري بهوية مطعمك على Google Play وApp Store، بحيث تمتلك عملاءك مباشرة دون عمولات تطبيقات الوسطاء.',
+            },
+            {
+                q: 'هل يشمل النظام نقاط بيع POS وإدارة المطبخ؟',
+                a: 'نعم، يشمل النظام نقاط بيع للكاشير، شاشة عرض طلبات للمطبخ، وإدارة الطاولات والفروع، بالإضافة إلى تطبيق العملاء.',
+            },
+            {
+                q: 'هل يدعم التطبيق الطلب داخل الصالة والتيك أواي والتوصيل؟',
+                a: 'نعم، يدير النظام الطلب داخل الصالة عبر QR، والتيك أواي، والتوصيل للمنزل من منصة واحدة.',
+            },
+            {
+                q: 'هل يناسب النظام المطاعم متعددة الفروع؟',
+                a: 'نعم، نطوّر أنظمة مطاعم متعددة الفروع مع قوائم وأسعار وتقارير مستقلة لكل فرع من لوحة تحكم موحدة.',
+            },
+            {
+                q: 'كم تكلفة تصميم و برمجة تطبيق مطعم؟',
+                a: 'تعتمد تكلفة تطبيق المطعم على المميزات المطلوبة: تطبيق طلب فقط، أم منظومة كاملة بنقاط بيع وإدارة فروع ومطبخ. نقدم باقات مرنة باسم مطعمك — تواصل معنا لعرض سعر مفصّل خلال 24 ساعة.',
+            },
+        ],
+        en: [
+            {
+                q: 'Do you build an ordering app under my own restaurant brand?',
+                a: 'Yes, we build a branded ordering & delivery app on Google Play and the App Store so you own your customers directly, without aggregator commissions.',
+            },
+            {
+                q: 'Does the system include POS and kitchen management?',
+                a: 'Yes, it includes a cashier POS, a kitchen display for orders, and table/branch management, alongside the customer app.',
+            },
+            {
+                q: 'Does the app support dine-in, takeaway and delivery?',
+                a: 'Yes, the system handles dine-in QR ordering, takeaway pickup, and home delivery from a single platform.',
+            },
+            {
+                q: 'Is the system suitable for multi-branch restaurants?',
+                a: 'Yes, we build multi-branch restaurant systems with per-branch menus, pricing and reports from one unified dashboard.',
+            },
+        ],
+    },
+
+    loyalty: {
+        ar: [
+            {
+                q: 'ما هو نظام ولاء العملاء وكيف يفيد نشاطي؟',
+                a: 'نظام ولاء العملاء هو تطبيق يكافئ عملاءك بنقاط وعروض مقابل مشترياتهم وتفاعلهم، مما يزيد تكرار الشراء ويحوّل العملاء العابرين إلى عملاء دائمين.',
+            },
+            {
+                q: 'هل يدعم النظام النقاط والكوبونات وبطاقات العضوية؟',
+                a: 'نعم، نطوّر محرك نقاط ومكافآت مرن مع كوبونات خصم، مستويات عضوية، وبطاقات عضوية رقمية بـ QR/باركود يمسحها العميل في المتجر.',
+            },
+            {
+                q: 'هل يمكن ربط نظام الولاء بنقاط البيع أو متجري الإلكتروني؟',
+                a: 'نعم، نربط النظام بنقاط البيع أو المتجر الإلكتروني لاحتساب النقاط تلقائياً عند كل عملية شراء.',
+            },
+            {
+                q: 'هل يصلح نظام الولاء للمطاعم والمتاجر والصالونات؟',
+                a: 'نعم، نظام الولاء يناسب أي نشاط يريد عملاء يعودون: المتاجر، المطاعم، الكافيهات، الصالونات، الأندية، ومحطات الخدمة.',
+            },
+            {
+                q: 'ما أنواع أنظمة الولاء التي تطوّرونها؟',
+                a: 'نطوّر مختلف أنواع أنظمة الولاء: برامج النقاط والمكافآت، أنظمة الكاش باك، بطاقات العضوية ومستوياتها (Tiers)، الكوبونات والعروض، وبرامج الإحالة — مع لوحة تحليلات ودعم السوق السعودي والمصري والخليجي.',
+            },
+        ],
+        en: [
+            {
+                q: 'What is a customer loyalty system and how does it help my business?',
+                a: 'A customer loyalty system is an app that rewards your customers with points and offers for their purchases and engagement, increasing repeat purchases and turning one-time buyers into regulars.',
+            },
+            {
+                q: 'Does the system support points, coupons and membership cards?',
+                a: 'Yes, we build a flexible points & rewards engine with discount coupons, membership tiers, and QR/barcode digital membership cards customers scan in-store.',
+            },
+            {
+                q: 'Can the loyalty system integrate with my POS or online store?',
+                a: 'Yes, we connect the system to your POS or online store so points are earned automatically on every purchase.',
+            },
+            {
+                q: 'Is a loyalty system suitable for restaurants, retail and salons?',
+                a: 'Yes, a loyalty system fits any business that wants returning customers: retail stores, restaurants, cafés, salons, gyms and service stations.',
+            },
+            {
+                q: 'What types of loyalty systems do you build?',
+                a: 'We build all types of loyalty systems: points & rewards programs, cashback systems, tiered membership cards, coupons & offers, and referral programs — with an analytics dashboard and support for the Saudi, Egyptian and Gulf markets.',
             },
         ],
     },

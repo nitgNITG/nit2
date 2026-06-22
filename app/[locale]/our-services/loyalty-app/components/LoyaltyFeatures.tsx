@@ -1,0 +1,109 @@
+import React from 'react'
+import { getLocale } from 'next-intl/server'
+import Image from 'next/image'
+import service from '../../../../assets/services.webp'
+import clsx from 'clsx'
+import LocaleLink from '../../../components/LocaleLink'
+
+const features = [
+    {
+        id: 1,
+        title: 'Points & Rewards Engine',
+        titleAr: 'محرك النقاط والمكافآت',
+        desc: 'Flexible rules to earn and redeem points, tiers, cashback and reward catalogs.',
+        descAr: 'قواعد مرنة لكسب واستبدال النقاط، مستويات العضوية، كاش باك، وكتالوج مكافآت.',
+    },
+    {
+        id: 2,
+        title: 'Digital Membership Cards',
+        titleAr: 'بطاقات عضوية رقمية',
+        desc: 'QR/barcode digital cards customers scan in-store — no plastic cards needed.',
+        descAr: 'بطاقات رقمية بـ QR/باركود يمسحها العميل في المتجر — بدون بطاقات بلاستيكية.',
+    },
+    {
+        id: 3,
+        title: 'Coupons & Targeted Offers',
+        titleAr: 'الكوبونات والعروض الموجهة',
+        desc: 'Create coupons and segment-based offers, with push notifications to drive return visits.',
+        descAr: 'إنشاء كوبونات وعروض حسب شرائح العملاء، مع إشعارات لتحفيز الزيارات المتكررة.',
+    },
+    {
+        id: 4,
+        title: 'Community & Referrals',
+        titleAr: 'الإحالات والمجتمع',
+        desc: 'Referral rewards and community features that turn customers into promoters.',
+        descAr: 'مكافآت الإحالة وميزات مجتمعية تحوّل العملاء إلى مسوّقين لك.',
+    },
+    {
+        id: 5,
+        title: 'Analytics & CRM Dashboard',
+        titleAr: 'لوحة تحليلات وCRM',
+        desc: 'Track customer behavior, lifetime value and campaign performance in one dashboard.',
+        descAr: 'تتبّع سلوك العملاء والقيمة الدائمة وأداء الحملات من لوحة تحكم واحدة.',
+    },
+]
+
+const LoyaltyFeatures = async () => {
+    const isAr = (await getLocale()) === 'ar'
+
+    return (
+        <section className='bg-[#F2F3FA] py-10 p-container'>
+            <div className='grid grid-cols-12 space-y-10'>
+                <div className='col-span-12 lg:col-span-6 flex items-center h-full'>
+                    <div className='w-full lg:px-10 py-5'>
+                        <Image
+                            src={service}
+                            alt='Customer Loyalty App Development'
+                            loading='lazy'
+                            width={1000}
+                            height={1000}
+                            className='w-full h-full'
+                        />
+                    </div>
+                </div>
+                <div className='col-span-12 lg:col-span-6'>
+                    <div className='space-y-10'>
+                        <div className='space-y-3'>
+                            <p className={clsx('text-sm text-gray-500', isAr ? 'text-right' : 'text-left')}>
+                                {isAr ? 'Loyalty · ولاء' : 'Loyalty · Rewards'}
+                            </p>
+                            <div className={clsx('flex -space-x-5 lg:-space-x-8 items-center', isAr ? 'justify-end' : 'justify-start flex-row-reverse')}>
+                                <div className='z-10'>
+                                    <h2 className='text-2xl md:text-3xl font-bold text-shadow'>
+                                        {isAr
+                                            ? <>تطوير برامج <span className='text-darkAquaMint'>الولاء</span></>
+                                            : <>Loyalty <span className='text-darkAquaMint'>Program</span> Development</>}
+                                    </h2>
+                                </div>
+                                <div className='size-12 md:size-14 rotate-45 rounded-lg bg-aquaMint border-2 border-black' />
+                            </div>
+                        </div>
+                        <ul>
+                            {features.map((feature, i) => (
+                                <li
+                                    key={feature.id}
+                                    className={clsx('px-10 py-3', { 'bg-white rounded-xl': i === 0 })}
+                                >
+                                    <div className={clsx('flex items-center gap-3', isAr ? 'justify-end' : 'justify-start flex-row-reverse')}>
+                                        <div className={clsx('flex flex-col gap-1', isAr ? 'items-end' : 'items-start')}>
+                                            <h3 className={clsx('text-base font-bold', isAr ? 'text-right' : 'text-left')}>{isAr ? feature.titleAr : feature.title}</h3>
+                                            <p className={clsx('text-sm text-gray-500 lg:w-10/12', isAr ? 'text-right' : 'text-left')}>{isAr ? feature.descAr : feature.desc}</p>
+                                        </div>
+                                        <div className='text-[88px] bg-clip-text text-transparent bg-gradient-to-b from-[#00FFCD] to-[#00997a9c] flex-shrink-0'>{i + 1}</div>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                        <div className={clsx('flex', isAr ? 'justify-end' : 'justify-start')}>
+                            <LocaleLink href='/contact' target='_blank' className='bg-gradient-to-r from-[#268F79] to-[#0B2923] px-5 py-3 rounded-md'>
+                                <span className='text-[#00FFB2] font-bold'>{isAr ? 'ابدأ مشروعك الآن' : 'Start Your Project'}</span>
+                            </LocaleLink>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    )
+}
+
+export default LoyaltyFeatures

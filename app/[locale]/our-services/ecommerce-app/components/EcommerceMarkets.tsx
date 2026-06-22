@@ -1,52 +1,50 @@
 import React from 'react'
-import LocaleLink from '../../components/LocaleLink'
+import LocaleLink from '../../../components/LocaleLink'
 
 const EG_CLIENTS = [
-    { icon: '🏛️', ar: 'الجامعات والكليات المصرية', en: 'Egyptian Universities & Colleges' },
-    { icon: '🏫', ar: 'المدارس الخاصة والدولية', en: 'Private & International Schools' },
-    { icon: '🏢', ar: 'مراكز التدريب والتطوير', en: 'Training & Development Centers' },
-    { icon: '🏗️', ar: 'الشركات الكبرى — تدريب الموظفين', en: 'Large Enterprises — Staff Training' },
-    { icon: '📋', ar: 'الهيئات الحكومية المصرية', en: 'Egyptian Government Bodies' },
-    { icon: '📚', ar: 'أكاديميات التعليم الإلكتروني', en: 'E-Learning Academies' },
+    { icon: '🛍️', ar: 'تجار التجزئة والبازارات', en: 'Retail Merchants & Bazaars' },
+    { icon: '🏪', ar: 'محلات البيع الإلكتروني', en: 'Online Shops & Boutiques' },
+    { icon: '🏭', ar: 'المصانع والموردون', en: 'Factories & Wholesalers' },
+    { icon: '🍕', ar: 'مطاعم وطلبات الطعام', en: 'Restaurants & Food Delivery' },
+    { icon: '💊', ar: 'الصيدليات والمنتجات الصحية', en: 'Pharmacies & Health Products' },
+    { icon: '🏬', ar: 'منصات Multi-vendor', en: 'Multi-vendor Marketplaces' },
 ];
 
 const GULF_CLIENTS = [
-    { icon: '🏛️', ar: 'الجامعات الخليجية والعربية', en: 'Gulf & Arab Universities' },
-    { icon: '🛢️', ar: 'شركات النفط والطاقة', en: 'Oil, Gas & Energy Companies' },
-    { icon: '🏦', ar: 'البنوك والمؤسسات المالية', en: 'Banks & Financial Institutions' },
-    { icon: '🏥', ar: 'القطاع الصحي والمستشفيات', en: 'Healthcare & Hospitals' },
-    { icon: '🏗️', ar: 'شركات المقاولات والإنشاءات', en: 'Construction & Engineering Firms' },
-    { icon: '📋', ar: 'وزارات وجهات حكومية خليجية', en: 'Gulf Ministries & Government Bodies' },
+    { icon: '🛢️', ar: 'متاجر المواد والمعدات الصناعية', en: 'Industrial Goods & Equipment Stores' },
+    { icon: '💎', ar: 'متاجر المجوهرات والفاخرة', en: 'Jewelry & Luxury Goods Stores' },
+    { icon: '🏗️', ar: 'متاجر مواد البناء', en: 'Building Materials Stores' },
+    { icon: '👗', ar: 'الأزياء والملابس', en: 'Fashion & Clothing' },
+    { icon: '🔌', ar: 'الإلكترونيات والأجهزة', en: 'Electronics & Gadgets' },
+    { icon: '🏬', ar: 'منصات Multivendor الخليجية', en: 'Gulf Multivendor Platforms' },
 ];
 
 const FEATURES_COMMON = [
-    { icon: '🌐', ar: 'دعم عربي كامل RTL', en: 'Full Arabic RTL Support' },
     { icon: '📱', ar: 'تطبيق iOS وAndroid', en: 'iOS & Android App' },
-    { icon: '🎥', ar: 'بث مباشر وفيديو', en: 'Live Streaming & Video' },
-    { icon: '📝', ar: 'اختبارات وشهادات إلكترونية', en: 'Quizzes & E-Certificates' },
-    { icon: '💳', ar: 'بوابات الدفع الخليجية والمصرية', en: 'Gulf & Egyptian Payment Gateways' },
-    { icon: '🔌', ar: 'تكامل مع Zoom وMicrosoft Teams', en: 'Zoom & Microsoft Teams Integration' },
+    { icon: '💳', ar: 'مدى / STC Pay / KNET / Fawry', en: 'Mada / STC Pay / KNET / Fawry' },
+    { icon: '🚚', ar: 'تكامل مع شركات الشحن', en: 'Shipping Companies Integration' },
+    { icon: '🌐', ar: 'دعم عربي وإنجليزي', en: 'Arabic & English Support' },
+    { icon: '📊', ar: 'لوحة تحكم المبيعات', en: 'Sales Dashboard & Analytics' },
+    { icon: '🏬', ar: 'نظام Multi-vendor اختياري', en: 'Optional Multi-vendor System' },
 ];
 
-const MoodleMarkets = () => {
+const EcommerceMarkets = () => {
     return (
         <section className='py-16 bg-gray-50'>
             <div className='p-container space-y-12'>
 
-                {/* Heading */}
                 <div className='text-center space-y-3'>
                     <span className='inline-block text-xs font-semibold tracking-widest uppercase text-[#268F79] border border-[#268F79]/30 px-4 py-1.5 rounded-full bg-[#268F79]/5'>
                         نخدم مصر والخليج
                     </span>
                     <h2 className='text-2xl md:text-3xl font-bold text-[#0B2923]'>
-                        من يستفيد من منصة Moodle؟
+                        من يستفيد من متجر إلكتروني؟
                     </h2>
                     <p className='text-gray-500 max-w-xl mx-auto text-sm'>
-                        سواء كنت في القاهرة أو الرياض أو دبي — لدينا منصة Moodle جاهزة لسوقك ومتطلباتك
+                        من القاهرة إلى الرياض — نبني متاجر إلكترونية وتطبيقات جوال تناسب سوقك
                     </p>
                 </div>
 
-                {/* Two columns: Egypt + Gulf */}
                 <div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
 
                     {/* Egypt */}
@@ -96,7 +94,7 @@ const MoodleMarkets = () => {
 
                 {/* Common features strip */}
                 <div className='bg-[#0B2923] rounded-2xl p-6 md:p-8'>
-                    <h3 className='text-white font-bold text-center text-lg mb-6'>كل منصة تشمل بالأساس</h3>
+                    <h3 className='text-white font-bold text-center text-lg mb-6'>كل متجر يشمل بالأساس</h3>
                     <div className='grid grid-cols-2 md:grid-cols-3 gap-4'>
                         {FEATURES_COMMON.map((f, i) => (
                             <div key={i} className='flex items-center gap-2'>
@@ -117,4 +115,4 @@ const MoodleMarkets = () => {
     )
 }
 
-export default MoodleMarkets
+export default EcommerceMarkets

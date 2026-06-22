@@ -1,20 +1,20 @@
 'use client'
 import React, { useEffect, useState } from 'react'
 import axios from 'axios'
-import LocaleLink from '../../components/LocaleLink'
+import LocaleLink from '../../../components/LocaleLink'
 import { useLocale } from 'next-intl'
 
 const WHATSAPP_NUMBER = '+201091568240'
-const WHATSAPP_MSG = encodeURIComponent('مرحباً، أريد الاستفسار عن تطوير منصة Moodle')
+const WHATSAPP_MSG = encodeURIComponent('مرحباً، أريد الاستفسار عن تطوير تطبيق توصيل')
 
-const MoodlePricing = () => {
+const DeliveryPricing = () => {
     const locale = useLocale()
     const isAr = locale === 'ar'
     const [plans, setPlans] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        axios.get('/api/plans?service=moodle')
+        axios.get('/api/plans?service=ecommerce')
             .then(r => setPlans(r.data.plans ?? []))
             .catch(() => {})
             .finally(() => setLoading(false))
@@ -32,7 +32,7 @@ const MoodlePricing = () => {
                         {isAr ? 'الأسعار' : 'Pricing'}
                     </span>
                     <h2 className='text-2xl md:text-3xl font-bold text-[#0B2923]'>
-                        {isAr ? 'باقات تطوير منصة Moodle' : 'Moodle Platform Packages'}
+                        {isAr ? 'باقات تطبيقات التوصيل' : 'Delivery App Packages'}
                     </h2>
                     <p className='text-gray-500 text-sm'>
                         {isAr
@@ -51,11 +51,9 @@ const MoodlePricing = () => {
                                 </div>
                             )}
                             <div className='p-6 flex-1 space-y-4'>
-                                <div>
-                                    <h3 className='font-bold text-lg text-[#0B2923]'>
-                                        {isAr ? plan.nameAr : plan.nameEn}
-                                    </h3>
-                                </div>
+                                <h3 className='font-bold text-lg text-[#0B2923]'>
+                                    {isAr ? plan.nameAr : plan.nameEn}
+                                </h3>
                                 <div className='text-3xl font-bold text-[#268F79]'>
                                     {plan.price.toLocaleString()}
                                     <span className='text-base font-normal text-gray-400 mr-1'> {plan.currency}</span>
@@ -98,4 +96,4 @@ const MoodlePricing = () => {
     )
 }
 
-export default MoodlePricing
+export default DeliveryPricing

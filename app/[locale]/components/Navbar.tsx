@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { CloseIcon, Logo, MenuIcon } from './icons'
 import Link from 'next/link'
@@ -18,6 +18,45 @@ const Navbar = () => {
     const [mounted, setMounted] = useState(false)
     useEffect(() => { setMounted(true) }, [])
 
+    // Desktop "Services" dropdown. Rendered through a portal to <body> so it
+    // escapes the hero header's stacking context (z-10 + overflow-hidden) — a
+    // plain absolute panel paints *under* the next section otherwise.
+    const [servicesOpen, setServicesOpen] = useState(false)
+    const [ddPos, setDdPos] = useState<{ top: number; left?: number; right?: number }>({ top: 0 })
+    const ddBtnRef = useRef<HTMLButtonElement>(null)
+    const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    const openServices = () => {
+        if (closeTimer.current) clearTimeout(closeTimer.current)
+        setServicesOpen(true)
+    }
+    const closeServices = () => {
+        if (closeTimer.current) clearTimeout(closeTimer.current)
+        closeTimer.current = setTimeout(() => setServicesOpen(false), 140)
+    }
+
+    // Position the portaled panel from the trigger's live rect — measured after
+    // commit (layout settled) and kept in sync while open, so it always sits
+    // directly under the button regardless of scroll/resize.
+    useEffect(() => {
+        if (!servicesOpen) return
+        const update = () => {
+            const r = ddBtnRef.current?.getBoundingClientRect()
+            if (r) {
+                setDdPos(isAr
+                    ? { top: r.bottom, right: Math.max(8, window.innerWidth - r.right) }
+                    : { top: r.bottom, left: r.left })
+            }
+        }
+        update()
+        window.addEventListener('scroll', update, true)
+        window.addEventListener('resize', update)
+        return () => {
+            window.removeEventListener('scroll', update, true)
+            window.removeEventListener('resize', update)
+        }
+    }, [servicesOpen, isAr])
+
     // Replay the attention-grabbing logo flourish every time the visitor lands
     // on the home page (الرئيسية). Toggling off→on across two frames restarts
     // the CSS animation even when the Navbar instance is reused.
@@ -32,11 +71,24 @@ const Navbar = () => {
         return () => cancelAnimationFrame(id)
     }, [pathname, locale, isHome])
 
-    const items = [
+    // The 5 service landing pages live under a single "Services" dropdown so the
+    // desktop bar stays compact (6 top-level items) instead of overflowing.
+    const services = [
+        { name: t('item6'), href: '/our-services/moodle-lms' },
+        { name: t('item7'), href: '/our-services/ecommerce-app' },
+        { name: t('item8'), href: '/our-services/delivery-app' },
+        { name: t('item9'), href: '/our-services/restaurant-app' },
+        { name: t('item10'), href: '/our-services/loyalty-app' },
+    ]
+
+    type NavItem =
+        | { name: string; href: string }
+        | { name: string; children: { name: string; href: string }[] }
+
+    const items: NavItem[] = [
         { name: t('item1'), href: '/' },
         { name: t('item3'), href: '/our-projects' },
-        { name: t('item6'), href: '/moodle-lms' },
-        { name: t('item7'), href: '/ecommerce-app' },
+        { name: t('services'), children: services },
         { name: t('item4'), href: '/blog' },
         { name: t('item2'), href: '/who-us' },
         { name: t('item5'), href: '/contact' },
@@ -92,17 +144,41 @@ const Navbar = () => {
                         </Link>
                         <ul className='hidden lg:flex gap-1 items-center'>
                             {items.map((item) => (
-                                <li key={item.href}>
-                                    <LocalLink
-                                        className={clsx(
-                                            NAV_LINK_BASE,
-                                            { [ACTIVE_LINK_CLASS]: isActive(item.href) }
-                                        )}
-                                        href={item.href}
+                                'children' in item ? (
+                                    <li
+                                        key={item.name}
+                                        className='relative'
+                                        onMouseEnter={openServices}
+                                        onMouseLeave={closeServices}
                                     >
-                                        {item.name}
-                                    </LocalLink>
-                                </li>
+                                        <button
+                                            type='button'
+                                            ref={ddBtnRef}
+                                            aria-haspopup='true'
+                                            aria-expanded={servicesOpen}
+                                            className={clsx(
+                                                NAV_LINK_BASE,
+                                                'inline-flex items-center gap-1',
+                                                { [ACTIVE_LINK_CLASS]: item.children.some((c) => isActive(c.href)) }
+                                            )}
+                                        >
+                                            {item.name}
+                                            <span className={clsx('text-[10px] transition-transform duration-200', { 'rotate-180': servicesOpen })}>▾</span>
+                                        </button>
+                                    </li>
+                                ) : (
+                                    <li key={item.href}>
+                                        <LocalLink
+                                            className={clsx(
+                                                NAV_LINK_BASE,
+                                                { [ACTIVE_LINK_CLASS]: isActive(item.href) }
+                                            )}
+                                            href={item.href}
+                                        >
+                                            {item.name}
+                                        </LocalLink>
+                                    </li>
+                                )
                             ))}
                         </ul>
                     </div>
@@ -149,18 +225,43 @@ const Navbar = () => {
                             <div className='pt-20'>
                                 <ul className='text-white text-center space-y-8'>
                                     {items.map((item) => (
-                                        <li key={item.href}>
-                                            <LocalLink
-                                                onClick={close}
-                                                className={clsx(
-                                                    MOBILE_LINK_BASE,
-                                                    { [MOBILE_ACTIVE_CLASS]: isActive(item.href) }
-                                                )}
-                                                href={item.href}
-                                            >
-                                                {item.name}
-                                            </LocalLink>
-                                        </li>
+                                        'children' in item ? (
+                                            <li key={item.name} className='space-y-4'>
+                                                <span className='block text-[#00FFB2]/60 text-sm font-bold uppercase tracking-widest'>
+                                                    {item.name}
+                                                </span>
+                                                <ul className='space-y-5'>
+                                                    {item.children.map((c) => (
+                                                        <li key={c.href}>
+                                                            <LocalLink
+                                                                onClick={close}
+                                                                className={clsx(
+                                                                    MOBILE_LINK_BASE,
+                                                                    'text-lg',
+                                                                    { [MOBILE_ACTIVE_CLASS]: isActive(c.href) }
+                                                                )}
+                                                                href={c.href}
+                                                            >
+                                                                {c.name}
+                                                            </LocalLink>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </li>
+                                        ) : (
+                                            <li key={item.href}>
+                                                <LocalLink
+                                                    onClick={close}
+                                                    className={clsx(
+                                                        MOBILE_LINK_BASE,
+                                                        { [MOBILE_ACTIVE_CLASS]: isActive(item.href) }
+                                                    )}
+                                                    href={item.href}
+                                                >
+                                                    {item.name}
+                                                </LocalLink>
+                                            </li>
+                                        )
                                     ))}
                                 </ul>
                             </div>
@@ -175,6 +276,35 @@ const Navbar = () => {
                                 <span className='text-[#00FFB2] font-bold'>{t('btn')}</span>
                             </LocalLink>
                         </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Desktop "Services" dropdown panel — portaled to <body> so it sits
+                above all page sections regardless of header stacking context */}
+            {mounted && servicesOpen && createPortal(
+                <div
+                    style={{ position: 'fixed', top: ddPos.top, left: ddPos.left, right: ddPos.right }}
+                    className='z-[9999] pt-2'
+                    onMouseEnter={openServices}
+                    onMouseLeave={closeServices}
+                >
+                    <div className='min-w-56 bg-white rounded-xl shadow-2xl ring-1 ring-black/5 p-2'>
+                        {services.map((c) => (
+                            <LocalLink
+                                key={c.href}
+                                href={c.href}
+                                onClick={() => setServicesOpen(false)}
+                                className={clsx(
+                                    'block px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors hover:bg-[#1E7D67]/5',
+                                    isActive(c.href) ? 'bg-[#1E7D67]/10 text-[#1E7D67]' : 'text-gray-700',
+                                    isAr ? 'text-right' : 'text-left'
+                                )}
+                            >
+                                {c.name}
+                            </LocalLink>
+                        ))}
                     </div>
                 </div>,
                 document.body

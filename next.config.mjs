@@ -2,8 +2,19 @@ import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin();
 
+// Service pages moved from /<locale>/<slug> to /<locale>/our-services/<slug>.
+// Permanent (301/308) redirects preserve existing Google rankings & backlinks.
+const MOVED_SERVICE_SLUGS = ['moodle-lms', 'ecommerce-app', 'delivery-app', 'restaurant-app', 'loyalty-app'];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    async redirects() {
+        return MOVED_SERVICE_SLUGS.map((slug) => ({
+            source: `/:locale(ar|en)/${slug}`,
+            destination: `/:locale/our-services/${slug}`,
+            permanent: true,
+        }));
+    },
     images: {
         // Serve AVIF first (50% smaller than WebP), fallback to WebP, then original
         formats: ['image/avif', 'image/webp'],

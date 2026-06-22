@@ -7,8 +7,11 @@ const locales = ["ar", "en"];
 const staticPages = [
     { path: "", priority: 1.0, changeFrequency: "weekly" as const },
     { path: "/our-projects", priority: 0.9, changeFrequency: "weekly" as const },
-    { path: "/moodle-lms", priority: 0.9, changeFrequency: "monthly" as const },
-    { path: "/ecommerce-app", priority: 0.9, changeFrequency: "monthly" as const },
+    { path: "/our-services/moodle-lms", priority: 0.9, changeFrequency: "monthly" as const },
+    { path: "/our-services/ecommerce-app", priority: 0.9, changeFrequency: "monthly" as const },
+    { path: "/our-services/delivery-app", priority: 0.9, changeFrequency: "monthly" as const },
+    { path: "/our-services/restaurant-app", priority: 0.9, changeFrequency: "monthly" as const },
+    { path: "/our-services/loyalty-app", priority: 0.9, changeFrequency: "monthly" as const },
     { path: "/blog", priority: 0.8, changeFrequency: "daily" as const },
     { path: "/who-us", priority: 0.7, changeFrequency: "monthly" as const },
     { path: "/contact", priority: 0.7, changeFrequency: "monthly" as const },

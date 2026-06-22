@@ -1,8 +1,9 @@
 import React from 'react'
+import { getLocale } from 'next-intl/server'
 import Image from 'next/image'
-import service from '../../../assets/services.webp'
+import service from '../../../../assets/services.webp'
 import clsx from 'clsx'
-import LocaleLink from '../../components/LocaleLink'
+import LocaleLink from '../../../components/LocaleLink'
 
 const features = [
     {
@@ -42,7 +43,9 @@ const features = [
     },
 ]
 
-const EcommerceFeatures = () => {
+const EcommerceFeatures = async () => {
+    const isAr = (await getLocale()) === 'ar'
+
     return (
         <section className='bg-[#F2F3FA] py-10 p-container'>
             <div className='grid grid-cols-12 space-y-10'>
@@ -61,11 +64,15 @@ const EcommerceFeatures = () => {
                 <div className='col-span-12 lg:col-span-6'>
                     <div className='space-y-10'>
                         <div className='space-y-3'>
-                            <p className='text-sm text-gray-500'>eCommerce · Mobile Apps · تجارة إلكترونية</p>
-                            <div className='flex -space-x-5 lg:-space-x-8 items-center justify-end'>
+                            <p className={clsx('text-sm text-gray-500', isAr ? 'text-right' : 'text-left')}>
+                                {isAr ? 'eCommerce · تجارة إلكترونية' : 'eCommerce · Mobile Apps'}
+                            </p>
+                            <div className={clsx('flex -space-x-5 lg:-space-x-8 items-center', isAr ? 'justify-end' : 'justify-start flex-row-reverse')}>
                                 <div className='z-10'>
                                     <h2 className='text-2xl md:text-3xl font-bold text-shadow'>
-                                        eCommerce <span className='text-darkAquaMint'>App</span> Development
+                                        {isAr
+                                            ? <>تطوير تطبيقات <span className='text-darkAquaMint'>التجارة الإلكترونية</span></>
+                                            : <>eCommerce <span className='text-darkAquaMint'>App</span> Development</>}
                                     </h2>
                                 </div>
                                 <div className='size-12 md:size-14 rotate-45 rounded-lg bg-aquaMint border-2 border-black' />
@@ -77,20 +84,19 @@ const EcommerceFeatures = () => {
                                     key={feature.id}
                                     className={clsx('px-10 py-3', { 'bg-white rounded-xl': i === 0 })}
                                 >
-                                    <div className='flex justify-end items-center gap-3'>
-                                        <div className='flex flex-col items-end gap-1'>
-                                            <h3 className='text-base font-bold text-right'>{feature.title}</h3>
-                                            <h3 className='text-sm font-semibold text-right text-gray-600'>{feature.titleAr}</h3>
-                                            <p className='text-sm text-right text-gray-500 lg:w-10/12'>{feature.desc}</p>
+                                    <div className={clsx('flex items-center gap-3', isAr ? 'justify-end' : 'justify-start flex-row-reverse')}>
+                                        <div className={clsx('flex flex-col gap-1', isAr ? 'items-end' : 'items-start')}>
+                                            <h3 className={clsx('text-base font-bold', isAr ? 'text-right' : 'text-left')}>{isAr ? feature.titleAr : feature.title}</h3>
+                                            <p className={clsx('text-sm text-gray-500 lg:w-10/12', isAr ? 'text-right' : 'text-left')}>{isAr ? feature.descAr : feature.desc}</p>
                                         </div>
                                         <div className='text-[88px] bg-clip-text text-transparent bg-gradient-to-b from-[#00FFCD] to-[#00997a9c] flex-shrink-0'>{i + 1}</div>
                                     </div>
                                 </li>
                             ))}
                         </ul>
-                        <div className='flex justify-end'>
+                        <div className={clsx('flex', isAr ? 'justify-end' : 'justify-start')}>
                             <LocaleLink href='/contact' target='_blank' className='bg-gradient-to-r from-[#268F79] to-[#0B2923] px-5 py-3 rounded-md'>
-                                <span className='text-[#00FFB2] font-bold'>ابدأ مشروعك الأن · Start Your Project</span>
+                                <span className='text-[#00FFB2] font-bold'>{isAr ? 'ابدأ مشروعك الآن' : 'Start Your Project'}</span>
                             </LocaleLink>
                         </div>
                     </div>

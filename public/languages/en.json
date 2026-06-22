@@ -7,17 +7,21 @@
         "item5": "Contact Us",
         "btn": "Start Your Project",
         "item6": "Moodle LMS",
-        "item7": "eCommerce"
+        "item7": "eCommerce",
+        "services": "Services",
+        "item8": "Delivery Apps",
+        "item9": "Restaurant Apps",
+        "item10": "Loyalty Systems"
     },
     "Header": {
         "title": {
-            "one": "AI-Powered EdTech, 3D Simulations",
-            "two": "& eCommerce Apps with N.I.T"
+            "one": "Software Company for App & Web Development in Egypt & the Gulf",
+            "two": "LMS Platforms, Delivery & Restaurant Apps, eCommerce & Loyalty Systems — N.I.T"
         },
         "subTitle": {
-            "start": "We build advanced educational apps — Moodle, AI, 3D Simulations",
-            "heroword": "for governments, universities & businesses",
-            "end": "Saudi Arabia • UAE • Qatar • Kuwait • Egypt — trusted government partner since 2013"
+            "start": "We build custom software: Moodle platforms, delivery & restaurant apps, online stores & loyalty systems",
+            "heroword": "for governments, businesses & stores",
+            "end": "Saudi Arabia • UAE • Qatar • Kuwait • Egypt — trusted partner since 2013"
         },
         "btn": "Get a Quote — within 24 Hours",
         "btnWa": "Free WhatsApp Consultation",

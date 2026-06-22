@@ -1,21 +1,16 @@
 import React from 'react'
-import Navbar from '../../components/Navbar'
-import CountUp from '../../components/CountUp'
+import { getLocale } from 'next-intl/server'
+import Navbar from '../../../components/Navbar'
 
-const EcommerceHeader = () => {
-    /* ── First-section background + length — toggle by swapping which line is commented ── */
-    // OLD (original — our_projects.jpg + deeper navy overlay):
-    // const HEADER_CONTAINER = 'relative overflow-hidden min-h-svh lg:min-h-[77svh] flex flex-col bg-[url("/our_projects.jpg")] bg-center bg-cover bg-no-repeat p-container'
-    // const HEADER_OVERLAY = 'linear-gradient(135deg, rgba(10,21,32,0.72) 0%, rgba(10,20,40,0.65) 50%, rgba(15,25,22,0.68) 100%)'
-    // NEW (matches "مشروعاتنا" / our-projects — same image, overlay & length):
+const LoyaltyHeader = async () => {
+    const isAr = (await getLocale()) === 'ar'
+
     const HEADER_CONTAINER = 'relative overflow-hidden min-h-svh lg:min-h-[77svh] flex flex-col bg-[url("/header_img.jpg")] bg-center bg-cover bg-no-repeat p-container'
     const HEADER_OVERLAY = 'linear-gradient(135deg, rgba(10,21,32,0.55) 0%, rgba(15,31,46,0.45) 50%, rgba(13,40,24,0.50) 100%)'
 
     return (
         <header>
             <div className={HEADER_CONTAINER}>
-
-                {/* Overlay */}
                 <div className='absolute inset-0' style={{ background: HEADER_OVERLAY }} />
 
                 <div className='absolute -top-10 -right-10 w-64 h-64 opacity-20 pointer-events-none'>
@@ -39,22 +34,23 @@ const EcommerceHeader = () => {
                         <div className='flex justify-center'>
                             <span className='inline-flex items-center gap-2 border border-[#268F79] text-[#00FFCD] text-xs font-semibold tracking-widest uppercase px-4 py-2 rounded-full bg-[#268F79]/10 backdrop-blur-sm'>
                                 <span className='w-1.5 h-1.5 rounded-full bg-[#00FFCD] animate-pulse' />
-                                eCommerce · تجارة إلكترونية
+                                {isAr ? 'نظام الولاء والنقاط' : 'Loyalty & Rewards'}
                             </span>
                         </div>
 
                         <div>
                             <h1 className='text-xl md:text-2xl lg:text-3xl 2xl:text-5xl font-bold leading-tight drop-shadow-lg'>
-                                <span className='text-white'>eCommerce Apps</span>
-                                <span className='block mt-2' style={{ color: '#00FFCD' }}>تطبيقات التجارة الإلكترونية</span>
+                                <span className='text-white'>Loyalty &amp; Rewards</span>
+                                <span className='block mt-2' style={{ color: '#00FFCD' }}>
+                                    {isAr ? 'أنظمة ولاء العملاء والنقاط' : 'Customer Loyalty App Development'}
+                                </span>
                             </h1>
                         </div>
 
-                        <p className='text-white/80 text-base md:text-lg font-medium max-w-xl mx-auto leading-relaxed drop-shadow'>
-                            تطبيقات متاجر إلكترونية حية على Google Play وApp Store — متعدد البائعين، نقاط بيع، وتكامل الدفع
-                        </p>
-                        <p className='text-white/60 text-sm max-w-xl mx-auto leading-relaxed'>
-                            Live shopping apps on Google Play & App Store — multivendor, POS & full payment integration
+                        <p className='text-white/80 text-base md:text-lg font-medium max-w-xl mx-auto leading-relaxed drop-shadow' dir={isAr ? 'rtl' : 'ltr'}>
+                            {isAr
+                                ? 'نطوّر برامج ولاء العملاء وأنظمة النقاط والمكافآت — تطبيقات تجمع نقاط، كوبونات، وعروض تُعيد العملاء وتزيد المبيعات'
+                                : 'Customer loyalty programs and points & rewards systems — apps with points, coupons and offers that bring customers back and grow sales'}
                         </p>
 
                         <div className='flex flex-wrap gap-8 justify-center pt-2'>
@@ -69,8 +65,8 @@ const EcommerceHeader = () => {
                             </div>
                             <div className='w-px bg-white/20 self-stretch' />
                             <div className='text-center'>
-                                <div className='text-lg md:text-xl 2xl:text-2xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={50} suffix="+" /></div>
-                                <div className='text-white/70 text-sm'>تطبيق ناجح</div>
+                                <div className='text-lg md:text-xl 2xl:text-2xl font-bold drop-shadow' style={{ color: '#00FFCD' }}>⭐</div>
+                                <div className='text-white/70 text-sm'>{isAr ? 'نقاط' : 'Points'}</div>
                             </div>
                         </div>
 
@@ -81,4 +77,4 @@ const EcommerceHeader = () => {
     )
 }
 
-export default EcommerceHeader
+export default LoyaltyHeader

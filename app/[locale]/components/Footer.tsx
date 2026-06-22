@@ -10,9 +10,26 @@ const Footer = () => {
     const locale = useLocale()
     const isAr = locale === 'ar'
 
-    const services = isAr
-        ? ["إنشاء منصة تعليمية", "تصميم متجر الكتروني", "تصميم موقع الكتروني لبيع المنتجات والخدمات", "دعم كامل لطرق الدفع الالكتروني", "تصميم مواقع انترنت", "تصميم ألعاب الكترونية", "خدمات ذوى الأعاقة"]
-        : ["E-Learning Platform Development", "eCommerce Store Design", "Website Design & Development", "Payment Gateway Integration", "Internet Website Design", "Educational Game Development", "Accessibility Services"]
+    // Service landing pages are linked; the rest stay as plain text labels.
+    const services: { label: string; href?: string }[] = isAr
+        ? [
+            { label: "إنشاء منصة تعليمية (Moodle)", href: "/our-services/moodle-lms" },
+            { label: "تطوير متجر وتطبيق تجارة إلكترونية", href: "/our-services/ecommerce-app" },
+            { label: "تطبيقات التوصيل وطلب الطعام", href: "/our-services/delivery-app" },
+            { label: "تطبيقات وأنظمة المطاعم", href: "/our-services/restaurant-app" },
+            { label: "أنظمة ولاء العملاء والنقاط", href: "/our-services/loyalty-app" },
+            { label: "تصميم مواقع انترنت" },
+            { label: "خدمات ذوى الأعاقة" },
+        ]
+        : [
+            { label: "E-Learning Platform Development", href: "/our-services/moodle-lms" },
+            { label: "eCommerce Store & App Development", href: "/our-services/ecommerce-app" },
+            { label: "Delivery & Food Ordering Apps", href: "/our-services/delivery-app" },
+            { label: "Restaurant Apps & Systems", href: "/our-services/restaurant-app" },
+            { label: "Customer Loyalty & Rewards", href: "/our-services/loyalty-app" },
+            { label: "Website Design & Development" },
+            { label: "Accessibility Services" },
+        ]
 
     return (
         <footer className='bg-[#0F1922] text-white p-container pt-10 lg:pt-20'>
@@ -37,10 +54,12 @@ const Footer = () => {
                     <span className='text-xl font-bold block'>{t('services')}</span>
                     <ul className='space-y-3'>
                         {services.map(item => (
-                            <li key={item}>
+                            <li key={item.label}>
                                 <div className={`flex gap-2 items-center ${isAr ? 'justify-end' : 'justify-start'}`}>
                                     {!isAr && <div className='size-1 bg-white flex-shrink-0' />}
-                                    <p className='font-medium'>{item}</p>
+                                    {item.href
+                                        ? <LocaleLink href={item.href} className='font-medium hover:text-[#00FFB2] transition-colors'>{item.label}</LocaleLink>
+                                        : <p className='font-medium'>{item.label}</p>}
                                     {isAr && <div className='size-1 bg-white flex-shrink-0' />}
                                 </div>
                             </li>

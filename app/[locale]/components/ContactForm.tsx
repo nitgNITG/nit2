@@ -112,53 +112,53 @@ const ContactForm = () => {
                     </div>
                 </div>
 
-                {/* ── Phone + Subject ──────────────────────── */}
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                    <div>
-                        <label className='space-y-2 block'>
-                            <span className='block font-bold text-sm'>{t('phone.label')} <span className='text-red-500'>*</span></span>
-                            <div className='flex gap-2' dir='ltr'>
-                                <select
-                                    value={dialCode}
-                                    onChange={e => setDialCode(e.target.value)}
-                                    className='py-2 rounded-lg outline-none px-2 bg-white border border-gray-200 text-sm font-semibold cursor-pointer flex-shrink-0'
-                                    style={{ minWidth: '100px' }}
-                                >
-                                    {COUNTRY_CODES.map(c => (
-                                        <option key={c.code} value={c.code}>
-                                            {c.flag} {c.code === 'other' ? t('phone.other') : c.code}
-                                        </option>
-                                    ))}
-                                </select>
-                                {dialCode === 'other' && (
-                                    <input
-                                        type='text'
-                                        value={customDial}
-                                        onChange={e => setCustomDial(e.target.value)}
-                                        placeholder='+??'
-                                        className='w-16 py-2 rounded-lg outline-none px-2 bg-white border border-gray-200 text-sm text-center'
-                                        dir='ltr'
-                                    />
-                                )}
+                {/* ── Phone ──────────────────────── */}
+                <div>
+                    <label className='space-y-2 block'>
+                        <span className='block font-bold text-sm'>{t('phone.label')} <span className='text-red-500'>*</span></span>
+                        <div className='flex gap-2' dir='ltr'>
+                            <select
+                                value={dialCode}
+                                onChange={e => setDialCode(e.target.value)}
+                                className='py-2 rounded-lg outline-none px-2 bg-white border border-gray-200 text-sm font-semibold cursor-pointer flex-shrink-0'
+                                style={{ minWidth: '100px' }}
+                            >
+                                {COUNTRY_CODES.map(c => (
+                                    <option key={c.code} value={c.code}>
+                                        {c.flag} {c.code === 'other' ? t('phone.other') : c.code}
+                                    </option>
+                                ))}
+                            </select>
+                            {dialCode === 'other' && (
                                 <input
-                                    className='flex-1 py-2 rounded-lg outline-none px-3 bg-white'
-                                    {...register('phone', { required: t('phone.error') })}
-                                    type='tel'
+                                    type='text'
+                                    value={customDial}
+                                    onChange={e => setCustomDial(e.target.value)}
+                                    placeholder='+??'
+                                    className='w-16 py-2 rounded-lg outline-none px-2 bg-white border border-gray-200 text-sm text-center'
                                     dir='ltr'
-                                    placeholder='5xxxxxxxx'
                                 />
-                            </div>
-                        </label>
-                        <ErrorMsg message={errors?.phone?.message as string} />
-                    </div>
-                    <div>
-                        <label className='space-y-2 block'>
-                            <span className='block font-bold text-sm'>{t('subject.label')} <span className='text-red-500'>*</span></span>
-                            <input className={clsx(inputCls, isAr ? 'text-right' : 'text-left')}
-                                {...register('subject', { required: t('subject.error') })} type='text' />
-                        </label>
-                        <ErrorMsg message={errors?.subject?.message as string} />
-                    </div>
+                            )}
+                            <input
+                                className='flex-1 min-w-0 py-2 rounded-lg outline-none px-3 bg-white'
+                                {...register('phone', { required: t('phone.error') })}
+                                type='tel'
+                                dir='ltr'
+                                placeholder='5xxxxxxxx'
+                            />
+                        </div>
+                    </label>
+                    <ErrorMsg message={errors?.phone?.message as string} />
+                </div>
+
+                {/* ── Subject ──────────────────────── */}
+                <div>
+                    <label className='space-y-2 block'>
+                        <span className='block font-bold text-sm'>{t('subject.label')} <span className='text-red-500'>*</span></span>
+                        <input className={clsx(inputCls, isAr ? 'text-right' : 'text-left')}
+                            {...register('subject', { required: t('subject.error') })} type='text' />
+                    </label>
+                    <ErrorMsg message={errors?.subject?.message as string} />
                 </div>
 
                 {/* ── Qualifying fields ────────────────────── */}

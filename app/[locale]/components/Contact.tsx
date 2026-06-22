@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import React from 'react'
-import phonIcon from '../../assets/phoneIcon.webp'
+import phonIcon from '../../assets/phoneIcon.gif'
 import ContactForm from './ContactForm'
 import { EmailIcon, LocationIcon, PhoneIcon, WhatsappIcon } from './icons'
 import { useTranslations } from 'next-intl'

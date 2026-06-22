@@ -17,9 +17,9 @@ export const metadata: Metadata = {
     template: "%s | N.I.T Egypt",
   },
   description:
-    "الشركة الوطنية لهندسة البرمجيات — متخصصون في تطوير منصات Moodle التعليمية وتطبيقات التجارة الإلكترونية لمصر والخليج منذ 2013. N.I.T Egypt: Moodle LMS & eCommerce app development since 2013.",
+    "الشركة الوطنية لهندسة البرمجيات — نطوّر منصات Moodle التعليمية، تطبيقات التوصيل والمطاعم، المتاجر الإلكترونية، وأنظمة ولاء العملاء لمصر والخليج منذ 2013. N.I.T Egypt: LMS, delivery, restaurant, eCommerce & loyalty app development since 2013.",
   keywords:
-    "برمجة مواقع مصر, تطوير تطبيقات, منصة مودل, تجارة إلكترونية, شركة برمجة مصر, Moodle LMS Egypt, eCommerce app development Egypt, software engineering Egypt, educational platform",
+    "برمجة مواقع مصر, تطوير تطبيقات جوال, منصة مودل, تجارة إلكترونية, تطبيق توصيل, تطبيق مطاعم, نظام ولاء العملاء, منصة متعددة البائعين, شركة برمجة مصر, Moodle LMS Egypt, delivery app development, restaurant app, customer loyalty app, eCommerce app development Egypt, software engineering Egypt",
   authors: [{ name: "N.I.T Egypt", url: "https://nitg-eg.com" }],
   creator: "N.I.T Egypt",
   publisher: "N.I.T Egypt",
@@ -77,6 +77,16 @@ export default async function LocaleLayout({
               url: "https://nitg-eg.com",
               logo: "https://nitg-eg.com/logo.svg",
               foundingDate: "2013",
+              knowsAbout: [
+                "Moodle LMS Development",
+                "E-Learning Platforms",
+                "eCommerce App Development",
+                "Multi-Vendor Marketplaces",
+                "Delivery App Development",
+                "Restaurant Apps & POS Systems",
+                "Customer Loyalty & Rewards Systems",
+                "Mobile App Development",
+              ],
               address: {
                 "@type": "PostalAddress",
                 streetAddress: "168 King Faisal Street",
@@ -105,7 +115,7 @@ export default async function LocaleLayout({
               url: "https://nitg-eg.com",
               logo: "https://nitg-eg.com/logo.svg",
               image: "https://nitg-eg.com/logo.svg",
-              description: "شركة مصرية متخصصة في تطوير منصات Moodle التعليمية وتطبيقات التجارة الإلكترونية لمصر والخليج منذ 2013.",
+              description: "شركة مصرية متخصصة في تطوير منصات Moodle التعليمية، تطبيقات التوصيل والمطاعم، المتاجر الإلكترونية، وأنظمة ولاء العملاء لمصر والخليج منذ 2013.",
               foundingDate: "2013",
               telephone: ["+201091568240", "+201149830855"],
               email: "info@nitg-eg.com",
