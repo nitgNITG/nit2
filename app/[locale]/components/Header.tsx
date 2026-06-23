@@ -36,7 +36,7 @@ const Header = () => {
                 
                 <div className='relative z-10 flex-1 pb-96 sm:pb-52 md:pb-32'>
                     <div className='grid grid-cols-12 space-y-10 '>
-                        <div className='col-span-12 lg:col-span-6 '>
+                        <div className='col-span-12 lg:col-span-6 lg:order-last'>
                             <div className='w-full lg:px-10 py-5'>
                                 <Image
                                     src={hero}
@@ -51,7 +51,7 @@ const Header = () => {
                                 />
                             </div>
                         </div>
-                        <div className='col-span-12 lg:col-span-6 '>
+                        <div className='col-span-12 lg:col-span-6 lg:order-first'>
                             <div className='space-y-10'>
                                 <h1 className='space-y-5'>
                                     <span className='block text-white font-bold text-xl md:text-2xl lg:text-3xl 2xl:text-4xl'>
@@ -69,10 +69,10 @@ const Header = () => {
                                         {t('subTitle.end')}
                                     </span>
                                 </div>
-                                <div className='flex flex-wrap gap-3 justify-end'>
+                                <div className='flex flex-wrap gap-3 justify-start'>
                                     {/* Primary CTA — get quote */}
-                                    <LocaleLink href={'/get-quote'} className='block w-fit bg-gradient-to-b from-[#1E7D67] to-[#0B2923] px-5 py-3.5 rounded-md hover:opacity-90 transition-opacity'>
-                                        <span className='text-[#00FFB2] font-bold text-sm md:text-base'>
+                                    <LocaleLink href={'/get-quote'} className='block w-fit bg-gradient-to-b from-[#1E7D67] to-[#0B2923] px-4 py-2 rounded-md hover:opacity-90 transition-opacity'>
+                                        <span className='text-[#00FFB2] font-bold text-xs md:text-sm'>
                                             {t('btn')}
                                         </span>
                                     </LocaleLink>
@@ -81,15 +81,15 @@ const Header = () => {
                                         href='https://wa.me/201091568240?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D8%8C%20%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1%20%D8%B9%D9%86%20%D9%85%D8%B4%D8%B1%D9%88%D8%B9%D9%8A'
                                         target='_blank'
                                         rel='noreferrer'
-                                        className='block w-fit border-2 border-green-400 px-5 py-3.5 rounded-md hover:bg-green-400/10 transition-colors'
+                                        className='block w-fit border-2 border-green-400 px-4 py-2 rounded-md hover:bg-green-400/10 transition-colors'
                                     >
-                                        <span className='text-green-400 font-bold text-sm md:text-base flex items-center gap-2'>
+                                        <span className='text-green-400 font-bold text-xs md:text-sm flex items-center gap-2'>
                                             💬 {t('btnWa')}
                                         </span>
                                     </a>
                                 </div>
-                                <div className='text-base lg:text-lg 2xl:text-xl font-semibold flex gap-5 lg:gap-20 justify-end'>
-                                    <span className='flex justify-end'>
+                                <div className='text-base lg:text-lg 2xl:text-xl font-semibold flex gap-5 lg:gap-20 justify-start'>
+                                    <span className='flex justify-start'>
                                         <span className='text-white'>
                                             {t('delProject')}
                                         </span>
@@ -97,7 +97,7 @@ const Header = () => {
                                             <CountUp end={150} suffix="+" prefix={' '} className='text-[#00FFB2] font-bold' />
                                         </span>
                                     </span>
-                                    <span className='flex justify-end'>
+                                    <span className='flex justify-start'>
                                         <span className='text-white'>
                                             {t('happyClients')}
                                         </span>

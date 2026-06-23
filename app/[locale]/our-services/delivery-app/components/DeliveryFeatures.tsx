@@ -65,17 +65,18 @@ const DeliveryFeatures = async () => {
                     <div className='space-y-10'>
                         <div className='space-y-3'>
                             <p className={clsx('text-sm text-gray-500', isAr ? 'text-right' : 'text-left')}>
-                                {isAr ? 'Delivery · توصيل' : 'Delivery · On-Demand'}
+                                {isAr ? 'توصيل' : 'Delivery · On-Demand'}
                             </p>
-                            <div className={clsx('flex -space-x-5 lg:-space-x-8 items-center', isAr ? 'justify-end' : 'justify-start flex-row-reverse')}>
+                            <div className={clsx('flex -space-x-5 lg:-space-x-8 items-center', isAr ? 'justify-start' : 'justify-end flex-row-reverse')}>
+                                {isAr && <div className='size-12 md:size-14 rotate-45 rounded-lg bg-aquaMint border-2 border-black' />}
                                 <div className='z-10'>
                                     <h2 className='text-2xl md:text-3xl font-bold text-shadow'>
                                         {isAr
-                                            ? <>تطوير تطبيقات <span className='text-darkAquaMint'>التوصيل</span></>
-                                            : <>Delivery <span className='text-darkAquaMint'>App</span> Development</>}
+                                            ? <div className='m-4'>تطوير تطبيقات <span className='text-darkAquaMint'>التوصيل</span></div>
+                                            : <div className='m-4'>Delivery <span className='text-darkAquaMint'>App</span> Development</div>}
                                     </h2>
                                 </div>
-                                <div className='size-12 md:size-14 rotate-45 rounded-lg bg-aquaMint border-2 border-black' />
+                                {!isAr && <div className='size-12 md:size-14 rotate-45 rounded-lg bg-aquaMint border-2 border-black' />}
                             </div>
                         </div>
                         <ul>
@@ -85,11 +86,11 @@ const DeliveryFeatures = async () => {
                                     className={clsx('px-10 py-3', { 'bg-white rounded-xl': i === 0 })}
                                 >
                                     <div className='flex items-center gap-3 justify-start flex-row-reverse'>
-                                        <div className={clsx('flex flex-col gap-1', isAr ? 'items-end' : 'items-start')}>
+                                        <div className={clsx('flex flex-1 min-w-0 flex-col gap-1', isAr ? 'items-end' : 'items-start')}>
                                             <h3 className={clsx('text-base font-bold w-10/12', isAr ? 'text-right' : 'text-left')}>{isAr ? feature.titleAr : feature.title}</h3>
                                             <p className={clsx('text-sm text-gray-500 lg:w-10/12', isAr ? 'text-right' : 'text-left')}>{isAr ? feature.descAr : feature.desc}</p>
                                         </div>
-                                        <div className='text-[88px] bg-clip-text text-transparent bg-gradient-to-b from-[#00FFCD] to-[#00997a9c] flex-shrink-0'>{i + 1}</div>
+                                        <div className='text-[88px] leading-none bg-clip-text text-transparent bg-gradient-to-b from-[#00FFCD] to-[#00997a9c] flex-shrink-0 w-16 text-center'>{i + 1}</div>
                                     </div>
                                 </li>
                             ))}
