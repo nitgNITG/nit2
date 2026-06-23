@@ -8,42 +8,42 @@ import LocaleLink from '../../../components/LocaleLink'
 const features = [
     {
         id: 1,
-        title: 'Points & Rewards Engine',
-        titleAr: 'محرك النقاط والمكافآت',
-        desc: 'Flexible rules to earn and redeem points, tiers, cashback and reward catalogs.',
-        descAr: 'قواعد مرنة لكسب واستبدال النقاط، مستويات العضوية، كاش باك، وكتالوج مكافآت.',
+        title: 'Custom LMS Development',
+        titleAr: 'تطوير أنظمة إدارة التعلم المخصصة',
+        desc: 'Full custom LMS platforms with course management, student enrollment, grading and progress tracking.',
+        descAr: 'منصات LMS مخصصة بالكامل مع إدارة المقررات وتسجيل الطلاب والدرجات وتتبع التقدم.',
     },
     {
         id: 2,
-        title: 'Digital Membership Cards',
-        titleAr: 'بطاقات عضوية رقمية',
-        desc: 'QR/barcode digital cards customers scan in-store — no plastic cards needed.',
-        descAr: 'بطاقات رقمية بـ QR/باركود يمسحها العميل في المتجر — بدون بطاقات بلاستيكية.',
+        title: 'Live Streaming & Video Lessons',
+        titleAr: 'بث مباشر ودروس فيديو',
+        desc: 'Integrated live classes with Zoom & Teams, recorded video lessons, and interactive whiteboards.',
+        descAr: 'فصول مباشرة متكاملة مع Zoom وTeams، دروس فيديو مسجلة، وسبورات تفاعلية.',
     },
     {
         id: 3,
-        title: 'Coupons & Targeted Offers',
-        titleAr: 'الكوبونات والعروض الموجهة',
-        desc: 'Create coupons and segment-based offers, with push notifications to drive return visits.',
-        descAr: 'إنشاء كوبونات وعروض حسب شرائح العملاء، مع إشعارات لتحفيز الزيارات المتكررة.',
+        title: 'E-Assessments & Certificates',
+        titleAr: 'اختبارات وشهادات إلكترونية',
+        desc: 'Online exams with auto-grading, question banks, anti-cheating tools and auto-generated certificates.',
+        descAr: 'اختبارات إلكترونية مع تصحيح آلي، بنوك أسئلة، أدوات منع الغش وشهادات تلقائية.',
     },
     {
         id: 4,
-        title: 'Community & Referrals',
-        titleAr: 'الإحالات والمجتمع',
-        desc: 'Referral rewards and community features that turn customers into promoters.',
-        descAr: 'مكافآت الإحالة وميزات مجتمعية تحوّل العملاء إلى مسوّقين لك.',
+        title: 'Mobile Learning Apps',
+        titleAr: 'تطبيقات التعلم عبر الجوال',
+        desc: 'Native iOS & Android apps for students to access courses, assignments and notifications on the go.',
+        descAr: 'تطبيقات iOS وAndroid للطلاب للوصول للمقررات والواجبات والإشعارات أثناء التنقل.',
     },
     {
         id: 5,
-        title: 'Analytics & CRM Dashboard',
-        titleAr: 'لوحة تحليلات وCRM',
-        desc: 'Track customer behavior, lifetime value and campaign performance in one dashboard.',
-        descAr: 'تتبّع سلوك العملاء والقيمة الدائمة وأداء الحملات من لوحة تحكم واحدة.',
+        title: 'Arabic RTL & Multilingual Support',
+        titleAr: 'دعم العربية RTL ومتعدد اللغات',
+        desc: 'Full Arabic RTL support with bilingual interfaces for Egyptian, Gulf & international institutions.',
+        descAr: 'دعم كامل للعربية RTL مع واجهات ثنائية اللغة للمؤسسات المصرية والخليجية والدولية.',
     },
 ]
 
-const LoyaltyFeatures = async () => {
+const EduFeatures = async () => {
     const isAr = (await getLocale()) === 'ar'
 
     return (
@@ -53,7 +53,7 @@ const LoyaltyFeatures = async () => {
                     <div className='w-full lg:px-10 py-5'>
                         <Image
                             src={service}
-                            alt='Customer Loyalty App Development'
+                            alt={isAr ? 'تطوير منصات تعليمية' : 'Educational Platform Development'}
                             loading='lazy'
                             width={1000}
                             height={1000}
@@ -65,14 +65,14 @@ const LoyaltyFeatures = async () => {
                     <div className='space-y-10'>
                         <div className='space-y-3'>
                             <p className={clsx('text-sm text-gray-500', isAr ? 'text-right' : 'text-left')}>
-                                {isAr ? 'Loyalty · ولاء' : 'Loyalty · Rewards'}
+                                {isAr ? 'LMS · منصات تعليمية' : 'LMS · Educational Platforms'}
                             </p>
                             <div className={clsx('flex -space-x-5 lg:-space-x-8 items-center', isAr ? 'justify-end' : 'justify-start flex-row-reverse')}>
                                 <div className='z-10'>
                                     <h2 className='text-2xl md:text-3xl font-bold text-shadow'>
                                         {isAr
-                                            ? <>تطوير برامج <span className='text-darkAquaMint'>الولاء</span></>
-                                            : <>Loyalty <span className='text-darkAquaMint'>Program</span> Development</>}
+                                            ? <>تطوير <span className='text-darkAquaMint'>منصات تعليمية</span></>
+                                            : <>Educational <span className='text-darkAquaMint'>Platform</span> Development</>}
                                     </h2>
                                 </div>
                                 <div className='size-12 md:size-14 rotate-45 rounded-lg bg-aquaMint border-2 border-black' />
@@ -95,7 +95,7 @@ const LoyaltyFeatures = async () => {
                             ))}
                         </ul>
                         <div className={clsx('flex', isAr ? 'justify-end' : 'justify-start')}>
-                            <LocaleLink href='/contact' target='_blank' className='bg-gradient-to-r from-[#268F79] to-[#0B2923] px-5 py-3 rounded-md'>
+                            <LocaleLink href='/contact' target='_blank' className='bg-gradient-to-r from-[#1E7D67] to-[#0B2923] px-5 py-3 rounded-md'>
                                 <span className='text-[#00FFB2] font-bold'>{isAr ? 'ابدأ مشروعك الآن' : 'Start Your Project'}</span>
                             </LocaleLink>
                         </div>
@@ -106,4 +106,4 @@ const LoyaltyFeatures = async () => {
     )
 }
 
-export default LoyaltyFeatures
+export default EduFeatures

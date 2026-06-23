@@ -11,7 +11,17 @@
         "services": "خدماتنا",
         "item8": "تطبيقات التوصيل",
         "item9": "تطبيقات المطاعم",
-        "item10": "أنظمة الولاء"
+        "item10": "أنظمة الولاء",
+        "cat_elearning": "تعليم الكترونى",
+        "cat_elearning_1": "منصات moodle",
+        "cat_elearning_2": "منصات تعليمية",
+        "cat_elearning_3": "منصات تعليم بالذكاء الاصطناعى",
+        "cat_elearning_4": "نظام إدارة المدارس",
+        "cat_ecommerce": "تجارة الكترونية",
+        "cat_ecommerce_1": "تطبيقات التوصيل",
+        "cat_ecommerce_2": "تطبيقات المطاعم",
+        "cat_ecommerce_3": "انظمة الولاء",
+        "cat_ecommerce_4": "تطبيقات التجارة الإلكترونية"
     },
     "Header": {
         "title": {

@@ -3,15 +3,15 @@ import LocaleLink from '../../../components/LocaleLink'
 import { getLocale } from 'next-intl/server'
 
 const AUDIENCE = [
-    { icon: '🍔', ar: 'توصيل الطعام والمطاعم', en: 'Food & Restaurant Delivery' },
-    { icon: '🛒', ar: 'توصيل البقالة والسوبر ماركت', en: 'Grocery & Supermarket Delivery' },
-    { icon: '💊', ar: 'توصيل الصيدليات', en: 'Pharmacy Delivery' },
-    { icon: '📦', ar: 'شركات التوريدات والشحن', en: 'Supplies & Courier Companies' },
-    { icon: '🚚', ar: 'خدمات التوصيل متعدد الفئات', en: 'Multi-Category On-Demand' },
-    { icon: '🏪', ar: 'المتاجر التي تريد أسطول توصيل خاص', en: 'Stores Building Their Own Fleet' },
+    { icon: '🏫', ar: 'المدارس الخاصة', en: 'Private Schools' },
+    { icon: '🌍', ar: 'المدارس الدولية', en: 'International Schools' },
+    { icon: '🧸', ar: 'الحضانات ورياض الأطفال', en: 'Nurseries & Kindergartens' },
+    { icon: '🏢', ar: 'مجموعات وسلاسل المدارس', en: 'School Groups & Chains' },
+    { icon: '🗣️', ar: 'مدارس ومراكز اللغات', en: 'Language Schools & Centers' },
+    { icon: '📋', ar: 'الإدارات والهيئات التعليمية', en: 'Educational Authorities' },
 ]
 
-const DeliveryMarkets = async () => {
+const SchoolMarkets = async () => {
     const isAr = (await getLocale()) === 'ar'
 
     return (
@@ -22,10 +22,10 @@ const DeliveryMarkets = async () => {
                         {isAr ? 'نخدم مصر والخليج' : 'Serving Egypt & the Gulf'}
                     </span>
                     <h2 className='text-2xl md:text-3xl font-bold text-[#0B2923]'>
-                        {isAr ? 'من يحتاج تطبيق توصيل؟' : 'Who needs a delivery app?'}
+                        {isAr ? 'من يحتاج نظام إدارة مدرسي؟' : 'Who needs a school management system?'}
                     </h2>
                     <p className='text-gray-500 max-w-xl mx-auto text-sm'>
-                        {isAr ? 'من القاهرة إلى الرياض — نبني تطبيقات توصيل تناسب نشاطك' : 'From Cairo to Riyadh — We build delivery apps tailored to your business'}
+                        {isAr ? 'من حضانة صغيرة إلى سلسلة مدارس — نبني نظامك المدرسي المخصص' : 'From a small nursery to a school chain — we build your custom school system'}
                     </p>
                 </div>
 
@@ -35,7 +35,6 @@ const DeliveryMarkets = async () => {
                             <span className='text-3xl flex-shrink-0'>{a.icon}</span>
                             <div className={isAr ? 'text-right' : 'text-left'}>
                                 <p className='font-bold text-sm text-[#0B2923]' dir={isAr ? 'rtl' : 'ltr'}>{isAr ? a.ar : a.en}</p>
-                                <p className='text-xs text-gray-400'>{isAr ? a.en : a.ar}</p>
                             </div>
                         </div>
                     ))}
@@ -52,4 +51,4 @@ const DeliveryMarkets = async () => {
     )
 }
 
-export default DeliveryMarkets
+export default SchoolMarkets

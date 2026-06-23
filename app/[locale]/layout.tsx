@@ -149,7 +149,6 @@ export default async function LocaleLayout({
         />
         <Script
           strategy="afterInteractive"
-          crossOrigin="anonymous"
           id="IsharatJSWidget"
           data-icon="bottom-20,right-20"
           data-key="68f64ee820c34"

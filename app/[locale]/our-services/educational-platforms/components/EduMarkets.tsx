@@ -3,15 +3,15 @@ import LocaleLink from '../../../components/LocaleLink'
 import { getLocale } from 'next-intl/server'
 
 const AUDIENCE = [
-    { icon: '🍔', ar: 'توصيل الطعام والمطاعم', en: 'Food & Restaurant Delivery' },
-    { icon: '🛒', ar: 'توصيل البقالة والسوبر ماركت', en: 'Grocery & Supermarket Delivery' },
-    { icon: '💊', ar: 'توصيل الصيدليات', en: 'Pharmacy Delivery' },
-    { icon: '📦', ar: 'شركات التوريدات والشحن', en: 'Supplies & Courier Companies' },
-    { icon: '🚚', ar: 'خدمات التوصيل متعدد الفئات', en: 'Multi-Category On-Demand' },
-    { icon: '🏪', ar: 'المتاجر التي تريد أسطول توصيل خاص', en: 'Stores Building Their Own Fleet' },
+    { icon: '🏛️', ar: 'الجامعات والكليات', en: 'Universities & Colleges' },
+    { icon: '🏫', ar: 'المدارس الخاصة والدولية', en: 'Private & International Schools' },
+    { icon: '🏢', ar: 'مراكز التدريب والتطوير', en: 'Training & Development Centers' },
+    { icon: '🏗️', ar: 'الشركات الكبرى — تدريب الموظفين', en: 'Large Enterprises — Staff Training' },
+    { icon: '📋', ar: 'الهيئات الحكومية', en: 'Government Bodies' },
+    { icon: '📚', ar: 'أكاديميات التعليم الإلكتروني', en: 'E-Learning Academies' },
 ]
 
-const DeliveryMarkets = async () => {
+const EduMarkets = async () => {
     const isAr = (await getLocale()) === 'ar'
 
     return (
@@ -22,10 +22,10 @@ const DeliveryMarkets = async () => {
                         {isAr ? 'نخدم مصر والخليج' : 'Serving Egypt & the Gulf'}
                     </span>
                     <h2 className='text-2xl md:text-3xl font-bold text-[#0B2923]'>
-                        {isAr ? 'من يحتاج تطبيق توصيل؟' : 'Who needs a delivery app?'}
+                        {isAr ? 'من يحتاج منصة تعليمية؟' : 'Who needs an educational platform?'}
                     </h2>
                     <p className='text-gray-500 max-w-xl mx-auto text-sm'>
-                        {isAr ? 'من القاهرة إلى الرياض — نبني تطبيقات توصيل تناسب نشاطك' : 'From Cairo to Riyadh — We build delivery apps tailored to your business'}
+                        {isAr ? 'سواء كنت جامعة أو مدرسة أو شركة — نبني منصتك التعليمية المخصصة' : 'Whether you are a university, school or enterprise — we build your custom educational platform'}
                     </p>
                 </div>
 
@@ -52,4 +52,4 @@ const DeliveryMarkets = async () => {
     )
 }
 
-export default DeliveryMarkets
+export default EduMarkets

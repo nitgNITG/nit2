@@ -71,19 +71,36 @@ const Navbar = () => {
         return () => cancelAnimationFrame(id)
     }, [pathname, locale, isHome])
 
-    // The 5 service landing pages live under a single "Services" dropdown so the
-    // desktop bar stays compact (6 top-level items) instead of overflowing.
+    // The service landing pages grouped by category.
     const services = [
-        { name: t('item6'), href: '/our-services/moodle-lms' },
-        { name: t('item7'), href: '/our-services/ecommerce-app' },
-        { name: t('item8'), href: '/our-services/delivery-app' },
-        { name: t('item9'), href: '/our-services/restaurant-app' },
-        { name: t('item10'), href: '/our-services/loyalty-app' },
+        {
+            category: t('cat_elearning'),
+            items: [
+                { name: t('cat_elearning_1'), href: '/our-services/moodle-lms' },
+                { name: t('cat_elearning_2'), href: '/our-services/educational-platforms' },
+                { name: t('cat_elearning_3'), href: '/our-services/ai-educational-platforms' },
+                { name: t('cat_elearning_4'), href: '/our-services/school-management' },
+            ]
+        },
+        {
+            category: t('cat_ecommerce'),
+            items: [
+                { name: t('cat_ecommerce_4'), href: '/our-services/ecommerce-app' },
+                { name: t('cat_ecommerce_1'), href: '/our-services/delivery-app' },
+                { name: t('cat_ecommerce_2'), href: '/our-services/restaurant-app' },
+                { name: t('cat_ecommerce_3'), href: '/our-services/loyalty-app' },
+            ]
+        }
     ]
+
+    // Flat list for isActive checks
+    const allServiceItems = services.flatMap(g => g.items)
+
+    type ServiceCategory = { category: string; items: { name: string; href: string }[] }
 
     type NavItem =
         | { name: string; href: string }
-        | { name: string; children: { name: string; href: string }[] }
+        | { name: string; children: ServiceCategory[] }
 
     const items: NavItem[] = [
         { name: t('item1'), href: '/' },
@@ -159,7 +176,7 @@ const Navbar = () => {
                                             className={clsx(
                                                 NAV_LINK_BASE,
                                                 'inline-flex items-center gap-1',
-                                                { [ACTIVE_LINK_CLASS]: item.children.some((c) => isActive(c.href)) }
+                                                { [ACTIVE_LINK_CLASS]: allServiceItems.some((c) => isActive(c.href) && c.href !== '#') }
                                             )}
                                         >
                                             {item.name}
@@ -230,23 +247,32 @@ const Navbar = () => {
                                                 <span className='block text-[#00FFB2]/60 text-sm font-bold uppercase tracking-widest'>
                                                     {item.name}
                                                 </span>
-                                                <ul className='space-y-5'>
-                                                    {item.children.map((c) => (
-                                                        <li key={c.href}>
-                                                            <LocalLink
-                                                                onClick={close}
-                                                                className={clsx(
-                                                                    MOBILE_LINK_BASE,
-                                                                    'text-lg',
-                                                                    { [MOBILE_ACTIVE_CLASS]: isActive(c.href) }
-                                                                )}
-                                                                href={c.href}
-                                                            >
-                                                                {c.name}
-                                                            </LocalLink>
-                                                        </li>
+                                                <div className='flex flex-col gap-6 mt-4'>
+                                                    {item.children.map((group) => (
+                                                        <div key={group.category} className='space-y-3'>
+                                                            <span className='block text-[#00FFB2] text-sm font-bold opacity-80 uppercase tracking-wider'>
+                                                                {group.category}
+                                                            </span>
+                                                            <ul className='space-y-4'>
+                                                                {group.items.map((c) => (
+                                                                    <li key={c.href + c.name}>
+                                                                        <LocalLink
+                                                                            onClick={close}
+                                                                            className={clsx(
+                                                                                MOBILE_LINK_BASE,
+                                                                                'text-lg',
+                                                                                { [MOBILE_ACTIVE_CLASS]: isActive(c.href) && c.href !== '#' }
+                                                                            )}
+                                                                            href={c.href}
+                                                                        >
+                                                                            {c.name}
+                                                                        </LocalLink>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
                                                     ))}
-                                                </ul>
+                                                </div>
                                             </li>
                                         ) : (
                                             <li key={item.href}>
@@ -290,20 +316,26 @@ const Navbar = () => {
                     onMouseEnter={openServices}
                     onMouseLeave={closeServices}
                 >
-                    <div className='min-w-56 bg-white rounded-xl shadow-2xl ring-1 ring-black/5 p-2'>
-                        {services.map((c) => (
-                            <LocalLink
-                                key={c.href}
-                                href={c.href}
-                                onClick={() => setServicesOpen(false)}
-                                className={clsx(
-                                    'block px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors hover:bg-[#1E7D67]/5',
-                                    isActive(c.href) ? 'bg-[#1E7D67]/10 text-[#1E7D67]' : 'text-gray-700',
-                                    isAr ? 'text-right' : 'text-left'
-                                )}
-                            >
-                                {c.name}
-                            </LocalLink>
+                    <div className='min-w-56 bg-white rounded-xl shadow-2xl ring-1 ring-black/5 py-2'>
+                        {services.map((group, gi) => (
+                            <div key={group.category}>
+                                {gi > 0 && <div className='border-t border-gray-100 my-1.5' />}
+                                <div className={clsx('px-4 py-1.5 text-xs font-bold text-[#1E7D67] uppercase tracking-wider', isAr ? 'text-right' : 'text-left')}>{group.category}</div>
+                                {group.items.map((c) => (
+                                    <LocalLink
+                                        key={c.href + c.name}
+                                        href={c.href}
+                                        onClick={() => setServicesOpen(false)}
+                                        className={clsx(
+                                            'block px-6 py-2 text-sm font-semibold whitespace-nowrap transition-colors hover:bg-[#1E7D67]/5',
+                                            isActive(c.href) && c.href !== '#' ? 'bg-[#1E7D67]/10 text-[#1E7D67]' : 'text-gray-700',
+                                            isAr ? 'text-right' : 'text-left'
+                                        )}
+                                    >
+                                        {c.name}
+                                    </LocalLink>
+                                ))}
+                            </div>
                         ))}
                     </div>
                 </div>,

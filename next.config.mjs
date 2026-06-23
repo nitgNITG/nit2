@@ -15,6 +15,14 @@ const nextConfig = {
             permanent: true,
         }));
     },
+    async rewrites() {
+        return [
+            {
+                source: '/isharat-api/:path*',
+                destination: 'https://apis.isharat.net/:path*',
+            },
+        ];
+    },
     images: {
         // Serve AVIF first (50% smaller than WebP), fallback to WebP, then original
         formats: ['image/avif', 'image/webp'],

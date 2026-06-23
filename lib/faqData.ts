@@ -6,7 +6,7 @@
 // user actually sees — a requirement for valid FAQ rich results.
 
 export type FAQ = { q: string; a: string }
-export type FAQPageKey = 'home' | 'moodle' | 'ecommerce' | 'delivery' | 'restaurant' | 'loyalty'
+export type FAQPageKey = 'home' | 'moodle' | 'ecommerce' | 'delivery' | 'restaurant' | 'loyalty' | 'edu' | 'aiEdu' | 'school'
 
 export const FAQS: Record<FAQPageKey, { ar: FAQ[]; en: FAQ[] }> = {
 
@@ -294,6 +294,147 @@ export const FAQS: Record<FAQPageKey, { ar: FAQ[]; en: FAQ[] }> = {
             {
                 q: 'What types of loyalty systems do you build?',
                 a: 'We build all types of loyalty systems: points & rewards programs, cashback systems, tiered membership cards, coupons & offers, and referral programs — with an analytics dashboard and support for the Saudi, Egyptian and Gulf markets.',
+            },
+        ],
+    },
+
+    edu: {
+        ar: [
+            {
+                q: 'ما الفرق بين المنصة التعليمية الجاهزة والمنصة المخصصة؟',
+                a: 'المنصة الجاهزة تعطيك مميزات قياسية بسرعة وتكلفة أقل، بينما المنصة المخصصة تُبنى حسب احتياجك بالكامل — هويتك، تدفق التسجيل، أنظمة الاختبارات والتكاملات. نساعدك في اختيار الأنسب لمشروعك.',
+            },
+            {
+                q: 'هل تدعمون اللغة العربية والواجهة RTL في المنصة؟',
+                a: 'نعم، جميع المنصات التعليمية التي نطوّرها تدعم العربية كاملاً مع واجهة RTL احترافية، مع إمكانية التبديل بين العربية والإنجليزية.',
+            },
+            {
+                q: 'هل تشمل المنصة بثاً مباشراً واختبارات إلكترونية؟',
+                a: 'نعم، ندمج الفصول المباشرة عبر Zoom وTeams، والدروس المسجلة، ونظام اختبارات إلكترونية مع تصحيح آلي وبنوك أسئلة وشهادات تلقائية.',
+            },
+            {
+                q: 'هل تطوّرون تطبيق جوال للطلاب؟',
+                a: 'نعم، نطوّر تطبيقات iOS وAndroid للطلاب للوصول للمقررات والواجبات والإشعارات، مع إمكانية النشر باسم مؤسستك على المتاجر.',
+            },
+            {
+                q: 'كم تكلفة إنشاء منصة تعليمية إلكترونية؟',
+                a: 'تعتمد التكلفة على عدد المستخدمين والمميزات (تطبيق جوال، بث مباشر، اختبارات، تكاملات). نقدم باقات مرنة من منصة أساسية حتى منصة مخصصة كاملة — تواصل معنا لعرض سعر مفصّل خلال 24 ساعة.',
+            },
+        ],
+        en: [
+            {
+                q: 'What is the difference between a ready-made and a custom platform?',
+                a: 'A ready-made platform gives you standard features quickly and at lower cost, while a custom platform is built fully around your needs — your branding, enrollment flow, assessment systems and integrations. We help you pick what fits your project.',
+            },
+            {
+                q: 'Do you support Arabic and RTL in the platform?',
+                a: 'Yes, all educational platforms we develop have full Arabic RTL support with a professional interface, and support switching between Arabic and English.',
+            },
+            {
+                q: 'Does the platform include live streaming and e-assessments?',
+                a: 'Yes, we integrate live classes via Zoom and Teams, recorded lessons, and an online exam system with auto-grading, question banks and auto-generated certificates.',
+            },
+            {
+                q: 'Do you build a mobile app for students?',
+                a: 'Yes, we build iOS and Android student apps to access courses, assignments and notifications, and can publish them under your institution brand on the stores.',
+            },
+            {
+                q: 'How much does it cost to build an e-learning platform?',
+                a: 'The cost depends on the number of users and features (mobile app, live streaming, quizzes, integrations). We offer flexible packages from a basic platform to a fully custom one — contact us for a detailed quote within 24 hours.',
+            },
+        ],
+    },
+
+    aiEdu: {
+        ar: [
+            {
+                q: 'ما هي منصة التعليم بالذكاء الاصطناعي؟',
+                a: 'هي منصة تعليمية تستخدم الذكاء الاصطناعي لتخصيص رحلة التعلم لكل طالب — مسارات تكيفية، مساعدون افتراضيون، تصحيح آلي، وتحليلات تنبؤية ترصد الطلاب المتعثرين مبكراً.',
+            },
+            {
+                q: 'كيف يخصص الذكاء الاصطناعي المحتوى لكل طالب؟',
+                a: 'نستخدم خوارزميات تحلل أداء الطالب وسرعته وفجوات تعلمه، ثم تعدّل المنهج وتقترح اختبارات ومواد دراسية مناسبة لمستواه تلقائياً.',
+            },
+            {
+                q: 'هل تدمجون مساعدين افتراضيين (Chatbots) في المنصة؟',
+                a: 'نعم، ندمج روبوتات محادثة ومدرّسين افتراضيين يعملون على مدار الساعة للإجابة على أسئلة الطلاب وتقديم الدعم والإرشاد.',
+            },
+            {
+                q: 'هل يمكن إضافة الذكاء الاصطناعي لمنصتي التعليمية الحالية؟',
+                a: 'نعم، يمكننا دمج ميزات الذكاء الاصطناعي مثل التوصيات والتصحيح الآلي والتحليلات التنبؤية في منصتك الحالية عبر تكاملات وواجهات برمجية.',
+            },
+            {
+                q: 'كم تكلفة تطوير منصة تعليمية بالذكاء الاصطناعي؟',
+                a: 'تعتمد التكلفة على نطاق ميزات الذكاء الاصطناعي المطلوبة (تخصيص المحتوى، المساعدين، التحليلات) وحجم المنصة. نبني نسخة قابلة للتوسّع — تواصل معنا لعرض سعر مفصّل خلال 24 ساعة.',
+            },
+        ],
+        en: [
+            {
+                q: 'What is an AI educational platform?',
+                a: 'It is a learning platform that uses AI to personalize each student\'s journey — adaptive paths, virtual assistants, automated grading, and predictive analytics that flag at-risk students early.',
+            },
+            {
+                q: 'How does AI personalize content for each student?',
+                a: 'We use algorithms that analyze a student\'s performance, pace and learning gaps, then automatically adjust the curriculum and suggest quizzes and study materials suited to their level.',
+            },
+            {
+                q: 'Do you integrate virtual assistants (chatbots) into the platform?',
+                a: 'Yes, we integrate chatbots and virtual tutors that operate 24/7 to answer student questions and provide support and guidance.',
+            },
+            {
+                q: 'Can AI be added to my existing educational platform?',
+                a: 'Yes, we can integrate AI features such as recommendations, auto-grading and predictive analytics into your existing platform via integrations and APIs.',
+            },
+            {
+                q: 'How much does it cost to build an AI educational platform?',
+                a: 'The cost depends on the scope of AI features required (content personalization, assistants, analytics) and the platform size. We build a scalable version first — contact us for a detailed quote within 24 hours.',
+            },
+        ],
+    },
+
+    school: {
+        ar: [
+            {
+                q: 'ما الفرق بين نظام إدارة المدارس والمنصة التعليمية (LMS)؟',
+                a: 'نظام إدارة المدارس يدير الجانب الإداري للمدرسة — القبول، ملفات الطلاب، الحضور، الجداول، الرسوم وكشوف النتائج، بينما المنصة التعليمية (LMS) تركز على المحتوى والمقررات والاختبارات. يمكننا بناء النظامين أو ربطهما معاً.',
+            },
+            {
+                q: 'هل يشمل النظام تطبيقاً لأولياء الأمور والمعلمين؟',
+                a: 'نعم، نطوّر تطبيقات iOS وAndroid لأولياء الأمور والمعلمين تعرض الدرجات والحضور والرسوم والإعلانات، وتتيح التواصل المباشر بين المعلم وولي الأمر.',
+            },
+            {
+                q: 'هل يدعم النظام الدفع الإلكتروني للرسوم المدرسية؟',
+                a: 'نعم، ندمج بوابات الدفع المصرية والخليجية مثل فوري ومدى لتحصيل الرسوم والأقساط إلكترونياً مع إصدار الفواتير وتقارير التحصيل.',
+            },
+            {
+                q: 'هل النظام مناسب للمدارس متعددة الفروع والحضانات؟',
+                a: 'نعم، نبني أنظمة تناسب الحضانات والمدارس الفردية وسلاسل المدارس متعددة الفروع، مع بيانات وصلاحيات وتقارير مستقلة لكل فرع من لوحة تحكم موحدة.',
+            },
+            {
+                q: 'كم تكلفة تطوير نظام إدارة مدرسي؟',
+                a: 'تعتمد التكلفة على عدد الطلاب والفروع والمميزات المطلوبة (تطبيق جوال، دفع إلكتروني، نقل بيانات). نقدم باقات مرنة — تواصل معنا لعرض سعر مفصّل خلال 24 ساعة.',
+            },
+        ],
+        en: [
+            {
+                q: 'What is the difference between a school management system and an LMS?',
+                a: 'A school management system handles the administrative side of a school — admissions, student records, attendance, timetables, fees and report cards, while an LMS focuses on content, courses and assessments. We can build either or connect both together.',
+            },
+            {
+                q: 'Does the system include an app for parents and teachers?',
+                a: 'Yes, we build iOS & Android apps for parents and teachers showing grades, attendance, fees and announcements, with direct parent–teacher messaging.',
+            },
+            {
+                q: 'Does the system support online payment of school fees?',
+                a: 'Yes, we integrate Egyptian and Gulf payment gateways such as Fawry and Mada to collect fees and installments online, with invoices and collection reports.',
+            },
+            {
+                q: 'Is the system suitable for multi-branch schools and nurseries?',
+                a: 'Yes, we build systems for nurseries, single schools and multi-branch school chains, with per-branch data, roles and reports from one unified dashboard.',
+            },
+            {
+                q: 'How much does a school management system cost?',
+                a: 'The cost depends on the number of students and branches and the features required (mobile app, online payments, data migration). We offer flexible packages — contact us for a detailed quote within 24 hours.',
             },
         ],
     },

@@ -11,7 +11,17 @@
         "services": "Services",
         "item8": "Delivery Apps",
         "item9": "Restaurant Apps",
-        "item10": "Loyalty Systems"
+        "item10": "Loyalty Systems",
+        "cat_elearning": "E-Learning",
+        "cat_elearning_1": "Moodle Platforms",
+        "cat_elearning_2": "Educational Platforms",
+        "cat_elearning_3": "AI Educational Platforms",
+        "cat_elearning_4": "School Management System",
+        "cat_ecommerce": "E-Commerce",
+        "cat_ecommerce_1": "Delivery Apps",
+        "cat_ecommerce_2": "Restaurant Apps",
+        "cat_ecommerce_3": "Loyalty Systems",
+        "cat_ecommerce_4": "eCommerce Apps"
     },
     "Header": {
         "title": {

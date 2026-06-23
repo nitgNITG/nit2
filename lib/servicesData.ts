@@ -14,7 +14,10 @@ export type ServiceKey =
   | "ecommerce"
   | "delivery"
   | "restaurant"
-  | "loyalty";
+  | "loyalty"
+  | "edu"
+  | "aiEdu"
+  | "school";
 
 /** A single service offering card — a type of solution we build. */
 export type ServiceOffering = {
@@ -297,6 +300,156 @@ export const servicesData: Record<ServiceKey, ServiceData> = {
     ],
     relatedProjects: [
       { nameEn: "PayPoints", nameAr: "بايبوينس", href: "/our-projects" },
+    ],
+  },
+
+  // ── Educational Platforms ───────────────────────────────────────────────
+  edu: {
+    eyebrowEn: "What We Build",
+    eyebrowAr: "خدماتنا التعليمية",
+    headingEn: "Our Educational Platform Services",
+    headingAr: "خدمات تطوير المنصات التعليمية",
+    keywordEn: "Educational",
+    keywordAr: "التعليمية",
+    subtitleEn:
+      "We design and build custom e-learning platforms with live classes, e-assessments and mobile apps.",
+    subtitleAr:
+      "نصمم ونطوّر منصات تعليمية إلكترونية مخصصة مع فصول مباشرة واختبارات إلكترونية وتطبيقات جوال للجامعات والمدارس والشركات.",
+    offerings: [
+      {
+        titleEn: "Custom LMS Platforms",
+        titleAr: "منصات إدارة تعلم مخصصة",
+        categoryEn: "Universities & Schools",
+        categoryAr: "جامعات ومدارس",
+        descEn:
+          "Tailor-made learning platforms with course management, student enrollment, grading and progress tracking.",
+        descAr:
+          "منصات تعلم مصممة خصيصاً مع إدارة المقررات وتسجيل الطلاب والدرجات وتتبع التقدم.",
+      },
+      {
+        titleEn: "Live Classes & Video Lessons",
+        titleAr: "فصول مباشرة ودروس فيديو",
+        categoryEn: "Virtual Classrooms",
+        categoryAr: "فصول افتراضية",
+        descEn:
+          "Integrated live classes with Zoom & Teams, recorded lessons and interactive whiteboards.",
+        descAr:
+          "فصول مباشرة متكاملة مع Zoom وTeams ودروس مسجلة وسبورات تفاعلية.",
+      },
+      {
+        titleEn: "Mobile Learning Apps",
+        titleAr: "تطبيقات تعلم عبر الجوال",
+        categoryEn: "iOS & Android",
+        categoryAr: "iOS و Android",
+        descEn:
+          "Native student apps to access courses, assignments, exams and notifications on the go.",
+        descAr:
+          "تطبيقات طلاب أصلية للوصول للمقررات والواجبات والاختبارات والإشعارات أثناء التنقل.",
+      },
+    ],
+    relatedProjects: [
+      { nameEn: "Step2English", nameAr: "ستيب تو إنجليش", href: "/our-projects" },
+      { nameEn: "3alemny", nameAr: "علمني", href: "/our-projects" },
+    ],
+  },
+
+  // ── AI Educational Platforms ────────────────────────────────────────────
+  aiEdu: {
+    eyebrowEn: "What We Build",
+    eyebrowAr: "خدماتنا التعليمية بالذكاء الاصطناعي",
+    headingEn: "Our AI Educational Platform Services",
+    headingAr: "خدمات منصات التعليم بالذكاء الاصطناعي",
+    keywordEn: "AI",
+    keywordAr: "الذكاء الاصطناعي",
+    subtitleEn:
+      "We build AI-powered learning platforms with adaptive paths, virtual tutors and predictive analytics.",
+    subtitleAr:
+      "نبني منصات تعليمية مدعومة بالذكاء الاصطناعي مع مسارات تعلم تكيفية ومساعدين افتراضيين وتحليلات تنبؤية.",
+    offerings: [
+      {
+        titleEn: "Adaptive Learning Paths",
+        titleAr: "مسارات تعلم تكيفية",
+        categoryEn: "Personalized Learning",
+        categoryAr: "تعلم مخصص",
+        descEn:
+          "AI algorithms that adapt the curriculum and content to each student's pace, level and learning gaps.",
+        descAr:
+          "خوارزميات ذكاء اصطناعي تكيّف المنهج والمحتوى حسب سرعة ومستوى وفجوات تعلم كل طالب.",
+      },
+      {
+        titleEn: "AI Tutors & Chatbots",
+        titleAr: "مساعدين ومدرّسين بالذكاء الاصطناعي",
+        categoryEn: "24/7 Virtual Assistants",
+        categoryAr: "مساعدين على مدار الساعة",
+        descEn:
+          "Smart chatbots and virtual tutors that answer student questions and provide guidance any time.",
+        descAr:
+          "روبوتات محادثة ومدرّسون افتراضيون أذكياء يجيبون على أسئلة الطلاب ويقدمون الدعم في أي وقت.",
+      },
+      {
+        titleEn: "Predictive Analytics & Auto-Grading",
+        titleAr: "تحليلات تنبؤية وتصحيح آلي",
+        categoryEn: "Smart Insights",
+        categoryAr: "رؤى ذكية",
+        descEn:
+          "Machine-learning models that flag at-risk students early and AI grading that saves educators time.",
+        descAr:
+          "نماذج تعلم آلي ترصد الطلاب المتعثرين مبكراً وتصحيح آلي بالذكاء الاصطناعي يوفّر وقت المعلمين.",
+      },
+    ],
+    relatedProjects: [
+      { nameEn: "Step2English", nameAr: "ستيب تو إنجليش", href: "/our-projects" },
+      { nameEn: "3alemny", nameAr: "علمني", href: "/our-projects" },
+    ],
+  },
+
+  // ── School Management System ────────────────────────────────────────────
+  school: {
+    eyebrowEn: "What We Build",
+    eyebrowAr: "خدماتنا التعليمية",
+    headingEn: "Our School Management System Services",
+    headingAr: "خدمات أنظمة إدارة المدارس",
+    keywordEn: "School Management",
+    keywordAr: "إدارة المدارس",
+    subtitleEn:
+      "We build complete school management systems with student records, attendance, grades, fees and a parent & teacher app.",
+    subtitleAr:
+      "نطوّر أنظمة إدارة مدارس متكاملة مع ملفات الطلاب والحضور والدرجات والرسوم وتطبيق لأولياء الأمور والمعلمين.",
+    offerings: [
+      {
+        titleEn: "Student Information System",
+        titleAr: "نظام معلومات الطلاب",
+        categoryEn: "Admissions & Records",
+        categoryAr: "القبول وملفات الطلاب",
+        descEn:
+          "Centralized student profiles, admissions, enrollment, classes and sections managed from one dashboard.",
+        descAr:
+          "ملفات طلاب مركزية مع القبول والتسجيل وإدارة الفصول والشُعب من لوحة تحكم واحدة.",
+      },
+      {
+        titleEn: "Fees & Finance Management",
+        titleAr: "إدارة الرسوم والحسابات",
+        categoryEn: "Fees & Online Payments",
+        categoryAr: "الرسوم والدفع الإلكتروني",
+        descEn:
+          "Fee plans, installments, invoices and online payment with Egyptian & Gulf gateways like Fawry and Mada.",
+        descAr:
+          "خطط رسوم وأقساط وفواتير ودفع إلكتروني عبر بوابات مصر والخليج مثل فوري ومدى.",
+      },
+      {
+        titleEn: "Parent & Teacher App",
+        titleAr: "تطبيق أولياء الأمور والمعلمين",
+        categoryEn: "Mobile App",
+        categoryAr: "تطبيق جوال",
+        descEn:
+          "iOS & Android apps with grades, attendance, fees, announcements and direct parent–teacher messaging.",
+        descAr:
+          "تطبيقات iOS وAndroid للدرجات والحضور والرسوم والإعلانات والتواصل المباشر بين المعلم وولي الأمر.",
+      },
+    ],
+    relatedProjects: [
+      { nameEn: "Step2English", nameAr: "ستيب تو إنجليش", href: "/our-projects" },
+      { nameEn: "3alemny", nameAr: "علمني", href: "/our-projects" },
     ],
   },
 };

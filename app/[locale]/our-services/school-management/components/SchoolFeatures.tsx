@@ -8,42 +8,42 @@ import LocaleLink from '../../../components/LocaleLink'
 const features = [
     {
         id: 1,
-        title: 'Points & Rewards Engine',
-        titleAr: 'محرك النقاط والمكافآت',
-        desc: 'Flexible rules to earn and redeem points, tiers, cashback and reward catalogs.',
-        descAr: 'قواعد مرنة لكسب واستبدال النقاط، مستويات العضوية، كاش باك، وكتالوج مكافآت.',
+        title: 'Student Information System',
+        titleAr: 'نظام معلومات الطلاب',
+        desc: 'Admissions, student profiles, enrollment, classes and sections — all student data managed from one dashboard.',
+        descAr: 'القبول، ملفات الطلاب، التسجيل، الفصول والشُعب — كل بيانات الطلاب من لوحة تحكم واحدة.',
     },
     {
         id: 2,
-        title: 'Digital Membership Cards',
-        titleAr: 'بطاقات عضوية رقمية',
-        desc: 'QR/barcode digital cards customers scan in-store — no plastic cards needed.',
-        descAr: 'بطاقات رقمية بـ QR/باركود يمسحها العميل في المتجر — بدون بطاقات بلاستيكية.',
+        title: 'Attendance & Timetables',
+        titleAr: 'الحضور والجداول الدراسية',
+        desc: 'Daily attendance, automated timetables, substitution management and instant absence alerts to parents.',
+        descAr: 'تسجيل الحضور اليومي، جداول دراسية تلقائية، إدارة الاحتياط، وتنبيهات غياب فورية لأولياء الأمور.',
     },
     {
         id: 3,
-        title: 'Coupons & Targeted Offers',
-        titleAr: 'الكوبونات والعروض الموجهة',
-        desc: 'Create coupons and segment-based offers, with push notifications to drive return visits.',
-        descAr: 'إنشاء كوبونات وعروض حسب شرائح العملاء، مع إشعارات لتحفيز الزيارات المتكررة.',
+        title: 'Grades & Report Cards',
+        titleAr: 'الدرجات وكشوف النتائج',
+        desc: 'Exam management, grade entry, automatic GPA calculation and printable bilingual report cards.',
+        descAr: 'إدارة الاختبارات، رصد الدرجات، احتساب المعدل تلقائياً، وكشوف نتائج ثنائية اللغة قابلة للطباعة.',
     },
     {
         id: 4,
-        title: 'Community & Referrals',
-        titleAr: 'الإحالات والمجتمع',
-        desc: 'Referral rewards and community features that turn customers into promoters.',
-        descAr: 'مكافآت الإحالة وميزات مجتمعية تحوّل العملاء إلى مسوّقين لك.',
+        title: 'Fees & Online Payments',
+        titleAr: 'الرسوم والمدفوعات الإلكترونية',
+        desc: 'Fee plans, installments, invoices and online payment with Egyptian & Gulf gateways (Fawry, Mada and more).',
+        descAr: 'خطط الرسوم، الأقساط، الفواتير، والدفع الإلكتروني عبر بوابات مصر والخليج (فوري، مدى وغيرها).',
     },
     {
         id: 5,
-        title: 'Analytics & CRM Dashboard',
-        titleAr: 'لوحة تحليلات وCRM',
-        desc: 'Track customer behavior, lifetime value and campaign performance in one dashboard.',
-        descAr: 'تتبّع سلوك العملاء والقيمة الدائمة وأداء الحملات من لوحة تحكم واحدة.',
+        title: 'Parent & Teacher App',
+        titleAr: 'تطبيق أولياء الأمور والمعلمين',
+        desc: 'Native iOS & Android apps with grades, attendance, fees, announcements and direct parent–teacher messaging.',
+        descAr: 'تطبيقات iOS وAndroid للدرجات والحضور والرسوم والإعلانات والتواصل المباشر بين المعلم وولي الأمر.',
     },
 ]
 
-const LoyaltyFeatures = async () => {
+const SchoolFeatures = async () => {
     const isAr = (await getLocale()) === 'ar'
 
     return (
@@ -53,7 +53,7 @@ const LoyaltyFeatures = async () => {
                     <div className='w-full lg:px-10 py-5'>
                         <Image
                             src={service}
-                            alt='Customer Loyalty App Development'
+                            alt={isAr ? 'نظام إدارة المدارس' : 'School Management System'}
                             loading='lazy'
                             width={1000}
                             height={1000}
@@ -65,14 +65,14 @@ const LoyaltyFeatures = async () => {
                     <div className='space-y-10'>
                         <div className='space-y-3'>
                             <p className={clsx('text-sm text-gray-500', isAr ? 'text-right' : 'text-left')}>
-                                {isAr ? 'Loyalty · ولاء' : 'Loyalty · Rewards'}
+                                {isAr ? 'SIS · نظام إدارة المدارس' : 'SIS · School Management'}
                             </p>
                             <div className={clsx('flex -space-x-5 lg:-space-x-8 items-center', isAr ? 'justify-end' : 'justify-start flex-row-reverse')}>
                                 <div className='z-10'>
                                     <h2 className='text-2xl md:text-3xl font-bold text-shadow'>
                                         {isAr
-                                            ? <>تطوير برامج <span className='text-darkAquaMint'>الولاء</span></>
-                                            : <>Loyalty <span className='text-darkAquaMint'>Program</span> Development</>}
+                                            ? <>نظام <span className='text-darkAquaMint'>إدارة المدارس</span></>
+                                            : <>School <span className='text-darkAquaMint'>Management</span> System</>}
                                     </h2>
                                 </div>
                                 <div className='size-12 md:size-14 rotate-45 rounded-lg bg-aquaMint border-2 border-black' />
@@ -95,7 +95,7 @@ const LoyaltyFeatures = async () => {
                             ))}
                         </ul>
                         <div className={clsx('flex', isAr ? 'justify-end' : 'justify-start')}>
-                            <LocaleLink href='/contact' target='_blank' className='bg-gradient-to-r from-[#268F79] to-[#0B2923] px-5 py-3 rounded-md'>
+                            <LocaleLink href='/contact' target='_blank' className='bg-gradient-to-r from-[#1E7D67] to-[#0B2923] px-5 py-3 rounded-md'>
                                 <span className='text-[#00FFB2] font-bold'>{isAr ? 'ابدأ مشروعك الآن' : 'Start Your Project'}</span>
                             </LocaleLink>
                         </div>
@@ -106,4 +106,4 @@ const LoyaltyFeatures = async () => {
     )
 }
 
-export default LoyaltyFeatures
+export default SchoolFeatures

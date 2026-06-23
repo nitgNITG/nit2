@@ -8,42 +8,42 @@ import LocaleLink from '../../../components/LocaleLink'
 const features = [
     {
         id: 1,
-        title: 'Points & Rewards Engine',
-        titleAr: 'محرك النقاط والمكافآت',
-        desc: 'Flexible rules to earn and redeem points, tiers, cashback and reward catalogs.',
-        descAr: 'قواعد مرنة لكسب واستبدال النقاط، مستويات العضوية، كاش باك، وكتالوج مكافآت.',
+        title: 'Smart Learning Paths',
+        titleAr: 'مسارات تعلم ذكية',
+        desc: 'AI algorithms that adapt the curriculum to each student’s pace and performance.',
+        descAr: 'خوارزميات ذكاء اصطناعي تكيف المنهج حسب سرعة وأداء كل طالب.',
     },
     {
         id: 2,
-        title: 'Digital Membership Cards',
-        titleAr: 'بطاقات عضوية رقمية',
-        desc: 'QR/barcode digital cards customers scan in-store — no plastic cards needed.',
-        descAr: 'بطاقات رقمية بـ QR/باركود يمسحها العميل في المتجر — بدون بطاقات بلاستيكية.',
+        title: 'AI Virtual Assistants',
+        titleAr: 'مساعدين افتراضيين بالذكاء الاصطناعي',
+        desc: 'Chatbots available 24/7 to answer student questions and provide tutoring.',
+        descAr: 'روبوتات محادثة متوفرة على مدار الساعة للإجابة على أسئلة الطلاب وتقديم الدعم.',
     },
     {
         id: 3,
-        title: 'Coupons & Targeted Offers',
-        titleAr: 'الكوبونات والعروض الموجهة',
-        desc: 'Create coupons and segment-based offers, with push notifications to drive return visits.',
-        descAr: 'إنشاء كوبونات وعروض حسب شرائح العملاء، مع إشعارات لتحفيز الزيارات المتكررة.',
+        title: 'Predictive Analytics',
+        titleAr: 'تحليلات تنبؤية',
+        desc: 'Identify at-risk students early with machine learning models that analyze grades and engagement.',
+        descAr: 'تحديد الطلاب المعرضين للتأخر دراسياً مبكراً باستخدام نماذج تعلم الآلة.',
     },
     {
         id: 4,
-        title: 'Community & Referrals',
-        titleAr: 'الإحالات والمجتمع',
-        desc: 'Referral rewards and community features that turn customers into promoters.',
-        descAr: 'مكافآت الإحالة وميزات مجتمعية تحوّل العملاء إلى مسوّقين لك.',
+        title: 'Automated Grading',
+        titleAr: 'تصحيح آلي',
+        desc: 'AI-powered grading for essays and complex assignments to save educators time.',
+        descAr: 'تصحيح آلي مدعوم بالذكاء الاصطناعي للمقالات والواجبات المعقدة لتوفير وقت المعلمين.',
     },
     {
         id: 5,
-        title: 'Analytics & CRM Dashboard',
-        titleAr: 'لوحة تحليلات وCRM',
-        desc: 'Track customer behavior, lifetime value and campaign performance in one dashboard.',
-        descAr: 'تتبّع سلوك العملاء والقيمة الدائمة وأداء الحملات من لوحة تحكم واحدة.',
+        title: 'Content Personalization',
+        titleAr: 'تخصيص المحتوى',
+        desc: 'Dynamically generated quizzes and study materials based on individual learning gaps.',
+        descAr: 'إنشاء اختبارات ومواد دراسية ديناميكياً بناءً على فجوات التعلم الفردية.',
     },
 ]
 
-const LoyaltyFeatures = async () => {
+const AIEduFeatures = async () => {
     const isAr = (await getLocale()) === 'ar'
 
     return (
@@ -53,7 +53,7 @@ const LoyaltyFeatures = async () => {
                     <div className='w-full lg:px-10 py-5'>
                         <Image
                             src={service}
-                            alt='Customer Loyalty App Development'
+                            alt={isAr ? 'منصات تعليم بالذكاء الاصطناعي' : 'AI Educational Platforms'}
                             loading='lazy'
                             width={1000}
                             height={1000}
@@ -65,14 +65,14 @@ const LoyaltyFeatures = async () => {
                     <div className='space-y-10'>
                         <div className='space-y-3'>
                             <p className={clsx('text-sm text-gray-500', isAr ? 'text-right' : 'text-left')}>
-                                {isAr ? 'Loyalty · ولاء' : 'Loyalty · Rewards'}
+                                {isAr ? 'AI · منصات تعليمية' : 'AI · Educational Platforms'}
                             </p>
                             <div className={clsx('flex -space-x-5 lg:-space-x-8 items-center', isAr ? 'justify-end' : 'justify-start flex-row-reverse')}>
                                 <div className='z-10'>
                                     <h2 className='text-2xl md:text-3xl font-bold text-shadow'>
                                         {isAr
-                                            ? <>تطوير برامج <span className='text-darkAquaMint'>الولاء</span></>
-                                            : <>Loyalty <span className='text-darkAquaMint'>Program</span> Development</>}
+                                            ? <>منصات تعليم <span className='text-darkAquaMint'>بالذكاء الاصطناعي</span></>
+                                            : <>AI <span className='text-darkAquaMint'>Educational</span> Platforms</>}
                                     </h2>
                                 </div>
                                 <div className='size-12 md:size-14 rotate-45 rounded-lg bg-aquaMint border-2 border-black' />
@@ -95,7 +95,7 @@ const LoyaltyFeatures = async () => {
                             ))}
                         </ul>
                         <div className={clsx('flex', isAr ? 'justify-end' : 'justify-start')}>
-                            <LocaleLink href='/contact' target='_blank' className='bg-gradient-to-r from-[#268F79] to-[#0B2923] px-5 py-3 rounded-md'>
+                            <LocaleLink href='/contact' target='_blank' className='bg-gradient-to-r from-[#1E7D67] to-[#0B2923] px-5 py-3 rounded-md'>
                                 <span className='text-[#00FFB2] font-bold'>{isAr ? 'ابدأ مشروعك الآن' : 'Start Your Project'}</span>
                             </LocaleLink>
                         </div>
@@ -106,4 +106,4 @@ const LoyaltyFeatures = async () => {
     )
 }
 
-export default LoyaltyFeatures
+export default AIEduFeatures
