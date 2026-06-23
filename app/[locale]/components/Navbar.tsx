@@ -16,7 +16,31 @@ const Navbar = () => {
     const isAr = locale === 'ar'
     const [open, setOpen] = useState(false)
     const [mounted, setMounted] = useState(false)
+    const [isScrolled, setIsScrolled] = useState(false)
+    const navRef = useRef<HTMLElement>(null)
+    const navWrapperRef = useRef<HTMLDivElement>(null)
+
     useEffect(() => { setMounted(true) }, [])
+
+    useEffect(() => {
+        const handleScroll = () => {
+            const currentScroll = window.scrollY
+            setIsScrolled(currentScroll >= 40)
+            
+            // Directly manipulate the DOM for buttery smooth 60fps scrolling
+            // without triggering heavy React re-renders on every pixel.
+            if (navWrapperRef.current) {
+                if (currentScroll < 40) {
+                    navWrapperRef.current.style.transform = `translateY(${40 - currentScroll}px)`
+                } else {
+                    navWrapperRef.current.style.transform = `translateY(0px)`
+                }
+            }
+        }
+        window.addEventListener('scroll', handleScroll, { passive: true })
+        handleScroll()
+        return () => window.removeEventListener('scroll', handleScroll)
+    }, [])
 
     // Desktop "Services" dropdown. Rendered through a portal to <body> so it
     // escapes the hero header's stacking context (z-10 + overflow-hidden) — a
@@ -118,39 +142,40 @@ const Navbar = () => {
 
     /* ╔══════════════ UI TWEAKS — toggle by swapping which line is commented ══════════════╗ */
 
-    /* ── Navbar bar (white pill): the py-* values control the navbar HEIGHT ── */
-    // OLD (taller — original):
-    // const NAV_BAR_CLASS = 'bg-white px-5 sm:px-10 md:px-16 lg:px-20 py-5 lg:py-10 rounded-r-full rounded-l-full lg:shadow-2xl'
-    // NEW (slimmer height):
-    const NAV_BAR_CLASS = 'bg-white px-5 sm:px-10 md:px-16 lg:px-4 xl:px-8 2xl:px-20 py-3 lg:py-5 rounded-r-full rounded-l-full lg:shadow-2xl'
-
-    /* ── Active link indicator — DESKTOP navbar (white bg) ── */
-    // The selected page used an underline + light mint (#00FFB2) → ugly + low contrast.
-    // Now: every link is a pill; the active one gets a soft teal "chip" highlight (no underline).
-    // OLD (original — underline + mint):
-    // const NAV_LINK_BASE = 'font-semibold'
-    // const ACTIVE_LINK_CLASS = 'font-bold underline text-[#00FFB2]'
-    // NEW (pill highlight, accessible teal, no underline):
-    const NAV_LINK_BASE = 'text-sm 2xl:text-base font-semibold whitespace-nowrap px-2 xl:px-3 2xl:px-4 py-2 rounded-full transition-colors hover:bg-[#1E7D67]/5'
+    const NAV_LINK_BASE = 'text-sm 2xl:text-base font-semibold whitespace-nowrap px-2 xl:px-3 2xl:px-4 py-1.5 rounded-full transition-colors hover:bg-[#1E7D67]/5'
     const ACTIVE_LINK_CLASS = 'bg-[#1E7D67]/10 text-[#1E7D67] font-bold ring-1 ring-[#1E7D67]/20'
-
-    /* ── Active link indicator — MOBILE drawer (dark green bg) ── */
-    // OLD (underline):
-    // const MOBILE_LINK_BASE = 'font-semibold text-xl'
-    // const MOBILE_ACTIVE_CLASS = 'font-bold underline text-[#00FFB2]'
-    // NEW (pill highlight on dark, no underline):
     const MOBILE_LINK_BASE = 'inline-block font-semibold text-xl px-5 py-2 rounded-full transition-colors'
     const MOBILE_ACTIVE_CLASS = 'bg-[#00FFB2]/15 text-[#00FFB2] font-bold ring-1 ring-[#00FFB2]/30'
-
-    /* ╚════════════════════════════════════════════════════════════════════════════════════╝ */
 
     const isActive = (href: string) =>
         href === '/' ? pathname === `/${locale}` : `/${locale}${href}` === pathname
 
+    const NAV_BAR_CLASS = clsx(
+        'transition-all duration-700 ease-in-out w-full mx-auto bg-white',
+        isScrolled
+            ? 'px-5 sm:px-10 md:px-16 lg:px-8 xl:px-12 2xl:px-20 py-1 lg:py-1 rounded-none shadow-md'
+            : 'px-5 sm:px-10 md:px-16 lg:px-4 xl:px-8 2xl:px-20 py-1 lg:py-2 rounded-[40px] shadow-lg lg:shadow-2xl'
+    )
+
     return (
-        <nav>
-            <div className={NAV_BAR_CLASS}>
-                <div className='flex justify-between items-center'>
+        <>
+            {/* Invisible placeholder to keep the height in the normal document flow */}
+            <div className='w-full opacity-0 pointer-events-none' style={{ height: 100 }} />
+            {mounted && createPortal(
+                <div 
+                    ref={navWrapperRef}
+                    className='fixed top-0 left-0 right-0 z-[99999] w-full pointer-events-none'
+                    style={{ transform: 'translateY(40px)' }}
+                >
+                    <nav 
+                        ref={navRef}
+                        className={clsx(
+                            'w-full transition-all duration-700 ease-in-out pointer-events-auto',
+                            isScrolled ? 'px-0' : 'p-container'
+                        )}
+                    >
+                        <div className={NAV_BAR_CLASS}>
+                    <div className='flex justify-between items-center'>
 
                     {/* Logo + Nav */}
                     <div className='flex items-center gap-5 lg:gap-10'>
@@ -205,7 +230,7 @@ const Navbar = () => {
                         <LocalLink
                             href='/contact'
                             target='_blank'
-                            className='block bg-gradient-to-b from-[#1E7D67] to-[#0B2923] px-3 2xl:px-5 py-2 2xl:py-3 rounded-md whitespace-nowrap'
+                            className='block bg-gradient-to-b from-[#1E7D67] to-[#0B2923] px-3 2xl:px-5 py-1.5 2xl:py-2 rounded-md whitespace-nowrap'
                         >
                             <span className='text-sm 2xl:text-base text-[#00FFB2] font-bold'>{t('btn')}</span>
                         </LocalLink>
@@ -222,12 +247,16 @@ const Navbar = () => {
                     </button>
                 </div>
             </div>
+            </nav>
+            </div>,
+            document.body
+            )}
 
             {/* Mobile drawer — rendered via portal directly on <body> to escape
                 any ancestor overflow-hidden / stacking-context that breaks fixed */}
             {mounted && createPortal(
                 <div className={clsx(
-                    'fixed inset-0 w-full h-svh z-[9999] bg-gradient-to-r from-[#07221D] to-[#1A8872]',
+                    'fixed inset-0 w-full h-svh z-[999999] bg-gradient-to-r from-[#07221D] to-[#1A8872]',
                     open ? 'bottomToTop pointer-events-auto' : 'topToBottom pointer-events-none',
                 )}>
                     <div className='flex flex-col items-center justify-between h-full pb-10 overflow-y-auto'>
@@ -312,7 +341,7 @@ const Navbar = () => {
             {mounted && servicesOpen && createPortal(
                 <div
                     style={{ position: 'fixed', top: ddPos.top, left: ddPos.left, right: ddPos.right }}
-                    className='z-[9999] pt-2'
+                    className='z-[999999] pt-2'
                     onMouseEnter={openServices}
                     onMouseLeave={closeServices}
                 >
@@ -341,7 +370,7 @@ const Navbar = () => {
                 </div>,
                 document.body
             )}
-        </nav>
+        </>
     )
 }
 

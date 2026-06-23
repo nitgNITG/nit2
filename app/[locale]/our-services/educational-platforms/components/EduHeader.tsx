@@ -19,7 +19,7 @@ const EduHeader = async () => {
                 </div>
                 <div className='absolute top-0 left-0 right-0 h-[2px] z-10'
                     style={{ background: 'linear-gradient(90deg, transparent, #268F79, #00FFCD, #268F79, transparent)' }} />
-                <div className='py-10 relative z-10'>
+                <div className='py-10 relative z-[99]'>
                     <Navbar />
                 </div>
                 <div className='flex-1 flex items-center justify-center relative z-10 pb-20'>

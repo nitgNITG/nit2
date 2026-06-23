@@ -7,27 +7,6 @@ const WhoUsHeader = () => {
     const t = useTranslations('whous')
     const locale = useLocale()
     const isAr = locale === 'ar'
-
-    /* ═══════════ OLD first-section (original) ═══════════
-       To revert: comment out the NEW return below and uncomment this block.
-    return (
-        <header className=''>
-            <div className='bg-[url("/header_whous.jpg")] bg-[-250px] md:bg-center bg-cover bg-no-repeat min-h-svh p-container'>
-                <div className='py-10 '>
-                    <Navbar />
-                </div>
-                <div className='flex justify-center items-center mt-20 lg:mt-32'>
-                    <h1 className='text-xl md:text-2xl lg:text-3xl 2xl:text-5xl font-bold text-white text-center drop-shadow-lg'>
-                        {t('hint')}
-                    </h1>
-                </div>
-            </div>
-        </header>
-    )
-    ═══════════ END OLD first-section ═══════════ */
-
-    /* ═══════════ NEW first-section — background & length match "مشروعاتنا" / our-projects ═══════════
-       To revert: comment out this return and uncomment the OLD block above. */
     return (
         <header>
             <div className='relative overflow-hidden min-h-svh lg:min-h-[77svh] flex flex-col bg-[url("/header_img.jpg")] bg-center bg-cover bg-no-repeat p-container'>
@@ -49,7 +28,7 @@ const WhoUsHeader = () => {
                     style={{ background: 'linear-gradient(90deg, transparent, #1E7D67, #00FFCD, #1E7D67, transparent)' }} />
 
                 {/* Navbar */}
-                <div className='py-10 relative z-10'>
+                <div className='py-10 relative z-[99]'>
                     <Navbar />
                 </div>
 

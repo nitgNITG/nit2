@@ -27,7 +27,7 @@ const OurProjectsHeader = () => {
                     style={{ background: 'linear-gradient(90deg, transparent, #268F79, #00FFCD, #268F79, transparent)' }} />
 
                 {/* Navbar */}
-                <div className='py-10 relative z-10'>
+                <div className='py-10 relative z-[99]'>
                     <Navbar />
                 </div>
 

@@ -66,16 +66,17 @@ const ServiceCards = async () => {
         <section className='bg-[#0F1922] p-container py-14 lg:py-20'>
             {/* Section header */}
             <div className={`flex flex-col gap-3 mb-10 ${isAr ? 'items-end' : 'items-start'}`}>
-                <p className='text-[#00FFB2]/70 text-sm font-semibold'>{isAr ? 'خدماتنا المتخصصة' : 'Our Specialized Services'}</p>
-                <div className={`flex -space-x-5 lg:-space-x-8 items-center ${isAr ? 'justify-end' : 'justify-start flex-row-reverse'}`}>
+                <p className='text-[#00FFB2]/70 text-sm font-semibold w-full'>{isAr ? 'خدماتنا المتخصصة' : 'Our Specialized Services'}</p>
+                <div className={`flex -space-x-5 lg:-space-x-8 items-center w-full ${isAr ? 'justify-start' : 'justify-end flex-row-reverse'}`}>
+                    {isAr && <div className='size-12 md:size-14 rotate-45 rounded-lg bg-aquaMint border-2 border-[#0F1922]' />}
                     <div className='z-10'>
                         <h2 className='text-2xl md:text-3xl font-bold text-white text-shadow'>
                             {isAr
-                                ? <>أفضل ما <span className='text-aquaMint'>نبنيه</span></>
-                                : <>What We <span className='text-aquaMint'>Build</span> Best</>}
+                                ? <div className='mx-4'>أفضل ما <span className='text-aquaMint'>نبنيه</span></div>
+                                : <div className='mx-4'>What We <span className='text-aquaMint'>Build</span> Best</div>}
                         </h2>
                     </div>
-                    <div className='size-12 md:size-14 rotate-45 rounded-lg bg-aquaMint border-2 border-[#0F1922]' />
+                    {!isAr && <div className='size-12 md:size-14 rotate-45 rounded-lg bg-aquaMint border-2 border-[#0F1922]' />}
                 </div>
             </div>
 
