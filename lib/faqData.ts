@@ -6,7 +6,7 @@
 // user actually sees — a requirement for valid FAQ rich results.
 
 export type FAQ = { q: string; a: string }
-export type FAQPageKey = 'home' | 'moodle' | 'ecommerce' | 'delivery' | 'restaurant' | 'loyalty' | 'edu' | 'aiEdu' | 'school'
+export type FAQPageKey = 'home' | 'moodle' | 'ecommerce' | 'delivery' | 'restaurant' | 'loyalty' | 'edu' | 'aiEdu' | 'school' | 'android' | 'ios' | 'web'
 
 export const FAQS: Record<FAQPageKey, { ar: FAQ[]; en: FAQ[] }> = {
 
@@ -435,6 +435,123 @@ export const FAQS: Record<FAQPageKey, { ar: FAQ[]; en: FAQ[] }> = {
             {
                 q: 'How much does a school management system cost?',
                 a: 'The cost depends on the number of students and branches and the features required (mobile app, online payments, data migration). We offer flexible packages — contact us for a detailed quote within 24 hours.',
+            },
+        ],
+    },
+
+    android: {
+        ar: [
+            {
+                q: 'بأي تقنية تطوّرون تطبيقات الأندرويد؟',
+                a: 'نطوّر تطبيقات الأندرويد باستخدام Flutter، وهي تقنية حديثة تتيح بناء تطبيق واحد يعمل على أندرويد و iOS معاً بأداء عالٍ مع توفير الوقت والتكلفة.',
+            },
+            {
+                q: 'هل تتولّون نشر التطبيق على Google Play؟',
+                a: 'نعم، ننشر التطبيق على متجر Google Play نيابة عنك، ونحسّن صفحة المتجر (الوصف والصور والكلمات المفتاحية)، ونوفر التحديثات والدعم بعد الإطلاق.',
+            },
+            {
+                q: 'هل التطبيق يدعم اللغة العربية وكل أحجام الشاشات؟',
+                a: 'نعم، جميع تطبيقاتنا تدعم العربية بالكامل (RTL) واللغة الإنجليزية، ومصممة لتعمل بسلاسة على الهواتف والأجهزة اللوحية بمختلف المقاسات.',
+            },
+            {
+                q: 'كم تكلفة وكم يستغرق تطوير تطبيق أندرويد؟',
+                a: 'تعتمد التكلفة والمدة على عدد الشاشات والمميزات والتكاملات المطلوبة. عادةً يستغرق المشروع من 6 إلى 14 أسبوعاً — تواصل معنا لعرض سعر مفصّل خلال 24 ساعة.',
+            },
+        ],
+        en: [
+            {
+                q: 'Which technology do you use to build Android apps?',
+                a: 'We build Android apps using Flutter — a modern framework that lets one app run on both Android and iOS with high performance, saving time and cost.',
+            },
+            {
+                q: 'Do you handle publishing on Google Play?',
+                a: 'Yes, we publish the app to Google Play on your behalf, optimize the store listing (description, screenshots, keywords), and provide updates and support after launch.',
+            },
+            {
+                q: 'Does the app support Arabic and all screen sizes?',
+                a: 'Yes, all our apps fully support Arabic (RTL) and English, and are designed to run smoothly on phones and tablets of all sizes.',
+            },
+            {
+                q: 'How much does an Android app cost and how long does it take?',
+                a: 'Cost and timeline depend on the number of screens, features and integrations required. A typical project takes 6 to 14 weeks — contact us for a detailed quote within 24 hours.',
+            },
+        ],
+    },
+
+    ios: {
+        ar: [
+            {
+                q: 'بأي تقنية تطوّرون تطبيقات الآيفون؟',
+                a: 'نطوّر تطبيقات iOS باستخدام Flutter، وهي تقنية حديثة تتيح بناء تطبيق واحد يعمل على iOS وأندرويد معاً بتجربة سلسة وأداء عالٍ.',
+            },
+            {
+                q: 'هل تتولّون نشر التطبيق على App Store؟',
+                a: 'نعم، ندير عملية رفع التطبيق ومراجعته من Apple ونشره على App Store بالكامل نيابة عنك، مع الالتزام بكل متطلبات أبل لتجنّب الرفض.',
+            },
+            {
+                q: 'هل تدعمون Apple Pay والإشعارات والتكامل مع منظومة أبل؟',
+                a: 'نعم، ندمج Apple Pay والإشعارات الفورية وتسجيل الدخول عبر Apple وغيرها من خدمات منظومة أبل حسب احتياج مشروعك.',
+            },
+            {
+                q: 'كم تكلفة وكم يستغرق تطوير تطبيق آيفون؟',
+                a: 'تعتمد التكلفة والمدة على المميزات والتكاملات المطلوبة. عادةً يستغرق المشروع من 6 إلى 14 أسبوعاً — تواصل معنا لعرض سعر مفصّل خلال 24 ساعة.',
+            },
+        ],
+        en: [
+            {
+                q: 'Which technology do you use to build iPhone apps?',
+                a: 'We build iOS apps using Flutter — a modern framework that lets one app run on both iOS and Android with a smooth, high-performance experience.',
+            },
+            {
+                q: 'Do you handle publishing on the App Store?',
+                a: 'Yes, we manage the full submission, Apple review and App Store publishing process on your behalf, following all Apple guidelines to avoid rejection.',
+            },
+            {
+                q: 'Do you support Apple Pay, push notifications and Apple ecosystem integration?',
+                a: 'Yes, we integrate Apple Pay, push notifications, Sign in with Apple and other Apple ecosystem services as your project requires.',
+            },
+            {
+                q: 'How much does an iPhone app cost and how long does it take?',
+                a: 'Cost and timeline depend on the features and integrations required. A typical project takes 6 to 14 weeks — contact us for a detailed quote within 24 hours.',
+            },
+        ],
+    },
+
+    web: {
+        ar: [
+            {
+                q: 'ما أنواع المواقع التي تصممونها؟',
+                a: 'نطوّر مواقع الشركات والمواقع التعريفية، صفحات الهبوط، المتاجر الإلكترونية، المدونات، وتطبيقات الويب ولوحات التحكم المخصصة.',
+            },
+            {
+                q: 'هل المواقع متجاوبة ومهيأة لمحركات البحث (SEO)؟',
+                a: 'نعم، كل المواقع متجاوبة بالكامل مع الجوال والكمبيوتر، وسريعة التحميل، ومبنية وفق أفضل ممارسات SEO لتظهر في نتائج بحث Google.',
+            },
+            {
+                q: 'هل أستطيع تحديث محتوى الموقع بنفسي؟',
+                a: 'نعم، نسلّمك الموقع مع نظام إدارة محتوى (CMS) سهل يتيح لك تعديل النصوص والصور والصفحات بنفسك دون الحاجة لمبرمج.',
+            },
+            {
+                q: 'كم تكلفة وكم يستغرق تصميم موقع إنترنت؟',
+                a: 'تعتمد التكلفة والمدة على عدد الصفحات والمميزات (متجر، حجز، لوحة تحكم). عادةً من 3 إلى 8 أسابيع — تواصل معنا لعرض سعر مفصّل خلال 24 ساعة.',
+            },
+        ],
+        en: [
+            {
+                q: 'What types of websites do you design?',
+                a: 'We develop corporate and brochure websites, landing pages, online stores, blogs, and custom web apps and dashboards.',
+            },
+            {
+                q: 'Are the websites responsive and SEO-ready?',
+                a: 'Yes, all websites are fully responsive on mobile and desktop, load fast, and are built following SEO best practices to rank on Google.',
+            },
+            {
+                q: 'Can I update the website content myself?',
+                a: 'Yes, we deliver the website with an easy content management system (CMS) so you can edit text, images and pages yourself without a developer.',
+            },
+            {
+                q: 'How much does a website cost and how long does it take?',
+                a: 'Cost and timeline depend on the number of pages and features (store, booking, dashboard). Typically 3 to 8 weeks — contact us for a detailed quote within 24 hours.',
             },
         ],
     },

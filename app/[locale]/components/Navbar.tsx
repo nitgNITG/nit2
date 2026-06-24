@@ -46,9 +46,23 @@ const Navbar = () => {
     // escapes the hero header's stacking context (z-10 + overflow-hidden) — a
     // plain absolute panel paints *under* the next section otherwise.
     const [servicesOpen, setServicesOpen] = useState(false)
+    // Which categories are expanded inside the dropdown. Each toggles
+    // independently so opening one never collapses (and shifts) the others —
+    // that shift would otherwise slide content out from under the cursor and
+    // trigger the panel's mouse-leave/close. The first category (index 0) is
+    // expanded by default each time the panel is shown.
+    const [openCats, setOpenCats] = useState<number[]>([0])
     const [ddPos, setDdPos] = useState<{ top: number; left?: number; right?: number }>({ top: 0 })
     const ddBtnRef = useRef<HTMLButtonElement>(null)
     const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    const toggleCat = (i: number) =>
+        setOpenCats((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]))
+
+    // Reopen → always start with just the first category expanded.
+    useEffect(() => {
+        if (servicesOpen) setOpenCats([0])
+    }, [servicesOpen])
 
     const openServices = () => {
         if (closeTimer.current) clearTimeout(closeTimer.current)
@@ -113,6 +127,14 @@ const Navbar = () => {
                 { name: t('cat_ecommerce_1'), href: '/our-services/delivery-app' },
                 { name: t('cat_ecommerce_2'), href: '/our-services/restaurant-app' },
                 { name: t('cat_ecommerce_3'), href: '/our-services/loyalty-app' },
+            ]
+        },
+        {
+            category: t('cat_dev'),
+            items: [
+                { name: t('cat_dev_1'), href: '/our-services/android-app' },
+                { name: t('cat_dev_2'), href: '/our-services/ios-app' },
+                { name: t('cat_dev_3'), href: '/our-services/website-design' },
             ]
         }
     ]
@@ -276,13 +298,15 @@ const Navbar = () => {
                                                 <span className='block text-[#00FFB2]/60 text-sm font-bold uppercase tracking-widest'>
                                                     {item.name}
                                                 </span>
-                                                <div className='flex flex-col gap-6 mt-4'>
-                                                    {item.children.map((group) => (
-                                                        <div key={group.category} className='space-y-3'>
-                                                            <span className='block text-[#00FFB2] text-sm font-bold opacity-80 uppercase tracking-wider'>
-                                                                {group.category}
-                                                            </span>
-                                                            <ul className='space-y-4'>
+                                                {/* Collapsible categories — tap a title to reveal its sub-items */}
+                                                <div className='flex flex-col gap-3 mt-4 px-4'>
+                                                    {item.children.map((group, gi) => (
+                                                        <details key={group.category} open={gi === 0} className='group/cat border-b border-white/10 pb-3'>
+                                                            <summary className='flex items-center justify-center gap-2 cursor-pointer list-none text-[#00FFB2] text-base font-bold opacity-90 uppercase tracking-wider'>
+                                                                <span>{group.category}</span>
+                                                                <span className='text-xs transition-transform duration-200 group-open/cat:rotate-180' aria-hidden='true'>▾</span>
+                                                            </summary>
+                                                            <ul className='space-y-3 mt-4'>
                                                                 {group.items.map((c) => (
                                                                     <li key={c.href + c.name}>
                                                                         <LocalLink
@@ -299,7 +323,7 @@ const Navbar = () => {
                                                                     </li>
                                                                 ))}
                                                             </ul>
-                                                        </div>
+                                                        </details>
                                                     ))}
                                                 </div>
                                             </li>
@@ -345,27 +369,63 @@ const Navbar = () => {
                     onMouseEnter={openServices}
                     onMouseLeave={closeServices}
                 >
-                    <div className='min-w-56 bg-white rounded-xl shadow-2xl ring-1 ring-black/5 py-2'>
-                        {services.map((group, gi) => (
-                            <div key={group.category}>
-                                {gi > 0 && <div className='border-t border-gray-100 my-1.5' />}
-                                <div className={clsx('px-4 py-1.5 text-xs font-bold text-[#1E7D67] uppercase tracking-wider', isAr ? 'text-right' : 'text-left')}>{group.category}</div>
-                                {group.items.map((c) => (
-                                    <LocalLink
-                                        key={c.href + c.name}
-                                        href={c.href}
-                                        onClick={() => setServicesOpen(false)}
+                    {/* Accordion panel: each main title is a button that expands its
+                        sub-items below it. One category open at a time; the first is
+                        expanded by default whenever the panel is shown. */}
+                    <div className='min-w-72 bg-white rounded-xl shadow-2xl ring-1 ring-black/5 p-2'>
+                        {services.map((group, gi) => {
+                            const hasActive = group.items.some((c) => isActive(c.href) && c.href !== '#')
+                            const isExpanded = openCats.includes(gi)
+                            return (
+                                <div key={group.category} className={clsx(gi > 0 && 'mt-1 border-t border-gray-100 pt-1')}>
+                                    <button
+                                        type='button'
+                                        onClick={() => toggleCat(gi)}
+                                        aria-expanded={isExpanded}
                                         className={clsx(
-                                            'block px-6 py-2 text-sm font-semibold whitespace-nowrap transition-colors hover:bg-[#1E7D67]/5',
-                                            isActive(c.href) && c.href !== '#' ? 'bg-[#1E7D67]/10 text-[#1E7D67]' : 'text-gray-700',
-                                            isAr ? 'text-right' : 'text-left'
+                                            'w-full flex items-center justify-between gap-4 px-3 py-2.5 rounded-lg text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#1E7D67]/5',
+                                            isExpanded ? 'text-[#1E7D67]' : hasActive ? 'text-[#1E7D67]' : 'text-[#0B2923]',
+                                            isAr ? 'flex-row-reverse text-right' : 'text-left'
                                         )}
                                     >
-                                        {c.name}
-                                    </LocalLink>
-                                ))}
-                            </div>
-                        ))}
+                                        <span>{group.category}</span>
+                                        <span
+                                            className={clsx('text-[10px] text-[#1E7D67] transition-transform duration-200', isExpanded && 'rotate-180')}
+                                            aria-hidden='true'
+                                        >
+                                            ▾
+                                        </span>
+                                    </button>
+
+                                    {/* Sub-items — height-animated accordion body */}
+                                    <div
+                                        className={clsx(
+                                            'overflow-hidden transition-all duration-300 ease-in-out',
+                                            isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                                        )}
+                                    >
+                                        <div className='overflow-hidden'>
+                                            <div className={clsx('py-1', isAr ? 'pr-3' : 'pl-3')}>
+                                                {group.items.map((c) => (
+                                                    <LocalLink
+                                                        key={c.href + c.name}
+                                                        href={c.href}
+                                                        onClick={() => setServicesOpen(false)}
+                                                        className={clsx(
+                                                            'block px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors hover:bg-[#1E7D67]/5',
+                                                            isActive(c.href) && c.href !== '#' ? 'bg-[#1E7D67]/10 text-[#1E7D67]' : 'text-gray-600',
+                                                            isAr ? 'text-right' : 'text-left'
+                                                        )}
+                                                    >
+                                                        {c.name}
+                                                    </LocalLink>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )
+                        })}
                     </div>
                 </div>,
                 document.body

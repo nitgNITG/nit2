@@ -21,7 +21,11 @@
         "cat_ecommerce_1": "Delivery Apps",
         "cat_ecommerce_2": "Restaurant Apps",
         "cat_ecommerce_3": "Loyalty Systems",
-        "cat_ecommerce_4": "eCommerce Apps"
+        "cat_ecommerce_4": "eCommerce Apps",
+        "cat_dev": "Web & Mobile Development",
+        "cat_dev_1": "Android App Development",
+        "cat_dev_2": "iPhone App Development",
+        "cat_dev_3": "Website Design"
     },
     "Header": {
         "title": {

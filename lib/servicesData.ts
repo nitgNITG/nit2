@@ -17,7 +17,10 @@ export type ServiceKey =
   | "loyalty"
   | "edu"
   | "aiEdu"
-  | "school";
+  | "school"
+  | "android"
+  | "ios"
+  | "web";
 
 /** A single service offering card — a type of solution we build. */
 export type ServiceOffering = {
@@ -450,6 +453,156 @@ export const servicesData: Record<ServiceKey, ServiceData> = {
     relatedProjects: [
       { nameEn: "Step2English", nameAr: "ستيب تو إنجليش", href: "/our-projects" },
       { nameEn: "3alemny", nameAr: "علمني", href: "/our-projects" },
+    ],
+  },
+
+  // ── Android App Development ──────────────────────────────────────────────
+  android: {
+    eyebrowEn: "What We Build",
+    eyebrowAr: "خدمات تطبيقات الأندرويد",
+    headingEn: "Our Android App Development Services",
+    headingAr: "خدمات تطوير تطبيقات الأندرويد",
+    keywordEn: "Android",
+    keywordAr: "الأندرويد",
+    subtitleEn:
+      "We develop Android apps with Flutter, published on Google Play, with a polished Material Design UI and high performance.",
+    subtitleAr:
+      "نطوّر ونبرمج تطبيقات أندرويد احترافية بـ Flutter، منشورة على Google Play بواجهات Material Design وأداء عالٍ يناسب كل أجهزة الأندرويد.",
+    offerings: [
+      {
+        titleEn: "Android Apps with Flutter",
+        titleAr: "تطبيقات أندرويد بـ Flutter",
+        categoryEn: "Built with Flutter",
+        categoryAr: "تطوير بـ Flutter",
+        descEn:
+          "High-performance apps built with Flutter from a single codebase, optimized for phones and tablets.",
+        descAr:
+          "تطبيقات عالية الأداء مبنية بـ Flutter بكود واحد، محسّنة للهواتف والأجهزة اللوحية.",
+      },
+      {
+        titleEn: "Google Play Publishing",
+        titleAr: "النشر على Google Play",
+        categoryEn: "Store Launch",
+        categoryAr: "الإطلاق على المتجر",
+        descEn:
+          "We handle the full Google Play publishing process, store listing optimization and updates.",
+        descAr:
+          "نتولّى عملية النشر الكاملة على Google Play وتحسين صفحة المتجر والتحديثات.",
+      },
+      {
+        titleEn: "Material Design UI/UX",
+        titleAr: "تصميم واجهات Material",
+        categoryEn: "Modern Interfaces",
+        categoryAr: "واجهات عصرية",
+        descEn:
+          "Clean, modern interfaces following Google's Material Design guidelines with full Arabic RTL support.",
+        descAr:
+          "واجهات نظيفة وعصرية تتبع معايير Material Design من Google مع دعم عربي كامل (RTL).",
+      },
+    ],
+    relatedProjects: [
+      { nameEn: "Buzz", nameAr: "باز", href: "/our-projects" },
+      { nameEn: "Tawreedat Go", nameAr: "توريدات جو", href: "/our-projects" },
+    ],
+  },
+
+  // ── iPhone (iOS) App Development ─────────────────────────────────────────
+  ios: {
+    eyebrowEn: "What We Build",
+    eyebrowAr: "خدمات تطبيقات الآيفون",
+    headingEn: "Our iPhone App Development Services",
+    headingAr: "خدمات تطوير تطبيقات الآيفون",
+    keywordEn: "iPhone",
+    keywordAr: "الآيفون",
+    subtitleEn:
+      "We develop iOS apps with Flutter, published on the App Store, following Apple's Human Interface Guidelines.",
+    subtitleAr:
+      "نطوّر ونبرمج تطبيقات آيفون بـ Flutter، منشورة على App Store وفق معايير Apple وتجربة استخدام راقية.",
+    offerings: [
+      {
+        titleEn: "iOS Apps with Flutter",
+        titleAr: "تطبيقات آيفون بـ Flutter",
+        categoryEn: "Built with Flutter",
+        categoryAr: "تطوير بـ Flutter",
+        descEn:
+          "Smooth, fast iOS apps built with Flutter for iPhone and iPad from a single codebase.",
+        descAr:
+          "تطبيقات آيفون سريعة وسلسة مبنية بـ Flutter للآيفون والآيباد بكود واحد.",
+      },
+      {
+        titleEn: "App Store Publishing",
+        titleAr: "النشر على App Store",
+        categoryEn: "Store Launch",
+        categoryAr: "الإطلاق على المتجر",
+        descEn:
+          "We manage the full App Store submission, review and publishing process on your behalf.",
+        descAr:
+          "ندير عملية رفع التطبيق ومراجعته ونشره على App Store بالكامل نيابة عنك.",
+      },
+      {
+        titleEn: "Premium UI & Apple Ecosystem",
+        titleAr: "واجهات راقية وتكامل أبل",
+        categoryEn: "HIG & Integrations",
+        categoryAr: "تصميم وتكامل",
+        descEn:
+          "Elegant interfaces following Apple's HIG, with Apple Pay, push notifications and ecosystem integrations.",
+        descAr:
+          "واجهات أنيقة وفق معايير Apple، مع Apple Pay والإشعارات والتكامل مع منظومة أبل.",
+      },
+    ],
+    relatedProjects: [
+      { nameEn: "Buzz", nameAr: "باز", href: "/our-projects" },
+      { nameEn: "PayPoints", nameAr: "بايبوينس", href: "/our-projects" },
+    ],
+  },
+
+  // ── Website Design & Development ──────────────────────────────────────────
+  web: {
+    eyebrowEn: "What We Build",
+    eyebrowAr: "خدمات تصميم المواقع",
+    headingEn: "Our Web Development Services",
+    headingAr: "خدمات تطوير مواقع الإنترنت",
+    keywordEn: "Web",
+    keywordAr: "المواقع",
+    subtitleEn:
+      "We develop fast, responsive, SEO-friendly websites — corporate sites, landing pages and web apps.",
+    subtitleAr:
+      "نطوّر ونبرمج مواقع إنترنت سريعة ومتجاوبة وصديقة لمحركات البحث — مواقع شركات وصفحات هبوط وتطبيقات ويب.",
+    offerings: [
+      {
+        titleEn: "Corporate & Business Websites",
+        titleAr: "مواقع الشركات والأعمال",
+        categoryEn: "Brand Presence",
+        categoryAr: "هوية رقمية",
+        descEn:
+          "Professional company websites that present your brand, services and identity with a modern design.",
+        descAr:
+          "مواقع شركات احترافية تعرض علامتك التجارية وخدماتك وهويتك بتصميم عصري.",
+      },
+      {
+        titleEn: "Responsive & SEO-Ready",
+        titleAr: "متجاوب ومهيأ لمحركات البحث",
+        categoryEn: "Mobile-First & SEO",
+        categoryAr: "متجاوب و SEO",
+        descEn:
+          "Fast, mobile-first websites optimized for Google search to bring you real organic traffic.",
+        descAr:
+          "مواقع سريعة متجاوبة مع كل الشاشات ومحسّنة لمحرك بحث Google لجلب زيارات حقيقية.",
+      },
+      {
+        titleEn: "Custom Web Apps & CMS",
+        titleAr: "تطبيقات ويب وأنظمة إدارة",
+        categoryEn: "Web Apps & Dashboards",
+        categoryAr: "تطبيقات ولوحات تحكم",
+        descEn:
+          "Custom web applications, dashboards and content management systems you can update yourself.",
+        descAr:
+          "تطبيقات ويب ولوحات تحكم وأنظمة إدارة محتوى مخصصة يمكنك تحديثها بنفسك.",
+      },
+    ],
+    relatedProjects: [
+      { nameEn: "Tawreedat Go", nameAr: "توريدات جو", href: "/our-projects" },
+      { nameEn: "Step2English", nameAr: "ستيب تو إنجليش", href: "/our-projects" },
     ],
   },
 };
