@@ -385,7 +385,7 @@ const Navbar = () => {
                                         className={clsx(
                                             'w-full flex items-center justify-between gap-4 px-3 py-2.5 rounded-lg text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#1E7D67]/5',
                                             isExpanded ? 'text-[#1E7D67]' : hasActive ? 'text-[#1E7D67]' : 'text-[#0B2923]',
-                                            isAr ? 'flex-row-reverse text-right' : 'text-left'
+                                            isAr ? 'text-right' : 'text-left'
                                         )}
                                     >
                                         <span>{group.category}</span>

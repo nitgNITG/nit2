@@ -58,11 +58,6 @@ const Footer = () => {
                             sizes='190px'
                             loading='lazy'
                         />
-                        <p className='text-white/55 text-sm leading-relaxed max-w-xs'>
-                            {isAr
-                                ? 'نطوّر منصات تعليمية وتطبيقات جوال ومواقع إنترنت احترافية في مصر والخليج منذ 2013.'
-                                : 'We develop professional e-learning platforms, mobile apps and websites across Egypt & the Gulf since 2013.'}
-                        </p>
                         <LocaleLink
                             href='/contact'
                             target='_blank'
