@@ -32,8 +32,11 @@ export async function POST(req: NextRequest) {
         let links: { headerEn: string; headerAr: string; link: string }[] = [];
         try { if (linksRaw) links = JSON.parse(linksRaw); } catch { links = []; }
 
+        const lastProject = await prisma.project.findFirst({ orderBy: { order: 'desc' }, select: { order: true } });
+        const nextOrder = (lastProject?.order ?? -1) + 1;
+
         const project = await prisma.project.create({
-            data: { img: url, title, description, titleEn, descriptionEn, types, important: important === 'true', links }
+            data: { img: url, title, description, titleEn, descriptionEn, types, important: important === 'true', links, order: nextOrder }
         });
         console.log('[POST /api/project] ✅ Created:', project.id);
         return NextResponse.json({ project, message: 'Successfully Created' }, { status: 201 });
@@ -77,7 +80,7 @@ export async function GET(req: NextRequest) {
         }
         if (important) where.important = true;
 
-        const projects = await prisma.project.findMany({ where, select });
+        const projects = await prisma.project.findMany({ where, select, orderBy: { order: 'asc' } });
         console.log(`[GET /api/project] ✅ type=${typeParam ?? 'all'} lang=${lang} dashboard=${dashboard} → ${projects.length} results`);
         return NextResponse.json({ data: projects }, { status: 200 });
     } catch (error: any) {

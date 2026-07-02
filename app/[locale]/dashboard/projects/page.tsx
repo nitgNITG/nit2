@@ -8,7 +8,10 @@ const Projects = ({ searchParams }: { searchParams: any }) => {
     return (
         <div className='dashboard-container py-5 lg:py-10 space-y-10'>
             <div className='flex justify-between items-center'>
-                <h4 className='font-bold text-lg md:text-xl lg:text-2xl'>All Projects</h4>
+                <h4 className='font-bold text-lg md:text-xl lg:text-2xl'>
+                    All Projects
+                    <span className='block text-sm font-normal text-gray-500 mt-0.5'>المشاريع</span>
+                </h4>
                 <ButtonDashboard href='/dashboard/projects?projectform=true'>
                     ADD PROJECT
                 </ButtonDashboard>

@@ -36,6 +36,7 @@ model Project {
   important     Boolean?
   types         String[]
   links         ProjectLink[]
+  order         Int           @default(0)
 }
 
 model ProjectType {
