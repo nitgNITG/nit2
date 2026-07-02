@@ -13,11 +13,11 @@ export async function PATCH(req: NextRequest) {
             return NextResponse.json({ message: 'Missing required fields: id, direction, type' }, { status: 400 });
         }
 
-        // Fetch all projects with this type, sorted by order
+        // Fetch all projects with this type — use _id as stable tiebreaker when orders are equal
         const projectsOfType = await prisma.project.findMany({
             where: { types: { has: type } },
             select: { id: true, order: true },
-            orderBy: { order: 'asc' },
+            orderBy: [{ order: 'asc' }, { id: 'asc' }],
         });
 
         const index = projectsOfType.findIndex((p) => p.id === id);
@@ -30,12 +30,17 @@ export async function PATCH(req: NextRequest) {
             return NextResponse.json({ message: 'Cannot move in that direction' }, { status: 400 });
         }
 
-        const current = projectsOfType[index];
-        const neighbour = projectsOfType[swapIndex];
+        // Reassign sequential order values for ALL projects of this type
+        // based on the new position after the move — this fixes the all-zero default problem
+        const reordered = [...projectsOfType];
+        const [moved] = reordered.splice(index, 1);
+        reordered.splice(swapIndex, 0, moved);
 
-        // Swap order values
-        await prisma.project.update({ where: { id: current.id }, data: { order: neighbour.order } });
-        await prisma.project.update({ where: { id: neighbour.id }, data: { order: current.order } });
+        await Promise.all(
+            reordered.map((p, i) =>
+                prisma.project.update({ where: { id: p.id }, data: { order: i } })
+            )
+        );
 
         return NextResponse.json({ message: 'Reordered successfully' }, { status: 200 });
     } catch (error: any) {
