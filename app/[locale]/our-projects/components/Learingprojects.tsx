@@ -55,7 +55,7 @@ const Learingprojects = () => {
                                         width={600}
                                         height={400}
                                         sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                        className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'
+                                        className='w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300'
                                     />
                                 </div>
                                 {/* Content flex-col: title + description grow, buttons pinned to bottom */}
