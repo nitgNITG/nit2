@@ -66,15 +66,14 @@ export const uploadImage = async (file: File, folder: string): Promise<string | 
 
         // Resize to max 800px on either axis (cards display ~300px, 800 = 2.5× retina headroom)
         console.log(`[Storage] starting sharp, filepath: ${filepath}`);
-        await sharp(buffer)
+        const outputBuffer = await sharp(buffer)
             .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
             .webp({ quality: 82 })
-            .toFile(filepath);
+            .toBuffer();
         console.log('[Storage] sharp done');
 
-        // Ensure nginx (www-data) can read the file and directory
-        try { fs.chmodSync(filepath, 0o644); } catch { /* ignore permission errors */ }
-        try { fs.chmodSync(dir, 0o755); } catch { /* ignore permission errors */ }
+        // Write with explicit 644 so nginx/Next.js can always read the file
+        fs.writeFileSync(filepath, outputBuffer, { mode: 0o644 });
 
         const publicUrl = `${urlPrefix}/${folder}/${filename}`;
         console.log('[Storage] ✅ Saved:', publicUrl);
