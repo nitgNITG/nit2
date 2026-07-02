@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import Marquee from 'react-fast-marquee'
 import LocaleLink from './LocaleLink'
 import { useLocale, useTranslations } from 'next-intl'
-import { cloudinaryOptimized, isCloudinaryUrl } from '@/utils/cloudinaryUrl'
+import { cloudinaryOptimized, isCloudinaryUrl, skipOptimization } from '@/utils/cloudinaryUrl'
 
 const Projects = () => {
     const t = useTranslations('Navbar')
@@ -46,7 +46,7 @@ const Projects = () => {
                                                 alt={title}
                                                 fill
                                                 loading='lazy'
-                                                unoptimized={isCloudinaryUrl(project.img)}
+                                                unoptimized={skipOptimization(project.img)}
                                                 sizes="(max-width: 768px) 85vw, (max-width: 1024px) 50vw, 31vw"
                                                 className='object-contain'
                                             />

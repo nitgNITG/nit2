@@ -15,6 +15,23 @@ export function isCloudinaryUrl(url: string): boolean {
 }
 
 /**
+ * Returns true for locally-uploaded images (served from /uploads/).
+ * These must bypass _next/image — Next.js caches optimizer failures in memory
+ * so newly uploaded files won't display until a server restart.
+ * Serve them directly via nginx instead.
+ */
+export function isLocalUpload(url: string): boolean {
+    return !!url && url.startsWith('/uploads/');
+}
+
+/**
+ * True for any image that must skip Next.js image optimization.
+ */
+export function skipOptimization(url: string): boolean {
+    return isCloudinaryUrl(url) || isLocalUpload(url);
+}
+
+/**
  * Strip any existing Cloudinary transform segment from a URL so we can
  * inject our own. Handles URLs where the upload transformation is already
  * embedded (e.g. when uploadImage sets fetch_format/quality at upload time).

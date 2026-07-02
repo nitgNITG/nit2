@@ -4,7 +4,7 @@ import Image from 'next/image'
 import React, { useCallback, useEffect, useState } from 'react'
 import LoadingCard from '../../dashboard/components/LoadingCard';
 import { useLocale, useTranslations } from 'next-intl';
-import { cloudinaryOptimized, isCloudinaryUrl } from '@/utils/cloudinaryUrl';
+import { cloudinaryOptimized, isCloudinaryUrl, skipOptimization } from '@/utils/cloudinaryUrl';
 
 const CommerceProjects = () => {
     const [projects, setProjects] = useState([]);
@@ -51,7 +51,7 @@ const CommerceProjects = () => {
                                     <Image
                                         src={cloudinaryOptimized(project.img, 600)}
                                         alt={locale === 'en' ? project.titleEn : project.title}
-                                        unoptimized={isCloudinaryUrl(project.img)}
+                                        unoptimized={skipOptimization(project.img)}
                                         width={600}
                                         height={400}
                                         sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
