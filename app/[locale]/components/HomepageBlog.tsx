@@ -6,20 +6,26 @@ import Image from 'next/image'
 // Fetch the 3 most recent articles at build/request time (Server Component)
 async function getLatestArticles() {
     try {
-        return await prisma.article.findMany({
-            take: 3,
-            orderBy: { publishedAt: 'desc' },
-            select: {
-                id: true,
-                slug: true,
-                title: true,
-                titleEn: true,
-                content: true,
-                contentEn: true,
-                img: true,
-                publishedAt: true,
-            },
-        })
+        const timeout = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('DB timeout')), 3000)
+        )
+        return await Promise.race([
+            prisma.article.findMany({
+                take: 3,
+                orderBy: { publishedAt: 'desc' },
+                select: {
+                    id: true,
+                    slug: true,
+                    title: true,
+                    titleEn: true,
+                    content: true,
+                    contentEn: true,
+                    img: true,
+                    publishedAt: true,
+                },
+            }),
+            timeout,
+        ]) as Awaited<ReturnType<typeof prisma.article.findMany>>
     } catch {
         return []
     }

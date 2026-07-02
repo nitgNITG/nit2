@@ -1,6 +1,7 @@
 'use client'
+import { useLocale } from 'next-intl'
+import Link from 'next/link'
 import React from 'react'
-import { Link } from '../../../navigation'
 
 const LocaleLink = ({
     children,
@@ -15,9 +16,11 @@ const LocaleLink = ({
     className?: string,
     onClick?: () => void,
 }) => {
+    const locale = useLocale()
     return (
         <Link
-            href={href as any}
+            href={`/${locale}${href}`}
+            locale={locale}
             target={target}
             className={className || ""}
             onClick={onClick}

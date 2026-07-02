@@ -50,9 +50,12 @@ export const uploadImage = async (file: File, folder: string): Promise<string | 
         }
 
         const { dir, urlPrefix } = getUploadPaths(folder);
+        console.log(`[Storage] dir: ${dir}`);
 
         const arrayBuffer = await file.arrayBuffer();
+        console.log(`[Storage] arrayBuffer OK, byteLength: ${arrayBuffer.byteLength}`);
         const buffer = Buffer.from(arrayBuffer);
+        console.log(`[Storage] buffer OK, length: ${buffer.length}`);
 
         // Ensure the upload directory exists
         fs.mkdirSync(dir, { recursive: true });
@@ -62,14 +65,16 @@ export const uploadImage = async (file: File, folder: string): Promise<string | 
         const filepath = path.join(dir, filename);
 
         // Resize to max 800px on either axis (cards display ~300px, 800 = 2.5× retina headroom)
+        console.log(`[Storage] starting sharp, filepath: ${filepath}`);
         await sharp(buffer)
             .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
             .webp({ quality: 82 })
             .toFile(filepath);
+        console.log('[Storage] sharp done');
 
         // Ensure nginx (www-data) can read the file and directory
-        fs.chmodSync(filepath, 0o644);
-        fs.chmodSync(dir, 0o755);
+        try { fs.chmodSync(filepath, 0o644); } catch { /* ignore permission errors */ }
+        try { fs.chmodSync(dir, 0o755); } catch { /* ignore permission errors */ }
 
         const publicUrl = `${urlPrefix}/${folder}/${filename}`;
         console.log('[Storage] ✅ Saved:', publicUrl);
