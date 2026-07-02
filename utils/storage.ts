@@ -72,8 +72,10 @@ export const uploadImage = async (file: File, folder: string): Promise<string | 
             .toBuffer();
         console.log('[Storage] sharp done');
 
-        // Write with explicit 644 so nginx/Next.js can always read the file
-        fs.writeFileSync(filepath, outputBuffer, { mode: 0o644 });
+        // Write file then explicitly chmod — writeFileSync mode is masked by umask,
+        // but chmodSync sets exact permissions since the process owns the file it just created.
+        fs.writeFileSync(filepath, outputBuffer);
+        fs.chmodSync(filepath, 0o644);
 
         const publicUrl = `${urlPrefix}/${folder}/${filename}`;
         console.log('[Storage] ✅ Saved:', publicUrl);
