@@ -1,6 +1,4 @@
-import Image from 'next/image'
 import React from 'react'
-import phonIcon from '../../assets/phoneIcon.gif'
 import ContactForm from './ContactForm'
 import { EmailIcon, LocationIcon, PhoneIcon, WhatsappIcon } from './icons'
 import { useTranslations } from 'next-intl'
@@ -34,13 +32,7 @@ const Contact = () => {
                     <div className='flex flex-col gap-10 justify-end'>
                         <div className='flex flex-col items-end'>
                             <div>
-                                <Image
-                                    src={phonIcon}
-                                    alt='تواصل مع فريق تطوير شركة NIT'
-                                    height={300}
-                                    width={300}
-                                    className='size-16 opacity-95'
-                                />
+                                <span className='text-6xl' role='img' aria-label='تواصل مع فريق تطوير شركة NIT'>📞</span>
                             </div>
                             <div>
                                 <span className='text-xl lg:text-2xl font-bold text-[#1E7D67]'>{t('hint')}</span>

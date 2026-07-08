@@ -18,8 +18,6 @@ export const metadata: Metadata = {
   },
   description:
     "الشركة الوطنية لهندسة البرمجيات — نطوّر منصات Moodle التعليمية، تطبيقات التوصيل والمطاعم، المتاجر الإلكترونية، وأنظمة ولاء العملاء لمصر والخليج منذ 2013. N.I.T Egypt: LMS, delivery, restaurant, eCommerce & loyalty app development since 2013.",
-  keywords:
-    "برمجة مواقع مصر, تطوير تطبيقات جوال, منصة مودل, تجارة إلكترونية, تطبيق توصيل, تطبيق مطاعم, نظام ولاء العملاء, منصة متعددة البائعين, شركة برمجة مصر, Moodle LMS Egypt, delivery app development, restaurant app, customer loyalty app, eCommerce app development Egypt, software engineering Egypt",
   authors: [{ name: "N.I.T Egypt", url: "https://www.nitg-eg.com" }],
   creator: "N.I.T Egypt",
   publisher: "N.I.T Egypt",
@@ -53,6 +51,10 @@ export default async function LocaleLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://res.cloudinary.com" />
         <link rel="dns-prefetch" href="https://jswidget.isharat.net" />
+        {/* hreflang — tell Google about AR/EN alternates */}
+        <link rel="alternate" hrefLang="ar" href="https://www.nitg-eg.com/ar" />
+        <link rel="alternate" hrefLang="en" href="https://www.nitg-eg.com/en" />
+        <link rel="alternate" hrefLang="x-default" href="https://www.nitg-eg.com/ar" />
       </head>
       <body
         className={clsx(
@@ -75,7 +77,7 @@ export default async function LocaleLayout({
               name: "N.I.T Egypt — National Software Engineering",
               alternateName: "الشركة الوطنية لهندسة البرمجيات",
               url: "https://www.nitg-eg.com",
-              logo: "https://www.nitg-eg.com/logo.svg",
+              logo: "https://www.nitg-eg.com/og-image.png",
               foundingDate: "2013",
               knowsAbout: [
                 "Moodle LMS Development",
@@ -113,8 +115,8 @@ export default async function LocaleLayout({
               name: "N.I.T Egypt — National Software Engineering",
               alternateName: "الشركة الوطنية لهندسة البرمجيات",
               url: "https://www.nitg-eg.com",
-              logo: "https://www.nitg-eg.com/logo.svg",
-              image: "https://www.nitg-eg.com/logo.svg",
+              logo: "https://www.nitg-eg.com/og-image.png",
+              image: "https://www.nitg-eg.com/og-image.png",
               description: "شركة مصرية متخصصة في تطوير منصات Moodle التعليمية، تطبيقات التوصيل والمطاعم، المتاجر الإلكترونية، وأنظمة ولاء العملاء لمصر والخليج منذ 2013.",
               foundingDate: "2013",
               telephone: ["+201091568240", "+201149830855"],
