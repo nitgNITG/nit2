@@ -11,7 +11,7 @@ import Script from "next/script";
 const cairo = Cairo({ subsets: ["latin", "arabic"], display: "swap" });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://nitg-eg.com"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.nitg-eg.com"),
   title: {
     default: "N.I.T Egypt | شركة برمجة مواقع وتطبيقات في مصر",
     template: "%s | N.I.T Egypt",
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     "الشركة الوطنية لهندسة البرمجيات — نطوّر منصات Moodle التعليمية، تطبيقات التوصيل والمطاعم، المتاجر الإلكترونية، وأنظمة ولاء العملاء لمصر والخليج منذ 2013. N.I.T Egypt: LMS, delivery, restaurant, eCommerce & loyalty app development since 2013.",
   keywords:
     "برمجة مواقع مصر, تطوير تطبيقات جوال, منصة مودل, تجارة إلكترونية, تطبيق توصيل, تطبيق مطاعم, نظام ولاء العملاء, منصة متعددة البائعين, شركة برمجة مصر, Moodle LMS Egypt, delivery app development, restaurant app, customer loyalty app, eCommerce app development Egypt, software engineering Egypt",
-  authors: [{ name: "N.I.T Egypt", url: "https://nitg-eg.com" }],
+  authors: [{ name: "N.I.T Egypt", url: "https://www.nitg-eg.com" }],
   creator: "N.I.T Egypt",
   publisher: "N.I.T Egypt",
   icons: { icon: "/logo.svg" },
@@ -74,8 +74,8 @@ export default async function LocaleLayout({
               "@type": "Organization",
               name: "N.I.T Egypt — National Software Engineering",
               alternateName: "الشركة الوطنية لهندسة البرمجيات",
-              url: "https://nitg-eg.com",
-              logo: "https://nitg-eg.com/logo.svg",
+              url: "https://www.nitg-eg.com",
+              logo: "https://www.nitg-eg.com/logo.svg",
               foundingDate: "2013",
               knowsAbout: [
                 "Moodle LMS Development",
@@ -109,12 +109,12 @@ export default async function LocaleLayout({
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "LocalBusiness",
-              "@id": "https://nitg-eg.com/#localbusiness",
+              "@id": "https://www.nitg-eg.com/#localbusiness",
               name: "N.I.T Egypt — National Software Engineering",
               alternateName: "الشركة الوطنية لهندسة البرمجيات",
-              url: "https://nitg-eg.com",
-              logo: "https://nitg-eg.com/logo.svg",
-              image: "https://nitg-eg.com/logo.svg",
+              url: "https://www.nitg-eg.com",
+              logo: "https://www.nitg-eg.com/logo.svg",
+              image: "https://www.nitg-eg.com/logo.svg",
               description: "شركة مصرية متخصصة في تطوير منصات Moodle التعليمية، تطبيقات التوصيل والمطاعم، المتاجر الإلكترونية، وأنظمة ولاء العملاء لمصر والخليج منذ 2013.",
               foundingDate: "2013",
               telephone: ["+201091568240", "+201149830855"],

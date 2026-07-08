@@ -6,7 +6,7 @@ import Login from "./components/Login";
 import prisma from "@/prisma/client";
 
 export const metadata: Metadata = {
-    title: "Dashboard | N.I.T Egypt",
+    title: { absolute: "Dashboard | N.I.T Egypt" },
     description: "N.I.T Egypt admin dashboard.",
     robots: { index: false, follow: false },
 };

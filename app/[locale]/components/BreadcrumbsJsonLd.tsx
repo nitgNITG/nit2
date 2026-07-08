@@ -1,6 +1,6 @@
 import { getLocale } from 'next-intl/server'
 
-const BASE_URL = 'https://nitg-eg.com'
+const BASE_URL = 'https://www.nitg-eg.com'
 
 export type Crumb = {
     /** Path segment after the locale, e.g. "moodle-lms" or "blog/my-article". Empty for home. */

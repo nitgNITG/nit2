@@ -63,10 +63,10 @@ export async function generateMetadata(
         title,
         description: desc,
         alternates: {
-            canonical: `https://nitg-eg.com/${params.locale}/blog/${params.articleId}`,
+            canonical: `https://www.nitg-eg.com/${params.locale}/blog/${params.articleId}`,
             languages: {
-                ar: `https://nitg-eg.com/ar/blog/${params.articleId}`,
-                en: `https://nitg-eg.com/en/blog/${params.articleId}`,
+                ar: `https://www.nitg-eg.com/ar/blog/${params.articleId}`,
+                en: `https://www.nitg-eg.com/en/blog/${params.articleId}`,
             },
         },
         openGraph: {
@@ -115,16 +115,16 @@ export default async function ArticlePage(
         author: {
             '@type': 'Organization',
             name: 'N.I.T Egypt',
-            url: 'https://nitg-eg.com',
+            url: 'https://www.nitg-eg.com',
         },
         publisher: {
             '@type': 'Organization',
             name: 'N.I.T Egypt',
-            logo: { '@type': 'ImageObject', url: 'https://nitg-eg.com/footer_logo.png' },
+            logo: { '@type': 'ImageObject', url: 'https://www.nitg-eg.com/footer_logo.png' },
         },
         mainEntityOfPage: {
             '@type': 'WebPage',
-            '@id': `https://nitg-eg.com/${params.locale}/blog/${params.articleId}`,
+            '@id': `https://www.nitg-eg.com/${params.locale}/blog/${params.articleId}`,
         },
     }
 

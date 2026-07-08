@@ -10,16 +10,16 @@ export async function generateMetadata({
     return {
         title: isAr
             ? "مشاريعنا | منصات Moodle والتجارة الإلكترونية | NIT"
-            : "Our Projects | Moodle LMS & eCommerce Apps | N.I.T Egypt",
+            : "Our Projects | Moodle LMS & eCommerce Apps",
         description: isAr
             ? "شاهد أعمال الشركة الوطنية لهندسة البرمجيات: منصات Moodle التعليمية، تطبيقات التجارة الإلكترونية على Google Play وApp Store. خبرة 12+ سنة وأكثر من 100 مشروع ناجح."
             : "Explore N.I.T Egypt's portfolio: live Moodle LMS platforms, eCommerce apps on Google Play & App Store, custom software solutions for Egypt and Gulf markets. 12+ years, 100+ projects.",
         keywords: "مشاريع برمجية مصر, منصة Moodle, تطبيق تجارة إلكترونية, منصة تعليمية, ecommerce app egypt, moodle lms development, educational platform egypt",
         alternates: {
-            canonical: `https://nitg-eg.com/${locale}/our-projects`,
+            canonical: `https://www.nitg-eg.com/${locale}/our-projects`,
             languages: {
-                ar: "https://nitg-eg.com/ar/our-projects",
-                en: "https://nitg-eg.com/en/our-projects",
+                ar: "https://www.nitg-eg.com/ar/our-projects",
+                en: "https://www.nitg-eg.com/en/our-projects",
             },
         },
         openGraph: {
@@ -27,7 +27,7 @@ export async function generateMetadata({
             description: isAr
                 ? "منصات Moodle وتطبيقات التجارة الإلكترونية — 100+ مشروع ناجح لمصر والخليج"
                 : "Live Moodle LMS platforms & eCommerce apps built for Egypt and Gulf clients. 100+ projects.",
-            url: `https://nitg-eg.com/${locale}/our-projects`,
+            url: `https://www.nitg-eg.com/${locale}/our-projects`,
             type: "website",
             locale: isAr ? "ar_EG" : "en_US",
         },

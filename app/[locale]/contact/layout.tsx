@@ -8,16 +8,16 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const isAr = locale === "ar";
     return {
-        title: isAr ? "تواصل معنا | الشركة الوطنية لهندسة البرمجيات — N.I.T Egypt" : "Contact Us | N.I.T Egypt — National Software Engineering",
+        title: isAr ? "تواصل معنا | الشركة الوطنية لهندسة البرمجيات" : "Contact Us — National Software Engineering",
         description: isAr
             ? "تواصل مع الشركة الوطنية لهندسة البرمجيات. اتصل على 201091568240+ أو راسلنا على info@nitg-eg.com. 168 شارع الملك فيصل، الجيزة، مصر."
             : "Contact N.I.T Egypt for Moodle LMS development, eCommerce apps, and website programming. Call +201091568240 or email info@nitg-eg.com. 168 King Faisal St, Giza.",
         keywords: "contact NIT Egypt, تواصل معنا, شركة برمجة مصر, Moodle development contact, eCommerce app Egypt, info@nitg-eg.com",
         alternates: {
-            canonical: `https://nitg-eg.com/${locale}/contact`,
+            canonical: `https://www.nitg-eg.com/${locale}/contact`,
             languages: {
-                ar: "https://nitg-eg.com/ar/contact",
-                en: "https://nitg-eg.com/en/contact",
+                ar: "https://www.nitg-eg.com/ar/contact",
+                en: "https://www.nitg-eg.com/en/contact",
             },
         },
         openGraph: {
@@ -25,10 +25,10 @@ export async function generateMetadata({
             description: isAr
                 ? "اتصل بنا الآن — +201091568240 | info@nitg-eg.com | الجيزة، مصر"
                 : "Get in touch — Phone: +201091568240 | Email: info@nitg-eg.com | Giza, Egypt.",
-            url: `https://nitg-eg.com/${locale}/contact`,
+            url: `https://www.nitg-eg.com/${locale}/contact`,
             type: "website",
             locale: isAr ? "ar_EG" : "en_US",
-            images: [{ url: "https://nitg-eg.com/logo.svg", width: 512, height: 512, alt: "N.I.T Egypt" }],
+            images: [{ url: "https://www.nitg-eg.com/logo.svg", width: 512, height: 512, alt: "N.I.T Egypt" }],
         },
         twitter: {
             card: "summary_large_image",

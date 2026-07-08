@@ -29,22 +29,22 @@ export async function generateMetadata({
         const description = isAr
             ? (article.metaDesc ?? "")
             : (article.metaDescEn ?? article.metaDesc ?? "");
-        const imgUrl = article.img?.startsWith("/") ? `https://nitg-eg.com${article.img}` : article.img;
+        const imgUrl = article.img?.startsWith("/") ? `https://www.nitg-eg.com${article.img}` : article.img;
 
         return {
             title,
             description,
             alternates: {
-                canonical: `https://nitg-eg.com/${locale}/blog/${canonical}`,
+                canonical: `https://www.nitg-eg.com/${locale}/blog/${canonical}`,
                 languages: {
-                    ar: `https://nitg-eg.com/ar/blog/${canonical}`,
-                    en: `https://nitg-eg.com/en/blog/${canonical}`,
+                    ar: `https://www.nitg-eg.com/ar/blog/${canonical}`,
+                    en: `https://www.nitg-eg.com/en/blog/${canonical}`,
                 },
             },
             openGraph: {
                 title,
                 description,
-                url: `https://nitg-eg.com/${locale}/blog/${canonical}`,
+                url: `https://www.nitg-eg.com/${locale}/blog/${canonical}`,
                 type: "article",
                 publishedTime: article.publishedAt?.toISOString(),
                 authors: ["N.I.T Egypt"],

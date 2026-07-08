@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
                 disallow: ["/dashboard/", "/api/"],
             },
         ],
-        sitemap: "https://nitg-eg.com/sitemap.xml",
+        sitemap: `${process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.nitg-eg.com"}/sitemap.xml`,
     };
 }

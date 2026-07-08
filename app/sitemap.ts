@@ -1,7 +1,7 @@
 import { MetadataRoute } from "next";
 import prisma from "@/prisma/client";
 
-const BASE_URL = "https://nitg-eg.com";
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.nitg-eg.com";
 const locales = ["ar", "en"];
 
 const staticPages = [
