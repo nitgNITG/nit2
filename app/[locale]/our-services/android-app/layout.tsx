@@ -13,7 +13,6 @@ export async function generateMetadata({
         description: isAr
             ? "تطوير وبرمجة تطبيقات الأندرويد في مصر والخليج. تطبيقات بـ Flutter منشورة على Google Play، بواجهات Material Design ودعم عربي كامل وأداء عالٍ."
             : "Custom Android app development in Egypt & the Gulf. Flutter apps published on Google Play, with Material Design UI, full Arabic support and high performance.",
-        keywords: "Android app development Egypt, تصميم تطبيقات اندرويد, برمجة تطبيقات اندرويد, تطبيق اندرويد, Flutter app development Egypt, Google Play publishing, شركة تطوير تطبيقات اندرويد, تكلفة تطبيق اندرويد, Material Design app",
         alternates: {
             canonical: `https://www.nitg-eg.com/${locale}/our-services/android-app`,
             languages: {
@@ -27,7 +26,7 @@ export async function generateMetadata({
             url: `https://www.nitg-eg.com/${locale}/our-services/android-app`,
             type: "website",
             locale: isAr ? "ar_EG" : "en_US",
-            images: [{ url: "https://www.nitg-eg.com/logo.svg", width: 512, height: 512, alt: "Android App Development — N.I.T Egypt" }],
+            images: [{ url: "https://www.nitg-eg.com/og-image.png", width: 1200, height: 630, alt: "Android App Development — N.I.T Egypt" }],
         },
         twitter: {
             card: "summary_large_image",

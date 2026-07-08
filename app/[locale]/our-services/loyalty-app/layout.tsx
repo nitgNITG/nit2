@@ -13,7 +13,6 @@ export async function generateMetadata({
         description: isAr
             ? "تطوير برامج ولاء العملاء وأنظمة النقاط والمكافآت في مصر والخليج — تطبيق نقاط وكوبونات وبطاقات عضوية رقمية مع لوحة تحليلات وتكامل نقاط البيع."
             : "Customer loyalty program & rewards app development in Egypt & the Gulf — points, coupons and digital membership cards with an analytics dashboard and POS integration.",
-        keywords: "برنامج ولاء العملاء, نظام نقاط ومكافآت, تطبيق ولاء العملاء, نظام ولاء, نظام ولاء العملاء, أنظمة الولاء, أنواع أنظمة الولاء, أنظمة الولاء في السعودية, بطاقة عضوية رقمية, customer loyalty program, loyalty app development, points and rewards system, loyalty rewards app",
         alternates: {
             canonical: `https://www.nitg-eg.com/${locale}/our-services/loyalty-app`,
             languages: {
@@ -27,7 +26,7 @@ export async function generateMetadata({
             url: `https://www.nitg-eg.com/${locale}/our-services/loyalty-app`,
             type: "website",
             locale: isAr ? "ar_EG" : "en_US",
-            images: [{ url: "https://www.nitg-eg.com/logo.svg", width: 512, height: 512, alt: "Customer Loyalty App Development — N.I.T Egypt" }],
+            images: [{ url: "https://www.nitg-eg.com/og-image.png", width: 1200, height: 630, alt: "Customer Loyalty App Development — N.I.T Egypt" }],
         },
         twitter: {
             card: "summary_large_image",

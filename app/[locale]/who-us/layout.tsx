@@ -12,7 +12,6 @@ export async function generateMetadata({
         description: isAr
             ? "تعرف على الشركة الوطنية لهندسة البرمجيات وتكنولوجيا المعلومات. شركة مصرية تأسست عام 2013 في القاهرة، متخصصة في تطوير منصات Moodle التعليمية وتطبيقات التجارة الإلكترونية لمصر والخليج."
             : "Learn about N.I.T Egypt — National Software Engineering & IT company founded in Cairo 2013. Specialists in Moodle LMS, eCommerce apps, and educational platforms for Egypt and the Gulf.",
-        keywords: "about NIT Egypt, شركة برمجة مصر, الشركة الوطنية لهندسة البرمجيات, software company Egypt, من نحن, NIT Egypt history",
         alternates: {
             canonical: `https://www.nitg-eg.com/${locale}/who-us`,
             languages: {
@@ -28,7 +27,7 @@ export async function generateMetadata({
             url: `https://www.nitg-eg.com/${locale}/who-us`,
             type: "website",
             locale: isAr ? "ar_EG" : "en_US",
-            images: [{ url: "https://www.nitg-eg.com/logo.svg", width: 512, height: 512, alt: "N.I.T Egypt" }],
+            images: [{ url: "https://www.nitg-eg.com/og-image.png", width: 1200, height: 630, alt: "N.I.T Egypt" }],
         },
         twitter: {
             card: "summary_large_image",

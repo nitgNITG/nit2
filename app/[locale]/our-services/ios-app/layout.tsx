@@ -13,7 +13,6 @@ export async function generateMetadata({
         description: isAr
             ? "تطوير وبرمجة تطبيقات الآيفون في مصر والخليج. تطبيقات iOS بـ Flutter منشورة على App Store، وفق معايير Apple وتكامل Apple Pay والإشعارات."
             : "Custom iPhone app development in Egypt & the Gulf. iOS apps built with Flutter published on the App Store, following Apple HIG with Apple Pay & push notifications.",
-        keywords: "iPhone app development Egypt, iOS app development, تصميم تطبيقات ايفون, برمجة تطبيقات iOS, تطبيق ايفون, Flutter app development Egypt, App Store publishing, شركة تطوير تطبيقات ايفون, تكلفة تطبيق ايفون",
         alternates: {
             canonical: `https://www.nitg-eg.com/${locale}/our-services/ios-app`,
             languages: {
@@ -27,7 +26,7 @@ export async function generateMetadata({
             url: `https://www.nitg-eg.com/${locale}/our-services/ios-app`,
             type: "website",
             locale: isAr ? "ar_EG" : "en_US",
-            images: [{ url: "https://www.nitg-eg.com/logo.svg", width: 512, height: 512, alt: "iPhone App Development — N.I.T Egypt" }],
+            images: [{ url: "https://www.nitg-eg.com/og-image.png", width: 1200, height: 630, alt: "iPhone App Development — N.I.T Egypt" }],
         },
         twitter: {
             card: "summary_large_image",

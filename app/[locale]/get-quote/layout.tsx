@@ -14,7 +14,6 @@ export async function generateMetadata({
         description: isAr
             ? "احصل على عرض سعر مجاني لمشروعك من الشركة الوطنية N.I.T Egypt. تطوير منصات Moodle، تطبيقات التجارة الإلكترونية، وبرمجة مخصصة لمصر والخليج."
             : "Get a free project quote from N.I.T Egypt. We develop Moodle LMS platforms, eCommerce apps, and custom software for Egypt and the Gulf region.",
-        keywords: "get quote NIT Egypt, عرض سعر برمجة, Moodle quote, eCommerce app quote Egypt, Gulf software quote, طلب سعر",
         alternates: {
             canonical: `https://www.nitg-eg.com/${locale}/get-quote`,
             languages: {
@@ -30,7 +29,7 @@ export async function generateMetadata({
             url: `https://www.nitg-eg.com/${locale}/get-quote`,
             type: "website",
             locale: isAr ? "ar_EG" : "en_US",
-            images: [{ url: "https://www.nitg-eg.com/logo.svg", width: 512, height: 512, alt: "N.I.T Egypt" }],
+            images: [{ url: "https://www.nitg-eg.com/og-image.png", width: 1200, height: 630, alt: "N.I.T Egypt" }],
         },
         twitter: {
             card: "summary_large_image",

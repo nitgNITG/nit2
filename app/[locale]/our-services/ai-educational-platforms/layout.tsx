@@ -13,7 +13,6 @@ export async function generateMetadata({
         description: isAr
             ? "تطوير منصات تعليمية تعتمد على الذكاء الاصطناعي في مصر والخليج. توفير مسارات تعلم ذكية، تحليل أداء الطلاب ومساعدين افتراضيين للتعليم."
             : "AI-powered educational platform development in Egypt & the Gulf. Smart learning paths, student performance analytics, and virtual teaching assistants.",
-        keywords: "AI educational platforms, AI LMS Egypt, منصات تعليم بالذكاء الاصطناعي, تطوير نظام تعليمي ذكي, AI learning paths, smart e-learning Egypt",
         alternates: {
             canonical: `https://www.nitg-eg.com/${locale}/our-services/ai-educational-platforms`,
             languages: {
@@ -32,5 +31,25 @@ export async function generateMetadata({
 }
 
 export default function AIEducationalPlatformsLayout({ children }: { children: React.ReactNode }) {
-    return <>{children}</>;
+    return (
+        <>
+            {children}
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify({
+                        "@context": "https://schema.org",
+                        "@type": "Service",
+                        name: "AI Educational Platform Development",
+                        alternateName: "تطوير منصات التعليم بالذكاء الاصطناعي",
+                        provider: { "@type": "Organization", name: "N.I.T Egypt", url: "https://www.nitg-eg.com" },
+                        areaServed: ["EG", "SA", "AE", "KW", "QA", "BH", "OM"],
+                        description: "AI-powered educational platforms with smart learning paths, student analytics, and virtual teaching assistants for universities and enterprises.",
+                        serviceType: "AI E-Learning Platform Development",
+                        url: "https://www.nitg-eg.com/en/our-services/ai-educational-platforms",
+                    }),
+                }}
+            />
+        </>
+    );
 }

@@ -13,7 +13,6 @@ export async function generateMetadata({
         description: isAr
             ? "تطوير نظام إدارة مدارس متكامل للمدارس والحضانات في مصر والخليج. معلومات الطلاب، الحضور، الجداول، الدرجات، الرسوم والمدفوعات الإلكترونية، وتطبيق لأولياء الأمور والمعلمين."
             : "Custom school management system development for schools & nurseries in Egypt & the Gulf. Student information, attendance, timetables, grades, fees & online payments, and a parent & teacher app.",
-        keywords: "school management system, نظام إدارة المدارس, student information system, نظام معلومات الطلاب, school software Egypt, تطبيق مدرسة, parent app, نظام إدارة مدرسي, school ERP Egypt Gulf",
         alternates: {
             canonical: `https://www.nitg-eg.com/${locale}/our-services/school-management`,
             languages: {

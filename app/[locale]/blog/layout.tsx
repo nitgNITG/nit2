@@ -12,7 +12,6 @@ export async function generateMetadata({
         description: isAr
             ? "مقالات ودليل شامل حول منصات Moodle التعليمية، تطبيقات التجارة الإلكترونية، التعلم الإلكتروني والتحول الرقمي في مصر والخليج."
             : "Articles and guides on Moodle LMS development, eCommerce apps, e-learning platforms, and digital transformation for Egypt and Gulf businesses.",
-        keywords: "Moodle blog, e-learning articles, eCommerce Egypt blog, مدونة تقنية, تعليم إلكتروني, منصة مودل, تجارة إلكترونية مصر",
         alternates: {
             canonical: `https://www.nitg-eg.com/${locale}/blog`,
             languages: {
@@ -28,7 +27,7 @@ export async function generateMetadata({
             url: `https://www.nitg-eg.com/${locale}/blog`,
             type: "website",
             locale: isAr ? "ar_EG" : "en_US",
-            images: [{ url: "https://www.nitg-eg.com/logo.svg", width: 512, height: 512, alt: "N.I.T Egypt Blog" }],
+            images: [{ url: "https://www.nitg-eg.com/og-image.png", width: 1200, height: 630, alt: "N.I.T Egypt Blog" }],
         },
         twitter: {
             card: "summary_large_image",

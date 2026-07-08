@@ -13,7 +13,6 @@ export async function generateMetadata({
         description: isAr
             ? "تطوير تطبيقات توصيل طلبات في مصر والخليج — مثل مرسول وهنقرستيشن وجاهز. تطبيق عميل وسائق، تتبع مباشر بالخريطة، بوابات دفع، ولوحة تحكم متكاملة."
             : "Custom delivery app development in Egypt & the Gulf — like Mrsool, HungerStation & Jahez. Customer & driver apps, live GPS tracking, payment gateways and a full admin dashboard.",
-        keywords: "تطبيق توصيل, تطبيق توصيل طلبات, تصميم تطبيق مثل مرسول, تطبيق مثل هنقرستيشن, تطبيق مثل جاهز, تطبيق دليفري, شركة برمجة تطبيق توصيل, تصميم تطبيق مثل اوبر, تطبيق توصيل ركاب, تصميم تطبيق تاكسي, تطبيقات التوصيل في مصر, تطبيقات التوصيل في السعودية, تكلفة تطبيق توصيل, delivery app development Egypt, on-demand delivery app, food delivery app",
         alternates: {
             canonical: `https://www.nitg-eg.com/${locale}/our-services/delivery-app`,
             languages: {
@@ -27,7 +26,7 @@ export async function generateMetadata({
             url: `https://www.nitg-eg.com/${locale}/our-services/delivery-app`,
             type: "website",
             locale: isAr ? "ar_EG" : "en_US",
-            images: [{ url: "https://www.nitg-eg.com/logo.svg", width: 512, height: 512, alt: "Delivery App Development — N.I.T Egypt" }],
+            images: [{ url: "https://www.nitg-eg.com/og-image.png", width: 1200, height: 630, alt: "Delivery App Development — N.I.T Egypt" }],
         },
         twitter: {
             card: "summary_large_image",

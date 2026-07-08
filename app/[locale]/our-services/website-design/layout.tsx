@@ -13,7 +13,6 @@ export async function generateMetadata({
         description: isAr
             ? "تطوير وبرمجة مواقع الإنترنت في مصر والخليج. مواقع شركات وصفحات هبوط ومتاجر وتطبيقات ويب — متجاوبة، سريعة، ومهيأة لمحركات البحث SEO مع نظام إدارة محتوى."
             : "Custom web development in Egypt & the Gulf. Corporate sites, landing pages, stores and web apps — responsive, fast and SEO-ready with a CMS.",
-        keywords: "website design Egypt, web development Egypt, تصميم مواقع, تصميم مواقع انترنت, شركة تصميم مواقع, تصميم موقع شركة, صفحات هبوط, web app development, SEO website Egypt, تكلفة تصميم موقع",
         alternates: {
             canonical: `https://www.nitg-eg.com/${locale}/our-services/website-design`,
             languages: {
@@ -27,7 +26,7 @@ export async function generateMetadata({
             url: `https://www.nitg-eg.com/${locale}/our-services/website-design`,
             type: "website",
             locale: isAr ? "ar_EG" : "en_US",
-            images: [{ url: "https://www.nitg-eg.com/logo.svg", width: 512, height: 512, alt: "Website Design & Development — N.I.T Egypt" }],
+            images: [{ url: "https://www.nitg-eg.com/og-image.png", width: 1200, height: 630, alt: "Website Design & Development — N.I.T Egypt" }],
         },
         twitter: {
             card: "summary_large_image",

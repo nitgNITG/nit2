@@ -13,7 +13,6 @@ export async function generateMetadata({
         description: isAr
             ? "تطوير تطبيقات التجارة الإلكترونية في مصر والخليج. تطبيقات iOS وAndroid على Google Play وApp Store. متاجر متعددة البائعين، تكامل فوري وباي موب وسترايب، أنظمة نقاط البيع."
             : "Custom eCommerce app development in Egypt. Native iOS & Android shopping apps on Google Play & App Store. Multivendor marketplaces, Fawry/PayMob/Stripe payment integration, POS systems.",
-        keywords: "eCommerce app development Egypt, mobile shopping app, multivendor marketplace, Fawry PayMob integration, تجارة إلكترونية مصر, تطبيق متجر, Google Play App Store Egypt, POS system Egypt, شركة تصميم متجر الكتروني, تصميم متجر الكتروني احترافي, تصميم متجر الكتروني متعدد التجار, تكلفة تصميم متجر الكتروني, سعر تصميم متجر الكتروني",
         alternates: {
             canonical: `https://www.nitg-eg.com/${locale}/our-services/ecommerce-app`,
             languages: {
@@ -27,7 +26,7 @@ export async function generateMetadata({
             url: `https://www.nitg-eg.com/${locale}/our-services/ecommerce-app`,
             type: "website",
             locale: isAr ? "ar_EG" : "en_US",
-            images: [{ url: "https://www.nitg-eg.com/logo.svg", width: 512, height: 512, alt: "eCommerce App Development — N.I.T Egypt" }],
+            images: [{ url: "https://www.nitg-eg.com/og-image.png", width: 1200, height: 630, alt: "eCommerce App Development — N.I.T Egypt" }],
         },
         twitter: {
             card: "summary_large_image",

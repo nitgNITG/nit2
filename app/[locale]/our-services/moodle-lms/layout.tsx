@@ -11,7 +11,6 @@ export async function generateMetadata({
         description: isAr
             ? "تطوير منصات Moodle التعليمية في مصر والخليج منذ 2013. منصات مخصصة للجامعات والمدارس والشركات مع دعم اللغة العربية RTL وتطبيقات الجوال والاستضافة المُدارة."
             : "Custom Moodle LMS development in Egypt and Gulf countries since 2013. Universities, schools & corporate training platforms with Arabic RTL support, mobile apps, and managed hosting.",
-        keywords: "Moodle LMS Egypt, Moodle development, e-learning platform Egypt, Moodle Arabic RTL, منصة مودل, تعليم إلكتروني, منصة تعليمية مصر, تطوير Moodle الخليج, educational LMS, انشاء منصة تعليمية, تكلفة انشاء منصة تعليمية, انشاء منصة تدريب الكترونية, كيفية انشاء منصة تعليمية, انشاء منصة تعليمية للمدرسة",
         alternates: {
             canonical: `https://www.nitg-eg.com/${locale}/our-services/moodle-lms`,
             languages: {
@@ -25,7 +24,7 @@ export async function generateMetadata({
             url: `https://www.nitg-eg.com/${locale}/our-services/moodle-lms`,
             type: "website",
             locale: isAr ? "ar_EG" : "en_US",
-            images: [{ url: "https://www.nitg-eg.com/logo.svg", width: 512, height: 512, alt: "Moodle LMS Development — N.I.T Egypt" }],
+            images: [{ url: "https://www.nitg-eg.com/og-image.png", width: 1200, height: 630, alt: "Moodle LMS Development — N.I.T Egypt" }],
         },
         twitter: {
             card: "summary_large_image",

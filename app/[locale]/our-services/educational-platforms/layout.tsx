@@ -13,7 +13,6 @@ export async function generateMetadata({
         description: isAr
             ? "تطوير منصات تعليمية مخصصة للجامعات والمدارس والمؤسسات في مصر والخليج. أنظمة إدارة التعلم LMS، بث مباشر، اختبارات إلكترونية وشهادات."
             : "Custom educational platform development for universities, schools & institutions in Egypt & the Gulf. LMS systems, live streaming, e-assessments & certificates.",
-        keywords: "educational platform development, LMS development Egypt, منصات تعليمية, تطوير منصة تعليمية, نظام إدارة التعلم, e-learning platform Egypt, custom LMS, شركة تصميم منصة تعليمية",
         alternates: {
             canonical: `https://www.nitg-eg.com/${locale}/our-services/educational-platforms`,
             languages: {
@@ -32,5 +31,25 @@ export async function generateMetadata({
 }
 
 export default function EducationalPlatformsLayout({ children }: { children: React.ReactNode }) {
-    return <>{children}</>;
+    return (
+        <>
+            {children}
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify({
+                        "@context": "https://schema.org",
+                        "@type": "Service",
+                        name: "Educational Platform Development",
+                        alternateName: "تطوير منصات تعليمية احترافية",
+                        provider: { "@type": "Organization", name: "N.I.T Egypt", url: "https://www.nitg-eg.com" },
+                        areaServed: ["EG", "SA", "AE", "KW", "QA", "BH", "OM"],
+                        description: "Custom LMS and educational platforms for universities, schools and enterprises with live streaming, e-assessments and certificate management.",
+                        serviceType: "Educational Platform Development",
+                        url: "https://www.nitg-eg.com/en/our-services/educational-platforms",
+                    }),
+                }}
+            />
+        </>
+    );
 }
