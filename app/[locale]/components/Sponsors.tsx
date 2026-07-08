@@ -56,6 +56,7 @@ const Sponsors = () => {
                                             alt='شعار أحد شركاء وعملاء شركة NIT'
                                             fill
                                             sizes='130px'
+                                            loading='lazy'
                                             style={{ objectFit: 'contain' }}
                                         />
                                     </div>

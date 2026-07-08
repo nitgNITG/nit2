@@ -17,6 +17,7 @@ const AccessibilityButton = () => {
           alt="Accessibility"
           width={56}
           height={56}
+          loading="lazy"
           className="rounded-full shadow-lg"
         />
       </div>
