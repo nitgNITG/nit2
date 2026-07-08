@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ar_EG",
     alternateLocale: ["en_US"],
-    images: [{ url: "/logo.svg", width: 512, height: 512, alt: "N.I.T Egypt Logo" }],
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "N.I.T Egypt — حلول برمجية متكاملة لمصر والخليج" }],
   },
   twitter: {
     card: "summary_large_image",
