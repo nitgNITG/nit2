@@ -1,18 +1,20 @@
 import React from 'react'
 import { AppIcon, ClientsIcon, ExperienceIcon, ProjectsIcon } from './icons'
 import { useTranslations, useLocale } from 'next-intl'
-import CountUp from './CountUp'
+import clsx from 'clsx'
 
+// Renders real values in HTML (SSR) so Google indexes "11+" not "0+"
+// The CSS animation is handled via globals.css .counter-value class
 const HeaderHint = () => {
     const t = useTranslations('hitHeader')
     const locale = useLocale()
     const isAr = locale === 'ar'
 
     const hints = [
-        { id: 1, text: t('item1'), end: 11, suffix: '+', icon: <ExperienceIcon /> },
-        { id: 2, text: t('item2'), end: 90, suffix: '+', icon: <AppIcon /> },
-        { id: 3, text: t('item3'), end: 10, suffix: '+', icon: <ProjectsIcon /> },
-        { id: 4, text: t('item4'), end: 100, suffix: '+', icon: <ClientsIcon /> },
+        { id: 1, text: t('item1'), value: '11+', icon: <ExperienceIcon /> },
+        { id: 2, text: t('item2'), value: '90+', icon: <AppIcon /> },
+        { id: 3, text: t('item3'), value: '10+', icon: <ProjectsIcon /> },
+        { id: 4, text: t('item4'), value: '100+', icon: <ClientsIcon /> },
     ]
 
     return (
@@ -30,7 +32,7 @@ const HeaderHint = () => {
                             <div>{hint.icon}</div>
                             <div className='text-center'>
                                 <h4 className='text-lg md:text-2xl font-bold'>
-                                    <CountUp end={hint.end} suffix={hint.suffix} />
+                                    {hint.value}
                                 </h4>
                                 <span className='font-medium'>{hint.text}</span>
                             </div>
@@ -42,6 +44,4 @@ const HeaderHint = () => {
     )
 }
 
-// clsx needed client-side
-import clsx from 'clsx'
 export default HeaderHint

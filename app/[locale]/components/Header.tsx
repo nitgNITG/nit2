@@ -5,7 +5,6 @@ import Image from 'next/image'
 import HeaderHint from './HeaderHint'
 import { useTranslations } from 'next-intl'
 import LocaleLink from './LocaleLink'
-import CountUp from './CountUp'
 
 const Header = () => {
     const t = useTranslations('Header');
@@ -94,7 +93,7 @@ const Header = () => {
                                             {t('delProject')}
                                         </span>
                                         <span className='text-white'>
-                                            <CountUp end={150} suffix="+" prefix={' '} className='text-[#00FFB2] font-bold' />
+                                            <span className='text-[#00FFB2] font-bold'> 150+</span>
                                         </span>
                                     </span>
                                     <span className='flex justify-start'>
@@ -102,7 +101,7 @@ const Header = () => {
                                             {t('happyClients')}
                                         </span>
                                         <span className='text-white'>
-                                            <CountUp end={100} suffix="%" prefix={' '} className='text-[#00FFB2] font-bold' />
+                                            <span className='text-[#00FFB2] font-bold'> 100%</span>
                                         </span>
                                     </span>
                                 </div>
