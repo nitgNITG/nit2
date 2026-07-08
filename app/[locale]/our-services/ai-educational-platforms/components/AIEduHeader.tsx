@@ -1,7 +1,6 @@
 import React from 'react'
 import { getLocale } from 'next-intl/server'
 import Navbar from '../../../components/Navbar'
-import CountUp from '../../../components/CountUp'
 
 const AIEduHeader = async () => {
     const isAr = (await getLocale()) === 'ar'
@@ -45,12 +44,12 @@ const AIEduHeader = async () => {
                         </p>
                         <div className='flex flex-wrap gap-8 justify-center pt-2'>
                             <div className='text-center'>
-                                <div className='text-lg md:text-xl 2xl:text-2xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={100} suffix="%" /></div>
+                                <div className='text-lg md:text-xl 2xl:text-2xl font-bold drop-shadow' style={{ color: '#00FFCD' }}>100%</div>
                                 <div className='text-white/70 text-sm'>{isAr ? 'تقنيات حديثة' : 'Modern tech'}</div>
                             </div>
                             <div className='w-px bg-white/20 self-stretch' />
                             <div className='text-center'>
-                                <div className='text-lg md:text-xl 2xl:text-2xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={2013} /></div>
+                                <div className='text-lg md:text-xl 2xl:text-2xl font-bold drop-shadow' style={{ color: '#00FFCD' }}>2013</div>
                                 <div className='text-white/70 text-sm'>{isAr ? 'منذ سنة' : 'Since'}</div>
                             </div>
                         </div>

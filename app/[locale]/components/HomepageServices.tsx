@@ -1,8 +1,6 @@
 import React from 'react'
 import ServiceTeaser from './ServiceTeaser'
 import { getLocale } from 'next-intl/server'
-import CountUp from './CountUp'
-
 const HomepageServices = async () => {
     const locale = await getLocale()
     const isAr = locale === 'ar'
@@ -37,14 +35,14 @@ const HomepageServices = async () => {
                 {/* Bottom trust strip */}
                 <div className='bg-[#0B2923] rounded-2xl p-6 flex flex-wrap justify-center gap-8 text-center'>
                     {[
-                        { end: 50, suffix: '+', label: isAr ? 'منصة Moodle حية' : 'Live Moodle Platforms' },
-                        { end: 2013, suffix: '', label: isAr ? 'منذ سنة' : 'Since' },
-                        { end: 150, suffix: '+', label: isAr ? 'مشروع مُسلَّم' : 'Projects Delivered' },
-                        { end: 100, suffix: '%', label: isAr ? 'عملاء راضون' : 'Satisfied Clients' },
+                        { value: '50+', label: isAr ? 'منصة Moodle حية' : 'Live Moodle Platforms' },
+                        { value: '2013', label: isAr ? 'منذ سنة' : 'Since' },
+                        { value: '150+', label: isAr ? 'مشروع مُسلَّم' : 'Projects Delivered' },
+                        { value: '100%', label: isAr ? 'عملاء راضون' : 'Satisfied Clients' },
                     ].map((s, i) => (
                         <div key={i}>
                             <div className='text-2xl font-bold text-[#00FFB2]'>
-                                <CountUp end={s.end} suffix={s.suffix} />
+                                {s.value}
                             </div>
                             <div className='text-white/70 text-xs mt-1'>{s.label}</div>
                         </div>

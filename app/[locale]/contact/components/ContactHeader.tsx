@@ -1,7 +1,6 @@
 import React from 'react'
 import Navbar from '../../components/Navbar'
 import { useTranslations, useLocale } from 'next-intl'
-import CountUp from '../../components/CountUp'
 
 const ContactHeader = () => {
     const t = useTranslations('ContactusPage');
@@ -60,12 +59,12 @@ const ContactHeader = () => {
                             </div>
                             <div className='w-px bg-white/20 self-stretch' />
                             <div className='text-center'>
-                                <div className='text-lg md:text-xl 2xl:text-2xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={100} suffix="%" /></div>
+                                <div className='text-lg md:text-xl 2xl:text-2xl font-bold drop-shadow' style={{ color: '#00FFCD' }}>100%</div>
                                 <div className='text-white/70 text-sm'>{isAr ? 'سرعة الرد' : 'Response Rate'}</div>
                             </div>
                             <div className='w-px bg-white/20 self-stretch' />
                             <div className='text-center'>
-                                <div className='text-lg md:text-xl 2xl:text-2xl font-bold drop-shadow' style={{ color: '#00FFCD' }}><CountUp end={5} suffix="+" /></div>
+                                <div className='text-lg md:text-xl 2xl:text-2xl font-bold drop-shadow' style={{ color: '#00FFCD' }}>5+</div>
                                 <div className='text-white/70 text-sm'>{isAr ? 'دول عربية' : 'Countries Served'}</div>
                             </div>
                         </div>
