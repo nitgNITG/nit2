@@ -21,7 +21,14 @@ export const metadata: Metadata = {
   authors: [{ name: "N.I.T Egypt", url: "https://www.nitg-eg.com" }],
   creator: "N.I.T Egypt",
   publisher: "N.I.T Egypt",
-  icons: { icon: "/logo.svg" },
+  icons: {
+    icon: [
+      { url: "/favicon.png", type: "image/png", sizes: "32x32" },
+      { url: "/logo.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
+  },
   openGraph: {
     siteName: "N.I.T Egypt",
     type: "website",
