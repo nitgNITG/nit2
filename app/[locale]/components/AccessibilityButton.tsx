@@ -22,9 +22,10 @@ const AccessibilityButton = () => {
         />
       </div>
 
-      {/* Isharat widget script – works on production domain */}
+      {/* Isharat widget script – afterInteractive ensures it runs AFTER React
+          hydration completes, preventing DOM conflicts on article pages */}
       <Script
-        strategy="lazyOnload"
+        strategy="afterInteractive"
         id="IsharatJSWidget"
         data-icon="bottom-20,right-20"
         data-key="68f64ee820c34"
