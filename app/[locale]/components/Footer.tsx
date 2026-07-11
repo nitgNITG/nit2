@@ -99,8 +99,14 @@ const Footer = () => {
 
             {/* Bottom bar */}
             <div className='border-t border-white/10'>
-                <div className='p-container py-6'>
-                    <span className='block text-center text-sm text-white/50'>{t('rights')}</span>
+                <div className='p-container py-6 flex flex-col sm:flex-row items-center justify-between gap-2'>
+                    <span className='text-sm text-white/50'>{t('rights')}</span>
+                    <a
+                        href={`/${locale}/privacy-policy`}
+                        className='text-sm text-white/40 hover:text-white/70 transition-colors'
+                    >
+                        {isAr ? 'سياسة الخصوصية' : 'Privacy Policy'}
+                    </a>
                 </div>
             </div>
         </footer>
