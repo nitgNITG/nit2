@@ -8,10 +8,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     try {
         // Look up by slug first (new SEO-friendly URLs), then fall back to id
-        let article = await prisma.article.findUnique({
-            where: { slug: articleId },
+        let decoded = articleId;
+        try { decoded = decodeURIComponent(articleId); } catch { /* already decoded */ }
+
+        let article = await prisma.article.findFirst({
+            where: { slug: decoded },
             select: { slug: true, title: true, titleEn: true, metaDesc: true, metaDescEn: true, img: true, publishedAt: true },
-        });
+        }).catch(() => null);
         if (!article) {
             article = await prisma.article.findUnique({
                 where: { id: articleId },

@@ -30,9 +30,13 @@ const ARTICLE_SELECT = {
 
 // ── Data fetcher — tries slug first, then falls back to MongoDB id ─────────
 async function getArticle(slugOrId: string) {
-    // 1. Try as slug
-    const bySlug = await prisma.article.findUnique({
-        where: { slug: slugOrId },
+    // Next.js may or may not decode the URL param — normalise to be safe
+    let decoded = slugOrId;
+    try { decoded = decodeURIComponent(slugOrId); } catch { /* already decoded */ }
+
+    // 1. Try as slug (findFirst avoids issues with nullable @unique on MongoDB)
+    const bySlug = await prisma.article.findFirst({
+        where: { slug: decoded },
         select: ARTICLE_SELECT,
     }).catch(() => null);
     if (bySlug) return bySlug;
