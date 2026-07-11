@@ -4,7 +4,6 @@ import Image from 'next/image'
 import prisma from '@/prisma/client'
 import Footer from '../../components/Footer'
 import Navbar from '../../components/Navbar'
-import BreadcrumbsJsonLd from '../../components/BreadcrumbsJsonLd'
 
 const ARTICLE_SELECT = {
     id: true,
@@ -98,49 +97,9 @@ export default async function ArticlePage(
 
     const displayTitle = isAr ? article.title : (article.titleEn || article.title)
     const displayContent = isAr ? article.content : (article.contentEn || article.content)
-    const metaDesc = isAr
-        ? (article.metaDesc || article.content.slice(0, 155))
-        : (article.metaDescEn || (article.contentEn || article.content).slice(0, 155))
-
-    // Article JSON-LD — enables rich snippets in Google Search
-    const articleJsonLd = {
-        '@context': 'https://schema.org',
-        '@type': 'Article',
-        headline: displayTitle,
-        description: metaDesc,
-        image: article.img,
-        datePublished: article.publishedAt?.toISOString(),
-        dateModified: article.publishedAt?.toISOString(),
-        inLanguage: isAr ? 'ar-EG' : 'en-US',
-        author: {
-            '@type': 'Organization',
-            name: 'N.I.T Egypt',
-            url: 'https://www.nitg-eg.com',
-        },
-        publisher: {
-            '@type': 'Organization',
-            name: 'N.I.T Egypt',
-            logo: { '@type': 'ImageObject', url: 'https://www.nitg-eg.com/footer_logo.png' },
-        },
-        mainEntityOfPage: {
-            '@type': 'WebPage',
-            '@id': `https://www.nitg-eg.com/${params.locale}/blog/${params.articleId}`,
-        },
-    }
 
     return (
         <>
-            <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
-            />
-            <BreadcrumbsJsonLd
-                items={[
-                    { path: 'blog', ar: 'المدونة', en: 'Blog' },
-                    { path: `blog/${params.articleId}`, ar: displayTitle, en: displayTitle },
-                ]}
-            />
-
             <Navbar />
 
             {/*
