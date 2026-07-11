@@ -41,6 +41,7 @@ export async function PUT(req: NextRequest, { params }: { params: { aricleId: st
         const oldImg = body.get('oldImg')
         const title = body.get('title');
         const content = body.get('content')
+        const slug = body.get('slug')
 
         if (img && img != 'undefined') {
             await deleteImage(oldImg as string)
@@ -49,6 +50,7 @@ export async function PUT(req: NextRequest, { params }: { params: { aricleId: st
         }
         if (title) data.title = title
         if (content) data.content = content
+        if (slug) data.slug = slug as string
         const article = await prisma.article.update({
             where: { id: aricleId },
             data
