@@ -2,39 +2,55 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ╔══════════════════ animate.css tuning ══════════════════╗
-   animate.css is imported in layout.tsx BEFORE this file, so the
-   @keyframes redefinitions below win and apply globally.
-
-   Why: animate.css's default fade/slide entrances translate by 100% of
-   the element's OWN height/width. On full-page sections that's a huge,
-   janky slide (and a transient scrollbar). We redefine them with a small,
-   fixed offset so every section reveals in the same smooth, cohesive way.
-   ╚════════════════════════════════════════════════════════╝ */
+/* ╔══════════════════ Minimal animate.css (only what we use) ═══════════════╗
+   Replaces the full 72KB animate.css package — we only need 5 animations.
+   Saves ~70KB of CSS that was previously loaded on every page.
+   ╚════════════════════════════════════════════════════════════════════════╝ */
 :root {
-  --animate-duration: 800ms;          /* one shared duration → cohesion */
+  --animate-duration: 800ms;
   --animate-delay: 0ms;
 }
-/* Shared easing for every reveal — keeps all motion feeling related */
+
 .animate__animated {
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); /* easeOutExpo-ish */
+  animation-duration: var(--animate-duration);
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+/* fadeIn */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate__fadeIn { animation-name: fadeIn; }
+
+/* fadeInUp — tamed to 44px instead of 100% height */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translate3d(0, 44px, 0); }
   to   { opacity: 1; transform: none; }
 }
-@keyframes fadeInDown {
-  from { opacity: 0; transform: translate3d(0, -44px, 0); }
-  to   { opacity: 1; transform: none; }
-}
+.animate__fadeInUp { animation-name: fadeInUp; }
+
+/* fadeInLeft — tamed to 44px instead of 100% width */
 @keyframes fadeInLeft {
   from { opacity: 0; transform: translate3d(-44px, 0, 0); }
   to   { opacity: 1; transform: none; }
 }
+.animate__fadeInLeft { animation-name: fadeInLeft; }
+
+/* fadeInRight — tamed to 44px instead of 100% width */
 @keyframes fadeInRight {
   from { opacity: 0; transform: translate3d(44px, 0, 0); }
   to   { opacity: 1; transform: none; }
 }
+.animate__fadeInRight { animation-name: fadeInRight; }
+
+/* zoomIn */
+@keyframes zoomIn {
+  from { opacity: 0; transform: scale3d(0.3, 0.3, 0.3); }
+  50%  { opacity: 1; }
+}
+.animate__zoomIn { animation-name: zoomIn; }
 /* Before a ScrollReveal block enters the viewport it must be hidden,
    otherwise off-screen content flashes in then animates. */
 .reveal-pending { opacity: 0; }

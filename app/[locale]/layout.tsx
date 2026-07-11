@@ -2,7 +2,6 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import type { Metadata } from "next";
 import { Cairo } from "next/font/google";
-import "animate.css";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import clsx from "clsx";

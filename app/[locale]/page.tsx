@@ -1,23 +1,26 @@
 import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 import FAQSchema from "./components/FAQSchema";
 import FAQSection from "./components/FAQSection";
 import Header from "./components/Header";
 import OurServices from "./components/OurServices";
-import Sponsors from "./components/Sponsors";
-import Experience from "./components/Experience";
-import Projects from "./components/Projects";
-import Platforms from "./components/Platforms";
-import ProjectsCost from "./components/ProjectsCost";
-import Contact from "./components/Contact";
 import Footer from "./components/Footer";
-import Location from "./components/Location";
 import SocialMedia from "./components/SocialMedia";
 import DownSide from "./components/DownSide";
 import ServiceCards from "./components/ServiceCards";
 import HomepageServices from "./components/HomepageServices";
-import HomepageBlog from "./components/HomepageBlog";
-import GovernmentProjects from "./components/GovernmentProjects";
 import ScrollReveal from "./components/ScrollReveal";
+
+// Lazy-load heavy below-the-fold client components to reduce initial JS bundle
+const Sponsors = dynamic(() => import("./components/Sponsors"), { ssr: false });
+const Experience = dynamic(() => import("./components/Experience"));
+const Projects = dynamic(() => import("./components/Projects"), { ssr: false });
+const Platforms = dynamic(() => import("./components/Platforms"), { ssr: false });
+const ProjectsCost = dynamic(() => import("./components/ProjectsCost"));
+const Contact = dynamic(() => import("./components/Contact"));
+const Location = dynamic(() => import("./components/Location"));
+const HomepageBlog = dynamic(() => import("./components/HomepageBlog"));
+const GovernmentProjects = dynamic(() => import("./components/GovernmentProjects"));
 
 export async function generateMetadata({ params: { locale } }: { params: { locale: string } }): Promise<Metadata> {
   const isAr = locale === "ar";
