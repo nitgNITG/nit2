@@ -195,4 +195,18 @@
   }
 }
 
-/**/
+/* ── Contacts table — thick green scrollbar ─────────────────────────────── */
+.contacts-table-scroll {
+  /* Firefox */
+  scrollbar-width: auto;
+  scrollbar-color: #0B5940 #e8f5f0;
+}
+/* Chrome / Edge / Safari */
+.contacts-table-scroll::-webkit-scrollbar        { height: 10px; }
+.contacts-table-scroll::-webkit-scrollbar-track  { background: #e8f5f0; border-radius: 99px; }
+.contacts-table-scroll::-webkit-scrollbar-thumb  {
+  background: #0B5940;
+  border-radius: 99px;
+  border: 2px solid #e8f5f0;
+}
+.contacts-table-scroll::-webkit-scrollbar-thumb:hover { background: #1E7D67; }

@@ -63,10 +63,18 @@ function displayPhone(normalized: string): string {
     return normalized; // keep as-is; browsers handle tel: links fine
 }
 
-/** Build wa.me URL */
-function waLink(phone: string, name: string): string {
+/** Build wa.me URL with full formatted message */
+function waLink(phone: string, name: string, subject?: string, message?: string): string {
     const digits = phone.replace(/\D/g, '');
-    const text = encodeURIComponent(`مرحباً ${name}، شكراً على تواصلك مع شركة N.I.T`);
+    const lines = [
+        `مرحباً ${name} 👋`,
+        `شكراً على تواصلك مع شركة N.I.T Egypt`,
+        `🌐 www.nitg-eg.com`,
+        ``,
+        subject  ? `📌 *${subject}*` : '',
+        message  ? `💬 ${message}`   : '',
+    ].filter(l => l !== undefined);
+    const text = encodeURIComponent(lines.join('\n'));
     return `https://wa.me/${digits}?text=${text}`;
 }
 
@@ -208,7 +216,7 @@ function ContactModal({ contact: c, onClose, onStatusChange, onNotesChange }: {
                                 <div className='flex items-center gap-2'>
                                     <a href={`tel:${phone}`} className='text-sm text-gray-800 hover:text-[#1E7D67] transition-colors'>{displayPhone(phone)}</a>
                                     <a
-                                        href={waLink(phone, c.name)}
+                                        href={waLink(phone, c.name, c.subject, c.message)}
                                         target='_blank' rel='noreferrer'
                                         className='flex items-center gap-1 bg-green-500 hover:bg-green-600 text-white text-[11px] font-semibold px-2 py-0.5 rounded-full transition-colors'
                                         title='Open WhatsApp'
@@ -280,7 +288,7 @@ function ContactModal({ contact: c, onClose, onStatusChange, onNotesChange }: {
                     <div className='flex flex-wrap gap-2'>
                         {phone && (
                             <a
-                                href={waLink(phone, c.name)}
+                                href={waLink(phone, c.name, c.subject, c.message)}
                                 target='_blank' rel='noreferrer'
                                 className='flex items-center gap-1.5 bg-green-500 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-green-600 transition-colors'
                             >
@@ -355,7 +363,7 @@ function ContactCard({ c, onView, onStatusChange, onDelete }: {
                     <div className='flex items-center gap-2 mt-0.5'>
                         <a href={`tel:${phone}`} className='text-xs text-gray-500 hover:text-[#1E7D67]'>{displayPhone(phone)}</a>
                         <a
-                            href={waLink(phone, c.name)}
+                            href={waLink(phone, c.name, c.subject, c.message)}
                             target='_blank' rel='noreferrer'
                             className='flex items-center gap-0.5 bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full'
                         >
@@ -575,8 +583,7 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
             </div>
 
             {/* ── Desktop table (≥ md) ─────────────────────────────────────── */}
-            <div className='hidden md:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto'
-                style={{ scrollbarWidth: 'thin', scrollbarColor: '#1E7D67 #f1f5f9' }}>
+            <div className='hidden md:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto contacts-table-scroll'>
                 <table className='text-sm text-left text-gray-600' style={{ minWidth: '1380px', width: '100%' }}>
                     <thead className='text-xs text-gray-700 uppercase bg-gray-50 border-b'>
                         <tr>
@@ -647,7 +654,7 @@ const ContactRows = ({ stageFilter = '' }: Props) => {
                                                     {displayPhone(phone)}
                                                 </a>
                                                 <a
-                                                    href={waLink(phone, c.name)}
+                                                    href={waLink(phone, c.name, c.subject, c.message)}
                                                     target='_blank' rel='noreferrer'
                                                     title='Open WhatsApp'
                                                     className='flex items-center justify-center w-6 h-6 bg-green-500 hover:bg-green-600 rounded-full transition-colors shrink-0'
