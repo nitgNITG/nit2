@@ -134,16 +134,22 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ lead, mql, sql, opportunity, services: { moodle, ecommerce, custom, other: svcOther }, countries, pages }, { status: 200 });
         }
 
-        // Paginated list (with optional stage/status filter)
-        const skip  = parseInt(searchParams.get('skip')   || '0');
-        const stage  = searchParams.get('stage')  || undefined;
-        const status = searchParams.get('status') || undefined;
+        // Paginated list (with optional stage/status/sort filter)
+        const skip    = parseInt(searchParams.get('skip') || '0');
+        const stage   = searchParams.get('stage')    || undefined;
+        const status  = searchParams.get('status')   || undefined;
+        const rawSort = searchParams.get('orderBy')  || 'createdAt';
+        const rawDir  = searchParams.get('orderDir') || 'desc';
+
+        const ALLOWED_SORT = ['createdAt', 'score', 'name', 'country', 'service', 'budget', 'stage'];
+        const sortField = ALLOWED_SORT.includes(rawSort) ? rawSort : 'createdAt';
+        const sortDir   = rawDir === 'asc' ? 'asc' : 'desc';
 
         const contacts = await prisma.contact.findMany({
             where: { ...(stage ? { stage } : {}), ...(status ? { status } : {}) },
             skip,
             take: 20,
-            orderBy: [{ score: 'desc' }, { createdAt: 'desc' }],
+            orderBy: { [sortField]: sortDir },
         });
         return NextResponse.json({ contacts }, { status: 200 });
     } catch (error: any) {
