@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import prisma from '@/prisma/client'
@@ -95,6 +95,12 @@ export default async function ArticlePage(
 ) {
     const article = await getArticle(params.articleId)
     if (!article) notFound()
+
+    // 301 redirect: if accessed via MongoDB ID but article has a slug, send to slug URL
+    // This fixes Google's "discovered but not indexed" issue on ID-based URLs
+    if (article.slug && article.slug !== params.articleId) {
+        redirect(`/${params.locale}/blog/${article.slug}`)
+    }
 
     const isAr = params.locale === 'ar'
     const dir = isAr ? 'rtl' : 'ltr'
