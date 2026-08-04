@@ -229,9 +229,31 @@ async function sendTelegram(message) {
   try {
     // 1. Generate article with Claude
     const raw   = await callClaude(buildPrompt(topicAr));
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('No JSON found in Claude response:\n' + raw.slice(0, 500));
-    const article = JSON.parse(match[0]);
+
+    // Extract JSON — strip markdown fences first, then fall back to brace matching
+    let jsonStr;
+    const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fenceMatch) {
+      jsonStr = fenceMatch[1].trim();
+    } else {
+      // Find outermost { ... } by tracking depth
+      let start = raw.indexOf('{');
+      if (start === -1) throw new Error('No JSON found in Claude response:\n' + raw.slice(0, 500));
+      let depth = 0, end = -1;
+      for (let i = start; i < raw.length; i++) {
+        if (raw[i] === '{') depth++;
+        else if (raw[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
+      }
+      if (end === -1) throw new Error('Unclosed JSON in Claude response');
+      jsonStr = raw.slice(start, end + 1);
+    }
+
+    let article;
+    try {
+      article = JSON.parse(jsonStr);
+    } catch (parseErr) {
+      throw new Error(`JSON parse failed: ${parseErr.message}\nRaw snippet: ${jsonStr.slice(10200, 10500)}`);
+    }
     console.log('Generated:', article.title);
 
     // 2. Build cover image
