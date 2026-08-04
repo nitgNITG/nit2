@@ -1,0 +1,384 @@
+name: Daily Article Publisher
+
+on:
+  schedule:
+    # 07:00 UTC = 09:00 Cairo (EET = UTC+2)
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+    # Allow manual trigger from GitHub UI (Actions tab → Run workflow)
+    inputs:
+      topic_override:
+        description: 'Custom topic in Arabic (leave empty to use rotation)'
+        required: false
+        default: ''
+
+jobs:
+  publish-article:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Generate & publish article
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SITE_JWT_SECRET:    ${{ secrets.SITE_JWT_SECRET }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+          TOPIC_OVERRIDE:     ${{ github.event.inputs.topic_override }}
+        run: |
+          node << 'ENDOFSCRIPT'
+          const { createHmac } = require('crypto');
+          const https = require('https');
+
+          // ── JWT ─────────────────────────────────────────────────────────────
+          const SECRET = process.env.SITE_JWT_SECRET;
+          const b64 = s => Buffer.from(s).toString('base64')
+            .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+          const h = b64(JSON.stringify({alg:'HS256',typ:'JWT'}));
+          const p = b64(JSON.stringify({id:'6507a1b2c3d4e5f678901234',
+                                        iat:Math.floor(Date.now()/1000)}));
+          const sig = createHmac('sha256',SECRET)
+            .update(h+'.'+p).digest('base64')
+            .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+          const JWT = `${h}.${p}.${sig}`;
+
+          // ── Topic rotation (one per day of week + extras) ────────────────
+          const TOPICS = [
+            // SEO high-priority
+            { ar:'كيفية إنشاء متجر إلكتروني ناجح في مصر والخليج',        service:'ecommerce' },
+            { ar:'أفضل نظام نقاط بيع POS للمطاعم في مصر 2025',           service:'restaurant' },
+            { ar:'تطوير تطبيق iOS لشركتك: دليل شامل',                    service:'ios'        },
+            { ar:'منصة Moodle للشركات: التعليم الإلكتروني للموظفين',      service:'moodle'     },
+            { ar:'كيف تختار شركة برمجة تطبيقات موثوقة في مصر',           service:'custom'     },
+            { ar:'تطوير تطبيق Android بـ Flutter: مزايا وتكاليف 2025',   service:'android'    },
+            { ar:'برامج الولاء الرقمية: كيف تضاعف مبيعاتك',              service:'loyalty'    },
+            { ar:'أنظمة إدارة التوصيل: كيف تبني fleet management',        service:'delivery'   },
+            { ar:'التعليم الإلكتروني في السعودية: الفرص والتحديات',       service:'moodle'     },
+            { ar:'تطبيق مطعم متكامل: من الطلب حتى التوصيل',              service:'restaurant' },
+            { ar:'كيف تبني منصة B2B للتجارة الإلكترونية',                service:'ecommerce'  },
+            { ar:'تصميم تجربة المستخدم UX لتطبيقات الجوال العربية',      service:'custom'     },
+            { ar:'الفرق بين تطبيق native وFlutter وReact Native',         service:'android'    },
+            { ar:'كيف تنجح في سوق التجارة الإلكترونية الخليجي 2025',     service:'ecommerce'  },
+          ];
+
+          const override = process.env.TOPIC_OVERRIDE?.trim();
+          let topicAr, topicService;
+          if (override) {
+            topicAr      = override;
+            topicService = 'custom';
+          } else {
+            // rotate by day-of-year so each day gets a different topic
+            const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(),0,0)) / 86400000);
+            const chosen    = TOPICS[dayOfYear % TOPICS.length];
+            topicAr         = chosen.ar;
+            topicService    = chosen.service;
+          }
+
+          console.log('📝 Topic:', topicAr);
+
+          // ── Call Claude API ──────────────────────────────────────────────
+          async function callClaude(prompt) {
+            return new Promise((resolve, reject) => {
+              const body = JSON.stringify({
+                model: 'claude-opus-4-5',
+                max_tokens: 4000,
+                messages: [{ role: 'user', content: prompt }],
+              });
+              const req = https.request({
+                hostname: 'api.anthropic.com',
+                path: '/v1/messages',
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-api-key': process.env.ANTHROPIC_API_KEY,
+                  'anthropic-version': '2023-06-01',
+                },
+              }, res => {
+                let data = '';
+                res.on('data', c => data += c);
+                res.on('end', () => {
+                  try {
+                    const j = JSON.parse(data);
+                    resolve(j.content?.[0]?.text ?? '');
+                  } catch(e) { reject(e); }
+                });
+              });
+              req.on('error', reject);
+              req.write(body);
+              req.end();
+            });
+          }
+
+          // ── Generate article with Claude ─────────────────────────────────
+          const prompt = `أنت كاتب محتوى SEO متخصص لشركة N.I.T Egypt لتطوير البرمجيات.
+
+اكتب مقالة SEO احترافية عن: "${topicAr}"
+
+يجب أن تعود بـ JSON فقط (بدون أي نص خارج الـ JSON) بهذا الشكل بالضبط:
+{
+  "title": "عنوان المقالة بالعربي (60-70 حرف، يحتوي الكلمة المفتاحية)",
+  "titleEn": "Article title in English (60-70 chars, contains keyword)",
+  "metaDesc": "وصف ميتا بالعربي 140-155 حرف يحتوي الكلمة المفتاحية ودعوة للتصرف",
+  "metaDescEn": "Meta description in English 140-155 chars with keyword and CTA",
+  "content": "فقرة افتتاحية بالعربي 100-150 كلمة تشرح المشكلة وتمهد للحل",
+  "contentEn": "Opening paragraph in English 100-150 words explaining the problem",
+  "slug": "url-slug-in-arabic-with-hyphens-no-special-chars",
+  "sections": [
+    {
+      "title": "عنوان القسم الأول H2",
+      "titleEn": "Section 1 title H2",
+      "content": "محتوى القسم الأول 80-120 كلمة",
+      "contentEn": "Section 1 content 80-120 words",
+      "list": [
+        {
+          "title": "نقطة 1",
+          "titleEn": "Point 1",
+          "content": "شرح النقطة الأولى 2-3 جمل",
+          "contentEn": "Explanation of point 1 in 2-3 sentences"
+        },
+        {
+          "title": "نقطة 2",
+          "titleEn": "Point 2",
+          "content": "شرح النقطة الثانية 2-3 جمل",
+          "contentEn": "Explanation of point 2 in 2-3 sentences"
+        },
+        {
+          "title": "نقطة 3",
+          "titleEn": "Point 3",
+          "content": "شرح النقطة الثالثة 2-3 جمل",
+          "contentEn": "Explanation of point 3 in 2-3 sentences"
+        }
+      ]
+    },
+    {
+      "title": "عنوان القسم الثاني H2",
+      "titleEn": "Section 2 title H2",
+      "content": "محتوى القسم الثاني 80-120 كلمة",
+      "contentEn": "Section 2 content 80-120 words",
+      "list": [
+        {
+          "title": "نقطة 1",
+          "titleEn": "Point 1",
+          "content": "شرح النقطة 2-3 جمل",
+          "contentEn": "Explanation 2-3 sentences"
+        },
+        {
+          "title": "نقطة 2",
+          "titleEn": "Point 2",
+          "content": "شرح النقطة 2-3 جمل",
+          "contentEn": "Explanation 2-3 sentences"
+        }
+      ]
+    },
+    {
+      "title": "لماذا تختار N.I.T Egypt؟",
+      "titleEn": "Why Choose N.I.T Egypt?",
+      "content": "شركة N.I.T Egypt تأسست عام 2013 ولديها خبرة أكثر من 12 سنة في تطوير البرمجيات لمصر والخليج. نفذنا أكثر من 150 مشروعاً ناجحاً.",
+      "contentEn": "N.I.T Egypt was founded in 2013 with over 12 years of software development experience for Egypt and the Gulf. We have delivered 150+ successful projects.",
+      "list": [
+        {
+          "title": "خبرة 12 سنة",
+          "titleEn": "12 Years Experience",
+          "content": "منذ 2013 ونحن نطور حلولاً برمجية متكاملة للشركات والمؤسسات في مصر والخليج العربي.",
+          "contentEn": "Since 2013, we have been developing integrated software solutions for businesses in Egypt and the Arab Gulf."
+        },
+        {
+          "title": "دعم ما بعد التسليم",
+          "titleEn": "Post-Delivery Support",
+          "content": "ضمان سنة كاملة مع دعم فني مستمر وتحديثات دورية لضمان استمرارية مشروعك.",
+          "contentEn": "Full year warranty with continuous technical support and periodic updates to ensure your project continuity."
+        },
+        {
+          "title": "تقنيات حديثة",
+          "titleEn": "Modern Technologies",
+          "content": "Flutter، React، Next.js، Node.js، Moodle — نستخدم أحدث التقنيات لضمان جودة ومستقبل مشروعك.",
+          "contentEn": "Flutter, React, Next.js, Node.js, Moodle — we use the latest technologies to ensure quality and future-proof your project."
+        }
+      ]
+    }
+  ]
+}
+
+قواعد مهمة:
+- الـ slug يكون بالعربي مع hyphens فقط، بدون أرقام أو رموز خاصة
+- المحتوى يذكر N.I.T Egypt بشكل طبيعي في السياق
+- الـ JSON يكون valid تماماً، لا توجد trailing commas
+- لا تضع أي نص قبل أو بعد الـ JSON`;
+
+          let articleJson;
+          try {
+            const raw = await callClaude(prompt);
+            // Extract JSON even if Claude adds some text around it
+            const match = raw.match(/\{[\s\S]*\}/);
+            if (!match) throw new Error('No JSON in Claude response');
+            articleJson = JSON.parse(match[0]);
+          } catch(e) {
+            console.error('❌ Claude failed:', e.message);
+            process.exit(1);
+          }
+
+          console.log('✅ Claude generated:', articleJson.title);
+
+          // ── Generate cover image ─────────────────────────────────────────
+          // Simple SVG as base64 — no sharp needed in CI
+          const colors = {
+            ecommerce:  '#1a3a5c',
+            moodle:     '#1a4a3a',
+            restaurant: '#3a1a1a',
+            delivery:   '#2a1a3a',
+            loyalty:    '#3a2a1a',
+            ios:        '#1a1a4a',
+            android:    '#1a3a1a',
+            custom:     '#0B2923',
+          };
+          const bgColor = colors[topicService] || '#0B2923';
+          const safeTitle = (articleJson.titleEn || articleJson.title)
+            .slice(0, 45).replace(/&/g,'and').replace(/[<>"]/g,'');
+
+          const svg = `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="${bgColor}"/>
+                <stop offset="100%" stop-color="#0B2923"/>
+              </linearGradient>
+            </defs>
+            <rect width="1200" height="630" fill="url(#bg)"/>
+            <rect x="0" y="0" width="8" height="630" fill="#1DDB9E"/>
+            <text x="80" y="120" font-size="36" fill="#1DDB9E" font-family="sans-serif" font-weight="bold">NIT</text>
+            <text x="80" y="160" font-size="18" fill="#aaaaaa" font-family="sans-serif">N.I.T Egypt - nitg-eg.com</text>
+            <text x="80" y="310" font-size="40" fill="#ffffff" font-family="sans-serif" font-weight="bold">${safeTitle}</text>
+            <rect x="80" y="370" width="120" height="4" fill="#1DDB9E" rx="2"/>
+            <text x="80" y="540" font-size="22" fill="#888888" font-family="sans-serif">nitg-eg.com | 2025</text>
+          </svg>`;
+          const imgBase64 = Buffer.from(svg).toString('base64');
+
+          // ── POST article to site API ─────────────────────────────────────
+          async function postArticle(article, imgB64) {
+            return new Promise((resolve, reject) => {
+              // Build multipart/form-data manually
+              const boundary = '----FormBoundary' + Date.now().toString(16);
+              const CRLF = '\r\n';
+
+              const addField = (name, value) =>
+                `--${boundary}${CRLF}Content-Disposition: form-data; name="${name}"${CRLF}${CRLF}${value}${CRLF}`;
+
+              let body = '';
+              body += addField('title',      article.title);
+              body += addField('titleEn',    article.titleEn);
+              body += addField('content',    article.content);
+              body += addField('contentEn',  article.contentEn);
+              body += addField('metaDesc',   article.metaDesc);
+              body += addField('metaDescEn', article.metaDescEn);
+              body += addField('slug',       article.slug);
+
+              // SVG image part
+              const imgBuf = Buffer.from(imgB64, 'base64');
+              const imgPart =
+                `--${boundary}${CRLF}` +
+                `Content-Disposition: form-data; name="img"; filename="cover.svg"${CRLF}` +
+                `Content-Type: image/svg+xml${CRLF}${CRLF}`;
+
+              const closing = `${CRLF}--${boundary}--${CRLF}`;
+
+              const bodyBuf = Buffer.concat([
+                Buffer.from(body),
+                Buffer.from(imgPart),
+                imgBuf,
+                Buffer.from(closing),
+              ]);
+
+              const req = https.request({
+                hostname: 'www.nitg-eg.com',
+                path: '/api/blog/article',
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${JWT}`,
+                  'Content-Type': `multipart/form-data; boundary=${boundary}`,
+                  'Content-Length': bodyBuf.length,
+                },
+              }, res => {
+                let data = '';
+                res.on('data', c => data += c);
+                res.on('end', () => {
+                  try { resolve({ status: res.statusCode, body: JSON.parse(data) }); }
+                  catch(e) { resolve({ status: res.statusCode, body: data }); }
+                });
+              });
+              req.on('error', reject);
+              req.write(bodyBuf);
+              req.end();
+            });
+          }
+
+          const result = await postArticle(articleJson, imgBase64);
+          if (result.status !== 201 && result.status !== 200) {
+            console.error('❌ API error:', result.status, JSON.stringify(result.body));
+            process.exit(1);
+          }
+
+          const articleId   = result.body.article?.id;
+          const articleSlug = articleJson.slug || articleId;
+          console.log('✅ Article posted, id:', articleId, 'slug:', articleSlug);
+
+          // ── POST sections ────────────────────────────────────────────────
+          if (articleId && Array.isArray(articleJson.sections)) {
+            for (const sec of articleJson.sections) {
+              await new Promise((resolve, reject) => {
+                const boundary = '----SecBoundary' + Date.now().toString(16);
+                const CRLF = '\r\n';
+                const addField = (name, value) =>
+                  `--${boundary}${CRLF}Content-Disposition: form-data; name="${name}"${CRLF}${CRLF}${value || ''}${CRLF}`;
+                let body = '';
+                body += addField('title',      sec.title);
+                body += addField('titleEn',    sec.titleEn);
+                body += addField('content',    sec.content);
+                body += addField('contentEn',  sec.contentEn);
+                body += addField('list',       JSON.stringify(sec.list || []));
+                body += `--${boundary}--${CRLF}`;
+                const bodyBuf = Buffer.from(body);
+                const req = https.request({
+                  hostname: 'www.nitg-eg.com',
+                  path: `/api/blog/article/${articleId}/section`,
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${JWT}`,
+                    'Content-Type': `multipart/form-data; boundary=${boundary}`,
+                    'Content-Length': bodyBuf.length,
+                  },
+                }, res => {
+                  let d = ''; res.on('data', c => d += c);
+                  res.on('end', () => resolve(d));
+                });
+                req.on('error', reject);
+                req.write(bodyBuf);
+                req.end();
+              });
+            }
+            console.log('✅ Sections posted:', articleJson.sections.length);
+          }
+
+          // ── Send Telegram notification ───────────────────────────────────
+          const articleUrl = `https://www.nitg-eg.com/ar/blog/${articleSlug}`;
+          const tgMessage = encodeURIComponent(
+            `✅ *مقالة جديدة نُشرت*\n\n` +
+            `📌 *${articleJson.title}*\n\n` +
+            `🔗 ${articleUrl}\n\n` +
+            `🕘 نُشرت الساعة ${new Date().toLocaleTimeString('ar-EG', {timeZone:'Africa/Cairo'})}`
+          );
+
+          await new Promise((resolve, reject) => {
+            const url = `/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${process.env.TELEGRAM_CHAT_ID}&text=${tgMessage}&parse_mode=Markdown`;
+            const req = https.request({
+              hostname: 'api.telegram.org',
+              path: url,
+              method: 'GET',
+            }, res => {
+              let d = ''; res.on('data', c => d += c);
+              res.on('end', () => { console.log('📨 Telegram sent:', res.statusCode); resolve(d); });
+            });
+            req.on('error', reject);
+            req.end();
+          });
+
+          console.log('🎉 Done!');
+          ENDOFSCRIPT
