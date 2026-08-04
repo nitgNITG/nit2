@@ -64,7 +64,7 @@ function httpsRequest(options, body) {
 async function callClaude(prompt) {
   const body = JSON.stringify({
     model: 'claude-opus-4-5',
-    max_tokens: 4000,
+    max_tokens: 8000,
     messages: [{ role: 'user', content: prompt }],
   });
   const res = await httpsRequest({
