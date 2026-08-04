@@ -100,7 +100,7 @@ function buildPrompt(topic) {
     '  "metaDescEn": "Meta description in English 140-155 chars with keyword and CTA",',
     '  "content": "فقرة افتتاحية بالعربي 100-150 كلمة تشرح المشكلة",',
     '  "contentEn": "Opening paragraph in English 100-150 words explaining the problem",',
-    '  "slug": "arabic-slug-with-hyphens-no-special-chars",',
+    '  "slug": "english-only-slug-with-hyphens-eg-digital-loyalty-programs-boost-sales",',
     '  "sections": [',
     '    {',
     '      "title": "عنوان القسم الأول",',
@@ -138,7 +138,7 @@ function buildPrompt(topic) {
     '}',
     '```',
     '',
-    'قواعد: الـ slug بالعربي مع hyphens فقط. JSON valid تماماً. لا نص خارج الـ JSON.',
+    'قواعد مهمة: الـ slug يجب أن يكون بالإنجليزية فقط مع hyphens (a-z 0-9 -) — ممنوع أي حروف عربية في الـ slug. JSON valid تماماً. لا نص خارج الـ JSON.',
   ].join('\n');
 }
 

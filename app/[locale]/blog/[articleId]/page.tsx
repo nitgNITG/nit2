@@ -101,7 +101,7 @@ export default async function ArticlePage(
     // 301 redirect: if accessed via MongoDB ID but article has a slug, send to slug URL
     // This fixes Google's "discovered but not indexed" issue on ID-based URLs
     if (article.slug && article.slug !== params.articleId) {
-        redirect(`/${params.locale}/blog/${article.slug}`)
+        redirect(`/${params.locale}/blog/${encodeURIComponent(article.slug)}`)
     }
 
     const isAr = params.locale === 'ar'
