@@ -1,4 +1,4 @@
-export const revalidate = 3600; // regenerate every hour
+export const dynamic = 'force-dynamic';
 
 import { notFound, redirect } from 'next/navigation'
 import type { Metadata } from 'next'
