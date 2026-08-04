@@ -300,7 +300,21 @@ async function sendTelegram(message) {
       }
     }
 
-    // 5. Telegram notification
+    // 5. Revalidate Next.js cache
+    const revalBody = JSON.stringify({ slug: articleSlug });
+    const revalRes = await httpsRequest({
+      hostname: 'www.nitg-eg.com',
+      path: '/api/revalidate',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(revalBody),
+        'x-revalidate-secret': process.env.SITE_JWT_SECRET,
+      },
+    }, revalBody);
+    console.log('Revalidate:', revalRes.status, revalRes.body);
+
+    // 6. Telegram notification
     const url  = `https://www.nitg-eg.com/ar/blog/${articleSlug}`;
     const time = new Date().toLocaleTimeString('ar-EG', { timeZone: 'Africa/Cairo' });
     await sendTelegram(

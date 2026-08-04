@@ -1,3 +1,5 @@
+export const revalidate = 3600; // regenerate every hour
+
 import React from 'react'
 import BlogHeader from './components/BlogHeader'
 import Articles from './components/Articles'

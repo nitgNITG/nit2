@@ -1,3 +1,5 @@
+export const revalidate = 3600; // regenerate every hour
+
 import { notFound, redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import Image from 'next/image'
