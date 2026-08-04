@@ -1,6 +1,4 @@
-export const dynamic = 'force-dynamic';
-
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import prisma from '@/prisma/client'
@@ -100,12 +98,6 @@ export default async function ArticlePage(
 
     // 301 redirect: if accessed via MongoDB ID but article has a slug, send to slug URL
     // This fixes Google's "discovered but not indexed" issue on ID-based URLs
-    // Only redirect to slug URL if slug is ASCII-safe (English slugs only)
-    // Arabic slugs in Location headers cause ERR_INVALID_CHAR
-    const isAsciiSlug = article.slug && /^[\x00-\x7F]+$/.test(article.slug);
-    if (isAsciiSlug && article.slug !== params.articleId) {
-        redirect(`/${params.locale}/blog/${article.slug}`)
-    }
 
     const isAr = params.locale === 'ar'
     const dir = isAr ? 'rtl' : 'ltr'
