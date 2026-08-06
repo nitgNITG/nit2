@@ -129,6 +129,7 @@ export default async function ArticlePage(
                         width={800}
                         height={500}
                         className="w-full object-cover"
+                        unoptimized={article.img?.startsWith('/uploads/')}
                     />
                 </div>
 
