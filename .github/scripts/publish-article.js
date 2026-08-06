@@ -14,14 +14,32 @@ const sig = createHmac('sha256', SECRET).update(h + '.' + p).digest('base64')
   .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 const JWT = `${h}.${p}.${sig}`;
 
+// ── Current year — keeps every generated article evergreen ───────────────────
+const YEAR = new Date().getFullYear();
+
+// Replace stale "current year" references (last 2 years) with the current year,
+// so an article generated in 2026 never ships talking about 2024/2025. Older
+// historical years (e.g. "since 2013") and future ones (e.g. Vision 2030) stay.
+const STALE_YEAR = new RegExp(`(?<!\\d)(${YEAR - 1}|${YEAR - 2})(?!\\d)`, 'g');
+function bumpYears(v) {
+  if (typeof v === 'string') return v.replace(STALE_YEAR, String(YEAR));
+  if (Array.isArray(v)) return v.map(bumpYears);
+  if (v && typeof v === 'object') {
+    const out = {};
+    for (const k of Object.keys(v)) out[k] = bumpYears(v[k]);
+    return out;
+  }
+  return v;
+}
+
 // ── Topic rotation ───────────────────────────────────────────────────────────
 const TOPICS = [
   { ar: 'كيفية إنشاء متجر إلكتروني ناجح في مصر والخليج',       service: 'ecommerce'  },
-  { ar: 'أفضل نظام نقاط بيع POS للمطاعم في مصر 2025',          service: 'restaurant' },
+  { ar: `أفضل نظام نقاط بيع POS للمطاعم في مصر ${YEAR}`,          service: 'restaurant' },
   { ar: 'تطوير تطبيق iOS لشركتك: دليل شامل',                   service: 'ios'        },
   { ar: 'منصة Moodle للشركات: التعليم الإلكتروني للموظفين',     service: 'moodle'     },
   { ar: 'كيف تختار شركة برمجة تطبيقات موثوقة في مصر',          service: 'custom'     },
-  { ar: 'تطوير تطبيق Android بـ Flutter: مزايا وتكاليف 2025',  service: 'android'    },
+  { ar: `تطوير تطبيق Android بـ Flutter: مزايا وتكاليف ${YEAR}`,  service: 'android'    },
   { ar: 'برامج الولاء الرقمية: كيف تضاعف مبيعاتك',             service: 'loyalty'    },
   { ar: 'أنظمة إدارة التوصيل: كيف تبني fleet management',       service: 'delivery'   },
   { ar: 'التعليم الإلكتروني في السعودية: الفرص والتحديات',      service: 'moodle'     },
@@ -29,7 +47,7 @@ const TOPICS = [
   { ar: 'كيف تبني منصة B2B للتجارة الإلكترونية',               service: 'ecommerce'  },
   { ar: 'تصميم تجربة المستخدم UX لتطبيقات الجوال العربية',     service: 'custom'     },
   { ar: 'الفرق بين تطبيق native وFlutter وReact Native',        service: 'android'    },
-  { ar: 'كيف تنجح في سوق التجارة الإلكترونية الخليجي 2025',    service: 'ecommerce'  },
+  { ar: `كيف تنجح في سوق التجارة الإلكترونية الخليجي ${YEAR}`,    service: 'ecommerce'  },
 ];
 
 const override = process.env.TOPIC_OVERRIDE?.trim();
@@ -139,6 +157,7 @@ function buildPrompt(topic) {
     '```',
     '',
     'قواعد مهمة: الـ slug يجب أن يكون بالإنجليزية فقط مع hyphens (a-z 0-9 -) — ممنوع أي حروف عربية في الـ slug. JSON valid تماماً. لا نص خارج الـ JSON.',
+    'السنة الحالية هي ' + YEAR + '. عند الإشارة إلى السنة الحالية استخدم ' + YEAR + ' فقط، وممنوع ذكر ' + (YEAR - 1) + ' أو ' + (YEAR - 2) + ' كسنة حالية.',
   ].join('\n');
 }
 
@@ -164,7 +183,7 @@ function buildSvgBase64(titleEn, service) {
     <text x="80" y="160" font-size="18" fill="#aaaaaa" font-family="sans-serif">N.I.T Egypt - nitg-eg.com</text>
     <text x="80" y="310" font-size="40" fill="#ffffff" font-family="sans-serif" font-weight="bold">${safe}</text>
     <rect x="80" y="370" width="120" height="4" fill="#1DDB9E" rx="2"/>
-    <text x="80" y="540" font-size="22" fill="#888888" font-family="sans-serif">nitg-eg.com | 2025</text>
+    <text x="80" y="540" font-size="22" fill="#888888" font-family="sans-serif">nitg-eg.com | ${YEAR}</text>
   </svg>`;
   return Buffer.from(svg).toString('base64');
 }
@@ -255,6 +274,9 @@ async function sendTelegram(message) {
       throw new Error(`JSON parse failed: ${parseErr.message}\nRaw snippet: ${jsonStr.slice(10200, 10500)}`);
     }
     console.log('Generated:', article.title);
+
+    // Guardrail: strip stale current-year references (e.g. 2024/2025 in 2026)
+    article = bumpYears(article);
 
     // 2. Build cover image
     const imgBase64 = buildSvgBase64(article.titleEn, topicService);
