@@ -250,6 +250,15 @@ const Navbar = () => {
                     {/* CTA + LangSwitcher */}
                     <div className='hidden lg:flex gap-2 items-center'>
                         <LocalLink
+                            href='/build-product'
+                            className={clsx(
+                                'block bg-[#00FFB2] px-3 2xl:px-5 py-1.5 2xl:py-2 rounded-md whitespace-nowrap transition-transform hover:scale-[1.03] ring-1 ring-[#1E7D67]/30',
+                                { 'ring-2 ring-[#1E7D67]': isActive('/build-product') }
+                            )}
+                        >
+                            <span className='text-sm 2xl:text-base text-[#0B2923] font-extrabold'>{t('buildProduct')}</span>
+                        </LocalLink>
+                        <LocalLink
                             href='/contact'
                             target='_blank'
                             className='block bg-gradient-to-b from-[#1E7D67] to-[#0B2923] px-3 2xl:px-5 py-1.5 2xl:py-2 rounded-md whitespace-nowrap'
@@ -347,6 +356,13 @@ const Navbar = () => {
                         </div>
                         <div className='flex flex-col items-center gap-4'>
                             <LangSwitcher />
+                            <LocalLink
+                                onClick={close}
+                                href='/build-product'
+                                className='block w-fit bg-[#00FFB2] px-6 py-4 rounded-md ring-1 ring-[#1E7D67]/40'
+                            >
+                                <span className='text-[#0B2923] font-extrabold'>{t('buildProduct')}</span>
+                            </LocalLink>
                             <LocalLink
                                 href='/contact'
                                 target='_blank'
