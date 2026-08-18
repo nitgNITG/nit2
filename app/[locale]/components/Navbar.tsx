@@ -8,6 +8,7 @@ import { usePathname } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import LocalLink from './LocaleLink'
 import LangSwitcher from './LangSwitcher'
+import AuthMenu from './AuthMenu'
 
 const Navbar = () => {
     const pathname = usePathname()
@@ -155,6 +156,7 @@ const Navbar = () => {
         { name: t('item4'), href: '/blog' },
         { name: t('item2'), href: '/who-us' },
         { name: t('item5'), href: '/contact' },
+        { name: t('buildProduct'), href: '/account' },
     ]
 
     const close = () => {
@@ -247,17 +249,8 @@ const Navbar = () => {
                         </ul>
                     </div>
 
-                    {/* CTA + LangSwitcher */}
+                    {/* CTA + Auth + LangSwitcher */}
                     <div className='hidden lg:flex gap-2 items-center'>
-                        <LocalLink
-                            href='/build-product'
-                            className={clsx(
-                                'block bg-[#00FFB2] px-3 2xl:px-5 py-1.5 2xl:py-2 rounded-md whitespace-nowrap transition-transform hover:scale-[1.03] ring-1 ring-[#1E7D67]/30',
-                                { 'ring-2 ring-[#1E7D67]': isActive('/build-product') }
-                            )}
-                        >
-                            <span className='text-sm 2xl:text-base text-[#0B2923] font-extrabold'>{t('buildProduct')}</span>
-                        </LocalLink>
                         <LocalLink
                             href='/contact'
                             target='_blank'
@@ -265,6 +258,7 @@ const Navbar = () => {
                         >
                             <span className='text-sm 2xl:text-base text-[#00FFB2] font-bold'>{t('btn')}</span>
                         </LocalLink>
+                        <AuthMenu />
                         <LangSwitcher />
                     </div>
 
@@ -356,13 +350,7 @@ const Navbar = () => {
                         </div>
                         <div className='flex flex-col items-center gap-4'>
                             <LangSwitcher />
-                            <LocalLink
-                                onClick={close}
-                                href='/build-product'
-                                className='block w-fit bg-[#00FFB2] px-6 py-4 rounded-md ring-1 ring-[#1E7D67]/40'
-                            >
-                                <span className='text-[#0B2923] font-extrabold'>{t('buildProduct')}</span>
-                            </LocalLink>
+                            <AuthMenu mobile onNavigate={close} />
                             <LocalLink
                                 href='/contact'
                                 target='_blank'

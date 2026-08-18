@@ -16,6 +16,7 @@ const Sidebar = () => {
     const locale = useLocale()
     const items = [
         { label: 'Dashboard', href: '/dashboard' },
+        { label: '🎓 Academies', href: '/dashboard/academies' },
         { label: 'Projects', href: '/dashboard/projects' },
         { label: 'Project Types', href: '/dashboard/types' },
         { label: 'Sponsers', href: '/dashboard/sponsers' },

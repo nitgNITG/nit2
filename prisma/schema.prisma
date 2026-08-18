@@ -14,10 +14,14 @@ datasource db {
 }
 
 model User {
-  id       String  @id @default(auto()) @map("_id") @db.ObjectId
-  email    String  @unique
-  password String
-  name     String?
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  email     String    @unique
+  password  String
+  name      String?
+  role      String?   @default("client") // "admin" | "client" (null on legacy rows = treat as admin)
+  createdAt DateTime? @default(now())
+  // NOTE: no `academies` relation — the Academy control plane lives in MySQL
+  // (prisma/mysql/schema.prisma). Link a user to academies by User.id string, not a relation.
 }
 
 type ProjectLink {
@@ -53,6 +57,8 @@ model Sponser {
 
 // NOTE: the Academy control plane now lives in MySQL, not here — see
 // prisma/mysql/schema.prisma (client `@/lib/prismaMysql`). No Academy model in Mongo.
+// (The client who owns an academy is a User here; Academy.ownerId in MySQL stores
+// that User.id as a plain string — no cross-database relation.)
 
 model Contact {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId

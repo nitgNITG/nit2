@@ -1,133 +1,107 @@
-'use client'
+import React from 'react'
+// Academies live in MySQL; their owners are Users in the Mongo app DB.
+import prismaMysql from '@/lib/prismaMysql'
+import prisma from '@/prisma/client'
+import AdminAcademyStatus from './AdminAcademyStatus'
 
-import React, { useCallback, useEffect, useState } from 'react'
-import axios from 'axios'
+const DOMAIN = process.env.SAAS_CLIENT_DOMAIN ?? 'academy2026.nitg-eg.com'
+const MONO = "'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace"
 
-type Academy = {
-    id: string
-    name: string
-    slug: string
-    branch: string
-    tier: string
-    status: 'branch_created' | 'provisioning' | 'live' | 'failed' | string
-    createdAt: string
-}
+export const dynamic = 'force-dynamic'
 
-const TIER_COLOR: Record<string, string> = {
-    demo: '#6b7686', basic: '#2563eb', standard: '#7c3aed', professional: '#b5811a',
-}
+export default async function AcademiesAdminPage() {
+    const academies = await prismaMysql.academy.findMany({ orderBy: { createdAt: 'desc' } })
 
-// Where a live academy is served (subdomain scheme). Adjust when the server
-// domain is finalized (subdomains first, path-folders as fallback).
-const ACADEMY_DOMAIN = 'nitg-eg.com'
-
-const STATUS: Record<string, { label: string; bg: string; fg: string }> = {
-    branch_created: { label: 'Branch created', bg: '#3a3320', fg: '#e0b341' },
-    provisioning: { label: 'Provisioning…', bg: '#1d2b3a', fg: '#5b9bef' },
-    live: { label: 'Live', bg: '#13291d', fg: '#3fbe8b' },
-    failed: { label: 'Failed', bg: '#2a1717', fg: '#f0736c' },
-}
-
-export default function DashboardAcademies() {
-    const [rows, setRows] = useState<Academy[]>([])
-    const [loading, setLoading] = useState(true)
-    const [err, setErr] = useState('')
-
-    const load = useCallback(async () => {
+    // Join owners across databases: collect ownerIds → look the Users up in Mongo → map by id.
+    // Tolerant of Mongo being unreachable — the page still renders (owner shows "—").
+    const ownerIds = Array.from(new Set(academies.map((a) => a.ownerId).filter(Boolean) as string[]))
+    let ownerById = new Map<string, { name: string | null; email: string }>()
+    if (ownerIds.length) {
         try {
-            const { data } = await axios.get('/api/academies', { params: { _: Date.now() } })
-            setRows(Array.isArray(data.academies) ? data.academies : [])
-            setErr(data.error || '')
-        } catch (e: any) {
-            setErr(e?.message || 'error')
-        } finally {
-            setLoading(false)
+            const owners = await prisma.user.findMany({
+                where: { id: { in: ownerIds } },
+                select: { id: true, name: true, email: true },
+            })
+            ownerById = new Map(owners.map((u) => [u.id, { name: u.name, email: u.email }]))
+        } catch (e) {
+            console.error('[dashboard/academies] owner lookup failed', e)
         }
-    }, [])
+    }
 
-    useEffect(() => {
-        load()
-        const t = setInterval(load, 10000)
-        return () => clearInterval(t)
-    }, [load])
-
-    const counts = rows.reduce<Record<string, number>>((a, r) => {
-        a[r.status] = (a[r.status] || 0) + 1
-        return a
-    }, {})
+    const total = academies.length
+    const liveCount = academies.filter((a) => a.status === 'live').length
+    const clients = new Set(academies.filter((a) => a.ownerId).map((a) => a.ownerId)).size
 
     return (
-        <div style={{ padding: '28px', color: '#eef1f5' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 14, marginBottom: 22 }}>
-                <div>
-                    <h1 style={{ fontSize: 28, fontWeight: 800, margin: '0 0 6px' }}>Academies</h1>
-                    <p style={{ color: '#9aa3b0', margin: 0, fontSize: 14 }}>
-                        {loading ? 'Loading…' : `${rows.length} total · ${counts.live || 0} live · ${counts.branch_created || 0} pending`}
-                    </p>
-                </div>
-                <button onClick={load}
-                    style={{ background: '#161a22', color: '#eef1f5', border: '1px solid #2b3240', borderRadius: 9, padding: '9px 15px', cursor: 'pointer', fontWeight: 600 }}>
-                    ↻ Refresh
-                </button>
+        <div className='p-5 md:p-10' dir='ltr'>
+            <h1 className='text-2xl font-extrabold text-gray-900'>Academies</h1>
+            <p className='mt-1 text-gray-500'>Every academy created from the site, and who owns it.</p>
+
+            <div className='mt-6 grid max-w-2xl grid-cols-3 gap-4'>
+                <Stat label='Academies' value={total} />
+                <Stat label='Live' value={liveCount} accent />
+                <Stat label='Clients' value={clients} />
             </div>
 
-            {err && (
-                <div style={{ marginBottom: 16, padding: '12px 15px', background: '#2a1717', border: '1px solid #5a2a2a', borderRadius: 9, color: '#f0736c', fontSize: 14 }}>
-                    {err}
-                </div>
-            )}
-
-            <div style={{ overflowX: 'auto', border: '1px solid #2b3240', borderRadius: 14 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 640 }}>
-                    <thead>
-                        <tr style={{ background: '#12151c', color: '#8a93a2', textAlign: 'left' }}>
-                            <th style={{ padding: '12px 14px' }}>Academy</th>
-                            <th style={{ padding: '12px 14px' }}>Branch</th>
-                            <th style={{ padding: '12px 14px' }}>Status</th>
-                            <th style={{ padding: '12px 14px' }}>Created</th>
-                            <th style={{ padding: '12px 14px' }}></th>
+            <div className='mt-8 overflow-x-auto rounded-xl bg-white ring-1 ring-black/5'>
+                <table className='w-full text-sm'>
+                    <thead className='bg-gray-50 text-left text-gray-500'>
+                        <tr>
+                            <th className='px-4 py-3 font-semibold'>Academy</th>
+                            <th className='px-4 py-3 font-semibold'>Tier</th>
+                            <th className='px-4 py-3 font-semibold'>Owner</th>
+                            <th className='px-4 py-3 font-semibold'>Status</th>
+                            <th className='px-4 py-3 font-semibold'>Created</th>
+                            <th className='px-4 py-3 font-semibold'>Link</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {rows.map((a) => {
-                            const s = STATUS[a.status] || { label: a.status, bg: '#232a36', fg: '#aab3c0' }
+                    <tbody className='divide-y divide-gray-100'>
+                        {academies.length === 0 ? (
+                            <tr><td colSpan={6} className='px-4 py-10 text-center text-gray-400'>No academies yet.</td></tr>
+                        ) : academies.map((a) => {
+                            const owner = a.ownerId ? ownerById.get(a.ownerId) : null
                             return (
-                                <tr key={a.id} style={{ borderTop: '1px solid #212836' }}>
-                                    <td style={{ padding: '12px 14px' }}>
-                                        <div style={{ fontWeight: 700 }}>{a.name}</div>
-                                        <div style={{ color: '#6b7482', fontFamily: 'monospace', fontSize: 12.5 }}>{a.slug}</div>
+                                <tr key={a.id} className='hover:bg-gray-50'>
+                                    <td className='px-4 py-3'>
+                                        <div className='font-semibold text-gray-900'>{a.name}</div>
+                                        <div className='text-xs text-gray-400' style={{ fontFamily: MONO }}>{a.slug}</div>
                                     </td>
-                                    <td style={{ padding: '12px 14px', fontFamily: 'monospace', fontSize: 12.5, color: '#8a93a2' }}>
-                                        {a.branch}
-                                        {a.tier && (
-                                            <span style={{ marginInlineStart: 8, fontFamily: 'system-ui', fontSize: 11, fontWeight: 700, textTransform: 'capitalize', color: '#fff', background: TIER_COLOR[a.tier] || '#6b7686', padding: '2px 8px', borderRadius: 999 }}>
-                                                {a.tier}
-                                            </span>
-                                        )}
+                                    <td className='px-4 py-3'><TierBadge tier={a.tier} /></td>
+                                    <td className='px-4 py-3 text-gray-700'>
+                                        {owner?.name || owner?.email || <span className='text-gray-300'>—</span>}
                                     </td>
-                                    <td style={{ padding: '12px 14px' }}>
-                                        <span style={{ fontSize: 12, fontWeight: 700, color: s.fg, background: s.bg, padding: '4px 10px', borderRadius: 999 }}>{s.label}</span>
-                                    </td>
-                                    <td style={{ padding: '12px 14px', color: '#8a93a2' }}>
-                                        {a.createdAt ? new Date(a.createdAt).toLocaleDateString() : '—'}
-                                    </td>
-                                    <td style={{ padding: '12px 14px', textAlign: 'right' }}>
-                                        {a.status === 'live' && (
-                                            <a href={`https://${a.slug}.${ACADEMY_DOMAIN}`} target="_blank" rel="noreferrer"
-                                                style={{ color: '#5b9bef', textDecoration: 'none', fontWeight: 600 }}>
-                                                Open →
-                                            </a>
-                                        )}
+                                    <td className='px-4 py-3'><AdminAcademyStatus slug={a.slug} initial={a.status} /></td>
+                                    <td className='px-4 py-3 text-gray-500'>{a.createdAt.toISOString().slice(0, 10)}</td>
+                                    <td className='px-4 py-3'>
+                                        <a href={`https://${a.slug}.${DOMAIN}`} target='_blank' rel='noopener noreferrer'
+                                           className='font-semibold text-[#1E7D67] hover:underline'>Open ↗</a>
                                     </td>
                                 </tr>
                             )
                         })}
-                        {!loading && rows.length === 0 && (
-                            <tr><td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: '#8a93a2' }}>No academies yet.</td></tr>
-                        )}
                     </tbody>
                 </table>
             </div>
         </div>
     )
+}
+
+function Stat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
+    return (
+        <div className={`rounded-xl p-4 ring-1 ring-black/5 ${accent ? 'bg-[#0B2923]' : 'bg-white'}`}>
+            <div className={`text-2xl font-extrabold ${accent ? 'text-[#00FFB2]' : 'text-gray-900'}`}>{value}</div>
+            <div className={`text-xs ${accent ? 'text-white/60' : 'text-gray-500'}`}>{label}</div>
+        </div>
+    )
+}
+
+function TierBadge({ tier }: { tier: string }) {
+    const colors: Record<string, string> = {
+        demo: 'bg-gray-100 text-gray-600',
+        basic: 'bg-blue-50 text-blue-700',
+        standard: 'bg-amber-50 text-amber-700',
+        professional: 'bg-emerald-50 text-emerald-700',
+    }
+    const cls = colors[tier] ?? 'bg-gray-100 text-gray-600'
+    return <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${cls}`}>{tier}</span>
 }

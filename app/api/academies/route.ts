@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 // Academy control plane lives in MySQL (separate Prisma client), not the Mongo app DB.
 import prisma from "@/lib/prismaMysql";
+import { getCurrentUser } from "@/lib/auth";
 
 // ── SaaS repo that holds the base ("main") every academy branches from ────────
 const OWNER = process.env.SAAS_REPO_OWNER ?? "NITGg";
@@ -8,9 +9,10 @@ const REPO = process.env.SAAS_REPO_NAME ?? "saas-demo";
 const BASE_BRANCH = process.env.SAAS_BASE_BRANCH ?? "main";
 const GH_API = "https://api.github.com";
 
-// ── Rate limit: max 5 academies per IP per hour (public endpoint) ─────────────
+// ── Rate limit: max N academies per IP per hour (public endpoint) ─────────────
+// Controlled by env ACADEMIES_RATE_LIMIT: a number sets the cap; 0 disables it.
 const ipCache = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT = 5;
+const RATE_LIMIT = Number(process.env.ACADEMIES_RATE_LIMIT ?? 500);
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 function checkRateLimit(ip: string): boolean {
     const now = Date.now();
@@ -34,6 +36,24 @@ const ghHeaders = (token: string) => ({
     "X-GitHub-Api-Version": "2022-11-28",
 });
 
+// Ask server B's provisioning endpoint to turn the new branch into a live site.
+// Best-effort: if it's not configured or unreachable, the branch still exists and
+// provisioning can be retried manually — we never fail the request over this.
+async function triggerProvision(slug: string, name: string): Promise<void> {
+    const url = process.env.PROVISION_URL;       // e.g. https://saas-provision.academy2026.nitg-eg.com/provision
+    const secret = process.env.PROVISION_SECRET;
+    if (!url || !secret) return;
+    try {
+        await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Provision-Secret": secret },
+            body: JSON.stringify({ slug, name }),
+        });
+    } catch (e) {
+        console.error("[academies] provision trigger failed", e);
+    }
+}
+
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
@@ -42,9 +62,15 @@ export async function POST(req: NextRequest) {
         // Honeypot — bots fill the hidden field, humans don't. Fake success.
         if (_hp) return NextResponse.json({ ok: true, branch: "" }, { status: 201 });
 
+        // Must be a signed-in client — every academy is tied to its owner.
+        const user = await getCurrentUser();
+        if (!user) {
+            return NextResponse.json({ error: "لازم تسجّل الدخول الأول." }, { status: 401 });
+        }
+
         // Rate limit by IP
         const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-        if (!checkRateLimit(ip)) {
+        if (RATE_LIMIT > 0 && !checkRateLimit(ip)) {
             return NextResponse.json({ error: "محاولات كتير في وقت قصير، حاول بعد شوية." }, { status: 429 });
         }
 
@@ -113,10 +139,13 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "فشل إنشاء المنصة، حاول تاني." }, { status: 502 });
         }
 
+        // Branch created → kick off the live-site build on server B (fire-and-forget).
+        await triggerProvision(cleanSlug, cleanName);
+
         // 3) Record it (control plane). Guard the rare race on the unique slug.
         try {
             const academy = await prisma.academy.create({
-                data: { name: cleanName, slug: cleanSlug, branch, status: "branch_created", tier },
+                data: { name: cleanName, slug: cleanSlug, branch, status: "branch_created", tier, ownerId: user.id },
             });
             return NextResponse.json(
                 { ok: true, slug: academy.slug, branch: academy.branch },

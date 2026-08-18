@@ -71,7 +71,10 @@ export default async function LocaleLayout({
       >
         <NextIntlClientProvider messages={messages}>
           {children}
-          <Toaster toastOptions={{ position: "top-right" }} />
+          <Toaster
+            toastOptions={{ position: "top-right" }}
+            containerStyle={{ zIndex: 9999999 }}
+          />
         </NextIntlClientProvider>
         <Script
           id="org-jsonld"
