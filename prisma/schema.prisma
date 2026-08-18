@@ -51,19 +51,8 @@ model Sponser {
   img String
 }
 
-// One record per academy created from the "Build your product" button.
-// `slug` is the English identifier the client typed; the SaaS branch is
-// `client/<slug>` off `main` in the NITGg/saas-demo repo. This is the seed of
-// the Academy-as-a-Service control plane (branch created now; live-site
-// provisioning on the server is a later step).
-model Academy {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  name      String // Arabic display name typed by the client
-  slug      String   @unique // English identifier — branch suffix + future subdomain
-  branch    String // full branch name, e.g. "client/ahmed-academy"
-  status    String   @default("branch_created") // branch_created | provisioning | live | failed
-  createdAt DateTime @default(now())
-}
+// NOTE: the Academy control plane now lives in MySQL, not here — see
+// prisma/mysql/schema.prisma (client `@/lib/prismaMysql`). No Academy model in Mongo.
 
 model Contact {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId

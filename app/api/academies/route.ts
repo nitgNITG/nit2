@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/prisma/client";
+// Academy control plane lives in MySQL (separate Prisma client), not the Mongo app DB.
+import prisma from "@/lib/prismaMysql";
 
 // ── SaaS repo that holds the base ("main") every academy branches from ────────
 const OWNER = process.env.SAAS_REPO_OWNER ?? "NITGg";
@@ -49,6 +50,9 @@ export async function POST(req: NextRequest) {
 
         const cleanName = (name ?? "").toString().trim();
         const cleanSlug = (slug ?? "").toString().trim().toLowerCase();
+        // Plan the client picked → local_license tier (defaults to demo).
+        const TIERS = ["demo", "basic", "standard", "professional"];
+        const tier = TIERS.includes((body?.tier ?? "").toString()) ? body.tier : "demo";
 
         if (!cleanName) {
             return NextResponse.json({ error: "اسم الأكاديمية مطلوب." }, { status: 400 });
@@ -112,7 +116,7 @@ export async function POST(req: NextRequest) {
         // 3) Record it (control plane). Guard the rare race on the unique slug.
         try {
             const academy = await prisma.academy.create({
-                data: { name: cleanName, slug: cleanSlug, branch, status: "branch_created" },
+                data: { name: cleanName, slug: cleanSlug, branch, status: "branch_created", tier },
             });
             return NextResponse.json(
                 { ok: true, slug: academy.slug, branch: academy.branch },
@@ -130,5 +134,21 @@ export async function POST(req: NextRequest) {
     } catch (err) {
         console.error("[academies] unexpected error", err);
         return NextResponse.json({ error: "حصل خطأ غير متوقع، حاول تاني." }, { status: 500 });
+    }
+}
+
+// GET /api/academies[?status=branch_created]  — list control-plane records.
+// Used by the fleet dashboard and by the server polling worker (pending deploys).
+export async function GET(req: NextRequest) {
+    try {
+        const status = new URL(req.url).searchParams.get("status") || undefined;
+        const academies = await prisma.academy.findMany({
+            where: status ? { status } : undefined,
+            orderBy: { createdAt: "desc" },
+        });
+        return NextResponse.json({ academies });
+    } catch (err) {
+        console.error("[academies] list failed", err);
+        return NextResponse.json({ academies: [], error: "list failed" }, { status: 200 });
     }
 }

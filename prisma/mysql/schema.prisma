@@ -1,0 +1,53 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// SECONDARY Prisma schema — MySQL, ONLY the Academy control plane.
+//
+// The primary app DB is MongoDB (prisma/schema.prisma, the default `@prisma/client`).
+// This is a SEPARATE Prisma client generated to `../generated/mysql`; import it via
+// `@/lib/prismaMysql`. Keep the two apart — no cross-DB relations.
+//
+// Commands (note the --schema flag):
+//   npx prisma generate      --schema prisma/mysql/schema.prisma
+//   npx prisma migrate deploy --schema prisma/mysql/schema.prisma   (server / apply)
+//   npx prisma migrate dev    --schema prisma/mysql/schema.prisma --name <x>  (needs shadow-DB privilege)
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/mysql"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("MYSQL_DATABASE_URL")
+}
+
+// Platform-wide settings that MUST be identical for every academy — the values
+// bound to the app binary, not to any one tenant: OAuth client ids and the app
+// store URLs/versions. This table is the single source of truth; the provisioner
+// writes these into each academy's Moodle (local_multitopics config) at create
+// time, so the mobile app keeps reading them from each academy's getsettings.php.
+//
+// NOT here: per-academy secrets (user_token, admin_token, Paymob credentials,
+// VdoCipher keys) — those live in each academy's own Moodle, never centralised.
+model PlatformSetting {
+  key       String   @id // e.g. google_client_id, ios_url, android_version
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+// One record per academy created from the "Build your product" button.
+// `slug` is the English identifier the client typed; the SaaS branch is
+// `client/<slug>` off `main` in the NITGg/saas-demo repo. `tier` maps to the
+// Moodle-side local_license package (demo|basic|standard|professional).
+// `ownerId` (optional) is the id of the client User — which lives in the MongoDB
+// DB, so it is stored as a plain string here, NOT a Prisma relation.
+model Academy {
+  id        String   @id @default(uuid())
+  name      String // Arabic display name typed by the client
+  slug      String   @unique // English identifier — branch suffix + future subdomain
+  branch    String // full branch name, e.g. "client/ahmed-academy"
+  status    String   @default("branch_created") // branch_created | provisioning | live | failed
+  tier      String   @default("demo") // demo | basic | standard | professional -> local_license
+  ownerId   String? // client User id (lives in the Mongo DB; no cross-db relation)
+  createdAt DateTime @default(now())
+}

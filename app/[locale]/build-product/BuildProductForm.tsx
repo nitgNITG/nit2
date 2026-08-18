@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { useTranslations, useLocale } from 'next-intl'
@@ -8,7 +8,19 @@ import { useTranslations, useLocale } from 'next-intl'
 type FormValues = {
     name: string
     slug: string
+    tier: string
     _hp?: string // honeypot — stays empty for humans
+}
+
+type Plan = {
+    id: string
+    tier: string
+    nameAr: string
+    nameEn: string
+    price: number
+    currency: string
+    featuresAr: string[]
+    featuresEn: string[]
 }
 
 type SuccessInfo = { slug: string; branch: string }
@@ -23,18 +35,32 @@ const BuildProductForm = () => {
         handleSubmit,
         watch,
         reset,
+        setValue,
         formState: { errors, isSubmitting },
-    } = useForm<FormValues>({ defaultValues: { name: '', slug: '', _hp: '' } })
+    } = useForm<FormValues>({ defaultValues: { name: '', slug: '', tier: 'demo', _hp: '' } })
 
     const [done, setDone] = useState<SuccessInfo | null>(null)
+    const [plans, setPlans] = useState<Plan[]>([])
     const slugPreview = (watch('slug') || '').toLowerCase().trim()
+    const selectedTier = watch('tier')
+
+    // Load the Moodle plans (packages) so the client picks one → drives the licence tier.
+    useEffect(() => {
+        fetch('/api/plans?service=moodle')
+            .then((r) => r.json())
+            .then((d) => {
+                const list: Plan[] = Array.isArray(d) ? d : d.plans || d.data || []
+                if (list.length) setPlans(list)
+            })
+            .catch(() => { })
+    }, [])
 
     const onSubmit = async (values: FormValues) => {
         try {
             const res = await fetch('/api/academies', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: values.name, slug: values.slug.toLowerCase().trim(), _hp: values._hp }),
+                body: JSON.stringify({ name: values.name, slug: values.slug.toLowerCase().trim(), tier: values.tier, _hp: values._hp }),
             })
             const data = await res.json()
             if (!res.ok) {
@@ -128,6 +154,41 @@ const BuildProductForm = () => {
                     {t('previewLabel')}: <span className='font-mono font-bold'>client/{slugPreview}</span>
                 </div>
             )}
+
+            {/* Plan picker → drives the local_license tier */}
+            {plans.length > 0 && (
+                <div className='mb-5'>
+                    <label className='mb-1.5 block font-bold text-[#0B2923]'>
+                        {isAr ? 'الباقة' : 'Plan'} <span className='text-red-500'>*</span>
+                    </label>
+                    <div className='grid grid-cols-2 gap-2'>
+                        {plans.map((p) => {
+                            const on = selectedTier === p.tier
+                            return (
+                                <button
+                                    type='button'
+                                    key={p.id}
+                                    onClick={() => setValue('tier', p.tier)}
+                                    className={`text-start rounded-xl border p-3 transition-colors ${on ? 'border-[#1E7D67] bg-[#1E7D67]/5 ring-1 ring-[#1E7D67]' : 'border-gray-200 bg-gray-50 hover:border-gray-300'}`}
+                                >
+                                    <div className='flex items-baseline justify-between gap-2'>
+                                        <span className='font-bold text-[#0B2923]'>{isAr ? p.nameAr : p.nameEn}</span>
+                                        <span className='text-sm font-bold text-[#1E7D67]' dir='ltr'>
+                                            {p.price === 0 ? (isAr ? 'مجاني' : 'Free') : `$${p.price}`}
+                                        </span>
+                                    </div>
+                                    <ul className='mt-1 list-disc ps-4 text-xs text-gray-500'>
+                                        {(isAr ? p.featuresAr : p.featuresEn).slice(0, 3).map((f, i) => (
+                                            <li key={i}>{f}</li>
+                                        ))}
+                                    </ul>
+                                </button>
+                            )
+                        })}
+                    </div>
+                </div>
+            )}
+            <input type='hidden' {...register('tier')} />
 
             {/* Honeypot — hidden from users, hidden from assistive tech */}
             <input

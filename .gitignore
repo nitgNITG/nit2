@@ -43,3 +43,6 @@ next-env.d.ts
 .env
 utils/nextjs-2-2528c-firebase-adminsdk-wj4hg-be09aa6429.json
 apply-fixes.sh
+
+# Generated secondary Prisma client (MySQL)
+prisma/generated/
