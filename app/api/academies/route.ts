@@ -34,6 +34,24 @@ const ghHeaders = (token: string) => ({
     "X-GitHub-Api-Version": "2022-11-28",
 });
 
+// Ask server B's provisioning endpoint to turn the new branch into a live site.
+// Best-effort: if it's not configured or unreachable, the branch still exists and
+// provisioning can be retried manually — we never fail the request over this.
+async function triggerProvision(slug: string, name: string): Promise<void> {
+    const url = process.env.PROVISION_URL;       // e.g. https://saas-provision.academy2026.nitg-eg.com/provision
+    const secret = process.env.PROVISION_SECRET;
+    if (!url || !secret) return;
+    try {
+        await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Provision-Secret": secret },
+            body: JSON.stringify({ slug, name }),
+        });
+    } catch (e) {
+        console.error("[academies] provision trigger failed", e);
+    }
+}
+
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
@@ -109,6 +127,9 @@ export async function POST(req: NextRequest) {
             console.error("[academies] create branch failed", createRes.status, await createRes.text());
             return NextResponse.json({ error: "فشل إنشاء المنصة، حاول تاني." }, { status: 502 });
         }
+
+        // Branch created → kick off the live-site build on server B (fire-and-forget).
+        await triggerProvision(cleanSlug, cleanName);
 
         // 3) Record it (control plane). Guard the rare race on the unique slug.
         try {
