@@ -14,10 +14,13 @@ datasource db {
 }
 
 model User {
-  id       String  @id @default(auto()) @map("_id") @db.ObjectId
-  email    String  @unique
-  password String
-  name     String?
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  email     String    @unique
+  password  String
+  name      String?
+  role      String?   @default("client") // "admin" | "client" (null on legacy rows = treat as admin)
+  createdAt DateTime? @default(now())
+  academies Academy[]
 }
 
 type ProjectLink {
@@ -63,6 +66,8 @@ model Academy {
   branch    String // full branch name, e.g. "client/ahmed-academy"
   status    String   @default("branch_created") // branch_created | provisioning | live | failed
   createdAt DateTime @default(now())
+  ownerId   String?  @db.ObjectId // the client who created it (null for legacy/test rows)
+  owner     User?    @relation(fields: [ownerId], references: [id])
 }
 
 model Contact {

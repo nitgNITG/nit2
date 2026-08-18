@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/prisma/client";
+import { getCurrentUser } from "@/lib/auth";
 
 // ── SaaS repo that holds the base ("main") every academy branches from ────────
 const OWNER = process.env.SAAS_REPO_OWNER ?? "NITGg";
@@ -59,6 +60,12 @@ export async function POST(req: NextRequest) {
 
         // Honeypot — bots fill the hidden field, humans don't. Fake success.
         if (_hp) return NextResponse.json({ ok: true, branch: "" }, { status: 201 });
+
+        // Must be a signed-in client — every academy is tied to its owner.
+        const user = await getCurrentUser();
+        if (!user) {
+            return NextResponse.json({ error: "لازم تسجّل الدخول الأول." }, { status: 401 });
+        }
 
         // Rate limit by IP
         const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
@@ -134,7 +141,7 @@ export async function POST(req: NextRequest) {
         // 3) Record it (control plane). Guard the rare race on the unique slug.
         try {
             const academy = await prisma.academy.create({
-                data: { name: cleanName, slug: cleanSlug, branch, status: "branch_created" },
+                data: { name: cleanName, slug: cleanSlug, branch, status: "branch_created", ownerId: user.id },
             });
             return NextResponse.json(
                 { ok: true, slug: academy.slug, branch: academy.branch },

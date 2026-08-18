@@ -1,9 +1,13 @@
 import React from 'react'
 import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
+import { redirect } from '@/navigation'
+import { getCurrentUser } from '@/lib/auth'
 import BuildProductHeader from './components/BuildProductHeader'
 import BuildProductForm from './BuildProductForm'
 import Footer from '../components/Footer'
+
+export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({
     params: { locale },
@@ -14,7 +18,11 @@ export async function generateMetadata({
     return { title: t('heroTitle'), description: t('heroSubtitle') }
 }
 
-const page = () => {
+const page = async () => {
+    // Building an academy requires an account (each academy is tied to its owner).
+    const user = await getCurrentUser()
+    if (!user) redirect('/account')
+
     return (
         <div>
             <BuildProductHeader />
