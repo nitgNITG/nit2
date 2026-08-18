@@ -1,6 +1,7 @@
 {
     "Dashboard": {
         "title": "منصّاتي",
+        "greeting": "أهلاً {name}",
         "logout": "خروج",
         "newAcademy": "أكاديمية جديدة",
         "count": "عندك {n} منصة",
@@ -13,8 +14,8 @@
         "emptyCta": "أنشئ أول منصة"
     },
     "Auth": {
-        "brandTitle": "أطلق منصتك التعليمية",
-        "brandSubtitle": "اعمل حساب، وابنِ أكاديميتك الخاصة وتابعها من مكان واحد.",
+        "brandTitle": "أهلاً بيك في N.I.T",
+        "brandSubtitle": "سجّل دخولك للوصول لخدماتنا.",
         "cardLive": "حيّة",
         "cardName": "أكاديميتك",
         "tabLogin": "دخول",

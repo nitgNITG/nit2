@@ -15,33 +15,21 @@ export default function Dashboard({
     const router = useRouter()
     const [showCreate, setShowCreate] = useState(false)
 
-    const logout = async () => {
-        try { await fetch('/api/logout', { method: 'POST' }) } catch { /* ignore */ }
-        router.push('/account')
-        router.refresh()
-    }
-
     const onCreated = () => {
         setShowCreate(false)
         router.refresh() // pull the new academy into the list
     }
 
     return (
-        <div className='min-h-svh bg-[#0B2923] text-white'>
-            <div className='mx-auto max-w-6xl px-5 sm:px-8 py-8'>
+        <div className='bg-[#0B2923] text-white'>
+            <div className='mx-auto max-w-6xl px-5 sm:px-8 py-10'>
 
-                {/* Top bar */}
-                <header className='flex items-center justify-between gap-4'>
-                    <div>
-                        <span className='text-[11px] font-bold tracking-[0.2em] uppercase text-[#00FFB2]/70'>NIT · Academy</span>
-                        <h1 className='mt-1 text-2xl font-extrabold'>{t('title')}</h1>
-                    </div>
-                    <div className='flex items-center gap-4'>
-                        <span className='hidden sm:block text-sm text-white/60'>{user.name || user.email}</span>
-                        <button onClick={logout} className='text-sm font-bold text-white/70 hover:text-white transition-colors'>
-                            {t('logout')}
-                        </button>
-                    </div>
+                {/* Title (account controls live in the navbar) */}
+                <header>
+                    <span className='text-[11px] font-bold tracking-[0.2em] uppercase text-[#00FFB2]/70'>
+                        {t('greeting', { name: user.name || user.email })}
+                    </span>
+                    <h1 className='mt-1 text-2xl font-extrabold'>{t('title')}</h1>
                 </header>
 
                 {/* Action bar */}
@@ -80,7 +68,7 @@ export default function Dashboard({
             {/* Create modal — building happens right here, no page jump */}
             {showCreate && (
                 <div
-                    className='fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-black/60 p-4 py-10'
+                    className='fixed inset-0 z-[100000] flex items-start justify-center overflow-y-auto bg-black/60 p-4 py-10'
                     onClick={() => setShowCreate(false)}
                 >
                     <div className='relative w-full max-w-xl' onClick={(e) => e.stopPropagation()}>

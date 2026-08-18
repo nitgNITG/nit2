@@ -1,6 +1,7 @@
 {
     "Dashboard": {
         "title": "My platforms",
+        "greeting": "Welcome, {name}",
         "logout": "Log out",
         "newAcademy": "New academy",
         "count": "{n} platforms",
@@ -13,8 +14,8 @@
         "emptyCta": "Create your first platform"
     },
     "Auth": {
-        "brandTitle": "Launch your learning platform",
-        "brandSubtitle": "Create an account, build your own academy, and track it from one place.",
+        "brandTitle": "Welcome to N.I.T",
+        "brandSubtitle": "Sign in to access our services.",
         "cardLive": "Live",
         "cardName": "Your academy",
         "tabLogin": "Sign in",

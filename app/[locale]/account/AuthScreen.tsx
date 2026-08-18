@@ -9,8 +9,6 @@ import { useRouter } from 'next/navigation'
 type Mode = 'login' | 'register'
 type FormValues = { name?: string; email: string; password: string }
 
-const MONO = "'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace"
-
 export default function AuthScreen({ mode: initialMode = 'login' }: { mode?: Mode }) {
     const t = useTranslations('Auth')
     const locale = useLocale()
@@ -43,11 +41,11 @@ export default function AuthScreen({ mode: initialMode = 'login' }: { mode?: Mod
     }
 
     return (
-        <div className='min-h-svh w-full bg-[#0B2923] flex items-stretch'>
-            <div className='m-auto w-full max-w-5xl grid lg:grid-cols-2 rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/10 lg:min-h-[560px]'>
+        <div className='w-full bg-[#0B2923] px-4 py-10 md:py-16 flex items-stretch'>
+            <div className='m-auto w-full max-w-5xl grid lg:grid-cols-2 rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/10 lg:min-h-[520px]'>
 
                 {/* ── Brand / launch panel ─────────────────────────────────── */}
-                <aside className='relative hidden lg:flex flex-col justify-between p-10 text-white overflow-hidden
+                <aside className='relative hidden lg:flex flex-col justify-center p-10 text-white overflow-hidden
                                   bg-gradient-to-br from-[#0E3329] via-[#0B2923] to-[#071c18]'>
                     {/* faint grid texture */}
                     <div aria-hidden className='absolute inset-0 opacity-[0.06]'
@@ -56,7 +54,7 @@ export default function AuthScreen({ mode: initialMode = 'login' }: { mode?: Mod
                     <div className='relative'>
                         <span className='inline-flex items-center gap-2 text-[11px] font-bold tracking-[0.2em] uppercase text-[#00FFB2]/80'>
                             <span className='w-1.5 h-1.5 rounded-full bg-[#00FFB2] animate-pulse motion-reduce:animate-none' />
-                            NIT · Academy
+                            NIT
                         </span>
                         <h1 className='mt-6 text-3xl xl:text-4xl font-extrabold leading-tight'>
                             {t('brandTitle')}
@@ -66,20 +64,6 @@ export default function AuthScreen({ mode: initialMode = 'login' }: { mode?: Mod
                         </p>
                     </div>
 
-                    {/* faux "launch card" — the signature motif */}
-                    <div className='relative mt-8 w-full max-w-xs rounded-2xl bg-white/[0.04] ring-1 ring-white/10 p-4 backdrop-blur'>
-                        <div className='flex items-center gap-2'>
-                            <span className='relative flex h-2.5 w-2.5'>
-                                <span className='absolute inline-flex h-full w-full rounded-full bg-[#00FFB2] opacity-60 animate-ping motion-reduce:hidden' />
-                                <span className='relative inline-flex h-2.5 w-2.5 rounded-full bg-[#00FFB2]' />
-                            </span>
-                            <span className='text-xs font-bold text-[#00FFB2]'>{t('cardLive')}</span>
-                        </div>
-                        <p className='mt-2 text-sm font-bold text-white'>{t('cardName')}</p>
-                        <p dir='ltr' className='mt-1 text-[11px] text-white/60' style={{ fontFamily: MONO }}>
-                            your-academy.academy2026.nitg-eg.com
-                        </p>
-                    </div>
                 </aside>
 
                 {/* ── Form panel ──────────────────────────────────────────── */}
