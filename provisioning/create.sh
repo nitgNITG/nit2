@@ -166,6 +166,26 @@ docker run -d --name "$CONTAINER" --network "$NET" --restart unless-stopped \
 log "finalising Moodle (upgrade + purge caches)"
 sleep 5
 docker exec "$CONTAINER" php /var/www/html/admin/cli/upgrade.php --non-interactive || true
+
+# Enable the {mlang} multi-language filter (plugin ships in the base code) so
+# {mlang ..} tags render instead of showing raw — no manual install by the client.
+log "enabling multilang2 filter"
+cat > "$CODE_DIR/enable_mlang.php" <<'PHP'
+<?php
+define('CLI_SCRIPT', true);
+require('/var/www/html/config.php');
+require_once($CFG->libdir.'/filterlib.php');
+filter_set_global_state('multilang2', TEXTFILTER_ON);
+$sf = get_config('core', 'stringfilters');
+$list = array_filter(array_map('trim', explode(',', (string)$sf)));
+if (!in_array('multilang2', $list, true)) { $list[] = 'multilang2'; }
+set_config('stringfilters', implode(',', $list));  // apply to headings/titles too
+set_config('filterall', 1);
+echo "multilang2 enabled\n";
+PHP
+docker exec "$CONTAINER" php /var/www/html/enable_mlang.php || true
+rm -f "$CODE_DIR/enable_mlang.php"
+
 docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
 
 # ── 6. Apache vhost → enable → SSL → restart ────────────────────────────────
