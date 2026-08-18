@@ -7,9 +7,10 @@ const REPO = process.env.SAAS_REPO_NAME ?? "saas-demo";
 const BASE_BRANCH = process.env.SAAS_BASE_BRANCH ?? "main";
 const GH_API = "https://api.github.com";
 
-// ── Rate limit: max 5 academies per IP per hour (public endpoint) ─────────────
+// ── Rate limit: max N academies per IP per hour (public endpoint) ─────────────
+// Controlled by env ACADEMIES_RATE_LIMIT: a number sets the cap; 0 disables it.
 const ipCache = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT = 5;
+const RATE_LIMIT = Number(process.env.ACADEMIES_RATE_LIMIT ?? 500);
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 function checkRateLimit(ip: string): boolean {
     const now = Date.now();
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
 
         // Rate limit by IP
         const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-        if (!checkRateLimit(ip)) {
+        if (RATE_LIMIT > 0 && !checkRateLimit(ip)) {
             return NextResponse.json({ error: "محاولات كتير في وقت قصير، حاول بعد شوية." }, { status: 429 });
         }
 
