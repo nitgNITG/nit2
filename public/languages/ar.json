@@ -61,11 +61,17 @@
         "yourIdentifier": "معرّف منصتك",
         "yourBranch": "الفرع الخاص بك",
         "createAnother": "إنشاء منصة أخرى",
+        "goToDashboard": "روح لمنصّاتي",
         "errorGeneric": "حدث خطأ، حاول مرة أخرى.",
         "errorNetwork": "تعذّر الاتصال، تحقّق من الإنترنت وحاول تاني."
     },
     "Navbar": {
         "buildProduct": "ابنى منتجك",
+        "account": "حسابي",
+        "login": "دخول",
+        "myPlatforms": "منصّاتي",
+        "adminPanel": "لوحة الأدمن",
+        "logout": "خروج",
         "item1": "الرئيسية",
         "item2": "من نحن",
         "item3": "مشروعاتنا",

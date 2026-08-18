@@ -1,9 +1,10 @@
 'use client'
 
-import React from 'react'
-import { Link, useRouter } from '@/navigation'
+import React, { useState } from 'react'
+import { useRouter } from '@/navigation'
 import { useTranslations } from 'next-intl'
 import AcademyCard, { ClientAcademy } from './AcademyCard'
+import BuildProductForm from '../build-product/BuildProductForm'
 
 type DashUser = { name: string | null; email: string; role: string }
 
@@ -12,11 +13,17 @@ export default function Dashboard({
 }: { user: DashUser; academies: ClientAcademy[]; domain: string }) {
     const t = useTranslations('Dashboard')
     const router = useRouter()
+    const [showCreate, setShowCreate] = useState(false)
 
     const logout = async () => {
         try { await fetch('/api/logout', { method: 'POST' }) } catch { /* ignore */ }
         router.push('/account')
         router.refresh()
+    }
+
+    const onCreated = () => {
+        setShowCreate(false)
+        router.refresh() // pull the new academy into the list
     }
 
     return (
@@ -42,12 +49,12 @@ export default function Dashboard({
                     <p className='text-sm text-white/50'>
                         {academies.length ? t('count', { n: academies.length }) : ''}
                     </p>
-                    <Link
-                        href='/build-product'
+                    <button
+                        onClick={() => setShowCreate(true)}
                         className='rounded-full bg-[#00FFB2] px-5 py-2.5 text-sm font-extrabold text-[#0B2923] hover:scale-[1.03] transition-transform'
                     >
                         + {t('newAcademy')}
-                    </Link>
+                    </button>
                 </div>
 
                 {/* Console */}
@@ -56,12 +63,12 @@ export default function Dashboard({
                         <div className='mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#00FFB2]/10 text-2xl'>🚀</div>
                         <h2 className='mt-4 text-xl font-extrabold'>{t('emptyTitle')}</h2>
                         <p className='mt-2 text-white/60 max-w-sm mx-auto'>{t('emptyBody')}</p>
-                        <Link
-                            href='/build-product'
+                        <button
+                            onClick={() => setShowCreate(true)}
                             className='mt-6 inline-block rounded-full bg-[#00FFB2] px-6 py-3 font-extrabold text-[#0B2923] hover:scale-[1.03] transition-transform'
                         >
                             {t('emptyCta')}
-                        </Link>
+                        </button>
                     </div>
                 ) : (
                     <div className='mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
@@ -69,6 +76,25 @@ export default function Dashboard({
                     </div>
                 )}
             </div>
+
+            {/* Create modal — building happens right here, no page jump */}
+            {showCreate && (
+                <div
+                    className='fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-black/60 p-4 py-10'
+                    onClick={() => setShowCreate(false)}
+                >
+                    <div className='relative w-full max-w-xl' onClick={(e) => e.stopPropagation()}>
+                        <button
+                            onClick={() => setShowCreate(false)}
+                            aria-label='Close'
+                            className='absolute -top-3 end-0 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#0B2923] shadow-lg hover:bg-gray-100'
+                        >
+                            ✕
+                        </button>
+                        <BuildProductForm onSuccess={onCreated} />
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

@@ -61,11 +61,17 @@
         "yourIdentifier": "Your identifier",
         "yourBranch": "Your branch",
         "createAnother": "Create another platform",
+        "goToDashboard": "Go to my platforms",
         "errorGeneric": "Something went wrong, please try again.",
         "errorNetwork": "Connection failed, check your internet and try again."
     },
     "Navbar": {
         "buildProduct": "Build Your Product",
+        "account": "Account",
+        "login": "Log in",
+        "myPlatforms": "My platforms",
+        "adminPanel": "Admin panel",
+        "logout": "Log out",
         "item1": "Home",
         "item2": "About Us",
         "item3": "Our Projects",

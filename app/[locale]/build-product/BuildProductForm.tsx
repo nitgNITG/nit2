@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { useTranslations, useLocale } from 'next-intl'
+import { Link } from '@/navigation'
 
 type FormValues = {
     name: string
@@ -13,7 +14,7 @@ type FormValues = {
 
 type SuccessInfo = { slug: string; branch: string }
 
-const BuildProductForm = () => {
+const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
     const t = useTranslations('BuildProduct')
     const locale = useLocale()
     const isAr = locale === 'ar'
@@ -42,8 +43,11 @@ const BuildProductForm = () => {
                 return
             }
             toast.success(t('successToast'))
-            setDone({ slug: data.slug, branch: data.branch })
             reset()
+            // In the dashboard modal we hand control back (close + refresh);
+            // on the standalone page we show the success card.
+            if (onSuccess) { onSuccess(); return }
+            setDone({ slug: data.slug, branch: data.branch })
         } catch {
             toast.error(t('errorNetwork'))
         }
@@ -66,13 +70,21 @@ const BuildProductForm = () => {
                     <p className='mt-1 font-mono text-sm text-[#0B2923]' dir='ltr'>{done.branch}</p>
                 </div>
 
-                <button
-                    type='button'
-                    onClick={() => setDone(null)}
-                    className='mt-6 inline-block rounded-full bg-gradient-to-b from-[#1E7D67] to-[#0B2923] px-6 py-2.5 font-bold text-[#00FFB2] transition-transform hover:scale-[1.02]'
-                >
-                    {t('createAnother')}
-                </button>
+                <div className='mt-6 flex flex-wrap items-center justify-center gap-3'>
+                    <Link
+                        href='/account'
+                        className='inline-block rounded-full bg-gradient-to-b from-[#1E7D67] to-[#0B2923] px-6 py-2.5 font-bold text-[#00FFB2] transition-transform hover:scale-[1.02]'
+                    >
+                        {t('goToDashboard')}
+                    </Link>
+                    <button
+                        type='button'
+                        onClick={() => setDone(null)}
+                        className='inline-block rounded-full px-6 py-2.5 font-bold text-[#1E7D67] hover:bg-[#1E7D67]/5'
+                    >
+                        {t('createAnother')}
+                    </button>
+                </div>
             </div>
         )
     }
