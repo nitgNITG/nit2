@@ -35,6 +35,7 @@ const PlatformSettingsPage = () => {
     const [form, setForm] = useState<Record<string, string>>(emptyForm)
     const [loading, setLoading] = useState(false)
     const [saving, setSaving] = useState(false)
+    const [applying, setApplying] = useState(false)
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -51,6 +52,21 @@ const PlatformSettingsPage = () => {
     useEffect(() => { load() }, [load])
 
     const set = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }))
+
+    // Re-push the saved globals to every LIVE academy's Moodle (new academies get
+    // them automatically at build time; this is for when a value changes).
+    const applyAll = async () => {
+        if (!window.confirm('Push these settings to every live academy now?')) return
+        setApplying(true)
+        try {
+            const { data } = await axios.post('/api/platform-settings/apply')
+            toast.success(`Queued for ${data.queued}/${data.academies} academies`)
+        } catch (err: any) {
+            toast.error(err?.response?.data?.error || 'Apply failed')
+        } finally {
+            setApplying(false)
+        }
+    }
 
     const save = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -107,6 +123,10 @@ const PlatformSettingsPage = () => {
                     <button type='button' onClick={load} disabled={loading}
                         className='border border-gray-300 px-6 py-2 rounded-md text-gray-600 hover:bg-gray-50'>
                         Reload
+                    </button>
+                    <button type='button' onClick={applyAll} disabled={applying || loading}
+                        className='border border-[#268F79] px-6 py-2 rounded-md text-[#268F79] font-semibold hover:bg-[#268F79]/5 disabled:opacity-60'>
+                        {applying ? 'Applying…' : 'Apply to all academies'}
                     </button>
                     {loading && <span className='text-sm text-gray-400'>Loading…</span>}
                 </div>

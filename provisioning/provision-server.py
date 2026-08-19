@@ -22,6 +22,7 @@ SECRET           = os.environ.get("PROVISION_SECRET", "")
 CREATE_SH        = os.environ.get("CREATE_SH", "/root/create.sh")
 DESTROY_SH       = os.environ.get("DESTROY_SH", "/root/destroy.sh")
 APPLY_LICENSE_SH = os.environ.get("APPLY_LICENSE_SH", "/root/apply-license.sh")
+APPLY_SETTINGS_SH = os.environ.get("APPLY_SETTINGS_SH", "/root/apply-settings.sh")
 LOG_DIR     = os.environ.get("PROVISION_LOG_DIR", "/opt/saas/logs")
 STAGING_DIR = os.environ.get("PROVISION_STAGING_DIR", "/opt/saas/staging")
 PORT        = int(os.environ.get("PROVISION_PORT", "9099"))
@@ -151,6 +152,23 @@ def run_apply_license(slug: str, tier: str) -> None:
         )
 
 
+def run_apply_settings(slug: str, settings: dict) -> None:
+    """Run apply-settings.sh detached — (re)push global settings to a live academy."""
+    env = {**os.environ}
+    if isinstance(settings, dict):
+        for key, val in settings.items():
+            if key in SETTING_KEYS and isinstance(val, str) and val.strip():
+                env["SETTING_" + key.upper()] = val.strip()
+    logpath = os.path.join(LOG_DIR, f"{slug}.log")
+    with open(logpath, "ab", buffering=0) as log:
+        log.write(f"\n===== apply-settings {slug} =====\n".encode())
+        subprocess.run(
+            ["bash", APPLY_SETTINGS_SH, slug],
+            stdout=log, stderr=subprocess.STDOUT,
+            env=env,
+        )
+
+
 class Handler(BaseHTTPRequestHandler):
     def _send(self, code, obj):
         body = json.dumps(obj, ensure_ascii=False).encode()
@@ -183,6 +201,20 @@ class Handler(BaseHTTPRequestHandler):
                 tier = "demo"
             threading.Thread(target=run_apply_license, args=(slug, tier), daemon=True).start()
             return self._send(202, {"ok": True, "status": "applying-license", "slug": slug, "tier": tier})
+
+        # POST /apply-settings/<slug>  {"settings": {...}} — re-push global settings.
+        if self.path.startswith("/apply-settings/"):
+            slug = self.path[len("/apply-settings/"):]
+            if not SLUG_RE.match(slug):
+                return self._send(400, {"error": "invalid slug"})
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                data = json.loads(self.rfile.read(length) or b"{}")
+            except Exception:
+                return self._send(400, {"error": "bad json"})
+            settings = data.get("settings") if isinstance(data.get("settings"), dict) else {}
+            threading.Thread(target=run_apply_settings, args=(slug, settings), daemon=True).start()
+            return self._send(202, {"ok": True, "status": "applying-settings", "slug": slug})
 
         if self.path != "/provision":
             return self._send(404, {"error": "not found"})
