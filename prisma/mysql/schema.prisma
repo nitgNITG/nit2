@@ -38,12 +38,24 @@ model PlatformSetting {
   updatedAt DateTime @updatedAt
 }
 
+// Platform users (admins + clients) — auth lives here in MySQL alongside the
+// academy control plane. `role`: "admin" | "client" (a null role on legacy rows
+// is treated as admin by lib/auth). Passwords are bcrypt hashes.
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      String?  @default("client")
+  createdAt DateTime @default(now())
+}
+
 // One record per academy created from the "Build your product" button.
 // `slug` is the English identifier the client typed; the SaaS branch is
 // `client/<slug>` off `main` in the NITGg/saas-demo repo. `tier` maps to the
 // Moodle-side local_license package (demo|basic|standard|professional).
-// `ownerId` (optional) is the id of the client User — which lives in the MongoDB
-// DB, so it is stored as a plain string here, NOT a Prisma relation.
+// `ownerId` (optional) is the id of the client User — same MySQL DB, kept as a
+// plain string (not a Prisma relation); the account page joins by ownerId.
 model Academy {
   id        String   @id @default(uuid())
   name      String // Arabic display name typed by the client

@@ -105,6 +105,8 @@
         "brandingSectionTitle": "Logo & icon",
         "logoLabel": "Platform logo",
         "logoHint": "PNG or SVG, max 1.5 MB.",
+        "logocompactLabel": "Compact logo",
+        "logocompactHint": "A small emblem/icon version, clear at small sizes. PNG or SVG, max 1.5 MB.",
         "faviconLabel": "Browser icon (favicon)",
         "faviconHint": "PNG or ICO, max 512 KB.",
         "chooseImage": "Choose image",

@@ -1,6 +1,7 @@
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { cookies } from 'next/headers';
-import prisma from '@/prisma/client';
+// Users live in MySQL (academy control plane), not the Mongo content DB.
+import prisma from '@/lib/prismaMysql';
 
 export type SessionUser = {
     id: string;

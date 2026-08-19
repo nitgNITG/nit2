@@ -19,6 +19,7 @@
 #      BRAND_FULLNAME_AR / BRAND_FULLNAME_EN    site full name per language
 #      BRAND_SHORTNAME_AR / BRAND_SHORTNAME_EN  site short name per language
 #      BRAND_LOGO         — host path to a logo image file
+#      BRAND_LOGOCOMPACT  — host path to the compact logo (emblem/icon)
 #      BRAND_FAVICON      — host path to a favicon file
 #    When no BRAND_FULLNAME_* is given, the <name> arg becomes the full name,
 #    so a manual run still sets the site name (instead of the template's).
@@ -202,9 +203,12 @@ log "applying branding"
 BRAND_DIR="$CODE_DIR/nit-brand"
 rm -rf "$BRAND_DIR"; mkdir -p "$BRAND_DIR"
 
-LOGO_REL=""; FAVICON_REL=""
+LOGO_REL=""; LOGOCOMPACT_REL=""; FAVICON_REL=""
 if [[ -n "${BRAND_LOGO:-}" && -f "${BRAND_LOGO}" ]]; then
     ext="${BRAND_LOGO##*.}"; cp -f "$BRAND_LOGO" "$BRAND_DIR/logo.${ext}"; LOGO_REL="logo.${ext}"
+fi
+if [[ -n "${BRAND_LOGOCOMPACT:-}" && -f "${BRAND_LOGOCOMPACT}" ]]; then
+    ext="${BRAND_LOGOCOMPACT##*.}"; cp -f "$BRAND_LOGOCOMPACT" "$BRAND_DIR/logocompact.${ext}"; LOGOCOMPACT_REL="logocompact.${ext}"
 fi
 if [[ -n "${BRAND_FAVICON:-}" && -f "${BRAND_FAVICON}" ]]; then
     ext="${BRAND_FAVICON##*.}"; cp -f "$BRAND_FAVICON" "$BRAND_DIR/favicon.${ext}"; FAVICON_REL="favicon.${ext}"
@@ -218,7 +222,7 @@ if [[ -z "$B_FN_AR" && -z "$B_FN_EN" ]]; then B_FN_EN="$NAME"; fi
 # Build the manifest with python (values via env, so Arabic/spaces are safe).
 BRAND_FULLNAME_AR="$B_FN_AR" BRAND_FULLNAME_EN="$B_FN_EN" \
 BRAND_SHORTNAME_AR="${BRAND_SHORTNAME_AR:-}" BRAND_SHORTNAME_EN="${BRAND_SHORTNAME_EN:-}" \
-LOGO_REL="$LOGO_REL" FAVICON_REL="$FAVICON_REL" \
+LOGO_REL="$LOGO_REL" LOGOCOMPACT_REL="$LOGOCOMPACT_REL" FAVICON_REL="$FAVICON_REL" \
 python3 - "$BRAND_DIR/brand.json" <<'PYJSON'
 import json, os, sys
 d = {
@@ -227,8 +231,9 @@ d = {
     "shortname_ar": os.environ.get("BRAND_SHORTNAME_AR", ""),
     "shortname_en": os.environ.get("BRAND_SHORTNAME_EN", ""),
 }
-if os.environ.get("LOGO_REL"):    d["logo"]    = os.environ["LOGO_REL"]
-if os.environ.get("FAVICON_REL"): d["favicon"] = os.environ["FAVICON_REL"]
+if os.environ.get("LOGO_REL"):        d["logo"]        = os.environ["LOGO_REL"]
+if os.environ.get("LOGOCOMPACT_REL"): d["logocompact"] = os.environ["LOGOCOMPACT_REL"]
+if os.environ.get("FAVICON_REL"):     d["favicon"]     = os.environ["FAVICON_REL"]
 json.dump(d, open(sys.argv[1], "w"), ensure_ascii=False)
 PYJSON
 

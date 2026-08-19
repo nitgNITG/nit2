@@ -105,6 +105,8 @@
         "brandingSectionTitle": "الشعار والأيقونة",
         "logoLabel": "شعار المنصة",
         "logoHint": "PNG أو SVG، الحد الأقصى 1.5 ميجابايت.",
+        "logocompactLabel": "الشعار المصغّر (Compact)",
+        "logocompactHint": "نسخة مصغّرة من الشعار (أيقونة/رمز مربّع) واضحة في الأحجام الصغيرة. PNG أو SVG، الحد الأقصى 1.5 ميجابايت.",
         "faviconLabel": "أيقونة المتصفح (Favicon)",
         "faviconHint": "PNG أو ICO، الحد الأقصى 512 كيلوبايت.",
         "chooseImage": "اختر صورة",
