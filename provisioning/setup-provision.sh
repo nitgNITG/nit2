@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # ============================================================================
 #  setup-provision.sh — one-time setup of the provisioning endpoint on server B.
-#  Writes the Python service + systemd unit + Apache vhost + HTTPS, and starts it.
+#  Installs the provisioning scripts + the Python service + systemd unit +
+#  Apache vhost + HTTPS, and starts it. Re-runnable (idempotent): re-run it after
+#  pulling new code to redeploy the scripts/service.
 #
 #  Run with the shared secret and the GitHub token in the environment:
 #     export PROVISION_SECRET=$(openssl rand -hex 32); echo "SECRET=$PROVISION_SECRET"
@@ -10,6 +12,8 @@
 #  (Save the printed SECRET — server A needs the same value.)
 # ============================================================================
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 SECRET="${PROVISION_SECRET:-}"
 TOKEN="${GITHUB_TOKEN:-}"
@@ -21,79 +25,19 @@ LE_EMAIL="admin@nitg-eg.com"
 
 mkdir -p /opt/saas/logs
 
+# ── Install the provisioning scripts (single source of truth = this repo) ────
+# The service shells out to these by absolute path (see provision.env below).
+echo "==> installing provisioning scripts to /root"
+cp "$SCRIPT_DIR/create.sh"         /root/create.sh
+cp "$SCRIPT_DIR/destroy.sh"        /root/destroy.sh
+cp "$SCRIPT_DIR/apply-license.sh"  /root/apply-license.sh
+cp "$SCRIPT_DIR/apply-settings.sh" /root/apply-settings.sh
+chmod +x /root/create.sh /root/destroy.sh /root/apply-license.sh /root/apply-settings.sh
+
+# ── The HTTP service — copied verbatim from the repo (NOT inlined), so branding,
+#    licence tier, and /apply-license stay in one place: provision-server.py ───
 echo "==> writing /opt/saas/provision-server.py"
-cat > /opt/saas/provision-server.py <<'PYEOF'
-#!/usr/bin/env python3
-import os, re, json, hmac, subprocess, threading
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-
-SECRET     = os.environ.get("PROVISION_SECRET", "")
-CREATE_SH  = os.environ.get("CREATE_SH", "/root/create.sh")
-DESTROY_SH = os.environ.get("DESTROY_SH", "/root/destroy.sh")
-LOG_DIR    = os.environ.get("PROVISION_LOG_DIR", "/opt/saas/logs")
-PORT       = int(os.environ.get("PROVISION_PORT", "9099"))
-SLUG_RE    = re.compile(r"^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])$")
-os.makedirs(LOG_DIR, exist_ok=True)
-
-def run_create(slug, name):
-    logpath = os.path.join(LOG_DIR, f"{slug}.log")
-    with open(logpath, "ab", buffering=0) as log:
-        log.write(f"\n===== provisioning {slug} =====\n".encode())
-        subprocess.run(["bash", CREATE_SH, slug, name], stdout=log,
-                       stderr=subprocess.STDOUT, env={**os.environ})
-
-def run_destroy(slug):
-    logpath = os.path.join(LOG_DIR, f"{slug}.log")
-    with open(logpath, "ab", buffering=0) as log:
-        log.write(f"\n===== deprovisioning {slug} =====\n".encode())
-        subprocess.run(["bash", DESTROY_SH, slug], stdout=log,
-                       stderr=subprocess.STDOUT, env={**os.environ})
-
-class Handler(BaseHTTPRequestHandler):
-    def _send(self, code, obj):
-        body = json.dumps(obj, ensure_ascii=False).encode()
-        self.send_response(code)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers(); self.wfile.write(body)
-    def _authed(self):
-        return bool(SECRET) and hmac.compare_digest(self.headers.get("X-Provision-Secret",""), SECRET)
-    def do_POST(self):
-        if self.path != "/provision": return self._send(404, {"error":"not found"})
-        if not self._authed(): return self._send(401, {"error":"unauthorized"})
-        try:
-            n = int(self.headers.get("Content-Length","0"))
-            data = json.loads(self.rfile.read(n) or b"{}")
-        except Exception:
-            return self._send(400, {"error":"bad json"})
-        slug = str(data.get("slug","")).strip().lower()
-        name = str(data.get("name","")).strip()
-        if not SLUG_RE.match(slug): return self._send(400, {"error":"invalid slug"})
-        if not name: return self._send(400, {"error":"name required"})
-        threading.Thread(target=run_create, args=(slug, name), daemon=True).start()
-        return self._send(202, {"ok":True,"status":"provisioning","slug":slug})
-    def do_GET(self):
-        if not self.path.startswith("/status/"): return self._send(404, {"error":"not found"})
-        if not self._authed(): return self._send(401, {"error":"unauthorized"})
-        slug = self.path[len("/status/"):]
-        if not SLUG_RE.match(slug): return self._send(400, {"error":"invalid slug"})
-        logpath = os.path.join(LOG_DIR, f"{slug}.log")
-        if not os.path.exists(logpath): return self._send(404, {"error":"no log yet"})
-        with open(logpath, "r", errors="replace") as f: tail = f.read()[-4000:]
-        return self._send(200, {"slug":slug, "done":"is live:" in tail, "log":tail})
-    def do_DELETE(self):
-        if not self.path.startswith("/deprovision/"): return self._send(404, {"error":"not found"})
-        if not self._authed(): return self._send(401, {"error":"unauthorized"})
-        slug = self.path[len("/deprovision/"):]
-        if not SLUG_RE.match(slug): return self._send(400, {"error":"invalid slug"})
-        threading.Thread(target=run_destroy, args=(slug,), daemon=True).start()
-        return self._send(202, {"ok":True,"status":"deprovisioning","slug":slug})
-    def log_message(self, *a): pass
-
-if __name__ == "__main__":
-    if not SECRET: raise SystemExit("PROVISION_SECRET not set")
-    ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
-PYEOF
+cp "$SCRIPT_DIR/provision-server.py" /opt/saas/provision-server.py
 
 echo "==> writing /opt/saas/provision.env"
 cat > /opt/saas/provision.env <<ENVEOF
@@ -101,7 +45,10 @@ PROVISION_SECRET=$SECRET
 GITHUB_TOKEN=$TOKEN
 CREATE_SH=/root/create.sh
 DESTROY_SH=/root/destroy.sh
+APPLY_LICENSE_SH=/root/apply-license.sh
+APPLY_SETTINGS_SH=/root/apply-settings.sh
 PROVISION_LOG_DIR=/opt/saas/logs
+PROVISION_STAGING_DIR=/opt/saas/staging
 PROVISION_PORT=9099
 ENVEOF
 chmod 600 /opt/saas/provision.env
@@ -122,7 +69,8 @@ User=root
 WantedBy=multi-user.target
 SVCEOF
 systemctl daemon-reload
-systemctl enable --now saas-provision
+systemctl enable saas-provision
+systemctl restart saas-provision
 sleep 1
 systemctl is-active saas-provision && echo "==> service is active"
 

@@ -16,26 +16,71 @@ const ghHeaders = (token: string) => ({
     "X-GitHub-Api-Version": "2022-11-28",
 });
 
-// PATCH /api/academies/<slug>  { status }
-// The server polling worker calls this to advance the lifecycle:
-//   branch_created -> provisioning -> live | failed
-// Guarded by a shared secret (WORKER_SECRET) when set; open in dev if unset.
-export async function PATCH(req: NextRequest, { params }: { params: { slug: string } }) {
-    const secret = process.env.WORKER_SECRET;
-    if (secret && req.headers.get("x-worker-secret") !== secret) {
-        return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
+const TIERS = ["demo", "basic", "standard", "professional"];
+
+// Ask server B to (re)apply the licence tier on the live academy — sets
+// local_license/tier + enabled inside the client's Moodle. Best-effort.
+async function triggerApplyLicense(slug: string, tier: string): Promise<void> {
+    const base = process.env.PROVISION_URL;
+    const secret = process.env.PROVISION_SECRET;
+    if (!base || !secret) return;
     try {
-        const { status } = await req.json();
+        const url = new URL(base);
+        url.pathname = `/apply-license/${slug}`;
+        await fetch(url.toString(), {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Provision-Secret": secret },
+            body: JSON.stringify({ tier }),
+        });
+    } catch (e) {
+        console.error("[academies] apply-license trigger failed", slug, e);
+    }
+}
+
+// PATCH /api/academies/<slug>
+//   { status }  — lifecycle advance, called by the polling worker (WORKER_SECRET).
+//   { tier }    — admin changes the plan: updates the control plane AND re-applies
+//                 the licence to the live Moodle.
+export async function PATCH(req: NextRequest, { params }: { params: { slug: string } }) {
+    let body: any;
+    try { body = await req.json(); } catch { return NextResponse.json({ error: "bad json" }, { status: 400 }); }
+
+    const data: { status?: string; tier?: string } = {};
+
+    // Status transition — worker-guarded.
+    if (body?.status !== undefined) {
+        const secret = process.env.WORKER_SECRET;
+        if (secret && req.headers.get("x-worker-secret") !== secret) {
+            return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+        }
         const allowed = ["branch_created", "provisioning", "live", "failed"];
-        if (!status || !allowed.includes(status)) {
+        if (!allowed.includes(body.status)) {
             return NextResponse.json({ error: "invalid status" }, { status: 400 });
         }
-        const academy = await prisma.academy.update({
-            where: { slug: params.slug },
-            data: { status },
-        });
-        return NextResponse.json({ ok: true, slug: academy.slug, status: academy.status });
+        data.status = body.status;
+    }
+
+    // Tier change — admin-guarded.
+    let tierChanged: string | null = null;
+    if (body?.tier !== undefined) {
+        const user = await getCurrentUser();
+        if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+        if (user.role !== "admin") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+        if (!TIERS.includes(body.tier)) {
+            return NextResponse.json({ error: "invalid tier" }, { status: 400 });
+        }
+        data.tier = body.tier;
+        tierChanged = body.tier;
+    }
+
+    if (Object.keys(data).length === 0) {
+        return NextResponse.json({ error: "nothing to update (status or tier)" }, { status: 400 });
+    }
+
+    try {
+        const academy = await prisma.academy.update({ where: { slug: params.slug }, data });
+        if (tierChanged) await triggerApplyLicense(params.slug, tierChanged); // push to the live Moodle
+        return NextResponse.json({ ok: true, slug: academy.slug, status: academy.status, tier: academy.tier });
     } catch (err: any) {
         if (err?.code === "P2025") {
             return NextResponse.json({ error: "not found" }, { status: 404 });
