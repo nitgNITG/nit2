@@ -27,6 +27,12 @@ STAGING_DIR = os.environ.get("PROVISION_STAGING_DIR", "/opt/saas/staging")
 PORT        = int(os.environ.get("PROVISION_PORT", "9099"))
 SLUG_RE     = re.compile(r"^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])$")
 TIERS       = {"demo", "basic", "standard", "professional"}
+# Global platform-settings keys we accept and forward to create.sh (as SETTING_<KEY>).
+# Whitelisted so a caller can't inject arbitrary Moodle config names.
+SETTING_KEYS = {
+    "google_client_id", "apple_client_id", "facebook_app_id",
+    "android_version", "android_url", "ios_version", "ios_url",
+}
 
 MAX_BODY   = 12 * 1024 * 1024   # 12 MB total request (base64 inflates ~33%)
 MAX_IMAGE  = 3 * 1024 * 1024    # 3 MB per decoded image
@@ -77,12 +83,14 @@ def _stage_image(dirpath: str, kind: str, spec) -> str:
     return path
 
 
-def run_create(slug: str, name: str, brand: dict, tier: str = "demo") -> None:
+def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: dict = None) -> None:
     """Run create.sh detached, streaming its output to the client's log file.
 
     Branding is passed through create.sh's BRAND_* env contract: names as
     strings, logo/favicon as staged file paths (decoded from base64 here).
     The licence tier is passed as LICENSE_TIER (create.sh sets local_license).
+    Global platform settings are passed as SETTING_<KEY> (create.sh sets
+    local_multitopics), whitelisted to SETTING_KEYS.
     """
     logpath = os.path.join(LOG_DIR, f"{slug}.log")
     stage = os.path.join(STAGING_DIR, slug)
@@ -91,6 +99,10 @@ def run_create(slug: str, name: str, brand: dict, tier: str = "demo") -> None:
 
     env = {**os.environ}
     env["LICENSE_TIER"] = tier if tier in TIERS else "demo"
+    if isinstance(settings, dict):
+        for key, val in settings.items():
+            if key in SETTING_KEYS and isinstance(val, str) and val.strip():
+                env["SETTING_" + key.upper()] = val.strip()
     if isinstance(brand, dict):
         for key in ("fullname_ar", "fullname_en", "shortname_ar", "shortname_en"):
             val = str(brand.get(key, "") or "").strip()
@@ -184,6 +196,7 @@ class Handler(BaseHTTPRequestHandler):
         slug = str(data.get("slug", "")).strip().lower()
         name = str(data.get("name", "")).strip()
         brand = data.get("brand") if isinstance(data.get("brand"), dict) else {}
+        settings = data.get("settings") if isinstance(data.get("settings"), dict) else {}
         tier = str(data.get("tier", "demo")).strip().lower()
         if tier not in TIERS:
             tier = "demo"
@@ -191,7 +204,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, {"error": "invalid slug"})
         if not name:
             return self._send(400, {"error": "name required"})
-        threading.Thread(target=run_create, args=(slug, name, brand, tier), daemon=True).start()
+        threading.Thread(target=run_create, args=(slug, name, brand, tier, settings), daemon=True).start()
         return self._send(202, {"ok": True, "status": "provisioning", "slug": slug})
 
     def do_GET(self):

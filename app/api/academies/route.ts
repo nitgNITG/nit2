@@ -79,7 +79,24 @@ function sanitizeBrand(raw: unknown): Brand {
 // Ask server B's provisioning endpoint to turn the new branch into a live site.
 // Best-effort: if it's not configured or unreachable, the branch still exists and
 // provisioning can be retried manually — we never fail the request over this.
-async function triggerProvision(slug: string, name: string, brand: Brand, tier: string): Promise<void> {
+// Global platform settings (google_client_id, store URLs …) that must be identical
+// for every academy. Read from the control plane and pushed into the new academy's
+// Moodle at provision time so getsettings.php serves them. Only non-empty values.
+async function loadPlatformSettings(): Promise<Record<string, string>> {
+    try {
+        const rows = await prisma.platformSetting.findMany();
+        return Object.fromEntries(
+            rows.filter((r) => (r.value ?? "").trim() !== "").map((r) => [r.key, r.value]),
+        );
+    } catch (e) {
+        console.error("[academies] could not load platform settings", e);
+        return {};
+    }
+}
+
+async function triggerProvision(
+    slug: string, name: string, brand: Brand, tier: string, settings: Record<string, string>,
+): Promise<void> {
     const url = process.env.PROVISION_URL;       // e.g. https://saas-provision.academy2026.nitg-eg.com/provision
     const secret = process.env.PROVISION_SECRET;
     if (!url || !secret) return;
@@ -87,7 +104,7 @@ async function triggerProvision(slug: string, name: string, brand: Brand, tier: 
         await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-Provision-Secret": secret },
-            body: JSON.stringify({ slug, name, brand, tier }),
+            body: JSON.stringify({ slug, name, brand, tier, settings }),
         });
     } catch (e) {
         console.error("[academies] provision trigger failed", e);
@@ -185,7 +202,8 @@ export async function POST(req: NextRequest) {
         if (!brand.fullname_ar) brand.fullname_ar = cleanName;
 
         // Branch created → kick off the live-site build on server B (fire-and-forget).
-        await triggerProvision(cleanSlug, cleanName, brand, tier);
+        const settings = await loadPlatformSettings();
+        await triggerProvision(cleanSlug, cleanName, brand, tier, settings);
 
         // 3) Record it (control plane). Guard the rare race on the unique slug.
         try {

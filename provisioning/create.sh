@@ -245,6 +245,18 @@ log "setting local_license tier=$TIER (enforcement on)"
 docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=tier    --set="$TIER" || echo "!! could not set licence tier (site still live)"
 docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=enabled --set=1       || echo "!! could not enable licence enforcement"
 
+# ── Global platform settings (local_multitopics) — pushed from nit2 ──────────
+# These MUST be identical for every academy (google_client_id, store URLs, …).
+# Passed in as SETTING_<KEY> env by the provisioner; only non-empty ones apply.
+for _skey in google_client_id apple_client_id facebook_app_id android_version android_url ios_version ios_url; do
+    _senv="SETTING_$(echo "$_skey" | tr '[:lower:]' '[:upper:]')"
+    _sval="${!_senv:-}"
+    if [[ -n "$_sval" ]]; then
+        log "setting local_multitopics/$_skey"
+        docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_multitopics --name="$_skey" --set="$_sval" || echo "!! could not set $_skey"
+    fi
+done
+
 docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
 
 # ── 6. Apache vhost → enable → SSL → restart ────────────────────────────────
