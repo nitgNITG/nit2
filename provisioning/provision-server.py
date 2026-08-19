@@ -18,13 +18,15 @@ No third-party dependencies — Python 3 stdlib only.
 import os, re, json, hmac, base64, shutil, subprocess, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-SECRET      = os.environ.get("PROVISION_SECRET", "")
-CREATE_SH   = os.environ.get("CREATE_SH", "/root/create.sh")
-DESTROY_SH  = os.environ.get("DESTROY_SH", "/root/destroy.sh")
+SECRET           = os.environ.get("PROVISION_SECRET", "")
+CREATE_SH        = os.environ.get("CREATE_SH", "/root/create.sh")
+DESTROY_SH       = os.environ.get("DESTROY_SH", "/root/destroy.sh")
+APPLY_LICENSE_SH = os.environ.get("APPLY_LICENSE_SH", "/root/apply-license.sh")
 LOG_DIR     = os.environ.get("PROVISION_LOG_DIR", "/opt/saas/logs")
 STAGING_DIR = os.environ.get("PROVISION_STAGING_DIR", "/opt/saas/staging")
 PORT        = int(os.environ.get("PROVISION_PORT", "9099"))
 SLUG_RE     = re.compile(r"^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])$")
+TIERS       = {"demo", "basic", "standard", "professional"}
 
 MAX_BODY   = 12 * 1024 * 1024   # 12 MB total request (base64 inflates ~33%)
 MAX_IMAGE  = 3 * 1024 * 1024    # 3 MB per decoded image
@@ -75,11 +77,12 @@ def _stage_image(dirpath: str, kind: str, spec) -> str:
     return path
 
 
-def run_create(slug: str, name: str, brand: dict) -> None:
+def run_create(slug: str, name: str, brand: dict, tier: str = "demo") -> None:
     """Run create.sh detached, streaming its output to the client's log file.
 
     Branding is passed through create.sh's BRAND_* env contract: names as
     strings, logo/favicon as staged file paths (decoded from base64 here).
+    The licence tier is passed as LICENSE_TIER (create.sh sets local_license).
     """
     logpath = os.path.join(LOG_DIR, f"{slug}.log")
     stage = os.path.join(STAGING_DIR, slug)
@@ -87,6 +90,7 @@ def run_create(slug: str, name: str, brand: dict) -> None:
     os.makedirs(stage, exist_ok=True)
 
     env = {**os.environ}
+    env["LICENSE_TIER"] = tier if tier in TIERS else "demo"
     if isinstance(brand, dict):
         for key in ("fullname_ar", "fullname_en", "shortname_ar", "shortname_en"):
             val = str(brand.get(key, "") or "").strip()
@@ -123,6 +127,18 @@ def run_destroy(slug: str) -> None:
         )
 
 
+def run_apply_license(slug: str, tier: str) -> None:
+    """Run apply-license.sh detached — set/change the tier on a live academy."""
+    logpath = os.path.join(LOG_DIR, f"{slug}.log")
+    with open(logpath, "ab", buffering=0) as log:
+        log.write(f"\n===== apply-license {slug} -> {tier} =====\n".encode())
+        subprocess.run(
+            ["bash", APPLY_LICENSE_SH, slug, tier],
+            stdout=log, stderr=subprocess.STDOUT,
+            env={**os.environ},
+        )
+
+
 class Handler(BaseHTTPRequestHandler):
     def _send(self, code, obj):
         body = json.dumps(obj, ensure_ascii=False).encode()
@@ -137,10 +153,27 @@ class Handler(BaseHTTPRequestHandler):
         return bool(SECRET) and hmac.compare_digest(got, SECRET)
 
     def do_POST(self):
-        if self.path != "/provision":
-            return self._send(404, {"error": "not found"})
         if not self._authed():
             return self._send(401, {"error": "unauthorized"})
+
+        # POST /apply-license/<slug>  {"tier": "..."} — change tier on a live academy.
+        if self.path.startswith("/apply-license/"):
+            slug = self.path[len("/apply-license/"):]
+            if not SLUG_RE.match(slug):
+                return self._send(400, {"error": "invalid slug"})
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                data = json.loads(self.rfile.read(length) or b"{}")
+            except Exception:
+                return self._send(400, {"error": "bad json"})
+            tier = str(data.get("tier", "demo")).strip().lower()
+            if tier not in TIERS:
+                tier = "demo"
+            threading.Thread(target=run_apply_license, args=(slug, tier), daemon=True).start()
+            return self._send(202, {"ok": True, "status": "applying-license", "slug": slug, "tier": tier})
+
+        if self.path != "/provision":
+            return self._send(404, {"error": "not found"})
         try:
             length = int(self.headers.get("Content-Length", "0"))
             if length > MAX_BODY:
@@ -151,11 +184,14 @@ class Handler(BaseHTTPRequestHandler):
         slug = str(data.get("slug", "")).strip().lower()
         name = str(data.get("name", "")).strip()
         brand = data.get("brand") if isinstance(data.get("brand"), dict) else {}
+        tier = str(data.get("tier", "demo")).strip().lower()
+        if tier not in TIERS:
+            tier = "demo"
         if not SLUG_RE.match(slug):
             return self._send(400, {"error": "invalid slug"})
         if not name:
             return self._send(400, {"error": "name required"})
-        threading.Thread(target=run_create, args=(slug, name, brand), daemon=True).start()
+        threading.Thread(target=run_create, args=(slug, name, brand, tier), daemon=True).start()
         return self._send(202, {"ok": True, "status": "provisioning", "slug": slug})
 
     def do_GET(self):

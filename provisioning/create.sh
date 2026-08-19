@@ -236,6 +236,15 @@ docker exec "$CONTAINER" php /var/www/html/public/theme/nit/cli/apply_brand.php 
     --manifest=/var/www/html/nit-brand/brand.json || echo "!! branding step failed (site still live)"
 rm -rf "$BRAND_DIR"
 
+# ── Licence tier (local_license) — from the plan the client picked ───────────
+# LICENSE_TIER comes from the provisioner (demo|basic|standard|professional).
+# Setting `enabled=1` turns enforcement ON so the tier's caps/features apply.
+TIER="${LICENSE_TIER:-demo}"
+case "$TIER" in demo|basic|standard|professional) ;; *) TIER="demo" ;; esac
+log "setting local_license tier=$TIER (enforcement on)"
+docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=tier    --set="$TIER" || echo "!! could not set licence tier (site still live)"
+docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=enabled --set=1       || echo "!! could not enable licence enforcement"
+
 docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
 
 # ── 6. Apache vhost → enable → SSL → restart ────────────────────────────────

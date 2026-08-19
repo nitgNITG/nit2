@@ -79,7 +79,7 @@ function sanitizeBrand(raw: unknown): Brand {
 // Ask server B's provisioning endpoint to turn the new branch into a live site.
 // Best-effort: if it's not configured or unreachable, the branch still exists and
 // provisioning can be retried manually — we never fail the request over this.
-async function triggerProvision(slug: string, name: string, brand: Brand): Promise<void> {
+async function triggerProvision(slug: string, name: string, brand: Brand, tier: string): Promise<void> {
     const url = process.env.PROVISION_URL;       // e.g. https://saas-provision.academy2026.nitg-eg.com/provision
     const secret = process.env.PROVISION_SECRET;
     if (!url || !secret) return;
@@ -87,7 +87,7 @@ async function triggerProvision(slug: string, name: string, brand: Brand): Promi
         await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-Provision-Secret": secret },
-            body: JSON.stringify({ slug, name, brand }),
+            body: JSON.stringify({ slug, name, brand, tier }),
         });
     } catch (e) {
         console.error("[academies] provision trigger failed", e);
@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
         if (!brand.fullname_ar) brand.fullname_ar = cleanName;
 
         // Branch created → kick off the live-site build on server B (fire-and-forget).
-        await triggerProvision(cleanSlug, cleanName, brand);
+        await triggerProvision(cleanSlug, cleanName, brand, tier);
 
         // 3) Record it (control plane). Guard the rare race on the unique slug.
         try {
