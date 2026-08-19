@@ -1,7 +1,8 @@
 // Secondary Prisma client — MySQL, Academy control plane only.
-// Generated from prisma/mysql/schema.prisma into prisma/generated/mysql.
+// Generated from prisma/mysql/schema.prisma into node_modules/prismamysql, and
+// externalized in next.config so Next never bundles its native query engine.
 // The primary MongoDB client stays at `@/prisma/client`.
-import { PrismaClient } from '@/prisma/generated/mysql'
+import { PrismaClient } from 'prismamysql'
 
 const makeClient = () => new PrismaClient()
 

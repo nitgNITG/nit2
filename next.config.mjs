@@ -8,6 +8,12 @@ const MOVED_SERVICE_SLUGS = ['moodle-lms', 'ecommerce-app', 'delivery-app', 'res
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    // The secondary MySQL Prisma client (node_modules/prismamysql) ships a native
+    // query engine — keep it out of the webpack bundle/trace so `next build` doesn't
+    // walk into it (which broke the Windows build) and Vercel copies it whole.
+    experimental: {
+        serverComponentsExternalPackages: ['prismamysql'],
+    },
     async redirects() {
         return MOVED_SERVICE_SLUGS.map((slug) => ({
             source: `/:locale(ar|en)/${slug}`,

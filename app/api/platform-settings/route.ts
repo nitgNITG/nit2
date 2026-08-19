@@ -2,22 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 // Platform settings live in MySQL (separate Prisma client), not the Mongo app DB.
 import prisma from "@/lib/prismaMysql";
 import { authPredict } from "@/lib/predict";
+// Shared key list — a route.ts file may only export request handlers.
+import { PLATFORM_KEYS } from "@/lib/platformKeys";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-// The keys that MUST be identical for every academy (bound to the app binary).
-// Editable in the dashboard; the provisioner reads them and writes them into
-// each academy's Moodle (local_multitopics) so getsettings.php serves them.
-export const PLATFORM_KEYS = [
-    "google_client_id",
-    "apple_client_id",
-    "facebook_app_id",
-    "android_version",
-    "android_url",
-    "ios_version",
-    "ios_url",
-] as const;
 
 // GET is readable by an admin (dashboard) OR the provisioner (x-worker-secret),
 // since create.sh needs these values when spinning up a new academy.

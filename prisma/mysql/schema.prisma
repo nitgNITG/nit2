@@ -13,7 +13,10 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/mysql"
+  // Generated into node_modules as a bare package so Next.js can treat it as an
+  // external server package (experimental.serverComponentsExternalPackages in
+  // next.config) — the native query engine must NOT be webpack-bundled/traced.
+  output   = "../../node_modules/prismamysql"
 }
 
 datasource db {
