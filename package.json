@@ -7,7 +7,19 @@
     "postinstall": "prisma generate && prisma generate --schema prisma/mysql/schema.prisma",
     "build": "npx prisma generate && npx prisma generate --schema prisma/mysql/schema.prisma && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "prisma:generate": "prisma generate && prisma generate --schema prisma/mysql/schema.prisma",
+    "mongo:generate": "prisma generate",
+    "mongo:push": "prisma db push",
+    "mongo:pull": "prisma db pull",
+    "mongo:studio": "prisma studio",
+    "mysql:generate": "prisma generate --schema prisma/mysql/schema.prisma",
+    "mysql:migrate": "prisma migrate dev --schema prisma/mysql/schema.prisma",
+    "mysql:deploy": "prisma migrate deploy --schema prisma/mysql/schema.prisma",
+    "mysql:push": "prisma db push --schema prisma/mysql/schema.prisma",
+    "mysql:pull": "prisma db pull --schema prisma/mysql/schema.prisma",
+    "mysql:status": "prisma migrate status --schema prisma/mysql/schema.prisma",
+    "mysql:studio": "prisma studio --schema prisma/mysql/schema.prisma"
   },
   "dependencies": {
     "@prisma/client": "^5.18.0",
