@@ -46,6 +46,28 @@ Every run provisions the given client. → `https://teacher01.academy2026.nitg-e
 
 ## Remove a client
 
+`destroy.sh` is the reverse of `create.sh` — it removes the container, database,
+files, and Apache vhosts (and best-effort deletes the SSL cert + log). It's
+idempotent, so re-running on a half-removed client is safe.
+
+```bash
+sudo bash destroy.sh <slug>
+```
+
+The admin "delete platform" button on the NIT site calls this automatically via
+the provisioning endpoint:
+
+```
+DELETE https://saas-provision.academy2026.nitg-eg.com/deprovision/<slug>
+       header  X-Provision-Secret: <secret>
+```
+
+which runs `destroy.sh <slug>` in the background (logs to
+`/opt/saas/logs/<slug>.log`). Deploy `destroy.sh` to `/root/destroy.sh` (path set
+by `DESTROY_SH` in `/opt/saas/provision.env`) next to `create.sh`.
+
+Manual equivalent, if you ever need the individual steps:
+
 ```bash
 docker rm -f saas_moodle_<slug>
 docker exec saas_mariadb mariadb -uroot -p"$(grep DB_ROOT_PW /opt/saas/saas.env|cut -d= -f2)" \

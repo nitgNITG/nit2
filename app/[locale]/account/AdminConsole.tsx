@@ -1,6 +1,5 @@
 import React from 'react'
 import { getTranslations } from 'next-intl/server'
-import AdminAcademyStatus from './AdminAcademyStatus'
 import DeletePlatformButton from './DeletePlatformButton'
 
 const MONO = "'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace"
@@ -12,7 +11,6 @@ export default async function AdminConsole({
     academies, clients, domain, adminName,
 }: { academies: AdminAcademy[]; clients: AdminClient[]; domain: string; adminName: string }) {
     const t = await getTranslations('Admin')
-    const live = academies.filter((a) => a.status === 'live').length
 
     // Group every platform under the client who owns it. Platforms whose owner is
     // missing (legacy/test rows) fall into a trailing "unassigned" group.
@@ -34,15 +32,8 @@ export default async function AdminConsole({
                     <h1 className='mt-1 text-2xl font-extrabold'>{t('title')}</h1>
                 </header>
 
-                {/* Stats */}
-                <div className='mt-6 grid max-w-2xl grid-cols-3 gap-4'>
-                    <Stat label={t('statAcademies')} value={academies.length} />
-                    <Stat label={t('statLive')} value={live} accent />
-                    <Stat label={t('statClients')} value={clients.length} />
-                </div>
-
                 {/* Clients, each with their platforms beneath */}
-                <h2 className='mt-10 text-lg font-extrabold'>{t('clientsHeading')}</h2>
+                <h2 className='mt-8 text-lg font-extrabold'>{t('clientsHeading')}</h2>
 
                 {clients.length === 0 ? (
                     <p className='mt-3 text-white/50'>{t('noClients')}</p>
@@ -121,7 +112,6 @@ function ClientGroup({
                 <div className='mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
                     {platforms.map((a) => (
                         <div key={a.id} className='rounded-2xl bg-white/[0.03] ring-1 ring-white/10 p-5 flex flex-col gap-2'>
-                            <AdminAcademyStatus slug={a.slug} initial={a.status} />
                             <p className='text-lg font-extrabold'>{a.name}</p>
                             <p dir='ltr' className='text-xs text-white/50 truncate' style={{ fontFamily: MONO }}>
                                 {a.slug}.{domain}
@@ -142,14 +132,5 @@ function ClientGroup({
                 </div>
             )}
         </section>
-    )
-}
-
-function Stat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
-    return (
-        <div className={`rounded-xl p-4 ring-1 ${accent ? 'bg-[#00FFB2]/10 ring-[#00FFB2]/20' : 'bg-white/[0.04] ring-white/10'}`}>
-            <div className={`text-2xl font-extrabold ${accent ? 'text-[#00FFB2]' : 'text-white'}`}>{value}</div>
-            <div className='text-xs text-white/60'>{label}</div>
-        </div>
     )
 }

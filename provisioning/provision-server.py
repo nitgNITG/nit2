@@ -7,6 +7,9 @@ Minimal provisioning endpoint for server B.
       /opt/saas/logs/<slug>.log, returns 202 immediately.
   GET  /status/<slug>   header X-Provision-Secret
     → returns the tail of that client's provisioning log.
+  DELETE /deprovision/<slug>   header X-Provision-Secret
+    → runs destroy.sh <slug> in the BACKGROUND (container + db + files + vhosts),
+      logs to /opt/saas/logs/<slug>.log, returns 202 immediately.
 
 Security: shared-secret auth, strict slug validation, args passed as a list
 (never a shell string), bound to 127.0.0.1 (reached only via the Apache vhost).
@@ -17,6 +20,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 SECRET      = os.environ.get("PROVISION_SECRET", "")
 CREATE_SH   = os.environ.get("CREATE_SH", "/root/create.sh")
+DESTROY_SH  = os.environ.get("DESTROY_SH", "/root/destroy.sh")
 LOG_DIR     = os.environ.get("PROVISION_LOG_DIR", "/opt/saas/logs")
 STAGING_DIR = os.environ.get("PROVISION_STAGING_DIR", "/opt/saas/staging")
 PORT        = int(os.environ.get("PROVISION_PORT", "9099"))
@@ -107,6 +111,18 @@ def run_create(slug: str, name: str, brand: dict) -> None:
         shutil.rmtree(stage, ignore_errors=True)
 
 
+def run_destroy(slug: str) -> None:
+    """Run destroy.sh detached, appending its output to the client's log file."""
+    logpath = os.path.join(LOG_DIR, f"{slug}.log")
+    with open(logpath, "ab", buffering=0) as log:
+        log.write(f"\n===== deprovisioning {slug} =====\n".encode())
+        subprocess.run(
+            ["bash", DESTROY_SH, slug],
+            stdout=log, stderr=subprocess.STDOUT,
+            env={**os.environ},
+        )
+
+
 class Handler(BaseHTTPRequestHandler):
     def _send(self, code, obj):
         body = json.dumps(obj, ensure_ascii=False).encode()
@@ -157,6 +173,17 @@ class Handler(BaseHTTPRequestHandler):
             tail = f.read()[-4000:]
         done = "is live:" in tail
         return self._send(200, {"slug": slug, "done": done, "log": tail})
+
+    def do_DELETE(self):
+        if not self.path.startswith("/deprovision/"):
+            return self._send(404, {"error": "not found"})
+        if not self._authed():
+            return self._send(401, {"error": "unauthorized"})
+        slug = self.path[len("/deprovision/"):]
+        if not SLUG_RE.match(slug):
+            return self._send(400, {"error": "invalid slug"})
+        threading.Thread(target=run_destroy, args=(slug,), daemon=True).start()
+        return self._send(202, {"ok": True, "status": "deprovisioning", "slug": slug})
 
     def log_message(self, *a):
         pass
