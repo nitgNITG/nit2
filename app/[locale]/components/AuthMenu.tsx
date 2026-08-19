@@ -59,9 +59,6 @@ export default function AuthMenu({ mobile = false, onNavigate }: { mobile?: bool
             <div className='flex flex-col items-center gap-3'>
                 <span className='text-white/60 text-sm'>{me.name || me.email}</span>
                 <LocalLink onClick={onNavigate} href='/account' className='font-semibold text-xl text-[#00FFB2]'>{t('myPlatforms')}</LocalLink>
-                {me.role === 'admin' && (
-                    <LocalLink onClick={onNavigate} href='/dashboard' className='font-semibold text-lg text-white/80'>{t('adminPanel')}</LocalLink>
-                )}
                 <button onClick={logout} className='font-semibold text-lg text-red-300'>{t('logout')}</button>
             </div>
         )
@@ -90,11 +87,6 @@ export default function AuthMenu({ mobile = false, onNavigate }: { mobile?: bool
                     <LocalLink href='/account' onClick={() => setOpen(false)} className='block rounded-lg px-3 py-2 text-sm font-semibold text-[#0B2923] hover:bg-[#1E7D67]/5'>
                         {t('myPlatforms')}
                     </LocalLink>
-                    {me.role === 'admin' && (
-                        <LocalLink href='/dashboard' onClick={() => setOpen(false)} className='block rounded-lg px-3 py-2 text-sm font-semibold text-[#0B2923] hover:bg-[#1E7D67]/5'>
-                            {t('adminPanel')}
-                        </LocalLink>
-                    )}
                     <button onClick={logout} className='block w-full rounded-lg px-3 py-2 text-start text-sm font-semibold text-red-600 hover:bg-red-50'>
                         {t('logout')}
                     </button>

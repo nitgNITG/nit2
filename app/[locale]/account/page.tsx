@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import AuthScreen from './AuthScreen'
 import Dashboard from './Dashboard'
+import AdminConsole from './AdminConsole'
 
 const DOMAIN = process.env.SAAS_CLIENT_DOMAIN ?? 'academy2026.nitg-eg.com'
 
@@ -22,7 +23,29 @@ export default async function AccountPage() {
     let content: React.ReactNode
     if (!user) {
         content = <AuthScreen mode='login' />
+    } else if (user.role === 'admin') {
+        // Admins get the full view: every academy + every client.
+        const [academyRows, clientRows] = await Promise.all([
+            prisma.academy.findMany({ orderBy: { createdAt: 'desc' }, include: { owner: true } }),
+            prisma.user.findMany({ orderBy: { createdAt: 'desc' }, include: { _count: { select: { academies: true } } } }),
+        ])
+        const academies = academyRows.map((a) => ({
+            id: a.id, name: a.name, slug: a.slug, status: a.status,
+            owner: a.owner?.name || a.owner?.email || null,
+        }))
+        const clients = clientRows.map((u) => ({
+            id: u.id, name: u.name, email: u.email, role: (u.role ?? 'admin'), academies: u._count.academies,
+        }))
+        content = (
+            <AdminConsole
+                academies={academies}
+                clients={clients}
+                domain={DOMAIN}
+                adminName={user.name || user.email}
+            />
+        )
     } else {
+        // Clients get their own academies.
         const rows = await prisma.academy.findMany({
             where: { ownerId: user.id },
             orderBy: { createdAt: 'desc' },
