@@ -13,6 +13,28 @@
         "emptyBody": "ابنِ أول أكاديمية ليك — بتاخد دقيقة.",
         "emptyCta": "أنشئ أول منصة"
     },
+    "Admin": {
+        "role": "أدمن",
+        "title": "كل العملاء والمنصّات",
+        "statAcademies": "المنصّات",
+        "statLive": "الحيّة",
+        "statClients": "العملاء",
+        "clientsHeading": "العملاء ومنصّاتهم",
+        "noClients": "لسه مفيش عملاء.",
+        "noPlatforms": "العميل ده لسه مبنيش أي منصّة.",
+        "platformsCount": "{n} منصّة",
+        "unassigned": "منصّات بدون عميل",
+        "open": "افتح",
+        "delete": "حذف",
+        "deleting": "بيتحذف…",
+        "confirmDelete": "متأكد إنك عايز تحذف منصّة \"{name}\"؟ الإجراء ده مالوش رجعة.",
+        "deleteFailed": "فشل حذف المنصّة، حاول تاني.",
+        "roleAdmin": "أدمن",
+        "roleClient": "عميل",
+        "statusLive": "حيّة",
+        "statusPreparing": "بتتجهّز",
+        "statusChecking": "بيتحقّق…"
+    },
     "Auth": {
         "brandTitle": "أهلاً بيك في N.I.T",
         "brandSubtitle": "سجّل دخولك للوصول لخدماتنا.",

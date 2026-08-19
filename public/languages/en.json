@@ -13,6 +13,28 @@
         "emptyBody": "Build your first academy — it takes a minute.",
         "emptyCta": "Create your first platform"
     },
+    "Admin": {
+        "role": "Admin",
+        "title": "All clients & platforms",
+        "statAcademies": "Platforms",
+        "statLive": "Live",
+        "statClients": "Clients",
+        "clientsHeading": "Clients & their platforms",
+        "noClients": "No clients yet.",
+        "noPlatforms": "This client hasn't built any platform yet.",
+        "platformsCount": "{n} platforms",
+        "unassigned": "Platforms without a client",
+        "open": "Open",
+        "delete": "Delete",
+        "deleting": "Deleting…",
+        "confirmDelete": "Delete the platform \"{name}\"? This cannot be undone.",
+        "deleteFailed": "Failed to delete the platform, please try again.",
+        "roleAdmin": "Admin",
+        "roleClient": "Client",
+        "statusLive": "Live",
+        "statusPreparing": "Preparing",
+        "statusChecking": "Checking…"
+    },
     "Auth": {
         "brandTitle": "Welcome to N.I.T",
         "brandSubtitle": "Sign in to access our services.",

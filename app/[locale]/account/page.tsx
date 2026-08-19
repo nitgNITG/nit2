@@ -31,6 +31,7 @@ export default async function AccountPage() {
         ])
         const academies = academyRows.map((a) => ({
             id: a.id, name: a.name, slug: a.slug, status: a.status,
+            ownerId: a.ownerId ?? null,
             owner: a.owner?.name || a.owner?.email || null,
         }))
         const clients = clientRows.map((u) => ({
