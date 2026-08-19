@@ -23,6 +23,7 @@ CREATE_SH        = os.environ.get("CREATE_SH", "/root/create.sh")
 DESTROY_SH       = os.environ.get("DESTROY_SH", "/root/destroy.sh")
 APPLY_LICENSE_SH = os.environ.get("APPLY_LICENSE_SH", "/root/apply-license.sh")
 APPLY_SETTINGS_SH = os.environ.get("APPLY_SETTINGS_SH", "/root/apply-settings.sh")
+UPDATE_SITE_SH = os.environ.get("UPDATE_SITE_SH", "/root/update-site.sh")
 LOG_DIR     = os.environ.get("PROVISION_LOG_DIR", "/opt/saas/logs")
 STAGING_DIR = os.environ.get("PROVISION_STAGING_DIR", "/opt/saas/staging")
 PORT        = int(os.environ.get("PROVISION_PORT", "9099"))
@@ -169,6 +170,18 @@ def run_apply_settings(slug: str, settings: dict) -> None:
         )
 
 
+def run_update_site(slug: str) -> None:
+    """Run update-site.sh detached — pull latest code + upgrade + purge on a live academy."""
+    logpath = os.path.join(LOG_DIR, f"{slug}.log")
+    with open(logpath, "ab", buffering=0) as log:
+        log.write(f"\n===== update-site {slug} =====\n".encode())
+        subprocess.run(
+            ["bash", UPDATE_SITE_SH, slug],
+            stdout=log, stderr=subprocess.STDOUT,
+            env={**os.environ},
+        )
+
+
 class Handler(BaseHTTPRequestHandler):
     def _send(self, code, obj):
         body = json.dumps(obj, ensure_ascii=False).encode()
@@ -215,6 +228,14 @@ class Handler(BaseHTTPRequestHandler):
             settings = data.get("settings") if isinstance(data.get("settings"), dict) else {}
             threading.Thread(target=run_apply_settings, args=(slug, settings), daemon=True).start()
             return self._send(202, {"ok": True, "status": "applying-settings", "slug": slug})
+
+        # POST /update-site/<slug> — pull latest code + upgrade + purge.
+        if self.path.startswith("/update-site/"):
+            slug = self.path[len("/update-site/"):]
+            if not SLUG_RE.match(slug):
+                return self._send(400, {"error": "invalid slug"})
+            threading.Thread(target=run_update_site, args=(slug,), daemon=True).start()
+            return self._send(202, {"ok": True, "status": "updating-site", "slug": slug})
 
         if self.path != "/provision":
             return self._send(404, {"error": "not found"})

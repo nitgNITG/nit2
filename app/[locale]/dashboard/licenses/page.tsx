@@ -21,6 +21,8 @@ const LicensesPage = () => {
     const [academies, setAcademies] = useState<Academy[]>([])
     const [loading, setLoading] = useState(true)
     const [savingSlug, setSavingSlug] = useState<string | null>(null)
+    const [updatingAll, setUpdatingAll] = useState(false)
+    const [updatingSlug, setUpdatingSlug] = useState<string | null>(null)
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -51,14 +53,51 @@ const LicensesPage = () => {
         }
     }
 
+    // Pull the latest code into the live container(s) + purge caches.
+    const updateAll = async () => {
+        if (!window.confirm('Pull the latest code into every live academy now?')) return
+        setUpdatingAll(true)
+        try {
+            const { data } = await axios.post('/api/academies/update-sites')
+            toast.success(`Update queued for ${data.queued}/${data.academies} academies`)
+        } catch (err: any) {
+            toast.error(err?.response?.data?.error || 'Update failed')
+        } finally {
+            setUpdatingAll(false)
+        }
+    }
+
+    const updateOne = async (slug: string) => {
+        setUpdatingSlug(slug)
+        try {
+            await axios.post('/api/academies/update-sites', { slug })
+            toast.success(`${slug}: pulling latest code…`)
+        } catch (err: any) {
+            toast.error(err?.response?.data?.error || 'Update failed')
+        } finally {
+            setUpdatingSlug(null)
+        }
+    }
+
     return (
         <div className='dashboard-container py-5 lg:py-10 space-y-8'>
-            <div>
-                <h4 className='font-bold text-lg md:text-xl lg:text-2xl'>🎫 Licenses</h4>
-                <p className='text-sm text-gray-500 mt-1 max-w-2xl'>
-                    Each academy runs on a plan (local_license tier). Changing it here updates the control plane and
-                    re-applies the licence to the live Moodle. New academies get the plan the client picked at build time.
-                </p>
+            <div className='flex flex-wrap items-start justify-between gap-3'>
+                <div>
+                    <h4 className='font-bold text-lg md:text-xl lg:text-2xl'>🎫 Licenses</h4>
+                    <p className='text-sm text-gray-500 mt-1 max-w-2xl'>
+                        Each academy runs on a plan (local_license tier). Changing it here updates the control plane and
+                        re-applies the licence to the live Moodle. New academies get the plan the client picked at build time.
+                    </p>
+                </div>
+                <button
+                    type='button'
+                    onClick={updateAll}
+                    disabled={updatingAll}
+                    title='Pull the latest code into every live academy (after a saas-demo push)'
+                    className='shrink-0 rounded-md border border-[#268F79] px-4 py-2 text-sm font-semibold text-[#268F79] hover:bg-[#268F79]/5 disabled:opacity-60'
+                >
+                    {updatingAll ? 'Updating…' : '⟳ Update all sites'}
+                </button>
             </div>
 
             {/* Tier reference */}
@@ -80,13 +119,14 @@ const LicensesPage = () => {
                             <th className='px-4 py-3 font-semibold'>Status</th>
                             <th className='px-4 py-3 font-semibold'>Current plan</th>
                             <th className='px-4 py-3 font-semibold'>Change plan</th>
+                            <th className='px-4 py-3 font-semibold'>Code</th>
                         </tr>
                     </thead>
                     <tbody className='divide-y divide-gray-100'>
                         {loading ? (
-                            <tr><td colSpan={4} className='px-4 py-10 text-center text-gray-400'>Loading…</td></tr>
+                            <tr><td colSpan={5} className='px-4 py-10 text-center text-gray-400'>Loading…</td></tr>
                         ) : academies.length === 0 ? (
-                            <tr><td colSpan={4} className='px-4 py-10 text-center text-gray-400'>No academies yet.</td></tr>
+                            <tr><td colSpan={5} className='px-4 py-10 text-center text-gray-400'>No academies yet.</td></tr>
                         ) : academies.map((a) => (
                             <tr key={a.id} className='hover:bg-gray-50'>
                                 <td className='px-4 py-3'>
@@ -110,6 +150,17 @@ const LicensesPage = () => {
                                             <option key={k} value={k}>{tierMeta(k).name}</option>
                                         ))}
                                     </select>
+                                </td>
+                                <td className='px-4 py-3'>
+                                    <button
+                                        type='button'
+                                        onClick={() => updateOne(a.slug)}
+                                        disabled={updatingSlug === a.slug}
+                                        title='Pull latest code into this academy'
+                                        className='rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50'
+                                    >
+                                        {updatingSlug === a.slug ? '…' : '⟳ Update'}
+                                    </button>
                                 </td>
                             </tr>
                         ))}

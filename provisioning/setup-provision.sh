@@ -32,7 +32,8 @@ cp "$SCRIPT_DIR/create.sh"         /root/create.sh
 cp "$SCRIPT_DIR/destroy.sh"        /root/destroy.sh
 cp "$SCRIPT_DIR/apply-license.sh"  /root/apply-license.sh
 cp "$SCRIPT_DIR/apply-settings.sh" /root/apply-settings.sh
-chmod +x /root/create.sh /root/destroy.sh /root/apply-license.sh /root/apply-settings.sh
+cp "$SCRIPT_DIR/update-site.sh"    /root/update-site.sh
+chmod +x /root/create.sh /root/destroy.sh /root/apply-license.sh /root/apply-settings.sh /root/update-site.sh
 
 # ── The HTTP service — copied verbatim from the repo (NOT inlined), so branding,
 #    licence tier, and /apply-license stay in one place: provision-server.py ───
@@ -47,6 +48,7 @@ CREATE_SH=/root/create.sh
 DESTROY_SH=/root/destroy.sh
 APPLY_LICENSE_SH=/root/apply-license.sh
 APPLY_SETTINGS_SH=/root/apply-settings.sh
+UPDATE_SITE_SH=/root/update-site.sh
 PROVISION_LOG_DIR=/opt/saas/logs
 PROVISION_STAGING_DIR=/opt/saas/staging
 PROVISION_PORT=9099
