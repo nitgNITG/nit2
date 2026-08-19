@@ -46,3 +46,7 @@ apply-fixes.sh
 
 # Generated secondary Prisma client (MySQL)
 prisma/generated/
+
+# Python bytecode cache (never commit)
+__pycache__/
+*.pyc

@@ -71,7 +71,7 @@ export default function Dashboard({
                     className='fixed inset-0 z-[100000] flex items-start justify-center overflow-y-auto bg-black/60 p-4 py-10'
                     onClick={() => setShowCreate(false)}
                 >
-                    <div className='relative w-full max-w-xl' onClick={(e) => e.stopPropagation()}>
+                    <div className='relative w-full max-w-xl text-[#0B2923]' onClick={(e) => e.stopPropagation()}>
                         <button
                             onClick={() => setShowCreate(false)}
                             aria-label='Close'

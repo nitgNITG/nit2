@@ -1,11 +1,13 @@
 import type { Metadata } from 'next'
 import { getCurrentUser } from '@/lib/auth'
-// Academies live in MySQL (separate Prisma client), not the Mongo app DB.
-import prisma from '@/lib/prismaMysql'
+// Academies live in MySQL (separate client); Users live in the Mongo app DB.
+import prismaMysql from '@/lib/prismaMysql'
+import prisma from '@/prisma/client'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import AuthScreen from './AuthScreen'
 import Dashboard from './Dashboard'
+import AdminConsole from './AdminConsole'
 
 const DOMAIN = process.env.SAAS_CLIENT_DOMAIN ?? 'academy2026.nitg-eg.com'
 
@@ -23,8 +25,46 @@ export default async function AccountPage() {
     let content: React.ReactNode
     if (!user) {
         content = <AuthScreen mode='login' />
+    } else if (user.role === 'admin') {
+        // Admin view: every academy (MySQL) + every client (Mongo). The two live in
+        // different databases, so we join them in memory by ownerId (no cross-db relation).
+        const academyRows = await prismaMysql.academy.findMany({ orderBy: { createdAt: 'desc' } })
+        let clientRows: { id: string; name: string | null; email: string; role: string | null }[] = []
+        try {
+            clientRows = await prisma.user.findMany({
+                orderBy: { createdAt: 'desc' },
+                select: { id: true, name: true, email: true, role: true },
+            })
+        } catch (e) {
+            console.error('[account] client list (Mongo) unavailable', e)
+        }
+        const ownerById = new Map(clientRows.map((u) => [u.id, u]))
+        const countByOwner = new Map<string, number>()
+        for (const a of academyRows) {
+            if (a.ownerId) countByOwner.set(a.ownerId, (countByOwner.get(a.ownerId) ?? 0) + 1)
+        }
+        const academies = academyRows.map((a) => {
+            const owner = a.ownerId ? ownerById.get(a.ownerId) : undefined
+            return {
+                id: a.id, name: a.name, slug: a.slug, status: a.status,
+                ownerId: a.ownerId ?? null,
+                owner: owner?.name || owner?.email || null,
+            }
+        })
+        const clients = clientRows.map((u) => ({
+            id: u.id, name: u.name, email: u.email, role: (u.role ?? 'admin'), academies: countByOwner.get(u.id) ?? 0,
+        }))
+        content = (
+            <AdminConsole
+                academies={academies}
+                clients={clients}
+                domain={DOMAIN}
+                adminName={user.name || user.email}
+            />
+        )
     } else {
-        const rows = await prisma.academy.findMany({
+        // Clients get their own academies.
+        const rows = await prismaMysql.academy.findMany({
             where: { ownerId: user.id },
             orderBy: { createdAt: 'desc' },
         })

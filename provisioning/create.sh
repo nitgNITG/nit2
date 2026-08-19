@@ -13,7 +13,15 @@
 #  First run auto-bootstraps shared infra (network + shared MariaDB + template
 #  taken from the existing EAAC). Every run just provisions the given client.
 #
-#  Env (optional):  GITHUB_TOKEN  — token to clone a PRIVATE saas repo.
+#  Env (optional):
+#    GITHUB_TOKEN        — token to clone a PRIVATE saas repo.
+#    Branding (applied after the site is up, via theme/nit/cli/apply_brand.php):
+#      BRAND_FULLNAME_AR / BRAND_FULLNAME_EN    site full name per language
+#      BRAND_SHORTNAME_AR / BRAND_SHORTNAME_EN  site short name per language
+#      BRAND_LOGO         — host path to a logo image file
+#      BRAND_FAVICON      — host path to a favicon file
+#    When no BRAND_FULLNAME_* is given, the <name> arg becomes the full name,
+#    so a manual run still sets the site name (instead of the template's).
 # ============================================================================
 set -euo pipefail
 
@@ -166,6 +174,68 @@ docker run -d --name "$CONTAINER" --network "$NET" --restart unless-stopped \
 log "finalising Moodle (upgrade + purge caches)"
 sleep 5
 docker exec "$CONTAINER" php /var/www/html/admin/cli/upgrade.php --non-interactive || true
+
+# Enable the {mlang} multi-language filter (plugin ships in the base code) so
+# {mlang ..} tags render instead of showing raw — no manual install by the client.
+log "enabling multilang2 filter"
+cat > "$CODE_DIR/enable_mlang.php" <<'PHP'
+<?php
+define('CLI_SCRIPT', true);
+require('/var/www/html/config.php');
+require_once($CFG->libdir.'/filterlib.php');
+filter_set_global_state('multilang2', TEXTFILTER_ON);
+$sf = get_config('core', 'stringfilters');
+$list = array_filter(array_map('trim', explode(',', (string)$sf)));
+if (!in_array('multilang2', $list, true)) { $list[] = 'multilang2'; }
+set_config('stringfilters', implode(',', $list));  // apply to headings/titles too
+set_config('filterall', 1);
+echo "multilang2 enabled\n";
+PHP
+docker exec "$CONTAINER" php /var/www/html/enable_mlang.php || true
+rm -f "$CODE_DIR/enable_mlang.php"
+
+# Apply per-client branding: site name (full + short, AR/EN) + logo + favicon.
+# The NIT "build your product" form collects these; the provisioning service
+# stages the images and passes them as env, so the client never opens Moodle's
+# admin settings. A manual run with no BRAND_* env still names the site (<name>).
+log "applying branding"
+BRAND_DIR="$CODE_DIR/nit-brand"
+rm -rf "$BRAND_DIR"; mkdir -p "$BRAND_DIR"
+
+LOGO_REL=""; FAVICON_REL=""
+if [[ -n "${BRAND_LOGO:-}" && -f "${BRAND_LOGO}" ]]; then
+    ext="${BRAND_LOGO##*.}"; cp -f "$BRAND_LOGO" "$BRAND_DIR/logo.${ext}"; LOGO_REL="logo.${ext}"
+fi
+if [[ -n "${BRAND_FAVICON:-}" && -f "${BRAND_FAVICON}" ]]; then
+    ext="${BRAND_FAVICON##*.}"; cp -f "$BRAND_FAVICON" "$BRAND_DIR/favicon.${ext}"; FAVICON_REL="favicon.${ext}"
+fi
+
+# Full name: explicit env wins; otherwise fall back to the <name> arg so the
+# site is never left showing the template's name.
+B_FN_AR="${BRAND_FULLNAME_AR:-}"; B_FN_EN="${BRAND_FULLNAME_EN:-}"
+if [[ -z "$B_FN_AR" && -z "$B_FN_EN" ]]; then B_FN_EN="$NAME"; fi
+
+# Build the manifest with python (values via env, so Arabic/spaces are safe).
+BRAND_FULLNAME_AR="$B_FN_AR" BRAND_FULLNAME_EN="$B_FN_EN" \
+BRAND_SHORTNAME_AR="${BRAND_SHORTNAME_AR:-}" BRAND_SHORTNAME_EN="${BRAND_SHORTNAME_EN:-}" \
+LOGO_REL="$LOGO_REL" FAVICON_REL="$FAVICON_REL" \
+python3 - "$BRAND_DIR/brand.json" <<'PYJSON'
+import json, os, sys
+d = {
+    "fullname_ar":  os.environ.get("BRAND_FULLNAME_AR", ""),
+    "fullname_en":  os.environ.get("BRAND_FULLNAME_EN", ""),
+    "shortname_ar": os.environ.get("BRAND_SHORTNAME_AR", ""),
+    "shortname_en": os.environ.get("BRAND_SHORTNAME_EN", ""),
+}
+if os.environ.get("LOGO_REL"):    d["logo"]    = os.environ["LOGO_REL"]
+if os.environ.get("FAVICON_REL"): d["favicon"] = os.environ["FAVICON_REL"]
+json.dump(d, open(sys.argv[1], "w"), ensure_ascii=False)
+PYJSON
+
+docker exec "$CONTAINER" php /var/www/html/public/theme/nit/cli/apply_brand.php \
+    --manifest=/var/www/html/nit-brand/brand.json || echo "!! branding step failed (site still live)"
+rm -rf "$BRAND_DIR"
+
 docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
 
 # ── 6. Apache vhost → enable → SSL → restart ────────────────────────────────

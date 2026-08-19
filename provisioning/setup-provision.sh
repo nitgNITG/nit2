@@ -27,11 +27,12 @@ cat > /opt/saas/provision-server.py <<'PYEOF'
 import os, re, json, hmac, subprocess, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-SECRET    = os.environ.get("PROVISION_SECRET", "")
-CREATE_SH = os.environ.get("CREATE_SH", "/root/create.sh")
-LOG_DIR   = os.environ.get("PROVISION_LOG_DIR", "/opt/saas/logs")
-PORT      = int(os.environ.get("PROVISION_PORT", "9099"))
-SLUG_RE   = re.compile(r"^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])$")
+SECRET     = os.environ.get("PROVISION_SECRET", "")
+CREATE_SH  = os.environ.get("CREATE_SH", "/root/create.sh")
+DESTROY_SH = os.environ.get("DESTROY_SH", "/root/destroy.sh")
+LOG_DIR    = os.environ.get("PROVISION_LOG_DIR", "/opt/saas/logs")
+PORT       = int(os.environ.get("PROVISION_PORT", "9099"))
+SLUG_RE    = re.compile(r"^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])$")
 os.makedirs(LOG_DIR, exist_ok=True)
 
 def run_create(slug, name):
@@ -39,6 +40,13 @@ def run_create(slug, name):
     with open(logpath, "ab", buffering=0) as log:
         log.write(f"\n===== provisioning {slug} =====\n".encode())
         subprocess.run(["bash", CREATE_SH, slug, name], stdout=log,
+                       stderr=subprocess.STDOUT, env={**os.environ})
+
+def run_destroy(slug):
+    logpath = os.path.join(LOG_DIR, f"{slug}.log")
+    with open(logpath, "ab", buffering=0) as log:
+        log.write(f"\n===== deprovisioning {slug} =====\n".encode())
+        subprocess.run(["bash", DESTROY_SH, slug], stdout=log,
                        stderr=subprocess.STDOUT, env={**os.environ})
 
 class Handler(BaseHTTPRequestHandler):
@@ -73,6 +81,13 @@ class Handler(BaseHTTPRequestHandler):
         if not os.path.exists(logpath): return self._send(404, {"error":"no log yet"})
         with open(logpath, "r", errors="replace") as f: tail = f.read()[-4000:]
         return self._send(200, {"slug":slug, "done":"is live:" in tail, "log":tail})
+    def do_DELETE(self):
+        if not self.path.startswith("/deprovision/"): return self._send(404, {"error":"not found"})
+        if not self._authed(): return self._send(401, {"error":"unauthorized"})
+        slug = self.path[len("/deprovision/"):]
+        if not SLUG_RE.match(slug): return self._send(400, {"error":"invalid slug"})
+        threading.Thread(target=run_destroy, args=(slug,), daemon=True).start()
+        return self._send(202, {"ok":True,"status":"deprovisioning","slug":slug})
     def log_message(self, *a): pass
 
 if __name__ == "__main__":
@@ -85,6 +100,7 @@ cat > /opt/saas/provision.env <<ENVEOF
 PROVISION_SECRET=$SECRET
 GITHUB_TOKEN=$TOKEN
 CREATE_SH=/root/create.sh
+DESTROY_SH=/root/destroy.sh
 PROVISION_LOG_DIR=/opt/saas/logs
 PROVISION_PORT=9099
 ENVEOF

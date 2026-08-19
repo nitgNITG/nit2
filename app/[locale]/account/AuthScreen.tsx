@@ -4,7 +4,6 @@ import React, { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { useTranslations, useLocale } from 'next-intl'
-import { useRouter } from 'next/navigation'
 
 type Mode = 'login' | 'register'
 type FormValues = { name?: string; email: string; password: string }
@@ -13,7 +12,6 @@ export default function AuthScreen({ mode: initialMode = 'login' }: { mode?: Mod
     const t = useTranslations('Auth')
     const locale = useLocale()
     const isAr = locale === 'ar'
-    const router = useRouter()
     const [mode, setMode] = useState<Mode>(initialMode)
     const {
         register, handleSubmit, reset,
@@ -33,8 +31,8 @@ export default function AuthScreen({ mode: initialMode = 'login' }: { mode?: Mod
             const data = await res.json().catch(() => ({}))
             if (!res.ok) { toast.error(data?.message || t('errorGeneric')); return }
             toast.success(mode === 'login' ? t('welcomeBack') : t('accountCreated'))
-            router.push(`/${locale}/account`)
-            router.refresh()
+            // Full reload so the navbar re-reads /api/me and shows the signed-in state.
+            window.location.href = `/${locale}/account`
         } catch {
             toast.error(t('errorNetwork'))
         }

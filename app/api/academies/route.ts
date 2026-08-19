@@ -36,10 +36,50 @@ const ghHeaders = (token: string) => ({
     "X-GitHub-Api-Version": "2022-11-28",
 });
 
+// Per-client branding collected on the build form, applied automatically during
+// provisioning (see provisioning/apply_brand.php) so the client never opens
+// Moodle's admin settings. Every field is optional.
+type BrandImage = { filename: string; data_b64: string };
+type Brand = {
+    fullname_ar?: string;
+    fullname_en?: string;
+    shortname_ar?: string;
+    shortname_en?: string;
+    logo?: BrandImage;
+    favicon?: BrandImage;
+};
+
+const MAX_NAME_LEN = 200;
+const MAX_IMG_B64 = 4_400_000; // ~3.3 MB decoded; provision-server re-validates type/size.
+
+// Keep only well-formed, size-bounded branding — never trust the client blindly.
+function sanitizeBrand(raw: unknown): Brand {
+    const out: Brand = {};
+    if (!raw || typeof raw !== "object") return out;
+    const b = raw as Record<string, unknown>;
+    for (const k of ["fullname_ar", "fullname_en", "shortname_ar", "shortname_en"] as const) {
+        const v = b[k];
+        if (typeof v === "string" && v.trim()) out[k] = v.trim().slice(0, MAX_NAME_LEN);
+    }
+    for (const k of ["logo", "favicon"] as const) {
+        const img = b[k];
+        if (img && typeof img === "object") {
+            const { filename, data_b64 } = img as Record<string, unknown>;
+            if (
+                typeof filename === "string" && filename &&
+                typeof data_b64 === "string" && data_b64 && data_b64.length <= MAX_IMG_B64
+            ) {
+                out[k] = { filename: filename.slice(0, 120), data_b64 };
+            }
+        }
+    }
+    return out;
+}
+
 // Ask server B's provisioning endpoint to turn the new branch into a live site.
 // Best-effort: if it's not configured or unreachable, the branch still exists and
 // provisioning can be retried manually — we never fail the request over this.
-async function triggerProvision(slug: string, name: string): Promise<void> {
+async function triggerProvision(slug: string, name: string, brand: Brand): Promise<void> {
     const url = process.env.PROVISION_URL;       // e.g. https://saas-provision.academy2026.nitg-eg.com/provision
     const secret = process.env.PROVISION_SECRET;
     if (!url || !secret) return;
@@ -47,7 +87,7 @@ async function triggerProvision(slug: string, name: string): Promise<void> {
         await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-Provision-Secret": secret },
-            body: JSON.stringify({ slug, name }),
+            body: JSON.stringify({ slug, name, brand }),
         });
     } catch (e) {
         console.error("[academies] provision trigger failed", e);
@@ -58,6 +98,7 @@ export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
         const { name, slug, _hp } = body ?? {};
+        const brand = sanitizeBrand(body?.brand);
 
         // Honeypot — bots fill the hidden field, humans don't. Fake success.
         if (_hp) return NextResponse.json({ ok: true, branch: "" }, { status: 201 });
@@ -139,8 +180,12 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "فشل إنشاء المنصة، حاول تاني." }, { status: 502 });
         }
 
+        // The primary name field is the Arabic full name — use it as the AR site
+        // name if the form didn't send one explicitly.
+        if (!brand.fullname_ar) brand.fullname_ar = cleanName;
+
         // Branch created → kick off the live-site build on server B (fire-and-forget).
-        await triggerProvision(cleanSlug, cleanName);
+        await triggerProvision(cleanSlug, cleanName, brand);
 
         // 3) Record it (control plane). Guard the rare race on the unique slug.
         try {
