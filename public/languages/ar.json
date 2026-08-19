@@ -11,7 +11,12 @@
         "preparingHint": "جاهزة خلال دقيقة تقريباً",
         "emptyTitle": "لسه مفيش منصات",
         "emptyBody": "ابنِ أول أكاديمية ليك — بتاخد دقيقة.",
-        "emptyCta": "أنشئ أول منصة"
+        "emptyCta": "أنشئ أول منصة",
+        "appLinksTitle": "افتح على التطبيق",
+        "scanHint": "امسح بكاميرا موبايلك",
+        "getOnPlay": "حمّل من Google Play",
+        "openInApp": "افتح في التطبيق",
+        "orAddress": "أو أدخل العنوان ده في التطبيق"
     },
     "Auth": {
         "brandTitle": "أهلاً بيك في N.I.T",

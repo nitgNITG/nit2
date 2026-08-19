@@ -11,7 +11,12 @@
         "preparingHint": "Ready in about a minute",
         "emptyTitle": "No platforms yet",
         "emptyBody": "Build your first academy — it takes a minute.",
-        "emptyCta": "Create your first platform"
+        "emptyCta": "Create your first platform",
+        "appLinksTitle": "Open on the app",
+        "scanHint": "Scan with your phone camera",
+        "getOnPlay": "Get it on Google Play",
+        "openInApp": "Open in the app",
+        "orAddress": "Or enter this address in the app"
     },
     "Auth": {
         "brandTitle": "Welcome to N.I.T",
