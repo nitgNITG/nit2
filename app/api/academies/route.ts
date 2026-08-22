@@ -148,12 +148,14 @@ export async function POST(req: NextRequest) {
         const tier = lic?.key ?? "demo";
         const definition = lic ? toLicenseDefinition(lic) : "";
 
-        // Academy quota — the licence caps how many academies this client can create.
-        if (lic && lic.maxAcademies >= 0) {
-            const owned = await prisma.academy.count({ where: { ownerId: user.id } });
+        // Academy quota — applies to FREE licences only (e.g. demo): a client may
+        // create at most maxAcademies academies ON THAT licence. Paid licences
+        // (price > 0) are gated by payment, so they're not count-limited here.
+        if (lic && lic.price === 0 && lic.maxAcademies >= 0) {
+            const owned = await prisma.academy.count({ where: { ownerId: user.id, tier: lic.key } });
             if (owned >= lic.maxAcademies) {
                 return NextResponse.json(
-                    { error: `وصلت للحد الأقصى من الأكاديميات لباقة "${lic.name}" (${lic.maxAcademies}). قم بالترقية لإضافة المزيد.` },
+                    { error: `وصلت للحد الأقصى من باقة "${lic.name}" المجانية (${lic.maxAcademies}). اختر باقة مدفوعة لإضافة المزيد.` },
                     { status: 403 },
                 );
             }
