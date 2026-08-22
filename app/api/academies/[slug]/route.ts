@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 // Academy control plane lives in MySQL (separate Prisma client), not the Mongo app DB.
 import prisma from "@/lib/prismaMysql";
 import { getCurrentUser } from "@/lib/auth";
+import { toLicenseDefinition } from "@/lib/licenseDefinition";
 
 export const runtime = "nodejs";
 
@@ -16,21 +17,21 @@ const ghHeaders = (token: string) => ({
     "X-GitHub-Api-Version": "2022-11-28",
 });
 
-const TIERS = ["demo", "basic", "standard", "professional"];
-
-// Ask server B to (re)apply the licence tier on the live academy — sets
-// local_license/tier + enabled inside the client's Moodle. Best-effort.
+// Ask server B to (re)apply the licence on the live academy — sets local_license
+// tier + enabled + the dynamic definition (limits/features) JSON. Best-effort.
 async function triggerApplyLicense(slug: string, tier: string): Promise<void> {
     const base = process.env.PROVISION_URL;
     const secret = process.env.PROVISION_SECRET;
     if (!base || !secret) return;
     try {
+        const lic = await prisma.license.findUnique({ where: { key: tier } });
+        const definition = lic ? toLicenseDefinition(lic) : "";
         const url = new URL(base);
         url.pathname = `/apply-license/${slug}`;
         await fetch(url.toString(), {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-Provision-Secret": secret },
-            body: JSON.stringify({ tier }),
+            body: JSON.stringify({ tier, definition }),
         });
     } catch (e) {
         console.error("[academies] apply-license trigger failed", slug, e);
@@ -60,17 +61,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
         data.status = body.status;
     }
 
-    // Tier change — admin-guarded.
+    // Licence change — admin-guarded. Validate against the (dynamic) License table.
     let tierChanged: string | null = null;
     if (body?.tier !== undefined) {
         const user = await getCurrentUser();
         if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
         if (user.role !== "admin") return NextResponse.json({ error: "forbidden" }, { status: 403 });
-        if (!TIERS.includes(body.tier)) {
-            return NextResponse.json({ error: "invalid tier" }, { status: 400 });
+        const key = String(body.tier).trim().toLowerCase();
+        const lic = await prisma.license.findUnique({ where: { key } });
+        if (!lic) {
+            return NextResponse.json({ error: "unknown licence" }, { status: 400 });
         }
-        data.tier = body.tier;
-        tierChanged = body.tier;
+        data.tier = key;
+        tierChanged = key;
     }
 
     // Suspend / resume — admin-guarded (soft-lock via local_license).

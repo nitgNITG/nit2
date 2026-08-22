@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 // Academy control plane lives in MySQL (separate Prisma client), not the Mongo app DB.
 import prisma from "@/lib/prismaMysql";
 import { getCurrentUser } from "@/lib/auth";
+import { toLicenseDefinition } from "@/lib/licenseDefinition";
 
 // ── SaaS repo that holds the base ("main") every academy branches from ────────
 const OWNER = process.env.SAAS_REPO_OWNER ?? "NITGg";
@@ -96,7 +97,7 @@ async function loadPlatformSettings(): Promise<Record<string, string>> {
 }
 
 async function triggerProvision(
-    slug: string, name: string, brand: Brand, tier: string, settings: Record<string, string>,
+    slug: string, name: string, brand: Brand, tier: string, settings: Record<string, string>, definition: string,
 ): Promise<void> {
     const url = process.env.PROVISION_URL;       // e.g. https://saas-provision.academy2026.nitg-eg.com/provision
     const secret = process.env.PROVISION_SECRET;
@@ -105,7 +106,7 @@ async function triggerProvision(
         await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-Provision-Secret": secret },
-            body: JSON.stringify({ slug, name, brand, tier, settings }),
+            body: JSON.stringify({ slug, name, brand, tier, settings, definition }),
         });
     } catch (e) {
         console.error("[academies] provision trigger failed", e);
@@ -135,9 +136,28 @@ export async function POST(req: NextRequest) {
 
         const cleanName = (name ?? "").toString().trim();
         const cleanSlug = (slug ?? "").toString().trim().toLowerCase();
-        // Plan the client picked → local_license tier (defaults to demo).
-        const TIERS = ["demo", "basic", "standard", "professional"];
-        const tier = TIERS.includes((body?.tier ?? "").toString()) ? body.tier : "demo";
+
+        // Resolve the licence the client picked from the (dynamic) License table.
+        const requestedKey = (body?.tier ?? "").toString().trim().toLowerCase();
+        let lic = requestedKey
+            ? await prisma.license.findFirst({ where: { key: requestedKey, active: true } })
+            : null;
+        if (!lic) {
+            lic = await prisma.license.findFirst({ where: { active: true }, orderBy: [{ price: "asc" }, { order: "asc" }] });
+        }
+        const tier = lic?.key ?? "demo";
+        const definition = lic ? toLicenseDefinition(lic) : "";
+
+        // Academy quota — the licence caps how many academies this client can create.
+        if (lic && lic.maxAcademies >= 0) {
+            const owned = await prisma.academy.count({ where: { ownerId: user.id } });
+            if (owned >= lic.maxAcademies) {
+                return NextResponse.json(
+                    { error: `وصلت للحد الأقصى من الأكاديميات لباقة "${lic.name}" (${lic.maxAcademies}). قم بالترقية لإضافة المزيد.` },
+                    { status: 403 },
+                );
+            }
+        }
 
         if (!cleanName) {
             return NextResponse.json({ error: "اسم الأكاديمية مطلوب." }, { status: 400 });
@@ -204,7 +224,7 @@ export async function POST(req: NextRequest) {
 
         // Branch created → kick off the live-site build on server B (fire-and-forget).
         const settings = await loadPlatformSettings();
-        await triggerProvision(cleanSlug, cleanName, brand, tier, settings);
+        await triggerProvision(cleanSlug, cleanName, brand, tier, settings, definition);
 
         // 3) Record it (control plane). Guard the rare race on the unique slug.
         try {

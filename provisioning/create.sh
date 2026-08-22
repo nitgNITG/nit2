@@ -249,6 +249,8 @@ case "$TIER" in demo|basic|standard|professional) ;; *) TIER="demo" ;; esac
 log "setting local_license tier=$TIER (enforcement on)"
 docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=tier    --set="$TIER" || echo "!! could not set licence tier (site still live)"
 docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=enabled --set=1       || echo "!! could not enable licence enforcement"
+# Dynamic licence definition (JSON) from the control plane; empty = built-in default.
+docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=definition --set="${LICENSE_DEFINITION:-}" || echo "!! could not set licence definition"
 
 # ── Global platform settings (local_multitopics) — pushed from nit2 ──────────
 # These MUST be identical for every academy (google_client_id, store URLs, …).

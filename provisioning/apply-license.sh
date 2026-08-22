@@ -23,5 +23,8 @@ docker ps --format '{{.Names}}' | grep -qx "$CONTAINER" || die "container $CONTA
 log "apply-license $SLUG -> tier=$TIER (enforcement on)"
 docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=tier    --set="$TIER"
 docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=enabled --set=1
+# Dynamic licence definition (JSON) from the control plane — limits/features live
+# here now; empty clears it so local_license falls back to its built-in default.
+docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=definition --set="${LICENSE_DEFINITION:-}"
 docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
 log "done"

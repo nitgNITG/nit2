@@ -29,7 +29,8 @@ LOG_DIR     = os.environ.get("PROVISION_LOG_DIR", "/opt/saas/logs")
 STAGING_DIR = os.environ.get("PROVISION_STAGING_DIR", "/opt/saas/staging")
 PORT        = int(os.environ.get("PROVISION_PORT", "9099"))
 SLUG_RE     = re.compile(r"^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])$")
-TIERS       = {"demo", "basic", "standard", "professional"}
+# Licence keys are now dynamic (any slug), not a fixed set — validate by pattern.
+TIER_RE     = re.compile(r"^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])$")
 # Global platform-settings keys we accept and forward to create.sh (as SETTING_<KEY>).
 # Whitelisted so a caller can't inject arbitrary Moodle config names.
 SETTING_KEYS = {
@@ -86,7 +87,7 @@ def _stage_image(dirpath: str, kind: str, spec) -> str:
     return path
 
 
-def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: dict = None) -> None:
+def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: dict = None, definition: str = "") -> None:
     """Run create.sh detached, streaming its output to the client's log file.
 
     Branding is passed through create.sh's BRAND_* env contract: names as
@@ -101,7 +102,9 @@ def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: 
     os.makedirs(stage, exist_ok=True)
 
     env = {**os.environ}
-    env["LICENSE_TIER"] = tier if tier in TIERS else "demo"
+    env["LICENSE_TIER"] = tier if TIER_RE.match(tier or "") else "demo"
+    if isinstance(definition, str) and definition.strip():
+        env["LICENSE_DEFINITION"] = definition
     if isinstance(settings, dict):
         for key, val in settings.items():
             if key in SETTING_KEYS and isinstance(val, str) and val.strip():
@@ -145,15 +148,18 @@ def run_destroy(slug: str) -> None:
         )
 
 
-def run_apply_license(slug: str, tier: str) -> None:
-    """Run apply-license.sh detached — set/change the tier on a live academy."""
+def run_apply_license(slug: str, tier: str, definition: str = "") -> None:
+    """Run apply-license.sh detached — set/change the licence on a live academy."""
+    env = {**os.environ}
+    if isinstance(definition, str) and definition.strip():
+        env["LICENSE_DEFINITION"] = definition
     logpath = os.path.join(LOG_DIR, f"{slug}.log")
     with open(logpath, "ab", buffering=0) as log:
         log.write(f"\n===== apply-license {slug} -> {tier} =====\n".encode())
         subprocess.run(
             ["bash", APPLY_LICENSE_SH, slug, tier],
             stdout=log, stderr=subprocess.STDOUT,
-            env={**os.environ},
+            env=env,
         )
 
 
@@ -226,9 +232,10 @@ class Handler(BaseHTTPRequestHandler):
             except Exception:
                 return self._send(400, {"error": "bad json"})
             tier = str(data.get("tier", "demo")).strip().lower()
-            if tier not in TIERS:
+            if not TIER_RE.match(tier):
                 tier = "demo"
-            threading.Thread(target=run_apply_license, args=(slug, tier), daemon=True).start()
+            definition = data.get("definition") if isinstance(data.get("definition"), str) else ""
+            threading.Thread(target=run_apply_license, args=(slug, tier, definition), daemon=True).start()
             return self._send(202, {"ok": True, "status": "applying-license", "slug": slug, "tier": tier})
 
         # POST /apply-settings/<slug>  {"settings": {...}} — re-push global settings.
@@ -281,13 +288,14 @@ class Handler(BaseHTTPRequestHandler):
         brand = data.get("brand") if isinstance(data.get("brand"), dict) else {}
         settings = data.get("settings") if isinstance(data.get("settings"), dict) else {}
         tier = str(data.get("tier", "demo")).strip().lower()
-        if tier not in TIERS:
+        if not TIER_RE.match(tier):
             tier = "demo"
+        definition = data.get("definition") if isinstance(data.get("definition"), str) else ""
         if not SLUG_RE.match(slug):
             return self._send(400, {"error": "invalid slug"})
         if not name:
             return self._send(400, {"error": "name required"})
-        threading.Thread(target=run_create, args=(slug, name, brand, tier, settings), daemon=True).start()
+        threading.Thread(target=run_create, args=(slug, name, brand, tier, settings, definition), daemon=True).start()
         return self._send(202, {"ok": True, "status": "provisioning", "slug": slug})
 
     def do_GET(self):
