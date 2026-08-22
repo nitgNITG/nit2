@@ -73,19 +73,48 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
         tierChanged = body.tier;
     }
 
+    // Suspend / resume — admin-guarded (soft-lock via local_license).
+    let suspendChanged: boolean | null = null;
+    if (body?.suspend !== undefined) {
+        const user = await getCurrentUser();
+        if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+        if (user.role !== "admin") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+        suspendChanged = !!body.suspend;
+        data.status = suspendChanged ? "suspended" : "live";
+    }
+
     if (Object.keys(data).length === 0) {
-        return NextResponse.json({ error: "nothing to update (status or tier)" }, { status: 400 });
+        return NextResponse.json({ error: "nothing to update (status, tier or suspend)" }, { status: 400 });
     }
 
     try {
         const academy = await prisma.academy.update({ where: { slug: params.slug }, data });
         if (tierChanged) await triggerApplyLicense(params.slug, tierChanged); // push to the live Moodle
+        if (suspendChanged !== null) await triggerSuspend(params.slug, suspendChanged);
         return NextResponse.json({ ok: true, slug: academy.slug, status: academy.status, tier: academy.tier });
     } catch (err: any) {
         if (err?.code === "P2025") {
             return NextResponse.json({ error: "not found" }, { status: 404 });
         }
         return NextResponse.json({ error: err?.message || "update failed" }, { status: 400 });
+    }
+}
+
+// Ask server B to soft-lock (suspend) or resume the live academy.
+async function triggerSuspend(slug: string, suspend: boolean): Promise<void> {
+    const base = process.env.PROVISION_URL;
+    const secret = process.env.PROVISION_SECRET;
+    if (!base || !secret) return;
+    try {
+        const url = new URL(base);
+        url.pathname = `/suspend/${slug}`;
+        await fetch(url.toString(), {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Provision-Secret": secret },
+            body: JSON.stringify({ suspended: suspend }),
+        });
+    } catch (e) {
+        console.error("[academies] suspend trigger failed", slug, e);
     }
 }
 

@@ -23,6 +23,7 @@ const LicensesPage = () => {
     const [savingSlug, setSavingSlug] = useState<string | null>(null)
     const [updatingAll, setUpdatingAll] = useState(false)
     const [updatingSlug, setUpdatingSlug] = useState<string | null>(null)
+    const [busySlug, setBusySlug] = useState<string | null>(null)
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -79,6 +80,37 @@ const LicensesPage = () => {
         }
     }
 
+    // Suspend (soft-lock) or resume an academy.
+    const toggleSuspend = async (slug: string, status: string) => {
+        const suspend = status !== 'suspended'
+        if (suspend && !window.confirm(`Suspend "${slug}"? Users will see a "suspended" notice until you resume it (data is kept).`)) return
+        setBusySlug(slug)
+        try {
+            await axios.patch(`/api/academies/${slug}`, { suspend })
+            setAcademies((list) => list.map((a) => (a.slug === slug ? { ...a, status: suspend ? 'suspended' : 'live' } : a)))
+            toast.success(`${slug} ${suspend ? 'suspended' : 'resumed'}`)
+        } catch (err: any) {
+            toast.error(err?.response?.data?.error || 'Failed')
+        } finally {
+            setBusySlug(null)
+        }
+    }
+
+    // Delete an academy (tears down the live site + control-plane record).
+    const removeAcademy = async (slug: string) => {
+        if (!window.confirm(`Delete "${slug}"? This tears down the live site and its data — cannot be undone.`)) return
+        setBusySlug(slug)
+        try {
+            await axios.delete(`/api/academies/${slug}`)
+            setAcademies((list) => list.filter((a) => a.slug !== slug))
+            toast.success(`${slug} deleted`)
+        } catch (err: any) {
+            toast.error(err?.response?.data?.error || 'Delete failed')
+        } finally {
+            setBusySlug(null)
+        }
+    }
+
     return (
         <div className='dashboard-container py-5 lg:py-10 space-y-8'>
             <div className='flex flex-wrap items-start justify-between gap-3'>
@@ -119,7 +151,7 @@ const LicensesPage = () => {
                             <th className='px-4 py-3 font-semibold'>Status</th>
                             <th className='px-4 py-3 font-semibold'>Current plan</th>
                             <th className='px-4 py-3 font-semibold'>Change plan</th>
-                            <th className='px-4 py-3 font-semibold'>Code</th>
+                            <th className='px-4 py-3 font-semibold'>Manage</th>
                         </tr>
                     </thead>
                     <tbody className='divide-y divide-gray-100'>
@@ -133,7 +165,11 @@ const LicensesPage = () => {
                                     <div className='font-semibold text-gray-900'>{a.name}</div>
                                     <div className='text-xs text-gray-400 font-mono'>{a.slug}</div>
                                 </td>
-                                <td className='px-4 py-3 text-gray-500'>{a.status}</td>
+                                <td className='px-4 py-3'>
+                                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${a.status === 'suspended' ? 'bg-red-50 text-red-600' : a.status === 'live' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                                        {a.status}
+                                    </span>
+                                </td>
                                 <td className='px-4 py-3'>
                                     <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${tierMeta(a.tier).color}`}>
                                         {tierMeta(a.tier).name}
@@ -152,15 +188,35 @@ const LicensesPage = () => {
                                     </select>
                                 </td>
                                 <td className='px-4 py-3'>
-                                    <button
-                                        type='button'
-                                        onClick={() => updateOne(a.slug)}
-                                        disabled={updatingSlug === a.slug}
-                                        title='Pull latest code into this academy'
-                                        className='rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50'
-                                    >
-                                        {updatingSlug === a.slug ? '…' : '⟳ Update'}
-                                    </button>
+                                    <div className='flex flex-wrap gap-1.5'>
+                                        <button
+                                            type='button'
+                                            onClick={() => updateOne(a.slug)}
+                                            disabled={updatingSlug === a.slug}
+                                            title='Pull latest code into this academy'
+                                            className='rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50'
+                                        >
+                                            {updatingSlug === a.slug ? '…' : '⟳ Update'}
+                                        </button>
+                                        <button
+                                            type='button'
+                                            onClick={() => toggleSuspend(a.slug, a.status)}
+                                            disabled={busySlug === a.slug}
+                                            title={a.status === 'suspended' ? 'Resume this academy' : 'Suspend (soft-lock) this academy'}
+                                            className='rounded-lg border border-amber-300 px-2.5 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50'
+                                        >
+                                            {a.status === 'suspended' ? '▶ Resume' : '⏸ Suspend'}
+                                        </button>
+                                        <button
+                                            type='button'
+                                            onClick={() => removeAcademy(a.slug)}
+                                            disabled={busySlug === a.slug}
+                                            title='Delete this academy permanently'
+                                            className='rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 disabled:opacity-50'
+                                        >
+                                            🗑 Delete
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}

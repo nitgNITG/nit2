@@ -24,6 +24,7 @@ DESTROY_SH       = os.environ.get("DESTROY_SH", "/root/destroy.sh")
 APPLY_LICENSE_SH = os.environ.get("APPLY_LICENSE_SH", "/root/apply-license.sh")
 APPLY_SETTINGS_SH = os.environ.get("APPLY_SETTINGS_SH", "/root/apply-settings.sh")
 UPDATE_SITE_SH = os.environ.get("UPDATE_SITE_SH", "/root/update-site.sh")
+APPLY_SUSPEND_SH = os.environ.get("APPLY_SUSPEND_SH", "/root/apply-suspend.sh")
 LOG_DIR     = os.environ.get("PROVISION_LOG_DIR", "/opt/saas/logs")
 STAGING_DIR = os.environ.get("PROVISION_STAGING_DIR", "/opt/saas/staging")
 PORT        = int(os.environ.get("PROVISION_PORT", "9099"))
@@ -185,6 +186,18 @@ def run_update_site(slug: str) -> None:
         )
 
 
+def run_apply_suspend(slug: str, state: str) -> None:
+    """Run apply-suspend.sh detached — soft-lock (1) or resume (0) a live academy."""
+    logpath = os.path.join(LOG_DIR, f"{slug}.log")
+    with open(logpath, "ab", buffering=0) as log:
+        log.write(f"\n===== apply-suspend {slug} -> {state} =====\n".encode())
+        subprocess.run(
+            ["bash", APPLY_SUSPEND_SH, slug, state],
+            stdout=log, stderr=subprocess.STDOUT,
+            env={**os.environ},
+        )
+
+
 class Handler(BaseHTTPRequestHandler):
     def _send(self, code, obj):
         body = json.dumps(obj, ensure_ascii=False).encode()
@@ -239,6 +252,20 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(400, {"error": "invalid slug"})
             threading.Thread(target=run_update_site, args=(slug,), daemon=True).start()
             return self._send(202, {"ok": True, "status": "updating-site", "slug": slug})
+
+        # POST /suspend/<slug>  {"suspended": true|false} — soft-lock / resume.
+        if self.path.startswith("/suspend/"):
+            slug = self.path[len("/suspend/"):]
+            if not SLUG_RE.match(slug):
+                return self._send(400, {"error": "invalid slug"})
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                data = json.loads(self.rfile.read(length) or b"{}")
+            except Exception:
+                return self._send(400, {"error": "bad json"})
+            state = "1" if data.get("suspended") else "0"
+            threading.Thread(target=run_apply_suspend, args=(slug, state), daemon=True).start()
+            return self._send(202, {"ok": True, "status": "suspending" if state == "1" else "resuming", "slug": slug})
 
         if self.path != "/provision":
             return self._send(404, {"error": "not found"})
