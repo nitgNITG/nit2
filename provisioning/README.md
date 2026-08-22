@@ -75,3 +75,77 @@ docker exec saas_mariadb mariadb -uroot -p"$(grep DB_ROOT_PW /opt/saas/saas.env|
 rm -rf /opt/saas/clients/<slug>
 a2dissite <slug>.academy2026.nitg-eg.com.conf; systemctl reload apache2
 ```
+
+---
+
+# How it all fits together (two servers)
+
+- **Server A** — the nit2 app (Next.js control plane). Holds the repo + MySQL Academy records.
+- **Server B** — this provisioning box. Runs the `saas-provision` systemd service
+  (`provision-server.py` on `127.0.0.1:9099`, behind Apache/HTTPS) and the Docker
+  academy containers.
+
+## Runtime triggers — nobody runs scripts by hand
+
+Every action in the nit2 dashboard/site fires an HTTP call to server B, which runs the
+matching script in the background (logs to `/opt/saas/logs/<slug>.log`):
+
+| User action (server A)                     | nit2 route                          | → server B endpoint            | script              |
+|--------------------------------------------|-------------------------------------|--------------------------------|---------------------|
+| Client submits **Build your product**      | `POST /api/academies`               | `POST /provision`              | `create.sh`         |
+| Admin **deletes** an academy               | `DELETE /api/academies/[slug]`      | `DELETE /deprovision/<slug>`   | `destroy.sh`        |
+| **Change plan** (Licenses page)            | `PATCH /api/academies/[slug]`       | `POST /apply-license/<slug>`   | `apply-license.sh`  |
+| **Apply to all** (Platform Settings)       | `POST /api/platform-settings/apply` | `POST /apply-settings/<slug>`  | `apply-settings.sh` |
+| **Update all sites** (Licenses)            | `POST /api/academies/update-sites`  | `POST /update-site/<slug>`     | `update-site.sh`    |
+
+`create.sh` also receives, in the `POST /provision` body: the licence **`tier`**
+(→ `local_license`), the global **`settings`** (→ `local_multitopics`, whitelisted),
+and the **`brand`** (logo/favicon/names → `apply_brand.php`). Server A never runs the
+scripts — it only POSTs (with `X-Provision-Secret`).
+
+## Deploying script changes (server A → server B)
+
+`provision-server.py` + the `*.sh` scripts live in this repo but must be *copied* to
+server B. That is a devops step (not a runtime trigger):
+
+```bash
+# on server A, after `git pull`:
+bash provisioning/deploy-provisioning.sh
+```
+
+It reads `SERVER_B_HOST` / `SERVER_B_USER` / `SERVER_B_SSH_KEY` / `SERVER_B_DEST` from
+the app `.env`, rsync/scp's the 7 files to server B, and re-runs `setup-provision.sh`
+there — reusing **server B's own** `PROVISION_SECRET` / `GITHUB_TOKEN` from
+`/opt/saas/provision.env` (secrets never cross the wire).
+
+### SSH prerequisite (do you need a password?)
+
+The deploy uses **key-based SSH — no password**, once set up. From server A, one time:
+
+```bash
+ssh-keygen -t ed25519            # only if server A has no key yet (press Enter through prompts)
+ssh-copy-id <SERVER_B_USER>@<SERVER_B_HOST>   # asks for server B's password ONCE, to install the key
+```
+
+After that, `deploy-provisioning.sh` connects without a password. Set
+`SERVER_B_SSH_KEY` in `.env` if the key isn't the default `~/.ssh/id_ed25519`.
+
+Two auth points to know:
+- **SSH login A→B** — solved by the key above (no password after setup).
+- **`sudo` on B** — the deploy runs `sudo setup-provision.sh`. If the deploy user's
+  sudo needs a password, `ssh -t` prompts for it interactively; give the user
+  passwordless sudo to skip that.
+
+(No key access? You'd have to prefix with `sshpass -p '<pw>' ...` — discouraged; set up
+the key instead.)
+
+## First-time / after-changes runbook
+
+1. **Push** nit2 `main` and saas-demo `main` to their remotes.
+2. **Server A:** `cd /var/www/html/nit-dev && bash update.sh`. Ensure `.env` has
+   `PROVISION_URL`, `PROVISION_SECRET`, and (for the deploy) `SERVER_B_*`.
+3. **Ship scripts to B:** `bash provisioning/deploy-provisioning.sh` (ends with `active`).
+4. **Dashboard:** Platform Settings → fill + **Apply to all**; Licenses → set tiers +
+   **Update all sites**.
+5. **Test:** create an academy from the Build form — it provisions with branding +
+   tier + global settings automatically.
