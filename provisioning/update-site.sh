@@ -23,5 +23,16 @@ docker exec "$CONTAINER" git -C /var/www/html pull --ff-only || die "git pull fa
 
 log "running upgrade (picks up any new plugin versions)"
 docker exec "$CONTAINER" php /var/www/html/admin/cli/upgrade.php --non-interactive || echo "!! upgrade step reported an issue (site still up)"
+
+# Re-apply the licence in the same pass, so a code update also refreshes the
+# enforcement config (tier + enabled + dynamic definition). Passed by the caller
+# as LICENSE_TIER / LICENSE_DEFINITION env; skipped if not provided.
+if [[ -n "${LICENSE_TIER:-}" ]]; then
+    log "re-applying licence tier=$LICENSE_TIER (enforcement on)"
+    docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=tier       --set="$LICENSE_TIER" || echo "!! could not set licence tier"
+    docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=enabled    --set=1               || echo "!! could not enable enforcement"
+    docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=definition --set="${LICENSE_DEFINITION:-}" || echo "!! could not set licence definition"
+fi
+
 docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
 log "done"

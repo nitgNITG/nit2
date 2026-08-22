@@ -180,15 +180,20 @@ def run_apply_settings(slug: str, settings: dict) -> None:
         )
 
 
-def run_update_site(slug: str) -> None:
-    """Run update-site.sh detached — pull latest code + upgrade + purge on a live academy."""
+def run_update_site(slug: str, tier: str = "", definition: str = "") -> None:
+    """Run update-site.sh detached — pull latest code + upgrade + (re-apply licence) + purge."""
+    env = {**os.environ}
+    if tier and TIER_RE.match(tier):
+        env["LICENSE_TIER"] = tier
+        if isinstance(definition, str) and definition.strip():
+            env["LICENSE_DEFINITION"] = definition
     logpath = os.path.join(LOG_DIR, f"{slug}.log")
     with open(logpath, "ab", buffering=0) as log:
         log.write(f"\n===== update-site {slug} =====\n".encode())
         subprocess.run(
             ["bash", UPDATE_SITE_SH, slug],
             stdout=log, stderr=subprocess.STDOUT,
-            env={**os.environ},
+            env=env,
         )
 
 
@@ -252,12 +257,20 @@ class Handler(BaseHTTPRequestHandler):
             threading.Thread(target=run_apply_settings, args=(slug, settings), daemon=True).start()
             return self._send(202, {"ok": True, "status": "applying-settings", "slug": slug})
 
-        # POST /update-site/<slug> — pull latest code + upgrade + purge.
+        # POST /update-site/<slug>  {tier?, definition?} — pull code + upgrade +
+        # (re-apply licence if tier/definition given) + purge.
         if self.path.startswith("/update-site/"):
             slug = self.path[len("/update-site/"):]
             if not SLUG_RE.match(slug):
                 return self._send(400, {"error": "invalid slug"})
-            threading.Thread(target=run_update_site, args=(slug,), daemon=True).start()
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                data = json.loads(self.rfile.read(length) or b"{}") if length else {}
+            except Exception:
+                data = {}
+            tier = str(data.get("tier", "")).strip().lower()
+            definition = data.get("definition") if isinstance(data.get("definition"), str) else ""
+            threading.Thread(target=run_update_site, args=(slug, tier, definition), daemon=True).start()
             return self._send(202, {"ok": True, "status": "updating-site", "slug": slug})
 
         # POST /suspend/<slug>  {"suspended": true|false} — soft-lock / resume.
