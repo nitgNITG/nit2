@@ -100,8 +100,9 @@ const LicensesPage = () => {
                 <div>
                     <h4 className='font-bold text-lg md:text-xl lg:text-2xl'>🎫 Licenses</h4>
                     <p className='text-sm text-gray-500 mt-1 max-w-2xl'>
-                        Define the licences (packages) academies run on — limits, features, and how many academies each
-                        one grants a client. Manage which academy is on which licence on the <strong>Academies</strong> page.
+                        Define the licences (packages) academies run on — limits and features. The free-academy limit per
+                        client is set on <strong>Platform Settings</strong>. Manage which academy is on which licence on the
+                        <strong> Academies</strong> page.
                     </p>
                 </div>
                 <button onClick={openNew}
