@@ -80,7 +80,6 @@ model License {
   durationDays Int      @default(365) // 0 = never expires
   maxCourses   Int      @default(-1) // -1 = unlimited
   maxTeachers  Int      @default(-1)
-  maxAcademies Int      @default(1) // client quota — how many academies this licence grants
   videoSource  String   @default("all") // all|limited|youtube|vimeo|vdocipher
   limits       Json // per-activity caps e.g. {"quiz":-1,"video":-1,"pdf":-1,"default":-1}
   features     Json // toggles e.g. {"drm":false,"coupons":true,"subscriptions":false,"packages":false,"jitsi":false,"offers":false}

@@ -36,18 +36,33 @@ const PlatformSettingsPage = () => {
     const [loading, setLoading] = useState(false)
     const [saving, setSaving] = useState(false)
     const [applying, setApplying] = useState(false)
+    const [freeLimit, setFreeLimit] = useState('1')
+    const [savingLimit, setSavingLimit] = useState(false)
 
     const load = useCallback(async () => {
         setLoading(true)
         try {
-            const { data } = await axios.get('/api/platform-settings')
-            setForm({ ...emptyForm(), ...(data.settings ?? {}) })
+            const [s, fl] = await Promise.all([axios.get('/api/platform-settings'), axios.get('/api/free-academy-limit')])
+            setForm({ ...emptyForm(), ...(s.data.settings ?? {}) })
+            setFreeLimit(String(fl.data.limit ?? 1))
         } catch {
             toast.error('Could not load settings')
         } finally {
             setLoading(false)
         }
     }, [])
+
+    const saveLimit = async () => {
+        setSavingLimit(true)
+        try {
+            await axios.put('/api/free-academy-limit', { limit: Number(freeLimit) })
+            toast.success('Free academy limit saved')
+        } catch (err: any) {
+            toast.error(err?.response?.data?.error || 'Save failed')
+        } finally {
+            setSavingLimit(false)
+        }
+    }
 
     useEffect(() => { load() }, [load])
 
@@ -90,6 +105,28 @@ const PlatformSettingsPage = () => {
                     into each academy&rsquo;s Moodle when it is provisioned. Per-academy secrets (tokens, payment
                     credentials, VdoCipher keys) are <strong>not</strong> here — those live in each academy&rsquo;s own settings.
                 </p>
+            </div>
+
+            {/* Free-academy limit — control-plane only (not pushed to academies). */}
+            <div className='bg-white rounded-xl border border-gray-200 shadow-sm p-6 max-w-3xl'>
+                <h5 className='font-bold text-lg'>Free academies per account</h5>
+                <p className='text-xs text-gray-400 mt-1'>
+                    How many <strong>free</strong> academies one user can create (across all free licences). Paid licences
+                    are gated by payment — no limit. <span className='font-mono'>-1</span> = unlimited.
+                </p>
+                <div className='mt-3 flex items-center gap-3'>
+                    <input
+                        type='number'
+                        className='w-28 border rounded-lg px-3 py-2 disabled:opacity-50'
+                        value={freeLimit}
+                        disabled={loading}
+                        onChange={(e) => setFreeLimit(e.target.value)}
+                    />
+                    <button type='button' onClick={saveLimit} disabled={savingLimit || loading}
+                        className='bg-gradient-to-r from-[#268F79] to-[#0B2923] text-[#00FFB2] font-bold px-5 py-2 rounded-md disabled:opacity-60'>
+                        {savingLimit ? 'Saving…' : 'Save limit'}
+                    </button>
+                </div>
             </div>
 
             <form onSubmit={save} className='space-y-6 max-w-3xl'>

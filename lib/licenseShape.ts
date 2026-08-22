@@ -14,7 +14,6 @@ export function parseLicense(body: any) {
         durationDays: Math.max(0, int(body?.durationDays, 365)),
         maxCourses: int(body?.maxCourses, -1),
         maxTeachers: int(body?.maxTeachers, -1),
-        maxAcademies: int(body?.maxAcademies, 1),
         videoSource: VIDEO_SOURCES.includes(body?.videoSource) ? body.videoSource : "all",
         limits: typeof body?.limits === "object" && body.limits ? body.limits : { quiz: -1, video: -1, pdf: -1, default: -1 },
         features: typeof body?.features === "object" && body.features ? body.features : {},

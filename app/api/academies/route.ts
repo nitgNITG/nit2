@@ -148,16 +148,21 @@ export async function POST(req: NextRequest) {
         const tier = lic?.key ?? "demo";
         const definition = lic ? toLicenseDefinition(lic) : "";
 
-        // Academy quota — applies to FREE licences only (e.g. demo): a client may
-        // create at most maxAcademies academies ON THAT licence. Paid licences
-        // (price > 0) are gated by payment, so they're not count-limited here.
-        if (lic && lic.price === 0 && lic.maxAcademies >= 0) {
-            const owned = await prisma.academy.count({ where: { ownerId: user.id, tier: lic.key } });
-            if (owned >= lic.maxAcademies) {
-                return NextResponse.json(
-                    { error: `وصلت للحد الأقصى من باقة "${lic.name}" المجانية (${lic.maxAcademies}). اختر باقة مدفوعة لإضافة المزيد.` },
-                    { status: 403 },
-                );
+        // Free-academy quota — a global limit per user account (free_academy_limit).
+        // Applies only to FREE licences (price 0), counting the client's academies
+        // across ALL free licences. Paid licences are gated by payment, not counted.
+        if (lic && lic.price === 0) {
+            const row = await prisma.platformSetting.findUnique({ where: { key: "free_academy_limit" } });
+            const limit = row ? parseInt(row.value, 10) : 1;
+            if (Number.isFinite(limit) && limit >= 0) {
+                const freeKeys = (await prisma.license.findMany({ where: { price: 0 }, select: { key: true } })).map((l) => l.key);
+                const owned = await prisma.academy.count({ where: { ownerId: user.id, tier: { in: freeKeys } } });
+                if (owned >= limit) {
+                    return NextResponse.json(
+                        { error: `وصلت للحد الأقصى من الأكاديميات المجانية (${limit}) لحسابك. اختر باقة مدفوعة لإضافة المزيد.` },
+                        { status: 403 },
+                    );
+                }
             }
         }
 

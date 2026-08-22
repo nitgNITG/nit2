@@ -12,7 +12,6 @@ type License = {
     durationDays: number
     maxCourses: number
     maxTeachers: number
-    maxAcademies: number
     videoSource: string
     limits: Record<string, number>
     features: Record<string, boolean>
@@ -25,7 +24,7 @@ const LIMIT_KEYS = ['quiz', 'video', 'pdf', 'default']
 
 const blank = (): License => ({
     key: '', name: '', active: true, price: 0, durationDays: 365,
-    maxCourses: -1, maxTeachers: -1, maxAcademies: 1, videoSource: 'all', order: 0,
+    maxCourses: -1, maxTeachers: -1, videoSource: 'all', order: 0,
     limits: { quiz: -1, video: -1, pdf: -1, default: -1 },
     features: Object.fromEntries(FEATURE_KEYS.map((f) => [f, false])),
 })
@@ -134,16 +133,11 @@ const LicensesPage = () => {
                         </div>
                     </div>
 
-                    <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+                    <div className='grid grid-cols-2 md:grid-cols-3 gap-4'>
                         <div>
                             <label className='block text-sm font-semibold mb-1'>Duration (days)</label>
                             <input type='number' min={0} className='w-full border rounded-lg px-3 py-2' value={form.durationDays} onChange={num('durationDays')} />
                             <p className='text-[11px] text-gray-400 mt-0.5'>0 = never expires</p>
-                        </div>
-                        <div>
-                            <label className='block text-sm font-semibold mb-1'>Academies (quota)</label>
-                            <input type='number' className='w-full border rounded-lg px-3 py-2' value={form.maxAcademies} onChange={num('maxAcademies')} />
-                            <p className='text-[11px] text-gray-400 mt-0.5'>per client · -1 = unlimited</p>
                         </div>
                         <div>
                             <label className='block text-sm font-semibold mb-1'>Max courses</label>
@@ -227,7 +221,6 @@ const LicensesPage = () => {
                                 <span className='text-[#268F79] font-bold'>{l.price === 0 ? 'Free' : `$${l.price}`}</span>
                             </div>
                             <ul className='text-xs text-gray-600 space-y-0.5'>
-                                <li>Academies / client: <b>{cap(l.maxAcademies)}</b></li>
                                 <li>Courses: <b>{cap(l.maxCourses)}</b> · Teachers: <b>{cap(l.maxTeachers)}</b></li>
                                 <li>Video: <b>{l.videoSource}</b> · {l.durationDays === 0 ? 'no expiry' : `${l.durationDays}d`}</li>
                                 <li className='truncate'>Features: <b>{FEATURE_KEYS.filter((f) => l.features?.[f]).join(', ') || 'none'}</b></li>
