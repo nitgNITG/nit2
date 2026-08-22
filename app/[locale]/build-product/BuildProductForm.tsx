@@ -1,10 +1,11 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/navigation'
+import { LICENSE_TIERS } from '@/lib/tiers'
 
 type FormValues = {
     name: string // full name (Arabic) — the primary name
@@ -14,17 +15,6 @@ type FormValues = {
     slug: string
     tier: string
     _hp?: string // honeypot — stays empty for humans
-}
-
-type Plan = {
-    id: string
-    tier: string
-    nameAr: string
-    nameEn: string
-    price: number
-    currency: string
-    featuresAr: string[]
-    featuresEn: string[]
 }
 
 type SuccessInfo = { slug: string; branch: string }
@@ -68,23 +58,11 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
     })
 
     const [done, setDone] = useState<SuccessInfo | null>(null)
-    const [plans, setPlans] = useState<Plan[]>([])
     const [logo, setLogo] = useState<File | null>(null)
     const [logocompact, setLogocompact] = useState<File | null>(null)
     const [favicon, setFavicon] = useState<File | null>(null)
     const slugPreview = (watch('slug') || '').toLowerCase().trim()
     const selectedTier = watch('tier')
-
-    // Load the Moodle plans (packages) so the client picks one → drives the licence tier.
-    useEffect(() => {
-        fetch('/api/plans?service=moodle')
-            .then((r) => r.json())
-            .then((d) => {
-                const list: Plan[] = Array.isArray(d) ? d : d.plans || d.data || []
-                if (list.length) setPlans(list)
-            })
-            .catch(() => { })
-    }, [])
 
     // Validate an image pick against the type/size caps; toast + reject on fail.
     const pickImage = (
@@ -287,39 +265,37 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                 </div>
             )}
 
-            {/* Plan picker → drives the local_license tier */}
-            {plans.length > 0 && (
-                <div className='mb-5'>
-                    <label className='mb-1.5 block font-bold text-[#0B2923]'>
-                        {isAr ? 'الباقة' : 'Plan'} <span className='text-red-500'>*</span>
-                    </label>
-                    <div className='grid grid-cols-2 gap-2'>
-                        {plans.map((p) => {
-                            const on = selectedTier === p.tier
-                            return (
-                                <button
-                                    type='button'
-                                    key={p.id}
-                                    onClick={() => setValue('tier', p.tier)}
-                                    className={`text-start rounded-xl border p-3 transition-colors ${on ? 'border-[#1E7D67] bg-[#1E7D67]/5 ring-1 ring-[#1E7D67]' : 'border-gray-200 bg-gray-50 hover:border-gray-300'}`}
-                                >
-                                    <div className='flex items-baseline justify-between gap-2'>
-                                        <span className='font-bold text-[#0B2923]'>{isAr ? p.nameAr : p.nameEn}</span>
-                                        <span className='text-sm font-bold text-[#1E7D67]' dir='ltr'>
-                                            {p.price === 0 ? (isAr ? 'مجاني' : 'Free') : `$${p.price}`}
-                                        </span>
-                                    </div>
-                                    <ul className='mt-1 list-disc ps-4 text-xs text-gray-500'>
-                                        {(isAr ? p.featuresAr : p.featuresEn).slice(0, 3).map((f, i) => (
-                                            <li key={i}>{f}</li>
-                                        ))}
-                                    </ul>
-                                </button>
-                            )
-                        })}
-                    </div>
+            {/* Licence picker → the local_license tier the academy is provisioned with */}
+            <div className='mb-5'>
+                <label className='mb-1.5 block font-bold text-[#0B2923]'>
+                    {isAr ? 'الباقة' : 'License'} <span className='text-red-500'>*</span>
+                </label>
+                <div className='grid grid-cols-2 gap-2'>
+                    {LICENSE_TIERS.map((tier) => {
+                        const on = selectedTier === tier.key
+                        return (
+                            <button
+                                type='button'
+                                key={tier.key}
+                                onClick={() => setValue('tier', tier.key)}
+                                className={`text-start rounded-xl border p-3 transition-colors ${on ? 'border-[#1E7D67] bg-[#1E7D67]/5 ring-1 ring-[#1E7D67]' : 'border-gray-200 bg-gray-50 hover:border-gray-300'}`}
+                            >
+                                <div className='flex items-baseline justify-between gap-2'>
+                                    <span className='font-bold text-[#0B2923]'>{isAr ? tier.nameAr : tier.nameEn}</span>
+                                    <span className='text-sm font-bold text-[#1E7D67]' dir='ltr'>
+                                        {isAr ? tier.priceAr : tier.priceEn}
+                                    </span>
+                                </div>
+                                <ul className='mt-1 list-disc ps-4 text-xs text-gray-500'>
+                                    {(isAr ? tier.featuresAr : tier.featuresEn).slice(0, 3).map((f, i) => (
+                                        <li key={i}>{f}</li>
+                                    ))}
+                                </ul>
+                            </button>
+                        )
+                    })}
                 </div>
-            )}
+            </div>
             <input type='hidden' {...register('tier')} />
 
             {/* Branding — logo + favicon (optional, applied during provisioning) */}
