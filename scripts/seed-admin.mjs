@@ -3,9 +3,10 @@
 //   node scripts/seed-admin.mjs                         # admin@gmail.com / Admin@1234
 //   node scripts/seed-admin.mjs foo@bar.com MyPass#99   # custom
 //
-// Run where DATABASE_URL points at the real database (on the dev server, or
-// locally if your .env holds the real Mongo URL). Idempotent — safe to re-run.
-import { PrismaClient } from '@prisma/client'
+// Users live in MySQL now — run where MYSQL_DATABASE_URL points at the real DB.
+// Requires: npx prisma generate --schema prisma/mysql/schema.prisma
+// Idempotent — safe to re-run.
+import { PrismaClient } from 'prismamysql'
 import bcrypt from 'bcrypt'
 
 const prisma = new PrismaClient()

@@ -1,8 +1,7 @@
 import type { Metadata } from 'next'
 import { getCurrentUser } from '@/lib/auth'
-// Academies live in MySQL (separate client); Users live in the Mongo app DB.
+// Academies AND users now live in the same MySQL control-plane DB.
 import prismaMysql from '@/lib/prismaMysql'
-import prisma from '@/prisma/client'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import AuthScreen from './AuthScreen'
@@ -26,17 +25,17 @@ export default async function AccountPage() {
     if (!user) {
         content = <AuthScreen mode='login' />
     } else if (user.role === 'admin') {
-        // Admin view: every academy (MySQL) + every client (Mongo). The two live in
-        // different databases, so we join them in memory by ownerId (no cross-db relation).
+        // Admin view: every academy + every client. Both live in MySQL now; we still
+        // join them in memory by ownerId (ownerId is a plain string, not a relation).
         const academyRows = await prismaMysql.academy.findMany({ orderBy: { createdAt: 'desc' } })
         let clientRows: { id: string; name: string | null; email: string; role: string | null }[] = []
         try {
-            clientRows = await prisma.user.findMany({
+            clientRows = await prismaMysql.user.findMany({
                 orderBy: { createdAt: 'desc' },
                 select: { id: true, name: true, email: true, role: true },
             })
         } catch (e) {
-            console.error('[account] client list (Mongo) unavailable', e)
+            console.error('[account] client list unavailable', e)
         }
         const ownerById = new Map(clientRows.map((u) => [u.id, u]))
         const countByOwner = new Map<string, number>()

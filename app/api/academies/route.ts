@@ -46,6 +46,7 @@ type Brand = {
     shortname_ar?: string;
     shortname_en?: string;
     logo?: BrandImage;
+    logocompact?: BrandImage;
     favicon?: BrandImage;
 };
 
@@ -61,7 +62,7 @@ function sanitizeBrand(raw: unknown): Brand {
         const v = b[k];
         if (typeof v === "string" && v.trim()) out[k] = v.trim().slice(0, MAX_NAME_LEN);
     }
-    for (const k of ["logo", "favicon"] as const) {
+    for (const k of ["logo", "logocompact", "favicon"] as const) {
         const img = b[k];
         if (img && typeof img === "object") {
             const { filename, data_b64 } = img as Record<string, unknown>;

@@ -113,6 +113,9 @@ def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: 
         logo = _stage_image(stage, "logo", brand.get("logo"))
         if logo:
             env["BRAND_LOGO"] = logo
+        logocompact = _stage_image(stage, "logocompact", brand.get("logocompact"))
+        if logocompact:
+            env["BRAND_LOGOCOMPACT"] = logocompact
         favicon = _stage_image(stage, "favicon", brand.get("favicon"))
         if favicon:
             env["BRAND_FAVICON"] = favicon

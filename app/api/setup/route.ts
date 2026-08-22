@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import prisma from '@/prisma/client'
+// Users live in MySQL (academy control plane), not the Mongo content DB.
+import prisma from '@/lib/prismaMysql'
 import bcrypt from 'bcrypt'
 
 // POST /api/setup — creates the first admin user

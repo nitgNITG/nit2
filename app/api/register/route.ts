@@ -2,7 +2,8 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { NextRequest, NextResponse } from 'next/server';
 import { validateEmail } from '@/utils/validateEmail';
-import prisma from '@/prisma/client';
+// Users live in MySQL (academy control plane), not the Mongo content DB.
+import prisma from '@/lib/prismaMysql';
 import { cookies } from 'next/headers';
 
 // Public sign-up. Creates a `client` account and logs them in (sets the token

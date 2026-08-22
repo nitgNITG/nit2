@@ -70,6 +70,7 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
     const [done, setDone] = useState<SuccessInfo | null>(null)
     const [plans, setPlans] = useState<Plan[]>([])
     const [logo, setLogo] = useState<File | null>(null)
+    const [logocompact, setLogocompact] = useState<File | null>(null)
     const [favicon, setFavicon] = useState<File | null>(null)
     const slugPreview = (watch('slug') || '').toLowerCase().trim()
     const selectedTier = watch('tier')
@@ -87,13 +88,12 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
 
     // Validate an image pick against the type/size caps; toast + reject on fail.
     const pickImage = (
-        kind: 'logo' | 'favicon',
+        set: (f: File | null) => void,
         max: number,
         types: string[],
         maxLabel: string,
     ) => (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0] ?? null
-        const set = kind === 'logo' ? setLogo : setFavicon
         if (!file) { set(null); return }
         if (file.type && types.length && !types.includes(file.type)) {
             toast.error(t('imageBadType'))
@@ -119,6 +119,7 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                 shortname_en: values.shortnameEn?.trim() || undefined,
             }
             if (logo) brand.logo = { filename: logo.name, data_b64: await fileToBase64(logo) }
+            if (logocompact) brand.logocompact = { filename: logocompact.name, data_b64: await fileToBase64(logocompact) }
             if (favicon) brand.favicon = { filename: favicon.name, data_b64: await fileToBase64(favicon) }
 
             const res = await fetch('/api/academies', {
@@ -140,6 +141,7 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
             toast.success(t('successToast'))
             reset()
             setLogo(null)
+            setLogocompact(null)
             setFavicon(null)
             // In the dashboard modal we hand control back (close + refresh);
             // on the standalone page we show the success card.
@@ -336,11 +338,26 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                             id='logo'
                             type='file'
                             accept='image/png,image/svg+xml,image/jpeg,image/webp'
-                            onChange={pickImage('logo', LOGO_MAX, LOGO_TYPES, '1.5 MB')}
+                            onChange={pickImage(setLogo, LOGO_MAX, LOGO_TYPES, '1.5 MB')}
                             className='block w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-[#1E7D67]/10 file:px-4 file:py-2.5 file:font-semibold file:text-[#1E7D67] hover:file:bg-[#1E7D67]/15'
                         />
                         <p className='mt-1.5 text-xs text-gray-500'>{t('logoHint')}</p>
                         {logo && <p className='mt-1 truncate text-xs text-[#1E7D67]' dir='ltr'>{logo.name}</p>}
+                    </div>
+                    {/* Compact logo — Moodle's logocompact (emblem/icon) */}
+                    <div>
+                        <label htmlFor='logocompact' className='mb-1.5 block text-sm font-semibold text-[#0B2923]'>
+                            {t('logocompactLabel')}
+                        </label>
+                        <input
+                            id='logocompact'
+                            type='file'
+                            accept='image/png,image/svg+xml,image/jpeg,image/webp'
+                            onChange={pickImage(setLogocompact, LOGO_MAX, LOGO_TYPES, '1.5 MB')}
+                            className='block w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-[#1E7D67]/10 file:px-4 file:py-2.5 file:font-semibold file:text-[#1E7D67] hover:file:bg-[#1E7D67]/15'
+                        />
+                        <p className='mt-1.5 text-xs text-gray-500'>{t('logocompactHint')}</p>
+                        {logocompact && <p className='mt-1 truncate text-xs text-[#1E7D67]' dir='ltr'>{logocompact.name}</p>}
                     </div>
                     {/* Favicon */}
                     <div>
@@ -351,7 +368,7 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                             id='favicon'
                             type='file'
                             accept='image/png,image/x-icon,image/vnd.microsoft.icon,image/svg+xml'
-                            onChange={pickImage('favicon', FAVICON_MAX, FAVICON_TYPES, '512 KB')}
+                            onChange={pickImage(setFavicon, FAVICON_MAX, FAVICON_TYPES, '512 KB')}
                             className='block w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-[#1E7D67]/10 file:px-4 file:py-2.5 file:font-semibold file:text-[#1E7D67] hover:file:bg-[#1E7D67]/15'
                         />
                         <p className='mt-1.5 text-xs text-gray-500'>{t('faviconHint')}</p>
