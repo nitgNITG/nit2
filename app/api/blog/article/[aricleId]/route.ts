@@ -1,7 +1,7 @@
 import { deleteImage, uploadImage } from "@/utils/cloudinary";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/prisma/client'
-import { authPredict } from "@/lib/predict";
+import { authAdmin } from "@/lib/predict";
 
 export async function GET(req: NextRequest, { params }: { params: { aricleId: string } }) {
     try {
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest, { params }: { params: { aricleId: st
 
 export async function PUT(req: NextRequest, { params }: { params: { aricleId: string } }) {
     try {
-        const isPredict = await authPredict(req)
+        const isPredict = await authAdmin(req)
         if (!isPredict)
             return NextResponse.json({ message: 'Not allow' }, { status: 400 })
         const { aricleId } = params;
@@ -62,7 +62,7 @@ export async function PUT(req: NextRequest, { params }: { params: { aricleId: st
 }
 export async function DELETE(req: NextRequest, { params }: { params: { aricleId: string } }) {
     try {
-        const isPredict = await authPredict(req)
+        const isPredict = await authAdmin(req)
         if (!isPredict)
             return NextResponse.json({ message: 'Not allow' }, { status: 400 })
         const { aricleId } = params;

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/prisma/client";
-import { authPredict } from "@/lib/predict";
+import { authAdmin } from "@/lib/predict";
 
 export async function PUT(req: NextRequest, { params }: { params: { planId: string } }) {
     try {
-        if (!authPredict(req)) return NextResponse.json({ message: "Not allowed" }, { status: 401 });
+        if (!(await authAdmin(req))) return NextResponse.json({ message: "Not allowed" }, { status: 401 });
         const body = await req.json();
         const { service, nameAr, nameEn, price, currency, featuresAr, featuresEn, isActive, order } = body;
 
@@ -30,7 +30,7 @@ export async function PUT(req: NextRequest, { params }: { params: { planId: stri
 
 export async function DELETE(req: NextRequest, { params }: { params: { planId: string } }) {
     try {
-        if (!authPredict(req)) return NextResponse.json({ message: "Not allowed" }, { status: 401 });
+        if (!(await authAdmin(req))) return NextResponse.json({ message: "Not allowed" }, { status: 401 });
         await prisma.servicePlan.delete({ where: { id: params.planId } });
         return NextResponse.json({ message: "Deleted" }, { status: 200 });
     } catch (error: any) {

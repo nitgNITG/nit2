@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 // Platform settings live in MySQL (separate Prisma client), not the Mongo app DB.
 import prisma from "@/lib/prismaMysql";
-import { authPredict } from "@/lib/predict";
+import { authAdmin } from "@/lib/predict";
 // Shared key list — a route.ts file may only export request handlers.
 import { PLATFORM_KEYS } from "@/lib/platformKeys";
 
@@ -10,15 +10,15 @@ export const dynamic = "force-dynamic";
 
 // GET is readable by an admin (dashboard) OR the provisioner (x-worker-secret),
 // since create.sh needs these values when spinning up a new academy.
-function canRead(req: NextRequest): boolean {
+async function canRead(req: NextRequest): Promise<boolean> {
     const secret = process.env.WORKER_SECRET;
     if (secret && req.headers.get("x-worker-secret") === secret) return true;
-    return authPredict(req);
+    return await authAdmin(req);
 }
 
 /** GET /api/platform-settings → { settings: { key: value, ... } } (all known keys, "" when unset). */
 export async function GET(req: NextRequest) {
-    if (!canRead(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    if (!(await canRead(req))) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     try {
         const rows = await prisma.platformSetting.findMany();
         const stored = Object.fromEntries(rows.map((r) => [r.key, r.value]));
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 
 /** PUT /api/platform-settings  { key: value, ... } → upserts each known key (admin only). */
 export async function PUT(req: NextRequest) {
-    if (!authPredict(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    if (!(await authAdmin(req))) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     try {
         const body = (await req.json()) as Record<string, unknown>;
         const updates = PLATFORM_KEYS.filter((k) => k in body).map((k) => {

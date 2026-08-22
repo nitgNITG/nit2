@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prismaMysql";
-import { authPredict } from "@/lib/predict";
+import { authAdmin } from "@/lib/predict";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 // Re-push the current global settings to EVERY live academy's Moodle (used after
 // a global value changes). Best-effort per academy; returns how many were queued.
 export async function POST(req: NextRequest) {
-    if (!authPredict(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    if (!(await authAdmin(req))) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
     const base = process.env.PROVISION_URL;
     const secret = process.env.PROVISION_SECRET;

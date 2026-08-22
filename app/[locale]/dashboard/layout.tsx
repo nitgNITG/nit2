@@ -15,8 +15,10 @@ export const dynamic = "force-dynamic"; // uses cookies() → always per-request
 
 export default async function RootLayout({
     children,
+    params,
 }: Readonly<{
     children: React.ReactNode;
+    params: { locale: string };
 }>) {
     const user = await getCurrentUser();
 
@@ -31,9 +33,11 @@ export default async function RootLayout({
         );
     }
 
-    // Signed in but not an admin → the dashboard is admins-only; send clients to their area.
+    // Signed in but not an admin → the dashboard is admins-only; send clients to
+    // their area. Use the locale-prefixed path so it's a real page, not a blank /account.
     if (user.role !== "admin") {
-        redirect("/account");
+        const locale = params?.locale === "ar" ? "ar" : "en";
+        redirect(`/${locale}/account`);
     }
 
     return (

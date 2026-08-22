@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/prisma/client";
-import { authPredict } from "@/lib/predict";
+import { authAdmin } from "@/lib/predict";
 
 // Public: GET all active plans (optionally filtered by service)
 export async function GET(req: NextRequest) {
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
 // Admin: Create a new plan
 export async function POST(req: NextRequest) {
     try {
-        if (!authPredict(req)) return NextResponse.json({ message: "Not allowed" }, { status: 401 });
+        if (!(await authAdmin(req))) return NextResponse.json({ message: "Not allowed" }, { status: 401 });
         const body = await req.json();
         const { service, nameAr, nameEn, price, currency, featuresAr, featuresEn, isActive, order } = body;
         if (!service || !nameAr || !nameEn || price === undefined)

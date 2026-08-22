@@ -1,11 +1,11 @@
 import { deleteImage, uploadImage } from "@/utils/cloudinary";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/prisma/client'
-import { authPredict } from "@/lib/predict";
+import { authAdmin } from "@/lib/predict";
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
     try {
-        const isPredict = await authPredict(req)
+        const isPredict = await authAdmin(req)
         if (!isPredict)
             return NextResponse.json({ message: 'Not allow' }, { status: 400 })
         const { id } = params;

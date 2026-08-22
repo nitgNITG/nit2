@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/prisma/client';
-import { authPredict } from '@/lib/predict';
+import { authAdmin } from '@/lib/predict';
 
 // GET — list all types (public, used by AddEditProject form)
 export async function GET() {
@@ -15,7 +15,7 @@ export async function GET() {
 // POST — create a new type (auth required)
 export async function POST(req: NextRequest) {
     try {
-        if (!authPredict(req)) return NextResponse.json({ message: 'Not allowed' }, { status: 401 });
+        if (!(await authAdmin(req))) return NextResponse.json({ message: 'Not allowed' }, { status: 401 });
         const { value, labelEn, labelAr } = await req.json();
         if (!value || !labelEn || !labelAr)
             return NextResponse.json({ message: 'value, labelEn and labelAr are required' }, { status: 400 });

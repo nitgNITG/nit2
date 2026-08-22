@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/prisma/client';
-import { authPredict } from "@/lib/predict";
+import { authAdmin } from "@/lib/predict";
 import { computeLeadScore } from "@/utils/leadScore";
 
 // ── Disposable / known-spam email domains ─────────────────────────────────────
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
     try {
-        if (!authPredict(req)) return NextResponse.json({ message: 'Not allowed' }, { status: 401 });
+        if (!(await authAdmin(req))) return NextResponse.json({ message: 'Not allowed' }, { status: 401 });
 
         const { searchParams } = new URL(req.url);
 
@@ -160,7 +160,7 @@ export async function GET(req: NextRequest) {
 // Mark all as read
 export async function PUT(req: NextRequest) {
     try {
-        if (!authPredict(req)) return NextResponse.json({ message: 'Not allowed' }, { status: 401 });
+        if (!(await authAdmin(req))) return NextResponse.json({ message: 'Not allowed' }, { status: 401 });
         await prisma.contact.updateMany({ data: { isReaded: true } });
         return NextResponse.json({ message: 'Successfully updated' }, { status: 200 });
     } catch (error: any) {
@@ -171,7 +171,7 @@ export async function PUT(req: NextRequest) {
 // Delete a contact by id
 export async function DELETE(req: NextRequest) {
     try {
-        if (!authPredict(req)) return NextResponse.json({ message: 'Not allowed' }, { status: 401 });
+        if (!(await authAdmin(req))) return NextResponse.json({ message: 'Not allowed' }, { status: 401 });
         const { searchParams } = new URL(req.url);
         const id = searchParams.get('id');
         if (!id) return NextResponse.json({ message: 'id required' }, { status: 400 });
@@ -185,7 +185,7 @@ export async function DELETE(req: NextRequest) {
 // Update status / notes per contact
 export async function PATCH(req: NextRequest) {
     try {
-        if (!authPredict(req)) return NextResponse.json({ message: 'Not allowed' }, { status: 401 });
+        if (!(await authAdmin(req))) return NextResponse.json({ message: 'Not allowed' }, { status: 401 });
         const { id, status, notes } = await req.json();
         if (!id) return NextResponse.json({ message: 'id required' }, { status: 400 });
         const updated = await prisma.contact.update({

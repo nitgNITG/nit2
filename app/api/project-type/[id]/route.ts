@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/prisma/client';
-import { authPredict } from '@/lib/predict';
+import { authAdmin } from '@/lib/predict';
 
 // PUT — update a type
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
     try {
-        if (!authPredict(req)) return NextResponse.json({ message: 'Not allowed' }, { status: 401 });
+        if (!(await authAdmin(req))) return NextResponse.json({ message: 'Not allowed' }, { status: 401 });
         const { labelEn, labelAr } = await req.json();
         if (!labelEn || !labelAr)
             return NextResponse.json({ message: 'labelEn and labelAr are required' }, { status: 400 });
@@ -23,7 +23,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 // DELETE — delete a type
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
     try {
-        if (!authPredict(req)) return NextResponse.json({ message: 'Not allowed' }, { status: 401 });
+        if (!(await authAdmin(req))) return NextResponse.json({ message: 'Not allowed' }, { status: 401 });
         await prisma.projectType.delete({ where: { id: params.id } });
         return NextResponse.json({ message: 'Type deleted' }, { status: 200 });
     } catch (error: any) {

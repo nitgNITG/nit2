@@ -1,12 +1,12 @@
 import { uploadImage } from "@/utils/cloudinary";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/prisma/client';
-import { authPredict } from "@/lib/predict";
+import { authAdmin } from "@/lib/predict";
 
 export async function POST(req: NextRequest) {
     console.log('[POST /api/project]');
     try {
-        if (!authPredict(req)) return NextResponse.json({ message: 'Not allowed' }, { status: 401 });
+        if (!(await authAdmin(req))) return NextResponse.json({ message: 'Not allowed' }, { status: 401 });
         const body = await req.formData();
         const img = body.get('img') as File | null;
         const title = body.get('title') as string | null;

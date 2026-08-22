@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/prisma/client';
-import { authPredict } from '@/lib/predict';
+import { authAdmin } from '@/lib/predict';
 
 export async function PATCH(req: NextRequest) {
     try {
-        if (!authPredict(req)) return NextResponse.json({ message: 'Not allowed' }, { status: 401 });
+        if (!(await authAdmin(req))) return NextResponse.json({ message: 'Not allowed' }, { status: 401 });
 
         const body = await req.json();
         const { id, direction, type } = body as { id: string; direction: 'up' | 'down'; type: string };
