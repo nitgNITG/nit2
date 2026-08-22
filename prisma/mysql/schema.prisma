@@ -61,8 +61,29 @@ model Academy {
   name      String // Arabic display name typed by the client
   slug      String   @unique // English identifier — branch suffix + future subdomain
   branch    String // full branch name, e.g. "client/ahmed-academy"
-  status    String   @default("branch_created") // branch_created | provisioning | live | failed
-  tier      String   @default("demo") // demo | basic | standard | professional -> local_license
-  ownerId   String? // client User id (lives in the Mongo DB; no cross-db relation)
+  status    String   @default("branch_created") // branch_created | provisioning | live | failed | suspended
+  tier      String   @default("demo") // the License.key this academy runs on
+  ownerId   String? // client User id (same MySQL DB; joined by string, not a relation)
   createdAt DateTime @default(now())
+}
+
+// A licence "product": the limits + features an academy runs on (pushed to
+// local_license) plus the academy quota it grants a client. Fully editable from
+// the dashboard — `key` is what Academy.tier references. Seeded to match the
+// original demo/basic/standard/professional tiers.
+model License {
+  id           String   @id @default(uuid())
+  key          String   @unique // demo|basic|standard|professional or a custom slug
+  name         String
+  active       Boolean  @default(true)
+  price        Int      @default(0) // USD (display only)
+  durationDays Int      @default(365) // 0 = never expires
+  maxCourses   Int      @default(-1) // -1 = unlimited
+  maxTeachers  Int      @default(-1)
+  maxAcademies Int      @default(1) // client quota — how many academies this licence grants
+  videoSource  String   @default("all") // all|limited|youtube|vimeo|vdocipher
+  limits       Json // per-activity caps e.g. {"quiz":-1,"video":-1,"pdf":-1,"default":-1}
+  features     Json // toggles e.g. {"drm":false,"coupons":true,"subscriptions":false,"packages":false,"jitsi":false,"offers":false}
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
 }

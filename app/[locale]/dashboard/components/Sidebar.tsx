@@ -22,6 +22,7 @@ const Sidebar = () => {
         { label: 'Contacts', href: '/dashboard/contacts' },
         { label: 'Blog', href: '/dashboard/blog' },
         { label: '💰 Plans & Pricing', href: '/dashboard/plans' },
+        { label: '🎓 Academies', href: '/dashboard/academies' },
         { label: '🎫 Licenses', href: '/dashboard/licenses' },
         { label: '🌐 Platform Settings', href: '/dashboard/platform-settings' },
         { label: '⚙️ Setup & Health', href: '/dashboard/setup' },

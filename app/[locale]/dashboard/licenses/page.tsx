@@ -3,35 +3,49 @@ import React, { useCallback, useEffect, useState } from 'react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 
-// Mirror of local_license::TIERS (saas-demo) — reference only; the Moodle plugin
-// is the source of truth for enforcement.
-const TIERS = [
-    { key: 'demo', name: 'Demo', color: 'bg-gray-100 text-gray-600', blurb: '1 course · 1 teacher · limited video · 14 days' },
-    { key: 'basic', name: 'Basic', color: 'bg-blue-50 text-blue-700', blurb: '3 courses · 1 teacher · YouTube · 1 year' },
-    { key: 'standard', name: 'Standard', color: 'bg-amber-50 text-amber-700', blurb: '10 courses · unlimited teachers · Vimeo' },
-    { key: 'professional', name: 'Professional', color: 'bg-emerald-50 text-emerald-700', blurb: 'Unlimited · VdoCipher DRM · coupons, subscriptions, packages, jitsi' },
-] as const
+type License = {
+    id?: string
+    key: string
+    name: string
+    active: boolean
+    price: number
+    durationDays: number
+    maxCourses: number
+    maxTeachers: number
+    maxAcademies: number
+    videoSource: string
+    limits: Record<string, number>
+    features: Record<string, boolean>
+    order: number
+}
 
-const TIER_KEYS = TIERS.map((t) => t.key)
-const tierMeta = (k: string) => TIERS.find((t) => t.key === k) ?? TIERS[0]
+const VIDEO_SOURCES = ['all', 'limited', 'youtube', 'vimeo', 'vdocipher']
+const FEATURE_KEYS = ['drm', 'coupons', 'offers', 'subscriptions', 'packages', 'jitsi']
+const LIMIT_KEYS = ['quiz', 'video', 'pdf', 'default']
 
-type Academy = { id: string; name: string; slug: string; status: string; tier: string }
+const blank = (): License => ({
+    key: '', name: '', active: true, price: 0, durationDays: 365,
+    maxCourses: -1, maxTeachers: -1, maxAcademies: 1, videoSource: 'all', order: 0,
+    limits: { quiz: -1, video: -1, pdf: -1, default: -1 },
+    features: Object.fromEntries(FEATURE_KEYS.map((f) => [f, false])),
+})
+
+const cap = (n: number) => (n < 0 ? '∞' : String(n))
 
 const LicensesPage = () => {
-    const [academies, setAcademies] = useState<Academy[]>([])
+    const [licenses, setLicenses] = useState<License[]>([])
     const [loading, setLoading] = useState(true)
-    const [savingSlug, setSavingSlug] = useState<string | null>(null)
-    const [updatingAll, setUpdatingAll] = useState(false)
-    const [updatingSlug, setUpdatingSlug] = useState<string | null>(null)
-    const [busySlug, setBusySlug] = useState<string | null>(null)
+    const [form, setForm] = useState<License | null>(null)
+    const [editingKey, setEditingKey] = useState<string | null>(null)
+    const [saving, setSaving] = useState(false)
 
     const load = useCallback(async () => {
         setLoading(true)
         try {
-            const { data } = await axios.get('/api/academies')
-            setAcademies(data.academies ?? [])
+            const { data } = await axios.get('/api/licenses')
+            setLicenses(data.licenses ?? [])
         } catch {
-            toast.error('Could not load academies')
+            toast.error('Could not load licences')
         } finally {
             setLoading(false)
         }
@@ -39,75 +53,45 @@ const LicensesPage = () => {
 
     useEffect(() => { load() }, [load])
 
-    const changeTier = async (slug: string, tier: string) => {
-        const prev = academies
-        setSavingSlug(slug)
-        setAcademies((list) => list.map((a) => (a.slug === slug ? { ...a, tier } : a)))
+    const openNew = () => { setForm(blank()); setEditingKey(null) }
+    const openEdit = (l: License) => {
+        setForm({ ...blank(), ...l, limits: { ...blank().limits, ...l.limits }, features: { ...blank().features, ...l.features } })
+        setEditingKey(l.key)
+    }
+    const close = () => { setForm(null); setEditingKey(null) }
+
+    const num = (k: keyof License) => (e: React.ChangeEvent<HTMLInputElement>) =>
+        setForm((f) => (f ? { ...f, [k]: Number(e.target.value) } : f))
+
+    const save = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!form) return
+        setSaving(true)
         try {
-            await axios.patch(`/api/academies/${slug}`, { tier })
-            toast.success(`${slug} → ${tierMeta(tier).name} (re-applying to the site…)`)
+            if (editingKey) {
+                await axios.put(`/api/licenses/${editingKey}`, form)
+                toast.success('Licence updated')
+            } else {
+                await axios.post('/api/licenses', form)
+                toast.success('Licence created')
+            }
+            close()
+            load()
         } catch (err: any) {
-            setAcademies(prev) // rollback
-            toast.error(err?.response?.data?.error || 'Failed to change plan')
+            toast.error(err?.response?.data?.error || 'Save failed')
         } finally {
-            setSavingSlug(null)
+            setSaving(false)
         }
     }
 
-    // Pull the latest code into the live container(s) + purge caches.
-    const updateAll = async () => {
-        if (!window.confirm('Pull the latest code into every live academy now?')) return
-        setUpdatingAll(true)
+    const remove = async (key: string) => {
+        if (!window.confirm(`Delete licence "${key}"?`)) return
         try {
-            const { data } = await axios.post('/api/academies/update-sites')
-            toast.success(`Update queued for ${data.queued}/${data.academies} academies`)
-        } catch (err: any) {
-            toast.error(err?.response?.data?.error || 'Update failed')
-        } finally {
-            setUpdatingAll(false)
-        }
-    }
-
-    const updateOne = async (slug: string) => {
-        setUpdatingSlug(slug)
-        try {
-            await axios.post('/api/academies/update-sites', { slug })
-            toast.success(`${slug}: pulling latest code…`)
-        } catch (err: any) {
-            toast.error(err?.response?.data?.error || 'Update failed')
-        } finally {
-            setUpdatingSlug(null)
-        }
-    }
-
-    // Suspend (soft-lock) or resume an academy.
-    const toggleSuspend = async (slug: string, status: string) => {
-        const suspend = status !== 'suspended'
-        if (suspend && !window.confirm(`Suspend "${slug}"? Users will see a "suspended" notice until you resume it (data is kept).`)) return
-        setBusySlug(slug)
-        try {
-            await axios.patch(`/api/academies/${slug}`, { suspend })
-            setAcademies((list) => list.map((a) => (a.slug === slug ? { ...a, status: suspend ? 'suspended' : 'live' } : a)))
-            toast.success(`${slug} ${suspend ? 'suspended' : 'resumed'}`)
-        } catch (err: any) {
-            toast.error(err?.response?.data?.error || 'Failed')
-        } finally {
-            setBusySlug(null)
-        }
-    }
-
-    // Delete an academy (tears down the live site + control-plane record).
-    const removeAcademy = async (slug: string) => {
-        if (!window.confirm(`Delete "${slug}"? This tears down the live site and its data — cannot be undone.`)) return
-        setBusySlug(slug)
-        try {
-            await axios.delete(`/api/academies/${slug}`)
-            setAcademies((list) => list.filter((a) => a.slug !== slug))
-            toast.success(`${slug} deleted`)
+            await axios.delete(`/api/licenses/${key}`)
+            toast.success('Deleted')
+            setLicenses((l) => l.filter((x) => x.key !== key))
         } catch (err: any) {
             toast.error(err?.response?.data?.error || 'Delete failed')
-        } finally {
-            setBusySlug(null)
         }
     }
 
@@ -117,112 +101,145 @@ const LicensesPage = () => {
                 <div>
                     <h4 className='font-bold text-lg md:text-xl lg:text-2xl'>🎫 Licenses</h4>
                     <p className='text-sm text-gray-500 mt-1 max-w-2xl'>
-                        Each academy runs on a plan (local_license tier). Changing it here updates the control plane and
-                        re-applies the licence to the live Moodle. New academies get the plan the client picked at build time.
+                        Define the licences (packages) academies run on — limits, features, and how many academies each
+                        one grants a client. Manage which academy is on which licence on the <strong>Academies</strong> page.
                     </p>
                 </div>
-                <button
-                    type='button'
-                    onClick={updateAll}
-                    disabled={updatingAll}
-                    title='Pull the latest code into every live academy (after a saas-demo push)'
-                    className='shrink-0 rounded-md border border-[#268F79] px-4 py-2 text-sm font-semibold text-[#268F79] hover:bg-[#268F79]/5 disabled:opacity-60'
-                >
-                    {updatingAll ? 'Updating…' : '⟳ Update all sites'}
+                <button onClick={openNew}
+                    className='shrink-0 bg-gradient-to-r from-[#268F79] to-[#0B2923] text-[#00FFB2] font-bold px-5 py-2 rounded-md'>
+                    + New licence
                 </button>
             </div>
 
-            {/* Tier reference */}
-            <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
-                {TIERS.map((t) => (
-                    <div key={t.key} className='bg-white rounded-xl border border-gray-200 shadow-sm p-4'>
-                        <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${t.color}`}>{t.name}</span>
-                        <p className='text-xs text-gray-500 mt-2 leading-relaxed'>{t.blurb}</p>
-                    </div>
-                ))}
-            </div>
+            {/* Editor */}
+            {form && (
+                <form onSubmit={save} className='bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-5'>
+                    <h5 className='font-bold text-lg'>{editingKey ? `Edit "${editingKey}"` : 'New licence'}</h5>
 
-            {/* Academies */}
-            <div className='bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto'>
-                <table className='w-full text-sm'>
-                    <thead className='bg-gray-50 text-left text-gray-500'>
-                        <tr>
-                            <th className='px-4 py-3 font-semibold'>Academy</th>
-                            <th className='px-4 py-3 font-semibold'>Status</th>
-                            <th className='px-4 py-3 font-semibold'>Current plan</th>
-                            <th className='px-4 py-3 font-semibold'>Change plan</th>
-                            <th className='px-4 py-3 font-semibold'>Manage</th>
-                        </tr>
-                    </thead>
-                    <tbody className='divide-y divide-gray-100'>
-                        {loading ? (
-                            <tr><td colSpan={5} className='px-4 py-10 text-center text-gray-400'>Loading…</td></tr>
-                        ) : academies.length === 0 ? (
-                            <tr><td colSpan={5} className='px-4 py-10 text-center text-gray-400'>No academies yet.</td></tr>
-                        ) : academies.map((a) => (
-                            <tr key={a.id} className='hover:bg-gray-50'>
-                                <td className='px-4 py-3'>
-                                    <div className='font-semibold text-gray-900'>{a.name}</div>
-                                    <div className='text-xs text-gray-400 font-mono'>{a.slug}</div>
-                                </td>
-                                <td className='px-4 py-3'>
-                                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${a.status === 'suspended' ? 'bg-red-50 text-red-600' : a.status === 'live' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
-                                        {a.status}
-                                    </span>
-                                </td>
-                                <td className='px-4 py-3'>
-                                    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${tierMeta(a.tier).color}`}>
-                                        {tierMeta(a.tier).name}
-                                    </span>
-                                </td>
-                                <td className='px-4 py-3'>
-                                    <select
-                                        className='border rounded-lg px-3 py-1.5 text-sm disabled:opacity-50'
-                                        value={a.tier}
-                                        disabled={savingSlug === a.slug}
-                                        onChange={(e) => changeTier(a.slug, e.target.value)}
-                                    >
-                                        {TIER_KEYS.map((k) => (
-                                            <option key={k} value={k}>{tierMeta(k).name}</option>
-                                        ))}
-                                    </select>
-                                </td>
-                                <td className='px-4 py-3'>
-                                    <div className='flex flex-wrap gap-1.5'>
-                                        <button
-                                            type='button'
-                                            onClick={() => updateOne(a.slug)}
-                                            disabled={updatingSlug === a.slug}
-                                            title='Pull latest code into this academy'
-                                            className='rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50'
-                                        >
-                                            {updatingSlug === a.slug ? '…' : '⟳ Update'}
-                                        </button>
-                                        <button
-                                            type='button'
-                                            onClick={() => toggleSuspend(a.slug, a.status)}
-                                            disabled={busySlug === a.slug}
-                                            title={a.status === 'suspended' ? 'Resume this academy' : 'Suspend (soft-lock) this academy'}
-                                            className='rounded-lg border border-amber-300 px-2.5 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50'
-                                        >
-                                            {a.status === 'suspended' ? '▶ Resume' : '⏸ Suspend'}
-                                        </button>
-                                        <button
-                                            type='button'
-                                            onClick={() => removeAcademy(a.slug)}
-                                            disabled={busySlug === a.slug}
-                                            title='Delete this academy permanently'
-                                            className='rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 disabled:opacity-50'
-                                        >
-                                            🗑 Delete
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                    <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+                        <div>
+                            <label className='block text-sm font-semibold mb-1'>Key <span className='text-red-400'>*</span></label>
+                            <input className='w-full border rounded-lg px-3 py-2 font-mono text-sm disabled:bg-gray-100'
+                                value={form.key} disabled={!!editingKey}
+                                onChange={(e) => setForm((f) => f ? { ...f, key: e.target.value } : f)} placeholder='enterprise' />
+                        </div>
+                        <div>
+                            <label className='block text-sm font-semibold mb-1'>Name <span className='text-red-400'>*</span></label>
+                            <input className='w-full border rounded-lg px-3 py-2' value={form.name}
+                                onChange={(e) => setForm((f) => f ? { ...f, name: e.target.value } : f)} placeholder='Enterprise' />
+                        </div>
+                        <div>
+                            <label className='block text-sm font-semibold mb-1'>Price (USD)</label>
+                            <input type='number' min={0} className='w-full border rounded-lg px-3 py-2' value={form.price} onChange={num('price')} />
+                        </div>
+                    </div>
+
+                    <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+                        <div>
+                            <label className='block text-sm font-semibold mb-1'>Duration (days)</label>
+                            <input type='number' min={0} className='w-full border rounded-lg px-3 py-2' value={form.durationDays} onChange={num('durationDays')} />
+                            <p className='text-[11px] text-gray-400 mt-0.5'>0 = never expires</p>
+                        </div>
+                        <div>
+                            <label className='block text-sm font-semibold mb-1'>Academies (quota)</label>
+                            <input type='number' className='w-full border rounded-lg px-3 py-2' value={form.maxAcademies} onChange={num('maxAcademies')} />
+                            <p className='text-[11px] text-gray-400 mt-0.5'>per client · -1 = unlimited</p>
+                        </div>
+                        <div>
+                            <label className='block text-sm font-semibold mb-1'>Max courses</label>
+                            <input type='number' className='w-full border rounded-lg px-3 py-2' value={form.maxCourses} onChange={num('maxCourses')} />
+                            <p className='text-[11px] text-gray-400 mt-0.5'>-1 = unlimited</p>
+                        </div>
+                        <div>
+                            <label className='block text-sm font-semibold mb-1'>Max teachers</label>
+                            <input type='number' className='w-full border rounded-lg px-3 py-2' value={form.maxTeachers} onChange={num('maxTeachers')} />
+                            <p className='text-[11px] text-gray-400 mt-0.5'>-1 = unlimited</p>
+                        </div>
+                    </div>
+
+                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                        <div>
+                            <label className='block text-sm font-semibold mb-1'>Video source</label>
+                            <select className='w-full border rounded-lg px-3 py-2' value={form.videoSource}
+                                onChange={(e) => setForm((f) => f ? { ...f, videoSource: e.target.value } : f)}>
+                                {VIDEO_SOURCES.map((v) => <option key={v} value={v}>{v}</option>)}
+                            </select>
+                        </div>
+                        <div className='flex items-end gap-4'>
+                            <label className='flex items-center gap-2 text-sm font-semibold'>
+                                <input type='checkbox' checked={form.active} onChange={(e) => setForm((f) => f ? { ...f, active: e.target.checked } : f)} />
+                                Active (offered on the build form)
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* Per-activity limits */}
+                    <div>
+                        <p className='text-sm font-semibold mb-2'>Per-course activity caps <span className='font-normal text-gray-400 text-xs'>(-1 = unlimited)</span></p>
+                        <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
+                            {LIMIT_KEYS.map((k) => (
+                                <div key={k}>
+                                    <label className='block text-xs text-gray-500 mb-1 capitalize'>{k}</label>
+                                    <input type='number' className='w-full border rounded-lg px-3 py-1.5 text-sm'
+                                        value={form.limits[k] ?? -1}
+                                        onChange={(e) => setForm((f) => f ? { ...f, limits: { ...f.limits, [k]: Number(e.target.value) } } : f)} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Features */}
+                    <div>
+                        <p className='text-sm font-semibold mb-2'>Features</p>
+                        <div className='flex flex-wrap gap-4'>
+                            {FEATURE_KEYS.map((f) => (
+                                <label key={f} className='flex items-center gap-2 text-sm capitalize'>
+                                    <input type='checkbox' checked={!!form.features[f]}
+                                        onChange={(e) => setForm((prev) => prev ? { ...prev, features: { ...prev.features, [f]: e.target.checked } } : prev)} />
+                                    {f}
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className='flex gap-3 pt-2'>
+                        <button type='submit' disabled={saving}
+                            className='bg-gradient-to-r from-[#268F79] to-[#0B2923] text-[#00FFB2] font-bold px-6 py-2 rounded-md disabled:opacity-60'>
+                            {saving ? 'Saving…' : editingKey ? 'Update licence' : 'Create licence'}
+                        </button>
+                        <button type='button' onClick={close} className='border border-gray-300 px-6 py-2 rounded-md text-gray-600 hover:bg-gray-50'>Cancel</button>
+                    </div>
+                </form>
+            )}
+
+            {/* List */}
+            {loading ? (
+                <p className='text-gray-400'>Loading…</p>
+            ) : (
+                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                    {licenses.map((l) => (
+                        <div key={l.key} className={`bg-white rounded-xl border shadow-sm p-5 space-y-2 ${l.active ? '' : 'opacity-60'}`}>
+                            <div className='flex items-start justify-between'>
+                                <div>
+                                    <p className='font-bold text-lg'>{l.name}</p>
+                                    <p className='text-xs text-gray-400 font-mono'>{l.key}</p>
+                                </div>
+                                <span className='text-[#268F79] font-bold'>{l.price === 0 ? 'Free' : `$${l.price}`}</span>
+                            </div>
+                            <ul className='text-xs text-gray-600 space-y-0.5'>
+                                <li>Academies / client: <b>{cap(l.maxAcademies)}</b></li>
+                                <li>Courses: <b>{cap(l.maxCourses)}</b> · Teachers: <b>{cap(l.maxTeachers)}</b></li>
+                                <li>Video: <b>{l.videoSource}</b> · {l.durationDays === 0 ? 'no expiry' : `${l.durationDays}d`}</li>
+                                <li className='truncate'>Features: <b>{FEATURE_KEYS.filter((f) => l.features?.[f]).join(', ') || 'none'}</b></li>
+                            </ul>
+                            <div className='flex gap-2 pt-2 border-t'>
+                                <button onClick={() => openEdit(l)} className='flex-1 text-sm border rounded-lg py-1.5 hover:bg-gray-50'>Edit</button>
+                                <button onClick={() => remove(l.key)} className='text-red-400 hover:text-red-600 border border-red-200 rounded-lg px-3 py-1.5 text-sm hover:bg-red-50'>🗑</button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     )
 }

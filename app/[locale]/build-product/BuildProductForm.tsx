@@ -1,11 +1,12 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/navigation'
-import { LICENSE_TIERS } from '@/lib/tiers'
+type License = { key: string; name: string; price: number; active: boolean; maxCourses: number; features: Record<string, boolean> }
+const FEATURE_LABELS: Record<string, string> = { drm: 'DRM video', coupons: 'coupons', offers: 'offers', subscriptions: 'subscriptions', packages: 'packages', jitsi: 'live sessions' }
 
 type FormValues = {
     name: string // full name (Arabic) — the primary name
@@ -58,11 +59,27 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
     })
 
     const [done, setDone] = useState<SuccessInfo | null>(null)
+    const [licenses, setLicenses] = useState<License[]>([])
     const [logo, setLogo] = useState<File | null>(null)
     const [logocompact, setLogocompact] = useState<File | null>(null)
     const [favicon, setFavicon] = useState<File | null>(null)
     const slugPreview = (watch('slug') || '').toLowerCase().trim()
     const selectedTier = watch('tier')
+
+    // Load the licences (packages) the client can pick from.
+    useEffect(() => {
+        fetch('/api/licenses')
+            .then((r) => r.json())
+            .then((d) => {
+                const active: License[] = (d.licenses ?? []).filter((l: License) => l.active)
+                setLicenses(active)
+                if (active.length && !active.some((l) => l.key === watch('tier'))) {
+                    setValue('tier', active[0].key)
+                }
+            })
+            .catch(() => { })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     // Validate an image pick against the type/size caps; toast + reject on fail.
     const pickImage = (
@@ -271,23 +288,27 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                     {isAr ? 'الباقة' : 'License'} <span className='text-red-500'>*</span>
                 </label>
                 <div className='grid grid-cols-2 gap-2'>
-                    {LICENSE_TIERS.map((tier) => {
-                        const on = selectedTier === tier.key
+                    {licenses.map((lic) => {
+                        const on = selectedTier === lic.key
+                        const summary = [
+                            `${lic.maxCourses < 0 ? (isAr ? 'كورسات بلا حد' : 'unlimited courses') : `${lic.maxCourses} ${isAr ? 'كورسات' : 'courses'}`}`,
+                            ...Object.keys(lic.features || {}).filter((f) => lic.features[f]).map((f) => FEATURE_LABELS[f] ?? f),
+                        ].slice(0, 3)
                         return (
                             <button
                                 type='button'
-                                key={tier.key}
-                                onClick={() => setValue('tier', tier.key)}
+                                key={lic.key}
+                                onClick={() => setValue('tier', lic.key)}
                                 className={`text-start rounded-xl border p-3 transition-colors ${on ? 'border-[#1E7D67] bg-[#1E7D67]/5 ring-1 ring-[#1E7D67]' : 'border-gray-200 bg-gray-50 hover:border-gray-300'}`}
                             >
                                 <div className='flex items-baseline justify-between gap-2'>
-                                    <span className='font-bold text-[#0B2923]'>{isAr ? tier.nameAr : tier.nameEn}</span>
+                                    <span className='font-bold text-[#0B2923]'>{lic.name}</span>
                                     <span className='text-sm font-bold text-[#1E7D67]' dir='ltr'>
-                                        {isAr ? tier.priceAr : tier.priceEn}
+                                        {lic.price === 0 ? (isAr ? 'مجاني' : 'Free') : `$${lic.price}`}
                                     </span>
                                 </div>
                                 <ul className='mt-1 list-disc ps-4 text-xs text-gray-500'>
-                                    {(isAr ? tier.featuresAr : tier.featuresEn).slice(0, 3).map((f, i) => (
+                                    {summary.map((f, i) => (
                                         <li key={i}>{f}</li>
                                     ))}
                                 </ul>
