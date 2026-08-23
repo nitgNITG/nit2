@@ -45,7 +45,7 @@ echo "==> writing /opt/saas/provision.env"
 cat > /opt/saas/provision.env <<ENVEOF
 PROVISION_SECRET=$SECRET
 GITHUB_TOKEN=$TOKEN
-SAAS_IMAGE=${SAAS_IMAGE:-ghcr.io/NITGg/saas-moodle:latest}
+SAAS_IMAGE=${SAAS_IMAGE:-ghcr.io/nitgg/saas-moodle:latest}
 CREATE_SH=/root/create.sh
 DESTROY_SH=/root/destroy.sh
 APPLY_LICENSE_SH=/root/apply-license.sh
