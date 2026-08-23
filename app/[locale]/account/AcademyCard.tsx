@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { connectLinks } from '@/lib/connectLinks'
+import DeletePlatformButton from './DeletePlatformButton'
 
 const MONO = "'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace"
 
@@ -123,6 +124,15 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
                     {t('preparingHint')}
                 </div>
             )}
+
+            {/* Owner action: delete this academy (confirm dialog inside). */}
+            <div className='mt-auto flex justify-end border-t border-black/5 pt-3'>
+                <DeletePlatformButton
+                    slug={academy.slug}
+                    name={academy.name}
+                    triggerClassName='inline-flex w-fit items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-bold text-red-600 hover:bg-red-500/10 transition-colors'
+                />
+            </div>
         </div>
     )
 }

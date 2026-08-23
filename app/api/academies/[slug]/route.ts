@@ -148,11 +148,15 @@ async function triggerDeprovision(slug: string): Promise<void> {
 export async function DELETE(_req: NextRequest, { params }: { params: { slug: string } }) {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    if (user.role !== "admin") return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
     const slug = params.slug;
     const academy = await prisma.academy.findUnique({ where: { slug } });
     if (!academy) return NextResponse.json({ error: "not found" }, { status: 404 });
+
+    // Admins can delete any academy; a client may delete only their own.
+    if (user.role !== "admin" && academy.ownerId !== user.id) {
+        return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    }
 
     // Best-effort: tell server B to tear the live site down (container + db +
     // files + apache vhost). Fire-and-forget — never block the delete over it.

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useRouter } from '@/navigation'
 import { useTranslations } from 'next-intl'
 
-export default function DeletePlatformButton({ slug, name }: { slug: string; name: string }) {
+export default function DeletePlatformButton({ slug, name, triggerClassName }: { slug: string; name: string; triggerClassName?: string }) {
     const t = useTranslations('Admin')
     const router = useRouter()
     const [open, setOpen] = useState(false)
@@ -37,7 +37,7 @@ export default function DeletePlatformButton({ slug, name }: { slug: string; nam
         <>
             <button
                 onClick={() => { setOpen(true); setError(false) }}
-                className='inline-flex w-fit items-center gap-1.5 rounded-lg bg-red-500/15 px-3 py-1.5 text-sm font-bold text-red-300 hover:bg-red-500/25 transition-colors'
+                className={triggerClassName ?? 'inline-flex w-fit items-center gap-1.5 rounded-lg bg-red-500/15 px-3 py-1.5 text-sm font-bold text-red-300 hover:bg-red-500/25 transition-colors'}
             >
                 <TrashIcon className='h-4 w-4' />
                 {t('delete')}
