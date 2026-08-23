@@ -58,6 +58,9 @@ export default function AuthMenu({ mobile = false, onNavigate }: { mobile?: bool
         return (
             <div className='flex flex-col items-center gap-3'>
                 <span className='text-white/60 text-sm'>{me.name || me.email}</span>
+                {me.role === 'admin' && (
+                    <LocalLink onClick={onNavigate} href='/dashboard' className='font-semibold text-xl text-[#00FFB2]'>{t('adminPanel')}</LocalLink>
+                )}
                 <LocalLink onClick={onNavigate} href='/account' className='font-semibold text-xl text-[#00FFB2]'>{t('myPlatforms')}</LocalLink>
                 <button onClick={logout} className='font-semibold text-lg text-red-300'>{t('logout')}</button>
             </div>
@@ -84,6 +87,11 @@ export default function AuthMenu({ mobile = false, onNavigate }: { mobile?: bool
                     className='absolute top-full mt-2 min-w-[12rem] rounded-xl bg-white p-1.5 shadow-2xl ring-1 ring-black/5 z-[999999]'
                     style={{ insetInlineEnd: 0 }}
                 >
+                    {me.role === 'admin' && (
+                        <LocalLink href='/dashboard' onClick={() => setOpen(false)} className='block rounded-lg px-3 py-2 text-sm font-semibold text-[#0B2923] hover:bg-[#1E7D67]/5'>
+                            {t('adminPanel')}
+                        </LocalLink>
+                    )}
                     <LocalLink href='/account' onClick={() => setOpen(false)} className='block rounded-lg px-3 py-2 text-sm font-semibold text-[#0B2923] hover:bg-[#1E7D67]/5'>
                         {t('myPlatforms')}
                     </LocalLink>
