@@ -1,43 +1,33 @@
 #!/usr/bin/env bash
 # ============================================================================
-#  create.sh — provision ONE client academy on server B (3alemny / Apache).
+#  create.sh — provision ONE client academy from the BAKED IMAGE (server B / Apache).
 #
-#  Does exactly what the brief asks, for Apache:
-#    1) create virtual host   2) clone the academy branch   3) enable vhost
-#    4) add SSL (certbot)      5) restart apache
-#  ...plus the container + database each client needs.
+#  The Moodle code is NOT cloned per client and NOT
+#  bind-mounted. It is baked into the image (see docker/build-image.sh). Each
+#  client keeps ONLY a per-client config.php + moodledata + database. Result:
+#  ~700 MB/client -> ~120 MB/client, no .git on the server.
 #
-#  Usage:   sudo bash create.sh <slug> "<Academy name>"
-#  Result:  https://<slug>.academy2026.nitg-eg.com   (own DB, moodledata, HTTPS)
+#  Usage:   SAAS_IMAGE=saas-moodle:2026.08 sudo -E bash create.sh <slug> "<name>"
 #
-#  First run auto-bootstraps shared infra (network + shared MariaDB + template
-#  taken from the existing EAAC). Every run just provisions the given client.
-#
-#  Env (optional):
-#    GITHUB_TOKEN        — token to clone a PRIVATE saas repo.
-#    Branding (applied after the site is up, via theme/nit/cli/apply_brand.php):
-#      BRAND_FULLNAME_AR / BRAND_FULLNAME_EN    site full name per language
-#      BRAND_SHORTNAME_AR / BRAND_SHORTNAME_EN  site short name per language
-#      BRAND_LOGO         — host path to a logo image file
-#      BRAND_LOGOCOMPACT  — host path to the compact logo (emblem/icon)
-#      BRAND_FAVICON      — host path to a favicon file
-#    When no BRAND_FULLNAME_* is given, the <name> arg becomes the full name,
-#    so a manual run still sets the site name (instead of the template's).
+#  Env:
+#    SAAS_IMAGE     baked image to run (default: saas-moodle:latest)
+#    CUSTOM_CODE=1  this client needs its own code -> fall back to clone+bind-mount
+#                   (the old behaviour, isolated to this one client)
+#    GITHUB_TOKEN, BRAND_*, LICENSE_*, SETTING_*  — same contract as create.sh
 # ============================================================================
 set -euo pipefail
 
 # ── Config ──────────────────────────────────────────────────────────────────
-DOMAIN="academy2026.nitg-eg.com"          # client = <slug>.academy2026.nitg-eg.com
+DOMAIN="academy2026.nitg-eg.com"
 REPO_OWNER="NITGg"
 REPO_NAME="saas-demo"
 ROOT="/opt/saas"
 NET="saas_net"
-DB_CONTAINER="saas_mariadb"               # our own shared DB (EAAC's is untouched)
-IMAGE="moodle-new:latest"                 # reuse the existing EAAC image
+DB_CONTAINER="saas_mariadb"
+IMAGE="${SAAS_IMAGE:-saas-moodle:latest}"   # ← baked image, not moodle-new:latest
 PORT_BASE=8100
 LE_EMAIL="admin@nitg-eg.com"
 
-# Source for the one-time template (the existing EAAC on this server):
 SRC_DB_CONTAINER="moodle_db_new"
 SRC_DB_NAME="moodle"
 SRC_DB_USER="moodle"
@@ -55,15 +45,16 @@ SLUG="${1:-}"; NAME="${2:-}"
 DB_NAME="moodle_${SLUG//-/_}"
 CONTAINER="saas_moodle_${SLUG}"
 SUBDOMAIN="${SLUG}.${DOMAIN}"
-CODE_DIR="$ROOT/clients/$SLUG/code"
-DATA_DIR="$ROOT/clients/$SLUG/moodledata"
+CLIENT_DIR="$ROOT/clients/$SLUG"
+CODE_DIR="$CLIENT_DIR/code"                 # only used for CUSTOM_CODE clients
+DATA_DIR="$CLIENT_DIR/moodledata"
+CONF="$CLIENT_DIR/config.php"               # per-client config, mounted read-only
 BRANCH="client/$SLUG"
 VHOST="/etc/apache2/sites-available/${SUBDOMAIN}.conf"
 
-# ── One-time shared infrastructure ──────────────────────────────────────────
+# ── One-time shared infrastructure (identical to create.sh) ─────────────────
 ensure_infra(){
     mkdir -p "$ROOT/clients"
-
     if [[ ! -f "$ROOT/saas.env" ]]; then
         { echo "DB_ROOT_PW=$(openssl rand -hex 24)"; } > "$ROOT/saas.env"
         chmod 600 "$ROOT/saas.env"
@@ -97,7 +88,6 @@ ensure_infra(){
         cp -a "$SRC_MOODLEDATA/." "$ROOT/moodledata-base/" 2>/dev/null || true
     fi
 
-    # Apache modules the vhost needs (idempotent)
     a2enmod proxy proxy_http headers rewrite ssl >/dev/null 2>&1 || true
 }
 
@@ -107,24 +97,33 @@ find_free_port(){
     echo "$p"
 }
 
-# ── Guard ───────────────────────────────────────────────────────────────────
+# ── Guards ──────────────────────────────────────────────────────────────────
 docker ps -a --format '{{.Names}}' | grep -qx "$CONTAINER" && die "client '$SLUG' already exists."
+docker image inspect "$IMAGE" >/dev/null 2>&1 \
+    || die "image '$IMAGE' not found — build it first: bash docker/build-image.sh"
 
 ensure_infra
 # shellcheck disable=SC1091
 source "$ROOT/saas.env"
 PORT="$(find_free_port)"
-log "client=$SLUG  subdomain=$SUBDOMAIN  port=$PORT  db=$DB_NAME"
+log "client=$SLUG  subdomain=$SUBDOMAIN  port=$PORT  db=$DB_NAME  image=$IMAGE"
 
-# ── 1. Clone the client branch ──────────────────────────────────────────────
-log "cloning $BRANCH"
-if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-    CLONE_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
+mkdir -p "$CLIENT_DIR"
+
+# ── 1. Code — baked (default) or cloned (CUSTOM_CODE) ───────────────────────
+if [[ "${CUSTOM_CODE:-0}" == "1" ]]; then
+    log "CUSTOM_CODE=1 — cloning $BRANCH for a per-client code copy"
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+        CLONE_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
+    else
+        CLONE_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}.git"
+    fi
+    rm -rf "$CODE_DIR"
+    git clone --depth 1 --branch "$BRANCH" "$CLONE_URL" "$CODE_DIR"
 else
-    CLONE_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}.git"
+    log "using baked image code (no per-client clone)"
+    rm -rf "$CODE_DIR"   # ensure no stale copy lingers
 fi
-rm -rf "$CODE_DIR"; mkdir -p "$(dirname "$CODE_DIR")"
-git clone --depth 1 --branch "$BRANCH" "$CLONE_URL" "$CODE_DIR"
 
 # ── 2. Seed moodledata ──────────────────────────────────────────────────────
 log "seeding moodledata"
@@ -143,9 +142,11 @@ SQL
 log "importing template"
 docker exec -i "$DB_CONTAINER" mariadb -uroot -p"$DB_ROOT_PW" "$DB_NAME" < "$ROOT/template.sql"
 
-# ── 4. Write config.php ─────────────────────────────────────────────────────
-log "writing config.php"
-cat > "$CODE_DIR/config.php" <<PHP
+# ── 4. Write config.php (per-client file, mounted over the baked path) ───────
+log "writing config.php -> $CONF"
+CONFIG_TARGET="$CONF"
+[[ "${CUSTOM_CODE:-0}" == "1" ]] && CONFIG_TARGET="$CODE_DIR/config.php"
+cat > "$CONFIG_TARGET" <<PHP
 <?php
 unset(\$CFG); global \$CFG; \$CFG = new stdClass();
 \$CFG->dbtype    = 'mariadb';
@@ -166,20 +167,28 @@ PHP
 
 # ── 5. Start the container ──────────────────────────────────────────────────
 log "starting container $CONTAINER on 127.0.0.1:$PORT"
-docker run -d --name "$CONTAINER" --network "$NET" --restart unless-stopped \
-    -v "$CODE_DIR":/var/www/html \
-    -v "$DATA_DIR":/var/www/moodledata \
-    -p "127.0.0.1:$PORT:80" \
-    "$IMAGE"
+if [[ "${CUSTOM_CODE:-0}" == "1" ]]; then
+    docker run -d --name "$CONTAINER" --network "$NET" --restart unless-stopped \
+        -v "$CODE_DIR":/var/www/html \
+        -v "$DATA_DIR":/var/www/moodledata \
+        -p "127.0.0.1:$PORT:80" \
+        "$IMAGE"
+else
+    docker run -d --name "$CONTAINER" --network "$NET" --restart unless-stopped \
+        -v "$CONF":/var/www/html/config.php:ro \
+        -v "$DATA_DIR":/var/www/moodledata \
+        -p "127.0.0.1:$PORT:80" \
+        "$IMAGE"
+fi
 
 log "finalising Moodle (upgrade + purge caches)"
 sleep 5
 docker exec "$CONTAINER" php /var/www/html/admin/cli/upgrade.php --non-interactive || true
 
-# Enable the {mlang} multi-language filter (plugin ships in the base code) so
-# {mlang ..} tags render instead of showing raw — no manual install by the client.
+# ── Enable the multilang2 filter (baked code ships it) ──────────────────────
 log "enabling multilang2 filter"
-cat > "$CODE_DIR/enable_mlang.php" <<'PHP'
+TMP_MLANG="$(mktemp)"
+cat > "$TMP_MLANG" <<'PHP'
 <?php
 define('CLI_SCRIPT', true);
 require('/var/www/html/config.php');
@@ -188,21 +197,18 @@ filter_set_global_state('multilang2', TEXTFILTER_ON);
 $sf = get_config('core', 'stringfilters');
 $list = array_filter(array_map('trim', explode(',', (string)$sf)));
 if (!in_array('multilang2', $list, true)) { $list[] = 'multilang2'; }
-set_config('stringfilters', implode(',', $list));  // apply to headings/titles too
+set_config('stringfilters', implode(',', $list));
 set_config('filterall', 1);
 echo "multilang2 enabled\n";
 PHP
-docker exec "$CONTAINER" php /var/www/html/enable_mlang.php || true
-rm -f "$CODE_DIR/enable_mlang.php"
+docker cp "$TMP_MLANG" "$CONTAINER:/tmp/enable_mlang.php"
+docker exec "$CONTAINER" php /tmp/enable_mlang.php || true
+docker exec "$CONTAINER" rm -f /tmp/enable_mlang.php || true
+rm -f "$TMP_MLANG"
 
-# Apply per-client branding: site name (full + short, AR/EN) + logo + favicon.
-# The NIT "build your product" form collects these; the provisioning service
-# stages the images and passes them as env, so the client never opens Moodle's
-# admin settings. A manual run with no BRAND_* env still names the site (<name>).
+# ── Branding (site name + logo + favicon) via docker cp into the container ──
 log "applying branding"
-BRAND_DIR="$CODE_DIR/nit-brand"
-rm -rf "$BRAND_DIR"; mkdir -p "$BRAND_DIR"
-
+BRAND_DIR="$(mktemp -d)"
 LOGO_REL=""; LOGOCOMPACT_REL=""; FAVICON_REL=""
 if [[ -n "${BRAND_LOGO:-}" && -f "${BRAND_LOGO}" ]]; then
     ext="${BRAND_LOGO##*.}"; cp -f "$BRAND_LOGO" "$BRAND_DIR/logo.${ext}"; LOGO_REL="logo.${ext}"
@@ -214,12 +220,9 @@ if [[ -n "${BRAND_FAVICON:-}" && -f "${BRAND_FAVICON}" ]]; then
     ext="${BRAND_FAVICON##*.}"; cp -f "$BRAND_FAVICON" "$BRAND_DIR/favicon.${ext}"; FAVICON_REL="favicon.${ext}"
 fi
 
-# Full name: explicit env wins; otherwise fall back to the <name> arg so the
-# site is never left showing the template's name.
 B_FN_AR="${BRAND_FULLNAME_AR:-}"; B_FN_EN="${BRAND_FULLNAME_EN:-}"
 if [[ -z "$B_FN_AR" && -z "$B_FN_EN" ]]; then B_FN_EN="$NAME"; fi
 
-# Build the manifest with python (values via env, so Arabic/spaces are safe).
 BRAND_FULLNAME_AR="$B_FN_AR" BRAND_FULLNAME_EN="$B_FN_EN" \
 BRAND_SHORTNAME_AR="${BRAND_SHORTNAME_AR:-}" BRAND_SHORTNAME_EN="${BRAND_SHORTNAME_EN:-}" \
 LOGO_REL="$LOGO_REL" LOGOCOMPACT_REL="$LOGOCOMPACT_REL" FAVICON_REL="$FAVICON_REL" \
@@ -237,24 +240,22 @@ if os.environ.get("FAVICON_REL"):     d["favicon"]     = os.environ["FAVICON_REL
 json.dump(d, open(sys.argv[1], "w"), ensure_ascii=False)
 PYJSON
 
+docker exec "$CONTAINER" rm -rf /tmp/nit-brand || true
+docker cp "$BRAND_DIR" "$CONTAINER:/tmp/nit-brand"
 docker exec "$CONTAINER" php /var/www/html/public/theme/nit/cli/apply_brand.php \
-    --manifest=/var/www/html/nit-brand/brand.json || echo "!! branding step failed (site still live)"
+    --manifest=/tmp/nit-brand/brand.json || echo "!! branding step failed (site still live)"
+docker exec "$CONTAINER" rm -rf /tmp/nit-brand || true
 rm -rf "$BRAND_DIR"
 
-# ── Licence tier (local_license) — from the plan the client picked ───────────
-# LICENSE_TIER comes from the provisioner (demo|basic|standard|professional).
-# Setting `enabled=1` turns enforcement ON so the tier's caps/features apply.
+# ── Licence tier (local_license) ────────────────────────────────────────────
 TIER="${LICENSE_TIER:-demo}"
 case "$TIER" in demo|basic|standard|professional) ;; *) TIER="demo" ;; esac
 log "setting local_license tier=$TIER (enforcement on)"
 docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=tier    --set="$TIER" || echo "!! could not set licence tier (site still live)"
 docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=enabled --set=1       || echo "!! could not enable licence enforcement"
-# Dynamic licence definition (JSON) from the control plane; empty = built-in default.
 docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=definition --set="${LICENSE_DEFINITION:-}" || echo "!! could not set licence definition"
 
-# ── Global platform settings (local_multitopics) — pushed from nit2 ──────────
-# These MUST be identical for every academy (google_client_id, store URLs, …).
-# Passed in as SETTING_<KEY> env by the provisioner; only non-empty ones apply.
+# ── Global platform settings (local_multitopics) ────────────────────────────
 for _skey in google_client_id apple_client_id facebook_app_id android_version android_url ios_version ios_url; do
     _senv="SETTING_$(echo "$_skey" | tr '[:lower:]' '[:upper:]')"
     _sval="${!_senv:-}"
@@ -266,7 +267,7 @@ done
 
 docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
 
-# ── 6. Apache vhost → enable → SSL → restart ────────────────────────────────
+# ── 6. Apache vhost → enable → SSL → restart (identical to create.sh) ───────
 log "creating apache vhost"
 cat > "$VHOST" <<APACHE
 <VirtualHost *:80>
@@ -292,5 +293,5 @@ systemctl reload apache2
 echo ""
 echo "============================================================"
 echo "  '$NAME' is live:  https://$SUBDOMAIN"
-echo "  container=$CONTAINER  port=$PORT  db=$DB_NAME"
+echo "  container=$CONTAINER  port=$PORT  db=$DB_NAME  image=$IMAGE"
 echo "============================================================"
