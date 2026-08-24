@@ -249,8 +249,15 @@ export async function POST(req: NextRequest) {
 
         // 3) Record it (control plane). Guard the rare race on the unique slug.
         try {
+            // Subscription term from the licence duration (0 days = never expires).
+            const now = new Date();
+            const days = lic?.durationDays ?? 0;
+            const validUntil = days > 0 ? new Date(now.getTime() + days * 86_400_000) : null;
             const academy = await prisma.academy.create({
-                data: { name: cleanName, slug: cleanSlug, branch, status: "branch_created", tier, ownerId: user.id },
+                data: {
+                    name: cleanName, slug: cleanSlug, branch, status: "branch_created",
+                    tier, ownerId: user.id, subscribedAt: now, validUntil,
+                },
             });
             return NextResponse.json(
                 { ok: true, slug: academy.slug, branch: academy.branch },

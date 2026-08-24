@@ -46,7 +46,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
     let body: any;
     try { body = await req.json(); } catch { return NextResponse.json({ error: "bad json" }, { status: 400 }); }
 
-    const data: { status?: string; tier?: string } = {};
+    const data: { status?: string; tier?: string; subscribedAt?: Date; validUntil?: Date | null } = {};
 
     // Status transition — worker-guarded.
     if (body?.status !== undefined) {
@@ -74,6 +74,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
         }
         data.tier = key;
         tierChanged = key;
+        // Plan change starts a fresh subscription term from the new licence duration.
+        const now = new Date();
+        data.subscribedAt = now;
+        data.validUntil = (lic.durationDays ?? 0) > 0
+            ? new Date(now.getTime() + lic.durationDays * 86_400_000)
+            : null;
     }
 
     // Suspend / resume — admin-guarded (soft-lock via local_license).

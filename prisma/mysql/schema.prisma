@@ -64,6 +64,11 @@ model Academy {
   status    String   @default("branch_created") // branch_created | provisioning | live | failed | suspended
   tier      String   @default("demo") // the License.key this academy runs on
   ownerId   String? // client User id (same MySQL DB; joined by string, not a relation)
+  // Subscription term: when the current licence started and when it lapses.
+  // `validUntil` null = never expires (License.durationDays = 0). Set on create
+  // (and on plan change / renewal) from the License's durationDays.
+  subscribedAt DateTime? // start of the current subscription term
+  validUntil   DateTime? // end of the term; null = never expires
   createdAt DateTime @default(now())
 }
 

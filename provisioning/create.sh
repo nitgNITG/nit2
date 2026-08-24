@@ -247,8 +247,14 @@ fi
 B_FN_AR="${BRAND_FULLNAME_AR:-}"; B_FN_EN="${BRAND_FULLNAME_EN:-}"
 if [[ -z "$B_FN_AR" && -z "$B_FN_EN" ]]; then B_FN_EN="$NAME"; fi
 
+# Short name drives the navbar title. If the client didn't give one, fall back to
+# the full name (then the <name> arg) so the navbar shows the academy — never the
+# template's default "academy".
+B_SN_AR="${BRAND_SHORTNAME_AR:-}"; B_SN_EN="${BRAND_SHORTNAME_EN:-}"
+if [[ -z "$B_SN_AR" && -z "$B_SN_EN" ]]; then B_SN_AR="$B_FN_AR"; B_SN_EN="${B_FN_EN:-$NAME}"; fi
+
 BRAND_FULLNAME_AR="$B_FN_AR" BRAND_FULLNAME_EN="$B_FN_EN" \
-BRAND_SHORTNAME_AR="${BRAND_SHORTNAME_AR:-}" BRAND_SHORTNAME_EN="${BRAND_SHORTNAME_EN:-}" \
+BRAND_SHORTNAME_AR="$B_SN_AR" BRAND_SHORTNAME_EN="$B_SN_EN" \
 LOGO_REL="$LOGO_REL" LOGOCOMPACT_REL="$LOGOCOMPACT_REL" FAVICON_REL="$FAVICON_REL" \
 python3 - "$BRAND_DIR/brand.json" <<'PYJSON'
 import json, os, sys
