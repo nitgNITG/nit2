@@ -104,11 +104,16 @@ docker exec "$TMP_C" php /var/www/moodledata/enable_mlang.php || true
 # ── 6. (Home page) hook — seed default front-page sections if a seeder exists ─
 # Drop a seed_homepage.php next to this script to auto-add the placeholder
 # nit_section blocks (hero/about/courses/gallery/contact). See build notes.
-if [[ -f "$(dirname "$0")/seed_homepage.php" ]]; then
-    log "seeding placeholder home page"
-    docker cp "$(dirname "$0")/seed_homepage.php" "$TMP_C:/var/www/moodledata/seed_homepage.php"
+SEED_DIR="$(dirname "$0")"
+if [[ -f "$SEED_DIR/seed_homepage.php" && -d "$SEED_DIR/home-sections" ]]; then
+    log "seeding home page from home-sections/"
+    docker exec "$TMP_C" rm -rf /var/www/moodledata/home-sections
+    docker cp "$SEED_DIR/home-sections" "$TMP_C:/var/www/moodledata/home-sections"
+    docker cp "$SEED_DIR/seed_homepage.php" "$TMP_C:/var/www/moodledata/seed_homepage.php"
     docker exec "$TMP_C" php /var/www/moodledata/seed_homepage.php || echo "!! home-page seed failed"
-    docker exec "$TMP_C" rm -f /var/www/moodledata/seed_homepage.php || true
+    docker exec "$TMP_C" rm -rf /var/www/moodledata/seed_homepage.php /var/www/moodledata/home-sections || true
+else
+    log "no home-sections/ — skipping home-page seed (front page will be empty)"
 fi
 
 docker exec "$TMP_C" php /var/www/html/admin/cli/purge_caches.php || true
