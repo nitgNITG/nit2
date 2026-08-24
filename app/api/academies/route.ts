@@ -46,6 +46,7 @@ type Brand = {
     fullname_en?: string;
     shortname_ar?: string;
     shortname_en?: string;
+    primary?: string; // brand colour (hex) chosen in the build form
     logo?: BrandImage;
     logocompact?: BrandImage;
     favicon?: BrandImage;
@@ -62,6 +63,10 @@ function sanitizeBrand(raw: unknown): Brand {
     for (const k of ["fullname_ar", "fullname_en", "shortname_ar", "shortname_en"] as const) {
         const v = b[k];
         if (typeof v === "string" && v.trim()) out[k] = v.trim().slice(0, MAX_NAME_LEN);
+    }
+    // Brand colour — accept a #rrggbb hex only.
+    if (typeof b.primary === "string" && /^#[0-9a-fA-F]{6}$/.test(b.primary.trim())) {
+        out.primary = b.primary.trim();
     }
     for (const k of ["logo", "logocompact", "favicon"] as const) {
         const img = b[k];

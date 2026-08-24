@@ -1,10 +1,14 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/navigation'
+import HomePreview from './HomePreview'
+
+// Preset brand colours the client can pick with one click (custom picker too).
+const COLOR_PRESETS = ['#5488c4', '#2f9e8f', '#7c6cd6', '#c9512a', '#d4933a', '#2f8f57', '#c2456b', '#0f172a']
 type License = { key: string; name: string; price: number; active: boolean; maxCourses: number; features: Record<string, boolean> }
 const FEATURE_LABELS: Record<string, string> = { drm: 'DRM video', coupons: 'coupons', offers: 'offers', subscriptions: 'subscriptions', packages: 'packages', jitsi: 'live sessions' }
 
@@ -63,8 +67,14 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
     const [logo, setLogo] = useState<File | null>(null)
     const [logocompact, setLogocompact] = useState<File | null>(null)
     const [favicon, setFavicon] = useState<File | null>(null)
+    const [primary, setPrimary] = useState<string>('#5488c4') // brand colour
     const slugPreview = (watch('slug') || '').toLowerCase().trim()
     const selectedTier = watch('tier')
+    const nameWatch = watch('name')
+
+    // Object URL for the picked logo, so the live preview can show it.
+    const logoUrl = useMemo(() => (logo ? URL.createObjectURL(logo) : null), [logo])
+    useEffect(() => () => { if (logoUrl) URL.revokeObjectURL(logoUrl) }, [logoUrl])
 
     // Load the licences (packages) the client can pick from.
     useEffect(() => {
@@ -112,6 +122,7 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                 fullname_en: values.fullnameEn?.trim() || undefined,
                 shortname_ar: values.shortnameAr?.trim() || undefined,
                 shortname_en: values.shortnameEn?.trim() || undefined,
+                primary: primary || undefined, // chosen brand colour
             }
             if (logo) brand.logo = { filename: logo.name, data_b64: await fileToBase64(logo) }
             if (logocompact) brand.logocompact = { filename: logocompact.name, data_b64: await fileToBase64(logocompact) }
@@ -125,6 +136,7 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                     slug: values.slug.toLowerCase().trim(),
                     tier: values.tier,
                     brand,
+                    locale,
                     _hp: values._hp,
                 }),
             })
@@ -253,6 +265,36 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                         {...register('shortnameEn')}
                     />
                 </div>
+            </div>
+
+            {/* Brand colour + live preview */}
+            <div className='mb-6 mt-2'>
+                <label className='mb-1.5 block font-bold text-[#0B2923]'>
+                    {isAr ? 'لون المنصة' : 'Brand colour'}
+                </label>
+                <div className='flex flex-wrap items-center gap-2'>
+                    {COLOR_PRESETS.map((col) => (
+                        <button
+                            type='button'
+                            key={col}
+                            onClick={() => setPrimary(col)}
+                            aria-label={col}
+                            className={`h-8 w-8 rounded-full ring-2 ring-offset-2 transition ${primary.toLowerCase() === col.toLowerCase() ? 'ring-[#0B2923]' : 'ring-transparent'}`}
+                            style={{ background: col }}
+                        />
+                    ))}
+                    <label className='ms-1 inline-flex cursor-pointer items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-600'>
+                        <span className='inline-block h-4 w-4 rounded-full' style={{ background: primary }} />
+                        {isAr ? 'مخصص' : 'Custom'}
+                        <input type='color' value={primary} onChange={(e) => setPrimary(e.target.value)} className='sr-only' />
+                    </label>
+                </div>
+
+                {/* Live preview — updates as you type name / pick colour / upload logo */}
+                <p className='mb-2 mt-4 text-sm text-gray-500'>
+                    {isAr ? 'معاينة مباشرة لمنصتك:' : 'Live preview of your platform:'}
+                </p>
+                <HomePreview name={nameWatch} primary={primary} logoUrl={logoUrl} isAr={isAr} />
             </div>
 
             {/* English identifier (slug → branch + future subdomain) */}
