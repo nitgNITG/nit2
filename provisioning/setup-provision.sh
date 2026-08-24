@@ -36,6 +36,8 @@ cp "$SCRIPT_DIR/update-site.sh"    /root/update-site.sh
 cp "$SCRIPT_DIR/apply-suspend.sh"  /root/apply-suspend.sh
 cp "$SCRIPT_DIR/send_welcome.php"  /root/send_welcome.php
 cp "$SCRIPT_DIR/apply_hero.php"    /root/apply_hero.php
+cp "$SCRIPT_DIR/apply_about.php"   /root/apply_about.php
+cp "$SCRIPT_DIR/apply_gallery.php" /root/apply_gallery.php
 chmod +x /root/create.sh /root/destroy.sh /root/apply-license.sh /root/apply-settings.sh /root/update-site.sh /root/apply-suspend.sh
 
 # ── The HTTP service — copied verbatim from the repo (NOT inlined), so branding,

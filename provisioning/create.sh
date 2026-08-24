@@ -314,6 +314,34 @@ if [[ -n "${BRAND_HERO:-}" && -f "${BRAND_HERO}" && -f /root/apply_hero.php ]]; 
     docker exec "$CONTAINER" rm -f /var/www/moodledata/apply_hero.php "$HERO_IN" || true
 fi
 
+# ── About photo — swap the client's image into the front-page about section ──
+if [[ -n "${BRAND_ABOUT:-}" && -f "${BRAND_ABOUT}" && -f /root/apply_about.php ]]; then
+    log "applying about photo"
+    ABOUT_IN="/var/www/moodledata/about_upload.${BRAND_ABOUT##*.}"
+    docker cp /root/apply_about.php "$CONTAINER:/var/www/moodledata/apply_about.php"
+    docker cp "$BRAND_ABOUT" "$CONTAINER:$ABOUT_IN"
+    docker exec -e ABOUT_IMAGE="$ABOUT_IN" "$CONTAINER" php /var/www/moodledata/apply_about.php || echo "!! about step failed (site still live)"
+    docker exec "$CONTAINER" rm -f /var/www/moodledata/apply_about.php "$ABOUT_IN" || true
+fi
+
+# ── Gallery images — fill the front-page gallery grid (comma-separated paths) ─
+if [[ -n "${BRAND_GALLERY:-}" && -f /root/apply_gallery.php ]]; then
+    log "applying gallery images"
+    docker cp /root/apply_gallery.php "$CONTAINER:/var/www/moodledata/apply_gallery.php"
+    GAL_IN=""; i=0
+    IFS=',' read -ra _gpaths <<< "$BRAND_GALLERY"
+    for gp in "${_gpaths[@]}"; do
+        [[ -f "$gp" ]] || continue
+        dest="/var/www/moodledata/gal_${i}.${gp##*.}"
+        docker cp "$gp" "$CONTAINER:$dest"
+        GAL_IN="${GAL_IN:+$GAL_IN,}$dest"; i=$((i+1))
+    done
+    if [[ -n "$GAL_IN" ]]; then
+        docker exec -e GALLERY_IMAGES="$GAL_IN" "$CONTAINER" php /var/www/moodledata/apply_gallery.php || echo "!! gallery step failed (site still live)"
+    fi
+    docker exec "$CONTAINER" sh -c 'rm -f /var/www/moodledata/apply_gallery.php /var/www/moodledata/gal_*' || true
+fi
+
 # ── Licence tier (local_license) ────────────────────────────────────────────
 TIER="${LICENSE_TIER:-demo}"
 case "$TIER" in demo|basic|standard|professional) ;; *) TIER="demo" ;; esac

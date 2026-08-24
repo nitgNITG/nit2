@@ -51,6 +51,8 @@ type Brand = {
     logocompact?: BrandImage;
     favicon?: BrandImage;
     hero?: BrandImage;
+    about?: BrandImage;
+    gallery?: BrandImage[];
 };
 
 const MAX_NAME_LEN = 200;
@@ -75,17 +77,23 @@ function sanitizeBrand(raw: unknown): Brand {
         }
         if (Object.keys(cout).length) out.colors = cout;
     }
-    for (const k of ["logo", "logocompact", "favicon", "hero"] as const) {
-        const img = b[k];
-        if (img && typeof img === "object") {
-            const { filename, data_b64 } = img as Record<string, unknown>;
-            if (
-                typeof filename === "string" && filename &&
-                typeof data_b64 === "string" && data_b64 && data_b64.length <= MAX_IMG_B64
-            ) {
-                out[k] = { filename: filename.slice(0, 120), data_b64 };
-            }
+    const validImage = (img: unknown): BrandImage | null => {
+        if (!img || typeof img !== "object") return null;
+        const { filename, data_b64 } = img as Record<string, unknown>;
+        if (typeof filename === "string" && filename &&
+            typeof data_b64 === "string" && data_b64 && data_b64.length <= MAX_IMG_B64) {
+            return { filename: filename.slice(0, 120), data_b64 };
         }
+        return null;
+    };
+    for (const k of ["logo", "logocompact", "favicon", "hero", "about"] as const) {
+        const v = validImage(b[k]);
+        if (v) out[k] = v;
+    }
+    // Gallery — an array of images (cap 8).
+    if (Array.isArray(b.gallery)) {
+        const imgs = b.gallery.map(validImage).filter((x): x is BrandImage => x !== null).slice(0, 8);
+        if (imgs.length) out.gallery = imgs;
     }
     return out;
 }

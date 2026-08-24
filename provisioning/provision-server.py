@@ -139,6 +139,18 @@ def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: 
         hero = _stage_image(stage, "hero", brand.get("hero"))
         if hero:
             env["BRAND_HERO"] = hero
+        about = _stage_image(stage, "about", brand.get("about"))
+        if about:
+            env["BRAND_ABOUT"] = about
+        gallery = brand.get("gallery")
+        if isinstance(gallery, list):
+            paths = []
+            for idx, img in enumerate(gallery[:8]):  # cap the gallery at 8 images
+                p = _stage_image(stage, "gallery{}".format(idx), img)
+                if p:
+                    paths.append(p)
+            if paths:
+                env["BRAND_GALLERY"] = ",".join(paths)
 
     try:
         with open(logpath, "ab", buffering=0) as log:

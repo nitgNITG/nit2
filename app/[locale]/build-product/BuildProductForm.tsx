@@ -88,6 +88,10 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
     const [hero, setHero] = useState<File | null>(null) // cover/hero image
     const heroUrl = useMemo(() => (hero ? URL.createObjectURL(hero) : null), [hero])
     useEffect(() => () => { if (heroUrl) URL.revokeObjectURL(heroUrl) }, [heroUrl])
+    const [about, setAbout] = useState<File | null>(null) // about/instructor photo
+    const aboutUrl = useMemo(() => (about ? URL.createObjectURL(about) : null), [about])
+    useEffect(() => () => { if (aboutUrl) URL.revokeObjectURL(aboutUrl) }, [aboutUrl])
+    const [gallery, setGallery] = useState<File[]>([]) // up to 8 gallery photos
     const slugPreview = (watch('slug') || '').toLowerCase().trim()
     const selectedTier = watch('tier')
     const nameWatch = watch('name')
@@ -148,6 +152,12 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
             if (logocompact) brand.logocompact = { filename: logocompact.name, data_b64: await fileToBase64(logocompact) }
             if (favicon) brand.favicon = { filename: favicon.name, data_b64: await fileToBase64(favicon) }
             if (hero) brand.hero = { filename: hero.name, data_b64: await fileToBase64(hero) }
+            if (about) brand.about = { filename: about.name, data_b64: await fileToBase64(about) }
+            if (gallery.length) {
+                brand.gallery = await Promise.all(
+                    gallery.map(async (f) => ({ filename: f.name, data_b64: await fileToBase64(f) })),
+                )
+            }
 
             const res = await fetch('/api/academies', {
                 method: 'POST',
@@ -172,6 +182,8 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
             setLogocompact(null)
             setFavicon(null)
             setHero(null)
+            setAbout(null)
+            setGallery([])
             // In the dashboard modal we hand control back (close + refresh);
             // on the standalone page we show the success card.
             if (onSuccess) { onSuccess(); return }
@@ -345,11 +357,49 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                     {hero && <p className='mt-1 truncate text-xs text-[#1E7D67]' dir='ltr'>{hero.name}</p>}
                 </div>
 
-                {/* Live preview — updates as you type name / pick colours / upload logo+hero */}
+                {/* About photo + gallery */}
+                <div className='mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2'>
+                    <div>
+                        <label htmlFor='about' className='mb-1.5 block text-sm font-semibold text-[#0B2923]'>
+                            {isAr ? 'صورة قسم "نبذة عن"' : 'About photo'}{' '}
+                            <span className='text-xs font-normal text-gray-400'>({t('optional')})</span>
+                        </label>
+                        <input
+                            id='about'
+                            type='file'
+                            accept='image/png,image/jpeg,image/webp'
+                            onChange={pickImage(setAbout, 1.5 * 1024 * 1024, ['image/png', 'image/jpeg', 'image/webp'], '1.5 MB')}
+                            className='block w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-[#1E7D67]/10 file:px-4 file:py-2.5 file:font-semibold file:text-[#1E7D67] hover:file:bg-[#1E7D67]/15'
+                        />
+                        {about && <p className='mt-1 truncate text-xs text-[#1E7D67]' dir='ltr'>{about.name}</p>}
+                    </div>
+                    <div>
+                        <label htmlFor='gallery' className='mb-1.5 block text-sm font-semibold text-[#0B2923]'>
+                            {isAr ? 'صور الألبوم' : 'Gallery photos'}{' '}
+                            <span className='text-xs font-normal text-gray-400'>({isAr ? 'حتى 8' : 'up to 8'})</span>
+                        </label>
+                        <input
+                            id='gallery'
+                            type='file'
+                            multiple
+                            accept='image/png,image/jpeg,image/webp'
+                            onChange={(e) => {
+                                const files = Array.from(e.target.files ?? []).slice(0, 8)
+                                const ok = files.filter((f) => f.size <= 1.5 * 1024 * 1024 && ['image/png', 'image/jpeg', 'image/webp'].includes(f.type))
+                                if (ok.length < files.length) toast.error(t('imageTooLarge', { max: '1.5 MB' }))
+                                setGallery(ok)
+                            }}
+                            className='block w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-[#1E7D67]/10 file:px-4 file:py-2.5 file:font-semibold file:text-[#1E7D67] hover:file:bg-[#1E7D67]/15'
+                        />
+                        {gallery.length > 0 && <p className='mt-1 text-xs text-[#1E7D67]' dir='ltr'>{gallery.length} {isAr ? 'صورة' : 'images'}</p>}
+                    </div>
+                </div>
+
+                {/* Live preview — updates as you type name / pick colours / upload images */}
                 <p className='mb-2 mt-4 text-sm text-gray-500'>
                     {isAr ? 'معاينة مباشرة لمنصتك:' : 'Live preview of your platform:'}
                 </p>
-                <HomePreview name={nameWatch} palette={palette} logoUrl={logoUrl} heroUrl={heroUrl} isAr={isAr} />
+                <HomePreview name={nameWatch} palette={palette} logoUrl={logoUrl} heroUrl={heroUrl} aboutUrl={aboutUrl} isAr={isAr} />
             </div>
 
             {/* English identifier (slug → branch + future subdomain) */}

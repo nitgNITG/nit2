@@ -1,5 +1,6 @@
-<!-- NIT default ABOUT (placeholder) — name + bullet credentials + social + image, like nohahashim. -->
-<div dir="auto" style="background: var(--nit-brand-background); color: var(--nit-brand-textprimary); padding: 64px 20px;">
+<!-- NIT default ABOUT (placeholder) — name + bullet credentials + social + image, like nohahashim.
+     data-nit-section="about" + data-nit-about-image let provisioning swap in the client's photo. -->
+<div dir="auto" data-nit-section="about" style="background: var(--nit-brand-background); color: var(--nit-brand-textprimary); padding: 64px 20px;">
   <div style="max-width: 1140px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit,minmax(300px,1fr)); gap: 40px; align-items: center;">
     <div>
       <h2 style="font-size: clamp(24px,4vw,34px); font-weight: 800; margin: 0 0 6px; color: var(--nit-brand-accenttext);">{mlang ar}نبذة عن{mlang}{mlang en}About{mlang}</h2>
@@ -16,7 +17,7 @@
         <a href="#" title="YouTube" style="width: 42px; height: 42px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: color-mix(in srgb, var(--nit-brand-error) 15%, transparent); color: var(--nit-brand-error); text-decoration: none; font-size: 18px;">▶</a>
       </div>
     </div>
-    <div style="border-radius: 20px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--nit-brand-textprimary) 10%, transparent); background: var(--nit-brand-surface); min-height: 300px; display: flex; align-items: center; justify-content: center; color: var(--nit-brand-textsecondary); font-size: 14px;">
+    <div data-nit-about-image style="border-radius: 20px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--nit-brand-textprimary) 10%, transparent); background: var(--nit-brand-surface); min-height: 300px; display: flex; align-items: center; justify-content: center; color: var(--nit-brand-textsecondary); font-size: 14px;">
       {mlang ar}📷 صورة المحاضر / الأكاديمية{mlang}{mlang en}📷 Instructor / academy photo{mlang}
     </div>
   </div>
