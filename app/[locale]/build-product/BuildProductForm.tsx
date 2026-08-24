@@ -35,6 +35,8 @@ type FormValues = {
     shortnameEn: string
     slug: string
     tier: string
+    contactPhone: string
+    contactWhatsapp: string
     _hp?: string // honeypot — stays empty for humans
 }
 
@@ -75,7 +77,7 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
         setValue,
         formState: { errors, isSubmitting },
     } = useForm<FormValues>({
-        defaultValues: { name: '', fullnameEn: '', shortnameAr: '', shortnameEn: '', slug: '', tier: 'demo', _hp: '' },
+        defaultValues: { name: '', fullnameEn: '', shortnameAr: '', shortnameEn: '', slug: '', tier: 'demo', contactPhone: '', contactWhatsapp: '', _hp: '' },
     })
 
     const [done, setDone] = useState<SuccessInfo | null>(null)
@@ -151,6 +153,8 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                 shortname_ar: values.shortnameAr?.trim() || undefined,
                 shortname_en: values.shortnameEn?.trim() || undefined,
                 colors: palette, // 6 brand colours → theme_nit Brand-Color roles
+                contact_phone: values.contactPhone?.trim() || undefined,
+                contact_whatsapp: values.contactWhatsapp?.trim() || undefined,
             }
             if (logo) brand.logo = { filename: logo.name, data_b64: await fileToBase64(logo) }
             if (logocompact) brand.logocompact = { filename: logocompact.name, data_b64: await fileToBase64(logocompact) }
@@ -407,6 +411,38 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                     {isAr ? 'معاينة مباشرة لمنصتك:' : 'Live preview of your platform:'}
                 </p>
                 <HomePreview name={nameWatch} palette={palette} logoUrl={logoUrl} heroUrl={heroUrl} aboutUrl={aboutUrl} faviconUrl={faviconUrl} galleryUrls={galleryUrls} isAr={isAr} />
+            </div>
+
+            {/* Contact details — fill the front-page contact section */}
+            <div className='mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2'>
+                <div>
+                    <label htmlFor='contactPhone' className='mb-1.5 block font-bold text-[#0B2923]'>
+                        {isAr ? 'رقم التواصل' : 'Contact phone'}{' '}
+                        <span className='text-sm font-normal text-gray-400'>({t('optional')})</span>
+                    </label>
+                    <input
+                        id='contactPhone'
+                        type='tel'
+                        dir='ltr'
+                        placeholder='+20 100 000 0000'
+                        className={`w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none transition-colors focus:border-[#1E7D67] focus:bg-white ${isAr ? 'text-right' : ''}`}
+                        {...register('contactPhone')}
+                    />
+                </div>
+                <div>
+                    <label htmlFor='contactWhatsapp' className='mb-1.5 block font-bold text-[#0B2923]'>
+                        {isAr ? 'واتساب' : 'WhatsApp'}{' '}
+                        <span className='text-sm font-normal text-gray-400'>({t('optional')})</span>
+                    </label>
+                    <input
+                        id='contactWhatsapp'
+                        type='tel'
+                        dir='ltr'
+                        placeholder={isAr ? 'فارغ = نفس رقم التواصل' : 'blank = same as phone'}
+                        className={`w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none transition-colors focus:border-[#1E7D67] focus:bg-white ${isAr ? 'text-right' : ''}`}
+                        {...register('contactWhatsapp')}
+                    />
+                </div>
             </div>
 
             {/* English identifier (slug → branch + future subdomain) */}

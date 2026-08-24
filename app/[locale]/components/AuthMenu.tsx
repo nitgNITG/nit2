@@ -36,19 +36,10 @@ export default function AuthMenu({ mobile = false, onNavigate }: { mobile?: bool
     // Loading — reserve space, don't flash the wrong state.
     if (me === undefined) return <span className={mobile ? '' : 'inline-block w-8 h-8'} aria-hidden />
 
-    // Signed out → a single "log in" entry.
+    // Signed out → render nothing here; the "Build your product" nav button
+    // (which links to /account for login/sign-up) is the only CTA we show.
     if (!me) {
-        return (
-            <LocalLink
-                href='/account'
-                onClick={onNavigate}
-                className={mobile
-                    ? 'block w-fit font-semibold text-xl text-[#00FFB2]'
-                    : 'px-3 py-1.5 rounded-full text-sm 2xl:text-base font-bold text-[#0B2923] whitespace-nowrap hover:bg-[#1E7D67]/5'}
-            >
-                {t('login')}
-            </LocalLink>
-        )
+        return null
     }
 
     const initial = (me.name || me.email || '?').trim().charAt(0).toUpperCase()

@@ -151,6 +151,12 @@ def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: 
                     paths.append(p)
             if paths:
                 env["BRAND_GALLERY"] = ",".join(paths)
+        phone = str(brand.get("contact_phone", "") or "").strip()
+        if phone:
+            env["BRAND_CONTACT_PHONE"] = phone[:40]
+        wa = str(brand.get("contact_whatsapp", "") or "").strip()
+        if wa:
+            env["BRAND_CONTACT_WHATSAPP"] = wa[:40]
 
     try:
         with open(logpath, "ab", buffering=0) as log:
