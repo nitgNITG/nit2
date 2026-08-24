@@ -88,6 +88,8 @@ docker exec "$TMP_C" php /var/www/html/admin/cli/install_database.php \
 # ── 5. Our defaults (theme + multilang + Arabic pack) ───────────────────────
 log "applying defaults: theme_nit, multilang2 filter"
 docker exec "$TMP_C" php /var/www/html/admin/cli/cfg.php --name=theme --set=nit || true
+# Land users on the Site home (front page with the seeded sections), not /my/.
+docker exec "$TMP_C" php /var/www/html/admin/cli/cfg.php --name=defaulthomepage --set=0 || true
 docker exec "$TMP_C" php /var/www/html/admin/cli/install_langpack.php --lang=ar || true
 cat > "$TMP_DATA/enable_mlang.php" <<'PHP'
 <?php
