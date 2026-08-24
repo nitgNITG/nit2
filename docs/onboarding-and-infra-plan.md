@@ -1,75 +1,83 @@
 # Plan — clean template, welcome email, data-dir move
 
-Three independent changes to academy onboarding + infra. Companion to
-`kashier-and-lifecycle-plan.md`.
+Three onboarding/infra changes. Companion to `kashier-and-lifecycle-plan.md`.
+Decisions below are **resolved** unless marked otherwise.
 
-## 1. Clean default template + branded home page
+## 1. Clean template + branded, editable home page
 
-**Problem:** every new academy is seeded from `template.sql` + `moodledata-base`
-that were dumped from the **EAAC** site — so new tenants start with EAAC's demo
-courses/users/content.
+**Problem:** new academies are seeded from a `template.sql` dumped from **EAAC** —
+they start with EAAC's demo content.
 
-**Goal:** a **clean Moodle** base + a nice **branded home page with placeholders**
-the owner can edit.
+**Goal:** a **clean Moodle** base + a **teacher-editable landing page** modeled on
+`nohahashim.com`, filled with placeholders the owner edits graphically.
+
+**Home-page sections (in order), all editable placeholders:**
+1. **Header** — logo, platform name, nav, login/register, phone
+2. **Hero** — full-width hero image (editable)
+3. **About** — heading + bullet text + image (right) + social links
+4. **Courses** — auto from the academy's Moodle courses (cards + "Start now")
+5. **Gallery** — image thumbnails
+6. **Contact CTA** — heading, phone(s), logo, social links
+7. **Footer** — N.I.T credit
+
+**Editable fields the teacher controls (graphical):**
+brand colour (Brand Colors gallery ✓), logo, platform name, hero image,
+about image + about text, social links (FB / WhatsApp / YouTube / …), gallery,
+contact phones.
+→ Most already exist as **theme_nit** config (`branding_export` / `links_export`).
+Work = (a) seed a **default front page** with these sections + placeholder copy in
+the template, (b) fill any missing editable settings so the teacher can do it all
+from the theme UI (no Moodle admin digging).
+
+**How to build the template:** fresh Moodle install in a throwaway container →
+configure the front page + placeholders → dump to a **versioned**
+`template-YYYY.MM.sql` + `moodledata-base`. `create.sh` keeps importing these.
+
+*Decide:* final placeholder AR/EN copy per section.
+
+## 2. Per-academy admin credentials + welcome email  (RESOLVED)
+
+**Problem:** all academies inherit the template's **same admin login**; the
+customer is never told how to log in.
+
+**Decisions:**
+- **Owner-as-admin:** create the customer as a **site admin, username = their email**;
+  keep the built-in `admin` with a random locked password. (Better UX + security
+  than a shared `admin`.)
+- **Force password change on first login.**
+- **Welcome email sent FROM the academy's Moodle** (core `email_to_user` /
+  `local_nit_emails`) → password never returns to nit2.
+- **Email language = the user's page locale** (pass `locale` in the provision payload).
 
 **How:**
-- Spin a throwaway container from the current image against a scratch DB → do a
-  **fresh Moodle install** (no EAAC content).
-- Configure a **default front page**: theme_nit layout with placeholder sections
-  (hero, about, featured courses, contact) — text/images the owner overrides later.
-- Dump → **new** `template.sql` + `moodledata-base` on Server B (version them, e.g.
-  `template-2026.09.sql`). `create.sh` keeps importing these — no script change.
-- The per-academy branding step (`apply_brand.php`) already overlays name/logo on top.
+- `nit2 /api/academies` → add `owner_email`, `owner_name`, `locale` to `/provision`.
+- `create.sh` → create the owner admin account + generated strong password +
+  force-change flag → trigger the localized welcome email.
 
-**Decide:** which placeholder sections + AR/EN default copy for the home page.
+## 3. Move academies dir: `/opt/saas` → `/var/www/html/saas`  (CONFIRMED)
 
-## 2. Per-academy admin credentials + welcome email
-
-**Problem:** all academies inherit the **same admin login** from the template
-(security risk) and the customer is never told how to log in.
-
-**Goal:** each academy gets a **unique admin password**, emailed to the customer.
+**Scope:** `/opt/saas` referenced **48×** across ~10 provisioning files.
 
 **How:**
-- `nit2` `/api/academies` already knows the owner → add `owner_email` + `owner_name`
-  to the `/provision` payload.
-- `create.sh`: generate a strong password → set the Moodle admin password via CLI
-  (`admin/cli/…` / `update_internal_user_password`) → flag **force change on first
-  login**.
-- **Send the welcome email FROM the academy's Moodle** (core `email_to_user` /
-  `local_nit_emails`) with: site URL, username, password, "change it on first login".
-  Keeps the password on-box — it never travels back to nit2.
-- Each academy's Moodle needs working outbound email (SMTP) — set via the global
-  platform settings pushed at provision time, or a shared relay.
-
-**Decide:** username scheme (`admin` vs per-academy), email language (AR/EN), and
-the SMTP/relay to send through.
-
-## 3. Move academies dir: `/opt/saas` → `/var/www/html/saas`
-
-**Scope:** `/opt/saas` is referenced **48×** across ~10 provisioning files
-(scripts, `provision.env`, systemd unit, deploy script, docs).
-
-**How:**
-- Introduce a single **`SAAS_ROOT`** var (default new path) instead of hardcoding,
-  so this never bites us again.
+- Introduce a single **`SAAS_ROOT`** (default `/var/www/html/saas`) — stop hardcoding.
 - Update: `create.sh`, `destroy.sh`, `update-site.sh`, `docker/migrate-client.sh`,
   `setup-provision.sh` (writes `provision.env` + paths), `saas-provision.service`
-  (EnvironmentFile), `deploy-provisioning.sh` (sources `provision.env`), the `.md`s.
+  (EnvironmentFile path), `deploy-provisioning.sh` (sources `provision.env`), docs.
 - **Migrate Server B:** stop `saas-provision` → `mv /opt/saas /var/www/html/saas` →
-  update refs → **recreate** each academy container (mount paths changed) →
-  restart service.
-- Only ~2 academies exist now → **cheap to do today**, painful later. Do it first.
+  redeploy scripts → **recreate** each academy container (mount paths change) →
+  restart. Only ~2 academies now → do it **first**.
 
-**Decide:** confirm target `/var/www/html/saas`.
+## Email transport (RESOLVED)
+**Shared relay** — one transactional sender (nitg-eg.com subdomain, proper
+SPF/DKIM), From-name = academy name, pushed to every academy via platform
+settings at provision. (Per-academy SMTP rejected: unusable deliverability +
+support load for self-serve teachers.)
 
-## Suggested order
-1. **Dir move** (#3) — do while academy count is ~2.
+## Order of work
+1. **Dir move** (#3) — confirmed, cheap now.
 2. **Clean template + home page** (#1).
-3. **Per-academy creds + welcome email** (#2) — needs #1's fresh admin.
+3. **Per-academy creds + welcome email** (#2) — needs #1's fresh admin + the relay.
 
-## Open decisions (all three)
-- Home page: sections + default AR/EN copy.
-- Credentials: username scheme, force-change-on-first-login (yes?), email language.
-- Email transport: per-academy SMTP vs one shared relay.
-- Confirm the new data path `/var/www/html/saas`.
+## Still to decide
+- Home-page placeholder copy (AR/EN) per section.
+- The shared relay's SMTP account/domain to send through.
