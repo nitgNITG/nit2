@@ -304,6 +304,16 @@ if [[ -n "${BRAND_COLOR_PRIMARY:-}${BRAND_COLOR_SECONDARY:-}${BRAND_COLOR_BACKGR
     docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
 fi
 
+# ── Hero cover image — swap the client's image into the front-page hero ──────
+if [[ -n "${BRAND_HERO:-}" && -f "${BRAND_HERO}" && -f /root/apply_hero.php ]]; then
+    log "applying hero cover image"
+    HERO_IN="/var/www/moodledata/hero_upload.${BRAND_HERO##*.}"
+    docker cp /root/apply_hero.php "$CONTAINER:/var/www/moodledata/apply_hero.php"
+    docker cp "$BRAND_HERO" "$CONTAINER:$HERO_IN"
+    docker exec -e HERO_IMAGE="$HERO_IN" "$CONTAINER" php /var/www/moodledata/apply_hero.php || echo "!! hero step failed (site still live)"
+    docker exec "$CONTAINER" rm -f /var/www/moodledata/apply_hero.php "$HERO_IN" || true
+fi
+
 # ── Licence tier (local_license) ────────────────────────────────────────────
 TIER="${LICENSE_TIER:-demo}"
 case "$TIER" in demo|basic|standard|professional) ;; *) TIER="demo" ;; esac

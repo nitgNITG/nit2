@@ -136,6 +136,9 @@ def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: 
         favicon = _stage_image(stage, "favicon", brand.get("favicon"))
         if favicon:
             env["BRAND_FAVICON"] = favicon
+        hero = _stage_image(stage, "hero", brand.get("hero"))
+        if hero:
+            env["BRAND_HERO"] = hero
 
     try:
         with open(logpath, "ab", buffering=0) as log:

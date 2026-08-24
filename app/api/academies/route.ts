@@ -50,6 +50,7 @@ type Brand = {
     logo?: BrandImage;
     logocompact?: BrandImage;
     favicon?: BrandImage;
+    hero?: BrandImage;
 };
 
 const MAX_NAME_LEN = 200;
@@ -74,7 +75,7 @@ function sanitizeBrand(raw: unknown): Brand {
         }
         if (Object.keys(cout).length) out.colors = cout;
     }
-    for (const k of ["logo", "logocompact", "favicon"] as const) {
+    for (const k of ["logo", "logocompact", "favicon", "hero"] as const) {
         const img = b[k];
         if (img && typeof img === "object") {
             const { filename, data_b64 } = img as Record<string, unknown>;

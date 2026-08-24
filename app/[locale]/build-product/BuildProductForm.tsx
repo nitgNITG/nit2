@@ -85,6 +85,9 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
     const [favicon, setFavicon] = useState<File | null>(null)
     const [palette, setPalette] = useState<Palette>(DEFAULT_PALETTE) // brand colours
     const setColor = (k: keyof Palette, v: string) => setPalette((p) => ({ ...p, [k]: v }))
+    const [hero, setHero] = useState<File | null>(null) // cover/hero image
+    const heroUrl = useMemo(() => (hero ? URL.createObjectURL(hero) : null), [hero])
+    useEffect(() => () => { if (heroUrl) URL.revokeObjectURL(heroUrl) }, [heroUrl])
     const slugPreview = (watch('slug') || '').toLowerCase().trim()
     const selectedTier = watch('tier')
     const nameWatch = watch('name')
@@ -144,6 +147,7 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
             if (logo) brand.logo = { filename: logo.name, data_b64: await fileToBase64(logo) }
             if (logocompact) brand.logocompact = { filename: logocompact.name, data_b64: await fileToBase64(logocompact) }
             if (favicon) brand.favicon = { filename: favicon.name, data_b64: await fileToBase64(favicon) }
+            if (hero) brand.hero = { filename: hero.name, data_b64: await fileToBase64(hero) }
 
             const res = await fetch('/api/academies', {
                 method: 'POST',
@@ -167,6 +171,7 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
             setLogo(null)
             setLogocompact(null)
             setFavicon(null)
+            setHero(null)
             // In the dashboard modal we hand control back (close + refresh);
             // on the standalone page we show the success card.
             if (onSuccess) { onSuccess(); return }
@@ -324,11 +329,27 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                     ))}
                 </div>
 
-                {/* Live preview — updates as you type name / pick colours / upload logo */}
+                {/* Hero / cover image — shown in the preview + applied on provision */}
+                <div className='mt-4'>
+                    <label htmlFor='hero' className='mb-1.5 block text-sm font-semibold text-[#0B2923]'>
+                        {isAr ? 'صورة الغلاف (الهيرو)' : 'Cover (hero) image'}{' '}
+                        <span className='text-xs font-normal text-gray-400'>({t('optional')})</span>
+                    </label>
+                    <input
+                        id='hero'
+                        type='file'
+                        accept='image/png,image/jpeg,image/webp'
+                        onChange={pickImage(setHero, 1.5 * 1024 * 1024, ['image/png', 'image/jpeg', 'image/webp'], '1.5 MB')}
+                        className='block w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-[#1E7D67]/10 file:px-4 file:py-2.5 file:font-semibold file:text-[#1E7D67] hover:file:bg-[#1E7D67]/15'
+                    />
+                    {hero && <p className='mt-1 truncate text-xs text-[#1E7D67]' dir='ltr'>{hero.name}</p>}
+                </div>
+
+                {/* Live preview — updates as you type name / pick colours / upload logo+hero */}
                 <p className='mb-2 mt-4 text-sm text-gray-500'>
                     {isAr ? 'معاينة مباشرة لمنصتك:' : 'Live preview of your platform:'}
                 </p>
-                <HomePreview name={nameWatch} palette={palette} logoUrl={logoUrl} isAr={isAr} />
+                <HomePreview name={nameWatch} palette={palette} logoUrl={logoUrl} heroUrl={heroUrl} isAr={isAr} />
             </div>
 
             {/* English identifier (slug → branch + future subdomain) */}
