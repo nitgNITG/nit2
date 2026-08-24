@@ -170,8 +170,24 @@ unset(\$CFG); global \$CFG; \$CFG = new stdClass();
 \$CFG->enablemyhome    = 1;   // REQUIRED: makes Site home a valid landing page —
                              // without it, defaulthomepage=SITE still falls back
                              // to the /my dashboard (see get_home_page()).
-require_once(__DIR__ . '/lib/setup.php');
 PHP
+
+# ── Outbound email (SMTP relay) — values from provision.env; secrets NEVER in git.
+# Lets every academy send the welcome email (and all mail) through the shared relay.
+if [[ -n "${SMTP_HOSTS:-}" ]]; then
+    {
+        echo "\$CFG->smtphosts    = '${SMTP_HOSTS}';"
+        echo "\$CFG->smtpsecure   = '${SMTP_SECURE:-tls}';"
+        echo "\$CFG->smtpauthtype = '${SMTP_AUTHTYPE:-LOGIN}';"
+        echo "\$CFG->smtpuser     = '${SMTP_USER:-}';"
+        echo "\$CFG->smtppass     = '${SMTP_PASS:-}';"
+        echo "\$CFG->smtpmaxbulk  = ${SMTP_MAXBULK:-10};"
+        echo "\$CFG->noreplyaddress = '${SMTP_NOREPLY:-${SMTP_USER:-no-reply@$DOMAIN}}';"
+        [[ -n "${SMTP_SUPPORTEMAIL:-}" ]] && echo "\$CFG->supportemail = '${SMTP_SUPPORTEMAIL}';"
+    } >> "$CONFIG_TARGET"
+fi
+
+echo "require_once(__DIR__ . '/lib/setup.php');" >> "$CONFIG_TARGET"
 
 # ── 5. Start the container ──────────────────────────────────────────────────
 log "starting container $CONTAINER on 127.0.0.1:$PORT"

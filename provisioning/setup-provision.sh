@@ -48,6 +48,16 @@ PROVISION_SECRET=$SECRET
 GITHUB_TOKEN=$TOKEN
 SAAS_IMAGE=${SAAS_IMAGE:-ghcr.io/nitgg/saas-moodle:latest}
 SAAS_ROOT=${SAAS_ROOT:-/var/www/html/saas}
+# Shared SMTP relay used by every academy for outbound mail (welcome email etc).
+# Set the real values in this file on server B; they persist across redeploys.
+SMTP_HOSTS=${SMTP_HOSTS:-}
+SMTP_SECURE=${SMTP_SECURE:-tls}
+SMTP_AUTHTYPE=${SMTP_AUTHTYPE:-LOGIN}
+SMTP_USER=${SMTP_USER:-}
+SMTP_PASS=${SMTP_PASS:-}
+SMTP_MAXBULK=${SMTP_MAXBULK:-10}
+SMTP_NOREPLY=${SMTP_NOREPLY:-}
+SMTP_SUPPORTEMAIL=${SMTP_SUPPORTEMAIL:-}
 CREATE_SH=/root/create.sh
 DESTROY_SH=/root/destroy.sh
 APPLY_LICENSE_SH=/root/apply-license.sh
