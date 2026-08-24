@@ -90,6 +90,7 @@ log "applying defaults: theme_nit, multilang2 filter"
 docker exec "$TMP_C" php /var/www/html/admin/cli/cfg.php --name=theme --set=nit || true
 # Public marketing front page: guests can see it (no forced login) and everyone
 # lands on the Site home (front page with the seeded sections), not /my/.
+docker exec "$TMP_C" php /var/www/html/admin/cli/cfg.php --name=enablemyhome --set=1 || true
 docker exec "$TMP_C" php /var/www/html/admin/cli/cfg.php --name=forcelogin --set=0 || true
 docker exec "$TMP_C" php /var/www/html/admin/cli/cfg.php --name=defaulthomepage --set=0 || true
 docker exec "$TMP_C" php /var/www/html/admin/cli/install_langpack.php --lang=ar || true

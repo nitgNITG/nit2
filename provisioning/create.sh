@@ -167,6 +167,9 @@ unset(\$CFG); global \$CFG; \$CFG = new stdClass();
 // can't be lost to a stale DB/cache value.
 \$CFG->defaulthomepage = 0;   // HOMEPAGE_SITE
 \$CFG->forcelogin      = 0;
+\$CFG->enablemyhome    = 1;   // REQUIRED: makes Site home a valid landing page —
+                             // without it, defaulthomepage=SITE still falls back
+                             // to the /my dashboard (see get_home_page()).
 require_once(__DIR__ . '/lib/setup.php');
 PHP
 
