@@ -87,7 +87,8 @@ def _stage_image(dirpath: str, kind: str, spec) -> str:
     return path
 
 
-def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: dict = None, definition: str = "") -> None:
+def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: dict = None, definition: str = "",
+               owner_email: str = "", owner_name: str = "", locale: str = "ar") -> None:
     """Run create.sh detached, streaming its output to the client's log file.
 
     Branding is passed through create.sh's BRAND_* env contract: names as
@@ -103,6 +104,12 @@ def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: 
 
     env = {**os.environ}
     env["LICENSE_TIER"] = tier if TIER_RE.match(tier or "") else "demo"
+    # Owner details for the welcome email (create.sh -> send_welcome.php).
+    if isinstance(owner_email, str) and owner_email.strip():
+        env["OWNER_EMAIL"] = owner_email.strip()
+    if isinstance(owner_name, str) and owner_name.strip():
+        env["OWNER_NAME"] = owner_name.strip()
+    env["OWNER_LOCALE"] = "en" if str(locale).strip().lower() == "en" else "ar"
     if isinstance(definition, str) and definition.strip():
         env["LICENSE_DEFINITION"] = definition
     if isinstance(settings, dict):
@@ -304,11 +311,18 @@ class Handler(BaseHTTPRequestHandler):
         if not TIER_RE.match(tier):
             tier = "demo"
         definition = data.get("definition") if isinstance(data.get("definition"), str) else ""
+        owner_email = str(data.get("owner_email", "")).strip()
+        owner_name = str(data.get("owner_name", "")).strip()
+        locale = str(data.get("locale", "ar")).strip().lower()
         if not SLUG_RE.match(slug):
             return self._send(400, {"error": "invalid slug"})
         if not name:
             return self._send(400, {"error": "name required"})
-        threading.Thread(target=run_create, args=(slug, name, brand, tier, settings, definition), daemon=True).start()
+        threading.Thread(
+            target=run_create,
+            args=(slug, name, brand, tier, settings, definition, owner_email, owner_name, locale),
+            daemon=True,
+        ).start()
         return self._send(202, {"ok": True, "status": "provisioning", "slug": slug})
 
     def do_GET(self):

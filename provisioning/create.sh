@@ -275,6 +275,23 @@ done
 
 docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
 
+# ── Welcome: unique admin password + email the customer their login ─────────
+# OWNER_EMAIL / OWNER_NAME / OWNER_LOCALE are passed by the provisioner (nit2).
+# Gives each academy its own admin password (not the template's shared one),
+# forces a change on first login, and emails the customer their credentials.
+if [[ -f /root/send_welcome.php ]]; then
+    log "setting admin credentials + emailing the customer"
+    WELCOME_PASS="Nit-$(openssl rand -hex 6)"
+    docker cp /root/send_welcome.php "$CONTAINER:/var/www/moodledata/send_welcome.php"
+    docker exec \
+        -e WELCOME_USER=admin -e WELCOME_PASS="$WELCOME_PASS" \
+        -e OWNER_EMAIL="${OWNER_EMAIL:-}" -e OWNER_NAME="${OWNER_NAME:-}" -e OWNER_LOCALE="${OWNER_LOCALE:-ar}" \
+        "$CONTAINER" php /var/www/moodledata/send_welcome.php || echo "!! welcome step failed (site still live)"
+    docker exec "$CONTAINER" rm -f /var/www/moodledata/send_welcome.php || true
+else
+    log "send_welcome.php not installed at /root — skipping welcome email"
+fi
+
 # ── 6. Apache vhost → enable → SSL → restart (identical to create.sh) ───────
 log "creating apache vhost"
 cat > "$VHOST" <<APACHE

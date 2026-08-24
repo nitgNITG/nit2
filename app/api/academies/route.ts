@@ -98,6 +98,7 @@ async function loadPlatformSettings(): Promise<Record<string, string>> {
 
 async function triggerProvision(
     slug: string, name: string, brand: Brand, tier: string, settings: Record<string, string>, definition: string,
+    owner: { email: string; name: string; locale: string },
 ): Promise<void> {
     const url = process.env.PROVISION_URL;       // e.g. https://saas-provision.academy2026.nitg-eg.com/provision
     const secret = process.env.PROVISION_SECRET;
@@ -106,7 +107,10 @@ async function triggerProvision(
         await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-Provision-Secret": secret },
-            body: JSON.stringify({ slug, name, brand, tier, settings, definition }),
+            body: JSON.stringify({
+                slug, name, brand, tier, settings, definition,
+                owner_email: owner.email, owner_name: owner.name, locale: owner.locale,
+            }),
         });
     } catch (e) {
         console.error("[academies] provision trigger failed", e);
@@ -231,7 +235,12 @@ export async function POST(req: NextRequest) {
 
         // Branch created → kick off the live-site build on server B (fire-and-forget).
         const settings = await loadPlatformSettings();
-        await triggerProvision(cleanSlug, cleanName, brand, tier, settings, definition);
+        const locale = (body?.locale === "en" ? "en" : "ar");
+        await triggerProvision(cleanSlug, cleanName, brand, tier, settings, definition, {
+            email: user.email,
+            name: user.name ?? "",
+            locale,
+        });
 
         // 3) Record it (control plane). Guard the rare race on the unique slug.
         try {
