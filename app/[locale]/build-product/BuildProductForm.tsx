@@ -92,6 +92,10 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
     const aboutUrl = useMemo(() => (about ? URL.createObjectURL(about) : null), [about])
     useEffect(() => () => { if (aboutUrl) URL.revokeObjectURL(aboutUrl) }, [aboutUrl])
     const [gallery, setGallery] = useState<File[]>([]) // up to 8 gallery photos
+    const faviconUrl = useMemo(() => (favicon ? URL.createObjectURL(favicon) : null), [favicon])
+    useEffect(() => () => { if (faviconUrl) URL.revokeObjectURL(faviconUrl) }, [faviconUrl])
+    const galleryUrls = useMemo(() => gallery.map((f) => URL.createObjectURL(f)), [gallery])
+    useEffect(() => () => { galleryUrls.forEach((u) => URL.revokeObjectURL(u)) }, [galleryUrls])
     const slugPreview = (watch('slug') || '').toLowerCase().trim()
     const selectedTier = watch('tier')
     const nameWatch = watch('name')
@@ -309,12 +313,14 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
 
                 {/* One-click ready palettes */}
                 <div className='mb-3 flex flex-wrap gap-2'>
-                    {PALETTE_PRESETS.map((pr) => (
+                    {PALETTE_PRESETS.map((pr) => {
+                        const on = JSON.stringify(palette) === JSON.stringify(pr.p)
+                        return (
                         <button
                             type='button'
                             key={pr.name}
                             onClick={() => setPalette(pr.p)}
-                            className='flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-gray-300'
+                            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${on ? 'border-[#1E7D67] bg-[#1E7D67]/10 text-[#1E7D67] ring-1 ring-[#1E7D67]' : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300'}`}
                         >
                             <span className='inline-flex'>
                                 <span className='h-4 w-4 rounded-full ring-1 ring-black/10' style={{ background: pr.p.primary }} />
@@ -322,7 +328,8 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                             </span>
                             {pr.name}
                         </button>
-                    ))}
+                        )
+                    })}
                 </div>
 
                 {/* Individual colour controls */}
@@ -399,7 +406,7 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                 <p className='mb-2 mt-4 text-sm text-gray-500'>
                     {isAr ? 'معاينة مباشرة لمنصتك:' : 'Live preview of your platform:'}
                 </p>
-                <HomePreview name={nameWatch} palette={palette} logoUrl={logoUrl} heroUrl={heroUrl} aboutUrl={aboutUrl} isAr={isAr} />
+                <HomePreview name={nameWatch} palette={palette} logoUrl={logoUrl} heroUrl={heroUrl} aboutUrl={aboutUrl} faviconUrl={faviconUrl} galleryUrls={galleryUrls} isAr={isAr} />
             </div>
 
             {/* English identifier (slug → branch + future subdomain) */}

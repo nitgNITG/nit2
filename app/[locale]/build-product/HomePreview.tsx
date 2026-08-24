@@ -15,13 +15,12 @@ export function shade(hex: string, amt: number): string {
     return `#${[r, g, b].map((x) => Math.max(0, Math.min(255, x)).toString(16).padStart(2, '0')).join('')}`
 }
 
-// The 6 colours the client controls; the rest are derived from them.
 export type Palette = {
     primary: string
     secondary: string
     background: string
     surface: string
-    text: string        // textprimary
+    text: string
     accent: string
 }
 
@@ -36,10 +35,12 @@ export type PreviewProps = {
     logoUrl?: string | null
     heroUrl?: string | null
     aboutUrl?: string | null
+    faviconUrl?: string | null
+    galleryUrls?: string[]
     isAr: boolean
 }
 
-export default function HomePreview({ name, palette, logoUrl, heroUrl, aboutUrl, isAr }: PreviewProps) {
+export default function HomePreview({ name, palette, logoUrl, heroUrl, aboutUrl, faviconUrl, galleryUrls = [], isAr }: PreviewProps) {
     const displayName = (name || (isAr ? 'اسم المنصة' : 'Academy Name')).trim()
     const c = {
         ...palette,
@@ -66,28 +67,50 @@ export default function HomePreview({ name, palette, logoUrl, heroUrl, aboutUrl,
             {!url && <>🖼️ {label}</>}
         </div>
     )
+    const galleryTiles = (galleryUrls.length ? galleryUrls : [null, null, null, null, null, null]).slice(0, 8)
 
     return (
-        <div dir={dir} style={{ border: `1px solid ${c.border}`, borderRadius: 12, overflow: 'hidden', background: c.background, height: 470, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ background: shade(c.background, -0.3), padding: '8px 12px', display: 'flex', gap: 6, alignItems: 'center', flex: '0 0 auto' }}>
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#e0665c' }} />
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#e8c15c' }} />
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: c.success }} />
+        <div style={{ border: `1px solid ${c.border}`, borderRadius: 12, overflow: 'hidden', background: c.background, height: 480, display: 'flex', flexDirection: 'column' }}>
+            {/* mock browser tab bar with favicon + title */}
+            <div style={{ background: shade(c.background, -0.3), padding: '7px 12px', display: 'flex', gap: 8, alignItems: 'center', flex: '0 0 auto' }}>
+                <span style={{ display: 'flex', gap: 6 }}>
+                    <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#e0665c' }} />
+                    <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#e8c15c' }} />
+                    <span style={{ width: 9, height: 9, borderRadius: '50%', background: c.success }} />
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: shade(c.background, -0.15), borderRadius: 6, padding: '3px 10px', fontSize: 11, color: c.textSecondary, maxWidth: 220 }}>
+                    {faviconUrl
+                        // eslint-disable-next-line @next/next/no-img-element
+                        ? <img src={faviconUrl} alt='' style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: 3 }} />
+                        : <span style={{ width: 14, height: 14, borderRadius: 3, background: c.primary, display: 'inline-block' }} />}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</span>
+                </span>
             </div>
-            <div style={{ overflowY: 'auto', flex: 1, color: c.text }}>
-                {/* navbar */}
+
+            <div dir={dir} style={{ overflowY: 'auto', flex: 1, color: c.text }}>
+                {/* navbar — logo + name, lang dropdown, settings gear, login */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: `1px solid ${c.border}`, background: c.secondary }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 15 }}>
-                        {logoUrl
-                            // eslint-disable-next-line @next/next/no-img-element
-                            ? <img src={logoUrl} alt='' style={{ height: 26, width: 'auto', maxWidth: 90, objectFit: 'contain' }} />
-                            : <span style={{ width: 30, height: 30, borderRadius: '50%', background: '#fff', color: c.background, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 900 }}>LOGO</span>}
-                        <span style={{ maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 15 }}>
+                            {logoUrl
+                                // eslint-disable-next-line @next/next/no-img-element
+                                ? <img src={logoUrl} alt='' style={{ height: 28, width: 'auto', maxWidth: 90, objectFit: 'contain' }} />
+                                : <span style={{ width: 30, height: 30, borderRadius: '50%', background: '#fff', color: c.background, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 900 }}>LOGO</span>}
+                            <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</span>
+                        </div>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: c.textSecondary, fontSize: 12 }}>
+                            {t('العربية', 'English (en)')} <span style={{ fontSize: 9 }}>▾</span>
+                        </span>
                     </div>
-                    <span style={{ background: c.primary, color: c.text, padding: '5px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700 }}>{t('دخول', 'Log in')}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ width: 26, height: 26, borderRadius: '50%', border: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.textSecondary, fontSize: 13 }}>⚙</span>
+                        <span style={{ color: c.text, fontSize: 13, fontWeight: 700 }}>{t('دخول', 'Log in')}</span>
+                    </div>
                 </div>
+
                 {/* hero */}
                 {imgBox(heroUrl, t('صورة الغلاف', 'Cover image'), { aspectRatio: '16 / 6', borderBottom: `1px solid ${c.border}` })}
+
                 {/* about */}
                 <div style={{ padding: '22px 16px', display: 'grid', gridTemplateColumns: '1fr 120px', gap: 16, alignItems: 'center' }}>
                     <div>
@@ -102,6 +125,7 @@ export default function HomePreview({ name, palette, logoUrl, heroUrl, aboutUrl,
                     </div>
                     {imgBox(aboutUrl, '', { height: 120, borderRadius: 12, border: `1px solid ${c.border}` })}
                 </div>
+
                 {/* courses */}
                 <div style={{ padding: '10px 16px 24px' }}>
                     <div style={{ textAlign: 'center', marginBottom: 14 }}>
@@ -109,6 +133,21 @@ export default function HomePreview({ name, palette, logoUrl, heroUrl, aboutUrl,
                     </div>
                     <div style={{ display: 'flex', gap: 12, overflowX: 'auto' }}>{[0, 1, 2, 3].map(card)}</div>
                 </div>
+
+                {/* gallery */}
+                <div style={{ padding: '10px 16px 24px' }}>
+                    <div style={{ textAlign: 'center', marginBottom: 14 }}>
+                        <span style={{ background: `${c.accentText}22`, border: `1px solid ${c.accentText}55`, color: c.accentText, borderRadius: 50, padding: '5px 14px', fontSize: 12, fontWeight: 700 }}>{t('ألبوم الصور', 'Gallery')}</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(90px,1fr))', gap: 8 }}>
+                        {galleryTiles.map((url, i) => (
+                            <div key={i} style={{ aspectRatio: '4/3', borderRadius: 8, border: `1px solid ${c.border}`, background: url ? `center/cover no-repeat url(${url})` : c.surfaceVar, display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.textSecondary, fontSize: 16 }}>
+                                {!url && '🖼️'}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
                 {/* contact */}
                 <div style={{ background: c.surface, padding: '22px 16px', textAlign: 'center', borderTop: `1px solid ${c.border}` }}>
                     <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 10 }}>{t('انضم إلينا اليوم', 'Join us today')}</div>

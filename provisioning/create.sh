@@ -240,6 +240,9 @@ fi
 if [[ -n "${BRAND_LOGOCOMPACT:-}" && -f "${BRAND_LOGOCOMPACT}" ]]; then
     ext="${BRAND_LOGOCOMPACT##*.}"; cp -f "$BRAND_LOGOCOMPACT" "$BRAND_DIR/logocompact.${ext}"; LOGOCOMPACT_REL="logocompact.${ext}"
 fi
+# If no compact logo was given, reuse the main logo for it — so a single upload
+# shows in BOTH the navbar (compact) and the login page (full).
+if [[ -z "$LOGOCOMPACT_REL" && -n "$LOGO_REL" ]]; then LOGOCOMPACT_REL="$LOGO_REL"; fi
 if [[ -n "${BRAND_FAVICON:-}" && -f "${BRAND_FAVICON}" ]]; then
     ext="${BRAND_FAVICON##*.}"; cp -f "$BRAND_FAVICON" "$BRAND_DIR/favicon.${ext}"; FAVICON_REL="favicon.${ext}"
 fi

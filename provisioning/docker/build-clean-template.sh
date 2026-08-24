@@ -93,7 +93,7 @@ docker exec "$TMP_C" php /var/www/html/admin/cli/cfg.php --name=theme --set=nit 
 docker exec "$TMP_C" php /var/www/html/admin/cli/cfg.php --name=enablemyhome --set=1 || true
 docker exec "$TMP_C" php /var/www/html/admin/cli/cfg.php --name=forcelogin --set=0 || true
 docker exec "$TMP_C" php /var/www/html/admin/cli/cfg.php --name=defaulthomepage --set=0 || true
-docker exec "$TMP_C" php /var/www/html/admin/cli/install_langpack.php --lang=ar || true
+# (Arabic is already installed by install_database.php above.)
 cat > "$TMP_DATA/enable_mlang.php" <<'PHP'
 <?php
 define('CLI_SCRIPT', true); require('/var/www/html/config.php');
