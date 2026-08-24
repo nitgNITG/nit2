@@ -4,8 +4,8 @@ After=network.target docker.service
 
 [Service]
 Type=simple
-EnvironmentFile=/opt/saas/provision.env
-ExecStart=/usr/bin/python3 /opt/saas/provision-server.py
+EnvironmentFile=/var/www/html/saas/provision.env
+ExecStart=/usr/bin/python3 /var/www/html/saas/provision-server.py
 Restart=on-failure
 RestartSec=3
 # create.sh needs docker + apache + certbot, so it runs as root.

@@ -21,7 +21,7 @@ set -euo pipefail
 DOMAIN="academy2026.nitg-eg.com"
 REPO_OWNER="NITGg"
 REPO_NAME="saas-demo"
-ROOT="/opt/saas"
+ROOT="${SAAS_ROOT:-/var/www/html/saas}"   # academies data dir (override with SAAS_ROOT)
 NET="saas_net"
 DB_CONTAINER="saas_mariadb"
 IMAGE="${SAAS_IMAGE:-saas-moodle:latest}"   # ← baked image, not moodle-new:latest

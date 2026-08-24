@@ -17,10 +17,10 @@ set -uo pipefail   # NOT -e: we want cleanup to continue past a missing piece.
 
 # ── Config (must match create.sh) ───────────────────────────────────────────
 DOMAIN="academy2026.nitg-eg.com"
-ROOT="/opt/saas"
+ROOT="${SAAS_ROOT:-/var/www/html/saas}"   # academies data dir (override with SAAS_ROOT)
 DB_CONTAINER="saas_mariadb"
-LOG_DIR="${PROVISION_LOG_DIR:-/opt/saas/logs}"
-STAGING_DIR="${PROVISION_STAGING_DIR:-/opt/saas/staging}"
+LOG_DIR="${PROVISION_LOG_DIR:-$ROOT/logs}"
+STAGING_DIR="${PROVISION_STAGING_DIR:-$ROOT/staging}"
 # ────────────────────────────────────────────────────────────────────────────
 
 log(){ echo "==> $*"; }

@@ -4,12 +4,12 @@ Minimal provisioning endpoint for server B.
 
   POST /provision   body {"slug","name"}   header  X-Provision-Secret: <secret>
     → runs create.sh <slug> "<name>" in the BACKGROUND, logs to
-      /opt/saas/logs/<slug>.log, returns 202 immediately.
+      /var/www/html/saas/logs/<slug>.log, returns 202 immediately.
   GET  /status/<slug>   header X-Provision-Secret
     → returns the tail of that client's provisioning log.
   DELETE /deprovision/<slug>   header X-Provision-Secret
     → runs destroy.sh <slug> in the BACKGROUND (container + db + files + vhosts),
-      logs to /opt/saas/logs/<slug>.log, returns 202 immediately.
+      logs to /var/www/html/saas/logs/<slug>.log, returns 202 immediately.
 
 Security: shared-secret auth, strict slug validation, args passed as a list
 (never a shell string), bound to 127.0.0.1 (reached only via the Apache vhost).
@@ -25,8 +25,8 @@ APPLY_LICENSE_SH = os.environ.get("APPLY_LICENSE_SH", "/root/apply-license.sh")
 APPLY_SETTINGS_SH = os.environ.get("APPLY_SETTINGS_SH", "/root/apply-settings.sh")
 UPDATE_SITE_SH = os.environ.get("UPDATE_SITE_SH", "/root/update-site.sh")
 APPLY_SUSPEND_SH = os.environ.get("APPLY_SUSPEND_SH", "/root/apply-suspend.sh")
-LOG_DIR     = os.environ.get("PROVISION_LOG_DIR", "/opt/saas/logs")
-STAGING_DIR = os.environ.get("PROVISION_STAGING_DIR", "/opt/saas/staging")
+LOG_DIR     = os.environ.get("PROVISION_LOG_DIR", "/var/www/html/saas/logs")
+STAGING_DIR = os.environ.get("PROVISION_STAGING_DIR", "/var/www/html/saas/staging")
 PORT        = int(os.environ.get("PROVISION_PORT", "9099"))
 SLUG_RE     = re.compile(r"^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])$")
 # Licence keys are now dynamic (any slug), not a fixed set — validate by pattern.

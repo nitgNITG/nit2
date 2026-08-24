@@ -22,7 +22,7 @@ set -uo pipefail
 log(){ echo "==> $*"; }
 die(){ echo "ERROR: $*" >&2; exit 1; }
 
-ROOT="/opt/saas"
+ROOT="${SAAS_ROOT:-/var/www/html/saas}"   # academies data dir (override with SAAS_ROOT)
 NET="saas_net"
 IMAGE="${SAAS_IMAGE:-saas-moodle:latest}"
 

@@ -23,8 +23,8 @@ that shared image.
 | **Provisioner** | `provision-server.py` on Server B, called by nit2 over HTTPS; runs the `*.sh` scripts |
 
 Per academy on Server B:
-- `/opt/saas/clients/<slug>/config.php` — mounted into the container (read-only)
-- `/opt/saas/clients/<slug>/moodledata` — uploads, cache, sessions
+- `/var/www/html/saas/clients/<slug>/config.php` — mounted into the container (read-only)
+- `/var/www/html/saas/clients/<slug>/moodledata` — uploads, cache, sessions
 - database `moodle_<slug>` in the shared `saas_mariadb` container
 - Apache vhost + HTTPS at `https://<slug>.academy2026.nitg-eg.com`
 
@@ -52,10 +52,10 @@ image is the source of truth. To change code, cut a new image (below).
 > Pin versions (`:2026.08`), don't rely on `:latest`, so you can roll back.
 
 ### Pin the version the provisioner uses
-`SAAS_IMAGE` in `/opt/saas/provision.env` (Server B) decides which image **new**
+`SAAS_IMAGE` in `/var/www/html/saas/provision.env` (Server B) decides which image **new**
 academies get. To move to a new version:
 ```bash
-sed -i 's#saas-moodle:.*#saas-moodle:2026.09#' /opt/saas/provision.env
+sed -i 's#saas-moodle:.*#saas-moodle:2026.09#' /var/www/html/saas/provision.env
 systemctl restart saas-provision
 ```
 
@@ -106,8 +106,8 @@ cd /var/www/html/nit-dev && bash update.sh   # git pull + build + PM2 restart
 ```bash
 docker ps -s                       # per-container size (academies ~57kB + shared image)
 docker system df                   # images / containers / volumes / build cache
-du -sh /opt/saas/clients/*         # disk per academy (~140MB)
-source /opt/saas/saas.env; docker exec saas_mariadb mariadb -uroot -p"$DB_ROOT_PW" \
+du -sh /var/www/html/saas/clients/*         # disk per academy (~140MB)
+source /var/www/html/saas/saas.env; docker exec saas_mariadb mariadb -uroot -p"$DB_ROOT_PW" \
   -e "SELECT table_schema, ROUND(SUM(data_length+index_length)/1024/1024,1) mb \
       FROM information_schema.tables GROUP BY table_schema ORDER BY mb DESC;"
 docker builder prune -a -f         # reclaim build cache (safe; builds run in CI now)
@@ -115,7 +115,7 @@ docker builder prune -a -f         # reclaim build cache (safe; builds run in CI
 
 ## Logs & troubleshooting
 
-- Provisioning log per academy: `/opt/saas/logs/<slug>.log`
+- Provisioning log per academy: `/var/www/html/saas/logs/<slug>.log`
 - `create.sh` says **"image not found"** → wrong case (`nitgg` not `NITGg`) or not pulled yet.
 - New academy fails → check the image is pulled on Server B and `SAAS_IMAGE` in `provision.env`.
 - Site 303 on first load = healthy (Moodle redirect to login).

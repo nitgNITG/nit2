@@ -10,7 +10,7 @@ already-built `moodle-new:latest` image.
 ## What `create.sh` does (the brief's 5 steps, for Apache)
 
 1. **create virtual host** — writes `/etc/apache2/sites-available/<sub>.conf`
-2. **clone academy** — clones the client's branch into `/opt/saas/clients/<slug>/code`
+2. **clone academy** — clones the client's branch into `/var/www/html/saas/clients/<slug>/code`
 3. **enable vhost** — `a2ensite` + reload apache
 4. **add SSL** — `certbot --apache` (issues the cert, adds the redirect)
 5. **restart apache**
@@ -32,13 +32,13 @@ sudo bash create.sh teacher01 "أكاديمية تجريبية"
 ```
 
 First run auto-creates the shared network, the `saas_mariadb`, and the template
-(`/opt/saas/template.sql` + `/opt/saas/moodledata-base`) **from the existing EAAC**.
+(`/var/www/html/saas/template.sql` + `/var/www/html/saas/moodledata-base`) **from the existing EAAC**.
 Every run provisions the given client. → `https://teacher01.academy2026.nitg-eg.com`
 
 ## Notes
 
 - The template starts as a copy of the current EAAC content; swap
-  `/opt/saas/template.sql` + `/opt/saas/moodledata-base` for a clean base later.
+  `/var/www/html/saas/template.sql` + `/var/www/html/saas/moodledata-base` for a clean base later.
 - Private repo cloning: `export GITHUB_TOKEN=...` before running.
 - The button (`/api/academies` on the NIT site) creates the branch; this script
   turns that branch into the live site. Wiring the button to call it comes after a
@@ -63,16 +63,16 @@ DELETE https://saas-provision.academy2026.nitg-eg.com/deprovision/<slug>
 ```
 
 which runs `destroy.sh <slug>` in the background (logs to
-`/opt/saas/logs/<slug>.log`). Deploy `destroy.sh` to `/root/destroy.sh` (path set
-by `DESTROY_SH` in `/opt/saas/provision.env`) next to `create.sh`.
+`/var/www/html/saas/logs/<slug>.log`). Deploy `destroy.sh` to `/root/destroy.sh` (path set
+by `DESTROY_SH` in `/var/www/html/saas/provision.env`) next to `create.sh`.
 
 Manual equivalent, if you ever need the individual steps:
 
 ```bash
 docker rm -f saas_moodle_<slug>
-docker exec saas_mariadb mariadb -uroot -p"$(grep DB_ROOT_PW /opt/saas/saas.env|cut -d= -f2)" \
+docker exec saas_mariadb mariadb -uroot -p"$(grep DB_ROOT_PW /var/www/html/saas/saas.env|cut -d= -f2)" \
     -e "DROP DATABASE moodle_<slug_with_underscores>;"
-rm -rf /opt/saas/clients/<slug>
+rm -rf /var/www/html/saas/clients/<slug>
 a2dissite <slug>.academy2026.nitg-eg.com.conf; systemctl reload apache2
 ```
 
@@ -88,7 +88,7 @@ a2dissite <slug>.academy2026.nitg-eg.com.conf; systemctl reload apache2
 ## Runtime triggers — nobody runs scripts by hand
 
 Every action in the nit2 dashboard/site fires an HTTP call to server B, which runs the
-matching script in the background (logs to `/opt/saas/logs/<slug>.log`):
+matching script in the background (logs to `/var/www/html/saas/logs/<slug>.log`):
 
 | User action (server A)                     | nit2 route                          | → server B endpoint            | script              |
 |--------------------------------------------|-------------------------------------|--------------------------------|---------------------|
@@ -116,7 +116,7 @@ bash provisioning/deploy-provisioning.sh
 It reads `SERVER_B_HOST` / `SERVER_B_USER` / `SERVER_B_SSH_KEY` / `SERVER_B_DEST` from
 the app `.env`, rsync/scp's the 7 files to server B, and re-runs `setup-provision.sh`
 there — reusing **server B's own** `PROVISION_SECRET` / `GITHUB_TOKEN` from
-`/opt/saas/provision.env` (secrets never cross the wire).
+`/var/www/html/saas/provision.env` (secrets never cross the wire).
 
 ### SSH prerequisite (do you need a password?)
 

@@ -12,7 +12,7 @@
 #     SERVER_B_DEST=/tmp/nit-provisioning         # optional — staging dir on B
 #
 #  Secrets are NEVER sent over the wire: setup-provision.sh on server B reuses the
-#  PROVISION_SECRET / GITHUB_TOKEN already in its own /opt/saas/provision.env.
+#  PROVISION_SECRET / GITHUB_TOKEN already in its own /var/www/html/saas/provision.env.
 #
 #  Usage (on server A):   bash provisioning/deploy-provisioning.sh
 # ============================================================================
@@ -56,6 +56,6 @@ echo "==> [3/3] redeploying provisioning service on ${TARGET} (reusing its own s
 # One sudo shell on B: source the existing provision.env (as root) so setup-provision.sh
 # has PROVISION_SECRET + GITHUB_TOKEN, then run it. -t gives sudo a TTY if it prompts.
 ssh -t "${SSH_OPTS[@]}" "$TARGET" \
-    "cd '$DEST' && sudo bash -c 'set -a; source /opt/saas/provision.env; set +a; bash setup-provision.sh' && systemctl is-active saas-provision"
+    "cd '$DEST' && sudo bash -c 'set -a; source /var/www/html/saas/provision.env; set +a; bash setup-provision.sh' && systemctl is-active saas-provision"
 
 echo "==> done — provisioning service updated on ${HOST}"

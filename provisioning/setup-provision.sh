@@ -23,7 +23,7 @@ DOMAIN="academy2026.nitg-eg.com"
 SUB="saas-provision.${DOMAIN}"
 LE_EMAIL="admin@nitg-eg.com"
 
-mkdir -p /opt/saas/logs
+mkdir -p /var/www/html/saas/logs
 
 # ── Install the provisioning scripts (single source of truth = this repo) ────
 # The service shells out to these by absolute path (see provision.env below).
@@ -38,25 +38,26 @@ chmod +x /root/create.sh /root/destroy.sh /root/apply-license.sh /root/apply-set
 
 # ── The HTTP service — copied verbatim from the repo (NOT inlined), so branding,
 #    licence tier, and /apply-license stay in one place: provision-server.py ───
-echo "==> writing /opt/saas/provision-server.py"
-cp "$SCRIPT_DIR/provision-server.py" /opt/saas/provision-server.py
+echo "==> writing /var/www/html/saas/provision-server.py"
+cp "$SCRIPT_DIR/provision-server.py" /var/www/html/saas/provision-server.py
 
-echo "==> writing /opt/saas/provision.env"
-cat > /opt/saas/provision.env <<ENVEOF
+echo "==> writing /var/www/html/saas/provision.env"
+cat > /var/www/html/saas/provision.env <<ENVEOF
 PROVISION_SECRET=$SECRET
 GITHUB_TOKEN=$TOKEN
 SAAS_IMAGE=${SAAS_IMAGE:-ghcr.io/nitgg/saas-moodle:latest}
+SAAS_ROOT=${SAAS_ROOT:-/var/www/html/saas}
 CREATE_SH=/root/create.sh
 DESTROY_SH=/root/destroy.sh
 APPLY_LICENSE_SH=/root/apply-license.sh
 APPLY_SETTINGS_SH=/root/apply-settings.sh
 UPDATE_SITE_SH=/root/update-site.sh
 APPLY_SUSPEND_SH=/root/apply-suspend.sh
-PROVISION_LOG_DIR=/opt/saas/logs
-PROVISION_STAGING_DIR=/opt/saas/staging
+PROVISION_LOG_DIR=/var/www/html/saas/logs
+PROVISION_STAGING_DIR=/var/www/html/saas/staging
 PROVISION_PORT=9099
 ENVEOF
-chmod 600 /opt/saas/provision.env
+chmod 600 /var/www/html/saas/provision.env
 
 echo "==> installing systemd service"
 cat > /etc/systemd/system/saas-provision.service <<'SVCEOF'
@@ -65,8 +66,8 @@ Description=SaaS provisioning endpoint
 After=network.target docker.service
 [Service]
 Type=simple
-EnvironmentFile=/opt/saas/provision.env
-ExecStart=/usr/bin/python3 /opt/saas/provision-server.py
+EnvironmentFile=/var/www/html/saas/provision.env
+ExecStart=/usr/bin/python3 /var/www/html/saas/provision-server.py
 Restart=on-failure
 RestartSec=3
 User=root
