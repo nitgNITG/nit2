@@ -88,7 +88,7 @@ docker exec "$TMP_C" php /var/www/html/admin/cli/install_database.php \
 # ── 5. Our defaults (theme + multilang + Arabic pack) ───────────────────────
 log "applying defaults: theme_nit, multilang2 filter"
 docker exec "$TMP_C" php /var/www/html/admin/cli/cfg.php --name=theme --set=nit || true
-docker exec "$TMP_C" php /var/www/html/admin/cli/install_lang.php --lang=ar || true
+docker exec "$TMP_C" php /var/www/html/admin/cli/install_langpack.php --lang=ar || true
 cat > "$TMP_DATA/enable_mlang.php" <<'PHP'
 <?php
 define('CLI_SCRIPT', true); require('/var/www/html/config.php');
@@ -153,6 +153,9 @@ echo "============================================================"
 echo "  Clean template built."
 echo "    $SAAS_ROOT/template.sql        (was backed up to *.eaac-$STAMP)"
 echo "    $SAAS_ROOT/moodledata-base/"
+echo "  Template admin login (baked into template.sql, shared by new academies):"
+echo "    username: $ADMIN_USER"
+echo "    password: $ADMIN_PASS"
 echo "  New academies now start clean. Test:"
 echo "    SAAS_IMAGE=$IMAGE bash /root/create.sh cleantest \"Clean Test\""
 echo "============================================================"
