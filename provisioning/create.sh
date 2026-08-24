@@ -280,30 +280,33 @@ docker exec "$CONTAINER" php /var/www/html/public/theme/nit/cli/apply_brand.php 
 docker exec "$CONTAINER" rm -rf /tmp/nit-brand || true
 rm -rf "$BRAND_DIR"
 
+# ── Mark this academy as provisioned so the MOBILE APP treats it as live ─────
+# theme_nit's site export reads theme_nit/provisioned; unset resolves to FALSE
+# (get_config returns false, so the theme's `?? 1` never applies), which makes
+# the app refuse to open the academy. Set it explicitly.
+docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=theme_nit --name=provisioned --set=1 || echo "!! could not set provisioned"
+
 # ── Brand palette (theme_nit Brand Colors) — from the build form's 6 pickers ──
 # BRAND_COLOR_* are #rrggbb. We set Group 1 (the site-wide default) roles from
 # them and DERIVE the rest (accent-text, secondary text, borders) so the live
 # site matches the preview. Other groups keep their defaults.
-_shade(){ docker exec -e H="$1" -e A="$2" "$CONTAINER" php -r '$h=ltrim(getenv("H"),"#");$a=(float)getenv("A");$r=hexdec(substr($h,0,2));$g=hexdec(substr($h,2,2));$b=hexdec(substr($h,4,2));$t=$a<0?0:255;$p=abs($a);printf("#%02x%02x%02x",(int)round(($t-$r)*$p+$r),(int)round(($t-$g)*$p+$g),(int)round(($t-$b)*$p+$b));' 2>/dev/null || echo "$1"; }
+# Blend colour A toward colour B by ratio R (0..1) — background-aware, so the
+# derived roles work for BOTH light and dark palettes.
+_mix(){ docker exec -e A="$1" -e B="$2" -e R="$3" "$CONTAINER" php -r '$a=ltrim(getenv("A"),"#");$b=ltrim(getenv("B"),"#");$r=(float)getenv("R");$c=fn($h,$i)=>hexdec(substr($h,$i,2));printf("#%02x%02x%02x",(int)round($c($a,0)*(1-$r)+$c($b,0)*$r),(int)round($c($a,2)*(1-$r)+$c($b,2)*$r),(int)round($c($a,4)*(1-$r)+$c($b,4)*$r));' 2>/dev/null || echo "$1"; }
 _setrole(){ docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=theme_nit --name="brandcolour_g1_$1" --set="$2" >/dev/null 2>&1 || echo "!! could not set brand $1"; }
 if [[ -n "${BRAND_COLOR_PRIMARY:-}${BRAND_COLOR_SECONDARY:-}${BRAND_COLOR_BACKGROUND:-}${BRAND_COLOR_SURFACE:-}${BRAND_COLOR_TEXT:-}${BRAND_COLOR_ACCENT:-}" ]]; then
     log "applying brand palette"
-    [[ -n "${BRAND_COLOR_PRIMARY:-}"    ]] && _setrole primary    "$BRAND_COLOR_PRIMARY"
-    [[ -n "${BRAND_COLOR_SECONDARY:-}"  ]] && _setrole secondary  "$BRAND_COLOR_SECONDARY"
-    [[ -n "${BRAND_COLOR_BACKGROUND:-}" ]] && _setrole background "$BRAND_COLOR_BACKGROUND"
-    if [[ -n "${BRAND_COLOR_SURFACE:-}" ]]; then
-        _setrole surface        "$BRAND_COLOR_SURFACE"
-        _setrole borderprimary  "$(_shade "$BRAND_COLOR_SURFACE" 0.12)"
-        _setrole bordersecondary "$(_shade "$BRAND_COLOR_SURFACE" 0.22)"
-    fi
-    if [[ -n "${BRAND_COLOR_TEXT:-}" ]]; then
-        _setrole textprimary   "$BRAND_COLOR_TEXT"
-        _setrole textsecondary "$(_shade "$BRAND_COLOR_TEXT" -0.35)"
-    fi
-    if [[ -n "${BRAND_COLOR_ACCENT:-}" ]]; then
-        _setrole accent     "$BRAND_COLOR_ACCENT"
-        _setrole accenttext "$(_shade "$BRAND_COLOR_ACCENT" 0.4)"
-    fi
+    P="${BRAND_COLOR_PRIMARY:-#5488c4}"; SEC="${BRAND_COLOR_SECONDARY:-#1c2a3a}"
+    BG="${BRAND_COLOR_BACKGROUND:-#0c141f}"; SURF="${BRAND_COLOR_SURFACE:-#121e2d}"
+    TXT="${BRAND_COLOR_TEXT:-#eef3f9}"; ACC="${BRAND_COLOR_ACCENT:-$P}"
+    _setrole primary "$P";  _setrole secondary "$SEC"; _setrole background "$BG"
+    _setrole surface "$SURF"; _setrole textprimary "$TXT"; _setrole accent "$ACC"
+    _setrole accenttext      "$(_mix "$ACC"  "$TXT" 0.30)"   # readable accent on the bg
+    _setrole textsecondary   "$(_mix "$TXT"  "$BG"  0.42)"   # dimmer text toward the bg
+    _setrole borderprimary   "$(_mix "$SURF" "$TXT" 0.12)"
+    _setrole bordersecondary "$(_mix "$SURF" "$TXT" 0.24)"
+    _setrole hoverbackground "$(_mix "$SURF" "$P"   0.14)"
+    _setrole hovertext       "$TXT"
     docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
 fi
 

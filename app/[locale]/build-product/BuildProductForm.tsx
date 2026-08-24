@@ -16,14 +16,20 @@ const PALETTE_FIELDS: { key: keyof Palette; ar: string; en: string }[] = [
     { key: 'surface', ar: 'البطاقات', en: 'Surface' },
     { key: 'text', ar: 'النص', en: 'Text' },
 ]
-// Ready-made professional palettes (one click sets all 6).
-const PALETTE_PRESETS: { name: string; p: Palette }[] = [
-    { name: 'Slate', p: DEFAULT_PALETTE },
-    { name: 'Teal', p: { primary: '#2f9e8f', accent: '#3fb8a6', secondary: '#10221f', background: '#0a1a17', surface: '#102a25', text: '#eafaf6' } },
-    { name: 'Indigo', p: { primary: '#7c6cd6', accent: '#9b8cf0', secondary: '#1a1730', background: '#0d0b1a', surface: '#171334', text: '#eeeaff' } },
-    { name: 'Ruby', p: { primary: '#c2456b', accent: '#e06a8c', secondary: '#2a1420', background: '#170a10', surface: '#241019', text: '#fdeef3' } },
-    { name: 'Amber', p: { primary: '#d4933a', accent: '#e8b45c', secondary: '#2a2012', background: '#17120a', surface: '#241c10', text: '#fdf5e8' } },
-    { name: 'Light', p: { primary: '#2a50c8', accent: '#2a50c8', secondary: '#eef1f6', background: '#ffffff', surface: '#f5f7fb', text: '#171b22' } },
+// Ready-made professional palettes (one click sets all 6): 5 dark + 5 light.
+const PALETTE_PRESETS: { name: string; dark: boolean; p: Palette }[] = [
+    // ── Dark ──
+    { name: 'Slate', dark: true, p: DEFAULT_PALETTE },
+    { name: 'Teal', dark: true, p: { primary: '#2f9e8f', accent: '#3fb8a6', secondary: '#10221f', background: '#0a1a17', surface: '#102a25', text: '#eafaf6' } },
+    { name: 'Indigo', dark: true, p: { primary: '#7c6cd6', accent: '#9b8cf0', secondary: '#1a1730', background: '#0d0b1a', surface: '#171334', text: '#eeeaff' } },
+    { name: 'Ruby', dark: true, p: { primary: '#c2456b', accent: '#e06a8c', secondary: '#2a1420', background: '#170a10', surface: '#241019', text: '#fdeef3' } },
+    { name: 'Amber', dark: true, p: { primary: '#d4933a', accent: '#e8b45c', secondary: '#2a2012', background: '#17120a', surface: '#241c10', text: '#fdf5e8' } },
+    // ── Light ──
+    { name: 'Sky', dark: false, p: { primary: '#2a63d0', accent: '#2a63d0', secondary: '#eef2fb', background: '#ffffff', surface: '#f4f7fd', text: '#16202f' } },
+    { name: 'Mint', dark: false, p: { primary: '#1c9a63', accent: '#1c9a63', secondary: '#ecf6f0', background: '#ffffff', surface: '#f2faf5', text: '#12241b' } },
+    { name: 'Lavender', dark: false, p: { primary: '#6a58cf', accent: '#6a58cf', secondary: '#f0edfb', background: '#ffffff', surface: '#f6f4fd', text: '#1b1730' } },
+    { name: 'Rose', dark: false, p: { primary: '#c23b63', accent: '#c23b63', secondary: '#fbecf1', background: '#ffffff', surface: '#fdf4f7', text: '#2a141c' } },
+    { name: 'Sand', dark: false, p: { primary: '#b07417', accent: '#c88f27', secondary: '#f6efe4', background: '#fffdf8', surface: '#faf4ea', text: '#2a2313' } },
 ]
 type License = { key: string; name: string; price: number; active: boolean; maxCourses: number; features: Record<string, boolean> }
 const FEATURE_LABELS: Record<string, string> = { drm: 'DRM video', coupons: 'coupons', offers: 'offers', subscriptions: 'subscriptions', packages: 'packages', jitsi: 'live sessions' }

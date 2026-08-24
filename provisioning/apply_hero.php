@@ -40,11 +40,7 @@ if (!is_object($cfg)) { $cfg = new stdClass(); }
 // Full-bleed cover using the uploaded image; keeps the marker so it's re-findable.
 $cfg->mode = 'html';
 $cfg->htmltext =
-    '<div dir="auto" data-nit-section="hero" style="width:100%; background: var(--nit-brand-surface); border-bottom:1px solid var(--nit-brand-borderprimary);">' .
-      '<div style="max-width:1400px; margin:0 auto;">' .
-        '<div style="width:100%; aspect-ratio:16/6; min-height:280px; background:#000 url(\'' . $datauri . '\') center/cover no-repeat;"></div>' .
-      '</div>' .
-    '</div>';
+    '<div dir="auto" data-nit-section="hero" style="width:100%; aspect-ratio:16/6; min-height:340px; background:#000 url(\'' . $datauri . '\') center/cover no-repeat; border-bottom:1px solid var(--nit-brand-borderprimary);"></div>';
 
 $bi->configdata = base64_encode(serialize($cfg));
 $bi->timemodified = time();

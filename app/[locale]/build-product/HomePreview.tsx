@@ -15,6 +15,16 @@ export function shade(hex: string, amt: number): string {
     return `#${[r, g, b].map((x) => Math.max(0, Math.min(255, x)).toString(16).padStart(2, '0')).join('')}`
 }
 
+// Blend colour a toward b by ratio 0..1 — background-aware (works light + dark).
+function mix(a: string, b: string, r: number): string {
+    const pa = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec((a || '').trim())
+    const pb = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec((b || '').trim())
+    if (!pa || !pb) return a
+    const ch = (m: RegExpExecArray, i: number) => parseInt(m[i], 16)
+    const out = [1, 2, 3].map((i) => Math.round(ch(pa, i) * (1 - r) + ch(pb, i) * r))
+    return `#${out.map((x) => Math.max(0, Math.min(255, x)).toString(16).padStart(2, '0')).join('')}`
+}
+
 export type Palette = {
     primary: string
     secondary: string
@@ -44,10 +54,10 @@ export default function HomePreview({ name, palette, logoUrl, heroUrl, aboutUrl,
     const displayName = (name || (isAr ? 'اسم المنصة' : 'Academy Name')).trim()
     const c = {
         ...palette,
-        accentText: shade(palette.accent, 0.4),
-        textSecondary: shade(palette.text, -0.35),
-        border: shade(palette.surface, 0.12),
-        surfaceVar: shade(palette.surface, 0.08),
+        accentText: mix(palette.accent, palette.text, 0.3),
+        textSecondary: mix(palette.text, palette.background, 0.42),
+        border: mix(palette.surface, palette.text, 0.12),
+        surfaceVar: mix(palette.surface, palette.text, 0.08),
         success: '#3fa877',
     }
     const t = (ar: string, en: string) => (isAr ? ar : en)
