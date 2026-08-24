@@ -162,6 +162,11 @@ unset(\$CFG); global \$CFG; \$CFG = new stdClass();
 \$CFG->admin     = 'admin';
 \$CFG->directorypermissions = 0777;
 \$CFG->sslproxy  = true;
+// Public marketing front page: guests can view it, and everyone lands on the
+// Site home (the seeded sections), never the /my/ dashboard. Forced here so it
+// can't be lost to a stale DB/cache value.
+\$CFG->defaulthomepage = 0;   // HOMEPAGE_SITE
+\$CFG->forcelogin      = 0;
 require_once(__DIR__ . '/lib/setup.php');
 PHP
 
