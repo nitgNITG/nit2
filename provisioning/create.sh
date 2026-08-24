@@ -271,6 +271,19 @@ docker exec "$CONTAINER" php /var/www/html/public/theme/nit/cli/apply_brand.php 
 docker exec "$CONTAINER" rm -rf /tmp/nit-brand || true
 rm -rf "$BRAND_DIR"
 
+# ── Brand colour (theme_nit Brand Colors) — from the build form's colour picker
+# BRAND_PRIMARY is a #rrggbb hex. We set Group 1's primary/accent to it and a
+# lightened accent-text (for links on the dark ground), so the live site matches
+# the preview the client designed. Other groups keep their defaults.
+if [[ -n "${BRAND_PRIMARY:-}" && "$BRAND_PRIMARY" =~ ^#[0-9A-Fa-f]{6}$ ]]; then
+    log "applying brand colour $BRAND_PRIMARY"
+    ACCENTTEXT="$(docker exec -e P="$BRAND_PRIMARY" "$CONTAINER" php -r '$h=ltrim(getenv("P"),"#");$r=hexdec(substr($h,0,2));$g=hexdec(substr($h,2,2));$b=hexdec(substr($h,4,2));printf("#%02x%02x%02x",(int)min(255,$r+(255-$r)*0.4),(int)min(255,$g+(255-$g)*0.4),(int)min(255,$b+(255-$b)*0.4));' 2>/dev/null || echo "$BRAND_PRIMARY")"
+    docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=theme_nit --name=brandcolour_g1_primary    --set="$BRAND_PRIMARY" || echo "!! could not set brand primary"
+    docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=theme_nit --name=brandcolour_g1_accent     --set="$BRAND_PRIMARY" || true
+    docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=theme_nit --name=brandcolour_g1_accenttext --set="$ACCENTTEXT"    || true
+    docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
+fi
+
 # ── Licence tier (local_license) ────────────────────────────────────────────
 TIER="${LICENSE_TIER:-demo}"
 case "$TIER" in demo|basic|standard|professional) ;; *) TIER="demo" ;; esac

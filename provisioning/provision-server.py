@@ -121,6 +121,9 @@ def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: 
             val = str(brand.get(key, "") or "").strip()
             if val:
                 env["BRAND_" + key.upper()] = val
+        prim = str(brand.get("primary", "") or "").strip()
+        if re.match(r"^#[0-9A-Fa-f]{6}$", prim):
+            env["BRAND_PRIMARY"] = prim
         logo = _stage_image(stage, "logo", brand.get("logo"))
         if logo:
             env["BRAND_LOGO"] = logo
