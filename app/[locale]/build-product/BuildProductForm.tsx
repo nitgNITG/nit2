@@ -5,10 +5,26 @@ import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/navigation'
-import HomePreview from './HomePreview'
+import HomePreview, { DEFAULT_PALETTE, type Palette } from './HomePreview'
 
-// Preset brand colours the client can pick with one click (custom picker too).
-const COLOR_PRESETS = ['#5488c4', '#2f9e8f', '#7c6cd6', '#c9512a', '#d4933a', '#2f8f57', '#c2456b', '#0f172a']
+// The 6 palette controls the client sets (mapped to theme_nit Brand-Color roles).
+const PALETTE_FIELDS: { key: keyof Palette; ar: string; en: string }[] = [
+    { key: 'primary', ar: 'اللون الأساسي', en: 'Primary' },
+    { key: 'accent', ar: 'لون التمييز', en: 'Accent' },
+    { key: 'secondary', ar: 'اللون الثانوي', en: 'Secondary' },
+    { key: 'background', ar: 'الخلفية', en: 'Background' },
+    { key: 'surface', ar: 'البطاقات', en: 'Surface' },
+    { key: 'text', ar: 'النص', en: 'Text' },
+]
+// Ready-made professional palettes (one click sets all 6).
+const PALETTE_PRESETS: { name: string; p: Palette }[] = [
+    { name: 'Slate', p: DEFAULT_PALETTE },
+    { name: 'Teal', p: { primary: '#2f9e8f', accent: '#3fb8a6', secondary: '#10221f', background: '#0a1a17', surface: '#102a25', text: '#eafaf6' } },
+    { name: 'Indigo', p: { primary: '#7c6cd6', accent: '#9b8cf0', secondary: '#1a1730', background: '#0d0b1a', surface: '#171334', text: '#eeeaff' } },
+    { name: 'Ruby', p: { primary: '#c2456b', accent: '#e06a8c', secondary: '#2a1420', background: '#170a10', surface: '#241019', text: '#fdeef3' } },
+    { name: 'Amber', p: { primary: '#d4933a', accent: '#e8b45c', secondary: '#2a2012', background: '#17120a', surface: '#241c10', text: '#fdf5e8' } },
+    { name: 'Light', p: { primary: '#2a50c8', accent: '#2a50c8', secondary: '#eef1f6', background: '#ffffff', surface: '#f5f7fb', text: '#171b22' } },
+]
 type License = { key: string; name: string; price: number; active: boolean; maxCourses: number; features: Record<string, boolean> }
 const FEATURE_LABELS: Record<string, string> = { drm: 'DRM video', coupons: 'coupons', offers: 'offers', subscriptions: 'subscriptions', packages: 'packages', jitsi: 'live sessions' }
 
@@ -67,7 +83,8 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
     const [logo, setLogo] = useState<File | null>(null)
     const [logocompact, setLogocompact] = useState<File | null>(null)
     const [favicon, setFavicon] = useState<File | null>(null)
-    const [primary, setPrimary] = useState<string>('#5488c4') // brand colour
+    const [palette, setPalette] = useState<Palette>(DEFAULT_PALETTE) // brand colours
+    const setColor = (k: keyof Palette, v: string) => setPalette((p) => ({ ...p, [k]: v }))
     const slugPreview = (watch('slug') || '').toLowerCase().trim()
     const selectedTier = watch('tier')
     const nameWatch = watch('name')
@@ -122,7 +139,7 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                 fullname_en: values.fullnameEn?.trim() || undefined,
                 shortname_ar: values.shortnameAr?.trim() || undefined,
                 shortname_en: values.shortnameEn?.trim() || undefined,
-                primary: primary || undefined, // chosen brand colour
+                colors: palette, // 6 brand colours → theme_nit Brand-Color roles
             }
             if (logo) brand.logo = { filename: logo.name, data_b64: await fileToBase64(logo) }
             if (logocompact) brand.logocompact = { filename: logocompact.name, data_b64: await fileToBase64(logocompact) }
@@ -267,34 +284,51 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                 </div>
             </div>
 
-            {/* Brand colour + live preview */}
+            {/* Brand colours (6 controls → theme_nit roles) + live preview */}
             <div className='mb-6 mt-2'>
                 <label className='mb-1.5 block font-bold text-[#0B2923]'>
-                    {isAr ? 'لون المنصة' : 'Brand colour'}
+                    {isAr ? 'ألوان المنصة' : 'Brand colours'}
                 </label>
-                <div className='flex flex-wrap items-center gap-2'>
-                    {COLOR_PRESETS.map((col) => (
+
+                {/* One-click ready palettes */}
+                <div className='mb-3 flex flex-wrap gap-2'>
+                    {PALETTE_PRESETS.map((pr) => (
                         <button
                             type='button'
-                            key={col}
-                            onClick={() => setPrimary(col)}
-                            aria-label={col}
-                            className={`h-8 w-8 rounded-full ring-2 ring-offset-2 transition ${primary.toLowerCase() === col.toLowerCase() ? 'ring-[#0B2923]' : 'ring-transparent'}`}
-                            style={{ background: col }}
-                        />
+                            key={pr.name}
+                            onClick={() => setPalette(pr.p)}
+                            className='flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-gray-300'
+                        >
+                            <span className='inline-flex'>
+                                <span className='h-4 w-4 rounded-full ring-1 ring-black/10' style={{ background: pr.p.primary }} />
+                                <span className='-ms-1 h-4 w-4 rounded-full ring-1 ring-black/10' style={{ background: pr.p.background }} />
+                            </span>
+                            {pr.name}
+                        </button>
                     ))}
-                    <label className='ms-1 inline-flex cursor-pointer items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-600'>
-                        <span className='inline-block h-4 w-4 rounded-full' style={{ background: primary }} />
-                        {isAr ? 'مخصص' : 'Custom'}
-                        <input type='color' value={primary} onChange={(e) => setPrimary(e.target.value)} className='sr-only' />
-                    </label>
                 </div>
 
-                {/* Live preview — updates as you type name / pick colour / upload logo */}
+                {/* Individual colour controls */}
+                <div className='grid grid-cols-2 gap-2 sm:grid-cols-3'>
+                    {PALETTE_FIELDS.map((f) => (
+                        <label key={f.key} className='flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm'>
+                            <input
+                                type='color'
+                                value={palette[f.key]}
+                                onChange={(e) => setColor(f.key, e.target.value)}
+                                className='h-7 w-7 cursor-pointer rounded border-0 bg-transparent p-0'
+                                aria-label={isAr ? f.ar : f.en}
+                            />
+                            <span className='text-gray-600'>{isAr ? f.ar : f.en}</span>
+                        </label>
+                    ))}
+                </div>
+
+                {/* Live preview — updates as you type name / pick colours / upload logo */}
                 <p className='mb-2 mt-4 text-sm text-gray-500'>
                     {isAr ? 'معاينة مباشرة لمنصتك:' : 'Live preview of your platform:'}
                 </p>
-                <HomePreview name={nameWatch} primary={primary} logoUrl={logoUrl} isAr={isAr} />
+                <HomePreview name={nameWatch} palette={palette} logoUrl={logoUrl} isAr={isAr} />
             </div>
 
             {/* English identifier (slug → branch + future subdomain) */}

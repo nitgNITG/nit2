@@ -46,7 +46,7 @@ type Brand = {
     fullname_en?: string;
     shortname_ar?: string;
     shortname_en?: string;
-    primary?: string; // brand colour (hex) chosen in the build form
+    colors?: Record<string, string>; // brand-colour roles (hex) chosen in the build form
     logo?: BrandImage;
     logocompact?: BrandImage;
     favicon?: BrandImage;
@@ -64,9 +64,15 @@ function sanitizeBrand(raw: unknown): Brand {
         const v = b[k];
         if (typeof v === "string" && v.trim()) out[k] = v.trim().slice(0, MAX_NAME_LEN);
     }
-    // Brand colour — accept a #rrggbb hex only.
-    if (typeof b.primary === "string" && /^#[0-9a-fA-F]{6}$/.test(b.primary.trim())) {
-        out.primary = b.primary.trim();
+    // Brand colours — keep only the known roles with valid #rrggbb hex.
+    if (b.colors && typeof b.colors === "object") {
+        const cin = b.colors as Record<string, unknown>;
+        const cout: Record<string, string> = {};
+        for (const k of ["primary", "secondary", "background", "surface", "text", "accent"]) {
+            const v = cin[k];
+            if (typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v.trim())) cout[k] = v.trim();
+        }
+        if (Object.keys(cout).length) out.colors = cout;
     }
     for (const k of ["logo", "logocompact", "favicon"] as const) {
         const img = b[k];
