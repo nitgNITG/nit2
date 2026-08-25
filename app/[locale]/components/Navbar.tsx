@@ -284,7 +284,6 @@ const Navbar = () => {
                     'fixed inset-0 w-full h-svh z-[999999] bg-gradient-to-r from-[#07221D] to-[#1A8872]',
                     open ? 'bottomToTop pointer-events-auto' : 'topToBottom pointer-events-none',
                 )}>
-                    
                     <div className='flex flex-col items-center justify-between h-full pb-10 overflow-y-auto'>
                         <div className='relative w-full'>
                             <button
