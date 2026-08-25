@@ -35,11 +35,14 @@ $svgbody = [
 $iconcolor = trim((string) getenv('ICON_COLOR'));
 if (!preg_match('/^#[0-9A-Fa-f]{6}$/', $iconcolor)) { $iconcolor = '#1e7d67'; }
 
-// Wrap a glyph body in a full SVG (with the colour baked in) and URL-encode it
-// into a data URI usable in a CSS url() inside the style attribute.
+// Wrap a glyph body in a full SVG (colour baked in) as a BASE64 data URI.
+// base64 (unlike url-encoding) can't contain ':' '(' ')' '-' etc., so Moodle's
+// emoticon filter can't match a smiley inside the encoded path and inject an
+// <img> that would split the style attribute (which broke the phone/whatsapp
+// icons). Same encoding apply_hero.php uses.
 $bguri = function (string $body) use ($iconcolor): string {
     $svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>" . str_replace('@C@', $iconcolor, $body) . "</svg>";
-    return 'data:image/svg+xml,' . rawurlencode($svg);
+    return 'data:image/svg+xml;base64,' . base64_encode($svg);
 };
 
 $social = [

@@ -22,6 +22,13 @@ global $DB, $CFG;
 
 $clientid = trim((string) getenv('GOOGLE_CLIENT_ID'));
 $secret   = trim((string) getenv('GOOGLE_CLIENT_SECRET'));
+// The platform's google_client_id may hold a COMMA-SEPARATED list (mobile app
+// binds several platform client ids). The web OAuth2 issuer needs a single WEB
+// client id — use the first entry (the web client id must be listed first, and
+// its "Authorized redirect URI" must include this academy's oauth2callback.php).
+if (strpos($clientid, ',') !== false) {
+    $clientid = trim(explode(',', $clientid)[0]);
+}
 if ($clientid === '' || $secret === '') {
     fwrite(STDERR, "GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not both set — skipping\n");
     exit(0);
