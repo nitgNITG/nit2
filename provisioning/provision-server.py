@@ -88,7 +88,8 @@ def _stage_image(dirpath: str, kind: str, spec) -> str:
 
 
 def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: dict = None, definition: str = "",
-               owner_email: str = "", owner_name: str = "", locale: str = "ar") -> None:
+               owner_email: str = "", owner_name: str = "", locale: str = "ar",
+               platform_lang: str = "both") -> None:
     """Run create.sh detached, streaming its output to the client's log file.
 
     Branding is passed through create.sh's BRAND_* env contract: names as
@@ -110,6 +111,7 @@ def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: 
     if isinstance(owner_name, str) and owner_name.strip():
         env["OWNER_NAME"] = owner_name.strip()
     env["OWNER_LOCALE"] = "en" if str(locale).strip().lower() == "en" else "ar"
+    env["PLATFORM_LANG"] = platform_lang if platform_lang in ("ar", "en", "both") else "both"
     if isinstance(definition, str) and definition.strip():
         env["LICENSE_DEFINITION"] = definition
     if isinstance(settings, dict):
@@ -341,13 +343,14 @@ class Handler(BaseHTTPRequestHandler):
         owner_email = str(data.get("owner_email", "")).strip()
         owner_name = str(data.get("owner_name", "")).strip()
         locale = str(data.get("locale", "ar")).strip().lower()
+        platform_lang = str(data.get("platform_lang", "both")).strip().lower()
         if not SLUG_RE.match(slug):
             return self._send(400, {"error": "invalid slug"})
         if not name:
             return self._send(400, {"error": "name required"})
         threading.Thread(
             target=run_create,
-            args=(slug, name, brand, tier, settings, definition, owner_email, owner_name, locale),
+            args=(slug, name, brand, tier, settings, definition, owner_email, owner_name, locale, platform_lang),
             daemon=True,
         ).start()
         return self._send(202, {"ok": True, "status": "provisioning", "slug": slug})

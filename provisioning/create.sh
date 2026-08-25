@@ -286,6 +286,14 @@ rm -rf "$BRAND_DIR"
 # the app refuse to open the academy. Set it explicitly.
 docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=theme_nit --name=provisioned --set=1 || echo "!! could not set provisioned"
 
+# ── Platform language (from the build form: ar | en | both) ──────────────────
+_cfg(){ docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --name="$1" --set="$2" >/dev/null 2>&1 || true; }
+case "${PLATFORM_LANG:-both}" in
+    ar) log "language: Arabic only";  _cfg lang ar; _cfg langmenu 0; _cfg langlist ar ;;
+    en) log "language: English only"; _cfg lang en; _cfg langmenu 0; _cfg langlist en ;;
+    *)  log "language: Arabic + English"; _cfg lang ar; _cfg langmenu 1; _cfg langlist "en,ar" ;;
+esac
+
 # ── Brand palette (theme_nit Brand Colors) — from the build form's 6 pickers ──
 # BRAND_COLOR_* are #rrggbb. We set Group 1 (the site-wide default) roles from
 # them and DERIVE the rest (accent-text, secondary text, borders) so the live

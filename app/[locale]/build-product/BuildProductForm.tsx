@@ -91,6 +91,9 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
     const [logo, setLogo] = useState<File | null>(null)
     const [logocompact, setLogocompact] = useState<File | null>(null)
     const [favicon, setFavicon] = useState<File | null>(null)
+    const [platformLang, setPlatformLang] = useState<'ar' | 'en' | 'both'>('both') // academy language
+    const hasAr = platformLang !== 'en'
+    const hasEn = platformLang !== 'ar'
     const [palette, setPalette] = useState<Palette>(DEFAULT_PALETTE) // brand colours
     const setColor = (k: keyof Palette, v: string) => setPalette((p) => ({ ...p, [k]: v }))
     const [hero, setHero] = useState<File | null>(null) // cover/hero image
@@ -153,14 +156,23 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
 
     const onSubmit = async (values: FormValues) => {
         try {
+            const nm = values.name?.trim() || undefined
             const brand: Record<string, unknown> = {
-                fullname_ar: values.name?.trim() || undefined,
-                fullname_en: values.fullnameEn?.trim() || undefined,
-                shortname_ar: values.shortnameAr?.trim() || undefined,
-                shortname_en: values.shortnameEn?.trim() || undefined,
                 colors: palette, // 6 brand colours → theme_nit Brand-Color roles
                 contact_phone: values.contactPhone?.trim() || undefined,
                 contact_whatsapp: values.contactWhatsapp?.trim() || undefined,
+            }
+            // Map the name(s) to the chosen platform language.
+            if (platformLang === 'en') {
+                brand.fullname_en = nm
+                brand.shortname_en = values.shortnameEn?.trim() || undefined
+            } else {
+                brand.fullname_ar = nm
+                brand.shortname_ar = values.shortnameAr?.trim() || undefined
+                if (platformLang === 'both') {
+                    brand.fullname_en = values.fullnameEn?.trim() || undefined
+                    brand.shortname_en = values.shortnameEn?.trim() || undefined
+                }
             }
             if (logo) brand.logo = { filename: logo.name, data_b64: await fileToBase64(logo) }
             if (logocompact) brand.logocompact = { filename: logocompact.name, data_b64: await fileToBase64(logocompact) }
@@ -182,6 +194,7 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                     tier: values.tier,
                     brand,
                     locale,
+                    platform_lang: platformLang,
                     _hp: values._hp,
                 }),
             })
@@ -250,14 +263,34 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
             className='w-full max-w-xl mx-auto rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 p-6 sm:p-8'
             noValidate
         >
-            {/* Academy name (Arabic display name) */}
+            {/* Platform language — decides which name boxes to show + the academy language */}
+            <div className='mb-5'>
+                <label className='mb-1.5 block font-bold text-[#0B2923]'>
+                    {isAr ? 'لغة المنصة' : 'Platform language'} <span className='text-red-500'>*</span>
+                </label>
+                <div className='flex gap-2'>
+                    {([['both', isAr ? 'عربي + إنجليزي' : 'Arabic + English'], ['ar', 'العربية'], ['en', 'English']] as const).map(([val, label]) => (
+                        <button
+                            type='button'
+                            key={val}
+                            onClick={() => setPlatformLang(val)}
+                            className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold transition ${platformLang === val ? 'border-[#1E7D67] bg-[#1E7D67]/10 text-[#1E7D67] ring-1 ring-[#1E7D67]' : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300'}`}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Academy name — primary, in the chosen language (always required) */}
             <div className='mb-5'>
                 <label htmlFor='name' className='mb-1.5 block font-bold text-[#0B2923]'>
-                    {t('nameLabel')} <span className='text-red-500'>*</span>
+                    {hasAr ? (isAr ? 'اسم الأكاديمية' : 'Academy name (Arabic)') : (isAr ? 'اسم الأكاديمية (إنجليزي)' : 'Academy name')} <span className='text-red-500'>*</span>
                 </label>
                 <input
                     id='name'
                     type='text'
+                    dir={hasAr ? undefined : 'ltr'}
                     placeholder={t('namePlaceholder')}
                     className='w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none transition-colors focus:border-[#1E7D67] focus:bg-white'
                     {...register('name', {
@@ -268,51 +301,57 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                 {errors.name && <p className='mt-1 text-sm text-red-500'>{errors.name.message}</p>}
             </div>
 
-            {/* Full name (English) — optional; enables the per-language site name */}
-            <div className='mb-5'>
-                <label htmlFor='fullnameEn' className='mb-1.5 block font-bold text-[#0B2923]'>
-                    {t('fullnameEnLabel')}{' '}
-                    <span className='text-sm font-normal text-gray-400'>({t('optional')})</span>
-                </label>
-                <input
-                    id='fullnameEn'
-                    type='text'
-                    dir='ltr'
-                    placeholder={t('fullnameEnPlaceholder')}
-                    className={`w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none transition-colors focus:border-[#1E7D67] focus:bg-white ${isAr ? 'text-right' : ''}`}
-                    {...register('fullnameEn')}
-                />
-            </div>
-
-            {/* Short name (Arabic + English) — optional */}
-            <div className='mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2'>
-                <div>
-                    <label htmlFor='shortnameAr' className='mb-1.5 block font-bold text-[#0B2923]'>
-                        {t('shortnameArLabel')}{' '}
+            {/* English full name — only when BOTH languages are enabled */}
+            {platformLang === 'both' && (
+                <div className='mb-5'>
+                    <label htmlFor='fullnameEn' className='mb-1.5 block font-bold text-[#0B2923]'>
+                        {t('fullnameEnLabel')}{' '}
                         <span className='text-sm font-normal text-gray-400'>({t('optional')})</span>
                     </label>
                     <input
-                        id='shortnameAr'
-                        type='text'
-                        placeholder={t('shortnameArPlaceholder')}
-                        className='w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none transition-colors focus:border-[#1E7D67] focus:bg-white'
-                        {...register('shortnameAr')}
-                    />
-                </div>
-                <div>
-                    <label htmlFor='shortnameEn' className='mb-1.5 block font-bold text-[#0B2923]'>
-                        {t('shortnameEnLabel')}{' '}
-                        <span className='text-sm font-normal text-gray-400'>({t('optional')})</span>
-                    </label>
-                    <input
-                        id='shortnameEn'
+                        id='fullnameEn'
                         type='text'
                         dir='ltr'
-                        placeholder={t('shortnameEnPlaceholder')}
+                        placeholder={t('fullnameEnPlaceholder')}
                         className={`w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none transition-colors focus:border-[#1E7D67] focus:bg-white ${isAr ? 'text-right' : ''}`}
-                        {...register('shortnameEn')}
+                        {...register('fullnameEn')}
                     />
                 </div>
+            )}
+
+            {/* Short name(s) — only for the active language(s), optional */}
+            <div className='mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2'>
+                {hasAr && (
+                    <div>
+                        <label htmlFor='shortnameAr' className='mb-1.5 block font-bold text-[#0B2923]'>
+                            {t('shortnameArLabel')}{' '}
+                            <span className='text-sm font-normal text-gray-400'>({t('optional')})</span>
+                        </label>
+                        <input
+                            id='shortnameAr'
+                            type='text'
+                            placeholder={t('shortnameArPlaceholder')}
+                            className='w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none transition-colors focus:border-[#1E7D67] focus:bg-white'
+                            {...register('shortnameAr')}
+                        />
+                    </div>
+                )}
+                {hasEn && (
+                    <div>
+                        <label htmlFor='shortnameEn' className='mb-1.5 block font-bold text-[#0B2923]'>
+                            {t('shortnameEnLabel')}{' '}
+                            <span className='text-sm font-normal text-gray-400'>({t('optional')})</span>
+                        </label>
+                        <input
+                            id='shortnameEn'
+                            type='text'
+                            dir='ltr'
+                            placeholder={t('shortnameEnPlaceholder')}
+                            className={`w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none transition-colors focus:border-[#1E7D67] focus:bg-white ${isAr ? 'text-right' : ''}`}
+                            {...register('shortnameEn')}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Brand colours (6 controls → theme_nit roles) + live preview */}
