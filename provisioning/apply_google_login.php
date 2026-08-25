@@ -18,7 +18,13 @@
 define('CLI_SCRIPT', true);
 require('/var/www/html/config.php');
 
-global $DB, $CFG;
+global $DB, $CFG, $USER;
+
+// Run as the site admin: \core\oauth2\api enforces the moodle/site:config
+// capability, but a CLI script has no logged-in user, so the check fails with
+// "you do not currently have permissions to do that (Change site configuration)".
+// get_admin() is in $CFG->siteadmins, so is_siteadmin() / require_capability pass.
+$USER = get_admin();
 
 $clientid = trim((string) getenv('GOOGLE_CLIENT_ID'));
 $secret   = trim((string) getenv('GOOGLE_CLIENT_SECRET'));
