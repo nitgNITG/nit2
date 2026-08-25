@@ -80,10 +80,13 @@ function fileToBase64(file: File): Promise<string> {
     })
 }
 
-const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
+const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; editSlug?: string } = {}) => {
     const t = useTranslations('BuildProduct')
     const locale = useLocale()
     const isAr = locale === 'ar'
+    // Re-apply-branding mode: the academy already exists; we only push updated
+    // branding (no slug / licence / create). Set via the `editSlug` prop.
+    const isEdit = !!editSlug
 
     const {
         register,
@@ -215,25 +218,34 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                 )
             }
 
-            const res = await fetch('/api/academies', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: values.name,
-                    slug: values.slug.toLowerCase().trim(),
-                    tier: values.tier,
-                    brand,
-                    locale,
-                    platform_lang: platformLang,
-                    _hp: values._hp,
-                }),
-            })
+            // Re-apply-branding mode → push the brand to the existing academy;
+            // create mode → provision a new one.
+            const res = isEdit
+                ? await fetch(`/api/academies/${editSlug}/branding`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ brand, platform_lang: platformLang }),
+                })
+                : await fetch('/api/academies', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: values.name,
+                        slug: values.slug.toLowerCase().trim(),
+                        tier: values.tier,
+                        brand,
+                        locale,
+                        platform_lang: platformLang,
+                        _hp: values._hp,
+                    }),
+                })
             const data = await res.json()
             if (!res.ok) {
                 toast.error(data?.error || t('errorGeneric'))
                 return
             }
-            toast.success(t('successToast'))
+            toast.success(isEdit ? (isAr ? 'يتم تحديث الهوية…' : 'Applying branding…') : t('successToast'))
+            if (isEdit) { onSuccess?.(); return }
             reset()
             setLogo(null)
             setLogocompact(null)
@@ -391,6 +403,7 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                 )}
             </div>
 
+            {!isEdit && (<>
             {/* ══ 2. Plan — identifier + licence (required) ══ */}
             <p className='mb-4 mt-8 text-xs font-bold uppercase tracking-wide text-[#1E7D67]'>
                 {isAr ? '٢ · المعرّف والباقة' : '2 · Identifier & plan'}
@@ -459,6 +472,7 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                 </div>
             </div>
             <input type='hidden' {...register('tier')} />
+            </>)}
 
             {/* ══ 3. Branding & appearance — logos, colours, images (optional) ══ */}
             <p className='mb-4 mt-8 text-xs font-bold uppercase tracking-wide text-[#1E7D67]'>
@@ -752,7 +766,9 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                 disabled={isSubmitting}
                 className='mt-2 w-full rounded-full bg-gradient-to-b from-[#1E7D67] to-[#0B2923] px-6 py-3.5 text-lg font-extrabold text-[#00FFB2] transition-transform hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60'
             >
-                {isSubmitting ? t('submitting') : t('submit')}
+                {isSubmitting
+                    ? t('submitting')
+                    : isEdit ? (isAr ? 'حفظ وتحديث الهوية' : 'Save & apply branding') : t('submit')}
             </button>
         </form>
     )

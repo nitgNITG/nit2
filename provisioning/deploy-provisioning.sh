@@ -40,7 +40,7 @@ KEY="${SERVER_B_SSH_KEY:-}"
 SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=20)
 [[ -n "$KEY" ]] && SSH_OPTS+=(-i "$KEY")
 TARGET="${USER_B}@${HOST}"
-FILES=(create.sh destroy.sh apply-license.sh apply-settings.sh update-site.sh apply-suspend.sh send_welcome.php apply_hero.php apply_about.php apply_gallery.php apply_contact.php apply_login.php apply_google_login.php provision-server.py setup-provision.sh)
+FILES=(create.sh destroy.sh apply-license.sh apply-settings.sh update-site.sh apply-suspend.sh apply-branding.sh send_welcome.php apply_hero.php apply_about.php apply_gallery.php apply_contact.php apply_login.php apply_google_login.php apply_footer.php provision-server.py setup-provision.sh)
 
 echo "==> [1/3] ensuring ${DEST} exists on ${TARGET}"
 ssh "${SSH_OPTS[@]}" "$TARGET" "mkdir -p '$DEST'"

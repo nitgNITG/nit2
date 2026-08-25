@@ -25,6 +25,7 @@ APPLY_LICENSE_SH = os.environ.get("APPLY_LICENSE_SH", "/root/apply-license.sh")
 APPLY_SETTINGS_SH = os.environ.get("APPLY_SETTINGS_SH", "/root/apply-settings.sh")
 UPDATE_SITE_SH = os.environ.get("UPDATE_SITE_SH", "/root/update-site.sh")
 APPLY_SUSPEND_SH = os.environ.get("APPLY_SUSPEND_SH", "/root/apply-suspend.sh")
+APPLY_BRANDING_SH = os.environ.get("APPLY_BRANDING_SH", "/root/apply-branding.sh")
 LOG_DIR     = os.environ.get("PROVISION_LOG_DIR", "/var/www/html/saas/logs")
 STAGING_DIR = os.environ.get("PROVISION_STAGING_DIR", "/var/www/html/saas/staging")
 PORT        = int(os.environ.get("PROVISION_PORT", "9099"))
@@ -87,6 +88,80 @@ def _stage_image(dirpath: str, kind: str, spec) -> str:
     return path
 
 
+def _apply_brand_env(env: dict, brand: dict, stage: str) -> None:
+    """Translate a validated brand dict into the BRAND_* env contract that
+    create.sh / apply-branding.sh consume. Images are decoded to staged file
+    paths; only provided values are set. Shared by create + re-apply-branding."""
+    if not isinstance(brand, dict):
+        return
+    for key in ("fullname_ar", "fullname_en", "shortname_ar", "shortname_en"):
+        val = str(brand.get(key, "") or "").strip()
+        if val:
+            env["BRAND_" + key.upper()] = val
+    colors = brand.get("colors")
+    if isinstance(colors, dict):
+        for role in ("primary", "secondary", "background", "surface", "text", "accent"):
+            v = str(colors.get(role, "") or "").strip()
+            if re.match(r"^#[0-9A-Fa-f]{6}$", v):
+                env["BRAND_COLOR_" + role.upper()] = v
+    for kind, var in (("logo", "BRAND_LOGO"), ("logocompact", "BRAND_LOGOCOMPACT"),
+                      ("favicon", "BRAND_FAVICON"), ("hero", "BRAND_HERO"),
+                      ("about", "BRAND_ABOUT"), ("login", "BRAND_LOGIN")):
+        p = _stage_image(stage, kind, brand.get(kind))
+        if p:
+            env[var] = p
+    about_bullets = brand.get("about_bullets")
+    if isinstance(about_bullets, list):
+        items = [str(x).strip()[:200] for x in about_bullets if str(x).strip()][:8]
+        if items:
+            env["BRAND_ABOUT_BULLETS"] = "|||".join(items)
+    gallery = brand.get("gallery")
+    if isinstance(gallery, list):
+        paths = []
+        for idx, img in enumerate(gallery[:8]):  # cap the gallery at 8 images
+            p = _stage_image(stage, "gallery{}".format(idx), img)
+            if p:
+                paths.append(p)
+        if paths:
+            env["BRAND_GALLERY"] = ",".join(paths)
+    phone = str(brand.get("contact_phone", "") or "").strip()
+    if phone:
+        env["BRAND_CONTACT_PHONE"] = phone[:40]
+    wa = str(brand.get("contact_whatsapp", "") or "").strip()
+    if wa:
+        env["BRAND_CONTACT_WHATSAPP"] = wa[:40]
+    social = brand.get("social")
+    if isinstance(social, dict):
+        for k in ("facebook", "instagram", "youtube", "tiktok", "website"):
+            v = str(social.get(k, "") or "").strip()
+            if v.startswith("http"):
+                env["BRAND_SOCIAL_" + k.upper()] = v[:300]
+
+
+def run_apply_branding(slug: str, brand: dict, platform_lang: str = "") -> None:
+    """Run apply-branding.sh detached — RE-APPLY branding to a live academy
+    (logo / colours / hero / about / gallery / contact / login / footer) without
+    recreating it. Same BRAND_* contract as create.sh's branding phase."""
+    logpath = os.path.join(LOG_DIR, f"{slug}.log")
+    stage = os.path.join(STAGING_DIR, slug + "-branding")
+    shutil.rmtree(stage, ignore_errors=True)
+    os.makedirs(stage, exist_ok=True)
+    env = {**os.environ}
+    if platform_lang in ("ar", "en", "both"):
+        env["PLATFORM_LANG"] = platform_lang
+    _apply_brand_env(env, brand, stage)
+    try:
+        with open(logpath, "ab", buffering=0) as log:
+            log.write(f"\n===== apply-branding {slug} =====\n".encode())
+            subprocess.run(
+                ["bash", APPLY_BRANDING_SH, slug],
+                stdout=log, stderr=subprocess.STDOUT,
+                env=env,
+            )
+    finally:
+        shutil.rmtree(stage, ignore_errors=True)
+
+
 def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: dict = None, definition: str = "",
                owner_email: str = "", owner_name: str = "", locale: str = "ar",
                platform_lang: str = "both") -> None:
@@ -118,61 +193,7 @@ def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: 
         for key, val in settings.items():
             if key in SETTING_KEYS and isinstance(val, str) and val.strip():
                 env["SETTING_" + key.upper()] = val.strip()
-    if isinstance(brand, dict):
-        for key in ("fullname_ar", "fullname_en", "shortname_ar", "shortname_en"):
-            val = str(brand.get(key, "") or "").strip()
-            if val:
-                env["BRAND_" + key.upper()] = val
-        colors = brand.get("colors")
-        if isinstance(colors, dict):
-            for role in ("primary", "secondary", "background", "surface", "text", "accent"):
-                v = str(colors.get(role, "") or "").strip()
-                if re.match(r"^#[0-9A-Fa-f]{6}$", v):
-                    env["BRAND_COLOR_" + role.upper()] = v
-        logo = _stage_image(stage, "logo", brand.get("logo"))
-        if logo:
-            env["BRAND_LOGO"] = logo
-        logocompact = _stage_image(stage, "logocompact", brand.get("logocompact"))
-        if logocompact:
-            env["BRAND_LOGOCOMPACT"] = logocompact
-        favicon = _stage_image(stage, "favicon", brand.get("favicon"))
-        if favicon:
-            env["BRAND_FAVICON"] = favicon
-        hero = _stage_image(stage, "hero", brand.get("hero"))
-        if hero:
-            env["BRAND_HERO"] = hero
-        about = _stage_image(stage, "about", brand.get("about"))
-        if about:
-            env["BRAND_ABOUT"] = about
-        login = _stage_image(stage, "login", brand.get("login"))
-        if login:
-            env["BRAND_LOGIN"] = login
-        about_bullets = brand.get("about_bullets")
-        if isinstance(about_bullets, list):
-            items = [str(x).strip()[:200] for x in about_bullets if str(x).strip()][:8]
-            if items:
-                env["BRAND_ABOUT_BULLETS"] = "|||".join(items)
-        gallery = brand.get("gallery")
-        if isinstance(gallery, list):
-            paths = []
-            for idx, img in enumerate(gallery[:8]):  # cap the gallery at 8 images
-                p = _stage_image(stage, "gallery{}".format(idx), img)
-                if p:
-                    paths.append(p)
-            if paths:
-                env["BRAND_GALLERY"] = ",".join(paths)
-        phone = str(brand.get("contact_phone", "") or "").strip()
-        if phone:
-            env["BRAND_CONTACT_PHONE"] = phone[:40]
-        wa = str(brand.get("contact_whatsapp", "") or "").strip()
-        if wa:
-            env["BRAND_CONTACT_WHATSAPP"] = wa[:40]
-        social = brand.get("social")
-        if isinstance(social, dict):
-            for k in ("facebook", "instagram", "youtube", "tiktok", "website"):
-                v = str(social.get(k, "") or "").strip()
-                if v.startswith("http"):
-                    env["BRAND_SOCIAL_" + k.upper()] = v[:300]
+    _apply_brand_env(env, brand, stage)
 
     try:
         with open(logpath, "ab", buffering=0) as log:
@@ -322,6 +343,25 @@ class Handler(BaseHTTPRequestHandler):
             definition = data.get("definition") if isinstance(data.get("definition"), str) else ""
             threading.Thread(target=run_update_site, args=(slug, tier, definition), daemon=True).start()
             return self._send(202, {"ok": True, "status": "updating-site", "slug": slug})
+
+        # POST /apply-branding/<slug>  {brand:{...}, platform_lang?} — re-apply
+        # branding (logo/colours/hero/about/gallery/contact/login/footer) to a
+        # LIVE academy without recreating it.
+        if self.path.startswith("/apply-branding/"):
+            slug = self.path[len("/apply-branding/"):]
+            if not SLUG_RE.match(slug):
+                return self._send(400, {"error": "invalid slug"})
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                if length > MAX_BODY:
+                    return self._send(413, {"error": "payload too large"})
+                data = json.loads(self.rfile.read(length) or b"{}")
+            except Exception:
+                return self._send(400, {"error": "bad json"})
+            brand = data.get("brand") if isinstance(data.get("brand"), dict) else {}
+            platform_lang = str(data.get("platform_lang", "")).strip().lower()
+            threading.Thread(target=run_apply_branding, args=(slug, brand, platform_lang), daemon=True).start()
+            return self._send(202, {"ok": True, "status": "applying-branding", "slug": slug})
 
         # POST /suspend/<slug>  {"suspended": true|false} — soft-lock / resume.
         if self.path.startswith("/suspend/"):

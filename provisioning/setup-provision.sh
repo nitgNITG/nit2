@@ -41,7 +41,9 @@ cp "$SCRIPT_DIR/apply_gallery.php" /root/apply_gallery.php
 cp "$SCRIPT_DIR/apply_contact.php"  /root/apply_contact.php
 cp "$SCRIPT_DIR/apply_login.php"    /root/apply_login.php
 cp "$SCRIPT_DIR/apply_google_login.php" /root/apply_google_login.php
-chmod +x /root/create.sh /root/destroy.sh /root/apply-license.sh /root/apply-settings.sh /root/update-site.sh /root/apply-suspend.sh
+cp "$SCRIPT_DIR/apply_footer.php"   /root/apply_footer.php
+cp "$SCRIPT_DIR/apply-branding.sh"  /root/apply-branding.sh
+chmod +x /root/create.sh /root/destroy.sh /root/apply-license.sh /root/apply-settings.sh /root/update-site.sh /root/apply-suspend.sh /root/apply-branding.sh
 
 # ── The HTTP service — copied verbatim from the repo (NOT inlined), so branding,
 #    licence tier, and /apply-license stay in one place: provision-server.py ───

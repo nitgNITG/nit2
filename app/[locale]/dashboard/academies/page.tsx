@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
+import BuildProductForm from '../../build-product/BuildProductForm'
 
 type Academy = { id: string; name: string; slug: string; status: string; tier: string }
 type License = { key: string; name: string; active: boolean }
@@ -14,6 +15,7 @@ const AcademiesPage = () => {
     const [updatingAll, setUpdatingAll] = useState(false)
     const [updatingSlug, setUpdatingSlug] = useState<string | null>(null)
     const [busySlug, setBusySlug] = useState<string | null>(null)
+    const [brandingSlug, setBrandingSlug] = useState<string | null>(null)
 
     const licenseName = (key: string) => licenses.find((l) => l.key === key)?.name ?? key
 
@@ -173,6 +175,12 @@ const AcademiesPage = () => {
                                             className='rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50'>
                                             {updatingSlug === a.slug ? '…' : '⟳ Update'}
                                         </button>
+                                        <button type='button' onClick={() => setBrandingSlug(a.slug)}
+                                            disabled={!['live', 'suspended'].includes(a.status)}
+                                            title='Re-apply branding (logo, colours, hero, about, gallery, contact, login, footer) to this live academy'
+                                            className='rounded-lg border border-[#268F79]/50 px-2.5 py-1.5 text-xs font-semibold text-[#268F79] hover:bg-[#268F79]/5 disabled:opacity-40'>
+                                            🎨 Branding
+                                        </button>
                                         <button type='button' onClick={() => toggleSuspend(a.slug, a.status)} disabled={busySlug === a.slug}
                                             title={a.status === 'suspended' ? 'Resume this academy' : 'Suspend (soft-lock) this academy'}
                                             className='rounded-lg border border-amber-300 px-2.5 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50'>
@@ -190,6 +198,23 @@ const AcademiesPage = () => {
                     </tbody>
                 </table>
             </div>
+
+            {/* Re-apply-branding modal — reuses the build form in edit mode. */}
+            {brandingSlug && (
+                <div className='fixed inset-0 z-[1000] flex items-start justify-center overflow-y-auto bg-black/50 p-4'>
+                    <div className='relative my-8 w-full max-w-xl'>
+                        <div className='mb-2 flex items-center justify-between text-white'>
+                            <span className='font-bold'>🎨 Branding — <span className='font-mono'>{brandingSlug}</span></span>
+                            <button type='button' onClick={() => setBrandingSlug(null)}
+                                className='rounded-full bg-white/10 px-3 py-1 text-sm font-bold hover:bg-white/20'>✕ Close</button>
+                        </div>
+                        <BuildProductForm
+                            editSlug={brandingSlug}
+                            onSuccess={() => { setBrandingSlug(null); toast.success('Branding queued — it applies in ~1 min'); }}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
