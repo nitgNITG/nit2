@@ -47,10 +47,11 @@ export type PreviewProps = {
     aboutUrl?: string | null
     faviconUrl?: string | null
     galleryUrls?: string[]
+    aboutBullets?: string[]
     isAr: boolean
 }
 
-export default function HomePreview({ name, palette, logoUrl, heroUrl, aboutUrl, faviconUrl, galleryUrls = [], isAr }: PreviewProps) {
+export default function HomePreview({ name, palette, logoUrl, heroUrl, aboutUrl, faviconUrl, galleryUrls = [], aboutBullets = [], isAr }: PreviewProps) {
     const displayName = (name || (isAr ? 'اسم المنصة' : 'Academy Name')).trim()
     const c = {
         ...palette,
@@ -122,18 +123,26 @@ export default function HomePreview({ name, palette, logoUrl, heroUrl, aboutUrl,
                 {imgBox(heroUrl, t('صورة الغلاف', 'Cover image'), { aspectRatio: '16 / 6', borderBottom: `1px solid ${c.border}` })}
 
                 {/* about */}
-                <div style={{ padding: '22px 16px', display: 'grid', gridTemplateColumns: '1fr 120px', gap: 16, alignItems: 'center' }}>
+                <div style={{ padding: '22px 16px', display: 'grid', gridTemplateColumns: '1fr 130px', gap: 16, alignItems: 'center' }}>
                     <div>
                         <div style={{ color: c.accentText, fontWeight: 800, fontSize: 18 }}>{t('نبذة عن', 'About')}</div>
                         <div style={{ fontWeight: 700, margin: '4px 0 12px' }}>{displayName}</div>
-                        {[0, 1, 2].map((i) => (
-                            <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                                <span style={{ color: c.accent }}>◆</span>
-                                <span style={{ height: 8, flex: 1, background: c.textSecondary, opacity: 0.3, borderRadius: 4, marginTop: 4 }} />
-                            </div>
-                        ))}
+                        {aboutBullets.length ? (
+                            aboutBullets.map((b, i) => (
+                                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, fontSize: 13, color: c.textSecondary, lineHeight: 1.6 }}>
+                                    <span style={{ color: c.accent }}>◆</span><span>{b}</span>
+                                </div>
+                            ))
+                        ) : (
+                            [0, 1, 2].map((i) => (
+                                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                                    <span style={{ color: c.accent }}>◆</span>
+                                    <span style={{ height: 8, flex: 1, background: c.textSecondary, opacity: 0.3, borderRadius: 4, marginTop: 4 }} />
+                                </div>
+                            ))
+                        )}
                     </div>
-                    {imgBox(aboutUrl, '', { height: 120, borderRadius: 12, border: `1px solid ${c.border}` })}
+                    {imgBox(aboutUrl, '', { aspectRatio: '4 / 3', width: '100%', borderRadius: 12, border: `1px solid ${c.border}` })}
                 </div>
 
                 {/* courses */}

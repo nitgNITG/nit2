@@ -144,6 +144,11 @@ def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: 
         about = _stage_image(stage, "about", brand.get("about"))
         if about:
             env["BRAND_ABOUT"] = about
+        about_bullets = brand.get("about_bullets")
+        if isinstance(about_bullets, list):
+            items = [str(x).strip()[:200] for x in about_bullets if str(x).strip()][:8]
+            if items:
+                env["BRAND_ABOUT_BULLETS"] = "|||".join(items)
         gallery = brand.get("gallery")
         if isinstance(gallery, list):
             paths = []

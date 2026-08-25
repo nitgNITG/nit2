@@ -328,13 +328,17 @@ if [[ -n "${BRAND_HERO:-}" && -f "${BRAND_HERO}" && -f /root/apply_hero.php ]]; 
     docker exec "$CONTAINER" rm -f /var/www/moodledata/apply_hero.php "$HERO_IN" || true
 fi
 
-# ── About photo — swap the client's image into the front-page about section ──
-if [[ -n "${BRAND_ABOUT:-}" && -f "${BRAND_ABOUT}" && -f /root/apply_about.php ]]; then
-    log "applying about photo"
-    ABOUT_IN="/var/www/moodledata/about_upload.${BRAND_ABOUT##*.}"
+# ── About section — bullet points (chips) + photo into the about section ────
+if [[ ( -n "${BRAND_ABOUT:-}" || -n "${BRAND_ABOUT_BULLETS:-}" ) && -f /root/apply_about.php ]]; then
+    log "applying about section"
     docker cp /root/apply_about.php "$CONTAINER:/var/www/moodledata/apply_about.php"
-    docker cp "$BRAND_ABOUT" "$CONTAINER:$ABOUT_IN"
-    docker exec -e ABOUT_IMAGE="$ABOUT_IN" "$CONTAINER" php /var/www/moodledata/apply_about.php || echo "!! about step failed (site still live)"
+    ABOUT_IN=""
+    if [[ -n "${BRAND_ABOUT:-}" && -f "${BRAND_ABOUT}" ]]; then
+        ABOUT_IN="/var/www/moodledata/about_upload.${BRAND_ABOUT##*.}"
+        docker cp "$BRAND_ABOUT" "$CONTAINER:$ABOUT_IN"
+    fi
+    docker exec -e ABOUT_IMAGE="$ABOUT_IN" -e ABOUT_BULLETS="${BRAND_ABOUT_BULLETS:-}" \
+        "$CONTAINER" php /var/www/moodledata/apply_about.php || echo "!! about step failed (site still live)"
     docker exec "$CONTAINER" rm -f /var/www/moodledata/apply_about.php "$ABOUT_IN" || true
 fi
 

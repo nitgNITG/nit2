@@ -107,6 +107,13 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
     const [about, setAbout] = useState<File | null>(null) // about/instructor photo
     const aboutUrl = useMemo(() => (about ? URL.createObjectURL(about) : null), [about])
     useEffect(() => () => { if (aboutUrl) URL.revokeObjectURL(aboutUrl) }, [aboutUrl])
+    const [aboutBullets, setAboutBullets] = useState<string[]>([]) // about points (chips)
+    const [bulletDraft, setBulletDraft] = useState('')
+    const addBullet = () => {
+        const v = bulletDraft.trim()
+        if (v && aboutBullets.length < 8 && !aboutBullets.includes(v)) setAboutBullets((a) => [...a, v])
+        setBulletDraft('')
+    }
     const [gallery, setGallery] = useState<File[]>([]) // up to 8 gallery photos
     const faviconUrl = useMemo(() => (favicon ? URL.createObjectURL(favicon) : null), [favicon])
     useEffect(() => () => { if (faviconUrl) URL.revokeObjectURL(faviconUrl) }, [faviconUrl])
@@ -186,6 +193,7 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
             if (values.socialTiktok?.trim()) social.tiktok = values.socialTiktok.trim()
             if (values.socialWebsite?.trim()) social.website = values.socialWebsite.trim()
             if (Object.keys(social).length) brand.social = social
+            if (aboutBullets.length) brand.about_bullets = aboutBullets
 
             if (logo) brand.logo = { filename: logo.name, data_b64: await fileToBase64(logo) }
             if (logocompact) brand.logocompact = { filename: logocompact.name, data_b64: await fileToBase64(logocompact) }
@@ -224,6 +232,7 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
             setHero(null)
             setAbout(null)
             setGallery([])
+            setAboutBullets([])
             // In the dashboard modal we hand control back (close + refresh);
             // on the standalone page we show the success card.
             if (onSuccess) { onSuccess(); return }
@@ -426,6 +435,37 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                     {hero && <p className='mt-1 truncate text-xs text-[#1E7D67]' dir='ltr'>{hero.name}</p>}
                 </div>
 
+                {/* About bullet points (chips) */}
+                <div className='mt-4'>
+                    <label className='mb-1.5 block text-sm font-semibold text-[#0B2923]'>
+                        {isAr ? 'نقاط النبذة (About)' : 'About points'}{' '}
+                        <span className='text-xs font-normal text-gray-400'>({t('optional')})</span>
+                    </label>
+                    <div className='flex gap-2'>
+                        <input
+                            type='text'
+                            value={bulletDraft}
+                            onChange={(e) => setBulletDraft(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addBullet() } }}
+                            placeholder={isAr ? 'اكتب نقطة ثم أضف' : 'Type a point, then Add'}
+                            className='flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition-colors focus:border-[#1E7D67] focus:bg-white'
+                        />
+                        <button type='button' onClick={addBullet} className='rounded-xl bg-[#1E7D67]/10 px-4 py-2.5 text-sm font-semibold text-[#1E7D67] hover:bg-[#1E7D67]/15'>
+                            {isAr ? 'أضف' : 'Add'}
+                        </button>
+                    </div>
+                    {aboutBullets.length > 0 && (
+                        <div className='mt-2 flex flex-wrap gap-2'>
+                            {aboutBullets.map((b, i) => (
+                                <span key={i} className='inline-flex items-center gap-1.5 rounded-full bg-[#1E7D67]/10 px-3 py-1 text-xs text-[#0B2923]'>
+                                    {b}
+                                    <button type='button' onClick={() => setAboutBullets((a) => a.filter((_, j) => j !== i))} className='text-[#1E7D67] hover:text-red-500'>✕</button>
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
                 {/* About photo + gallery */}
                 <div className='mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2'>
                     <div>
@@ -468,7 +508,7 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                 <p className='mb-2 mt-4 text-sm text-gray-500'>
                     {isAr ? 'معاينة مباشرة لمنصتك:' : 'Live preview of your platform:'}
                 </p>
-                <HomePreview name={nameWatch} palette={palette} logoUrl={logoUrl} heroUrl={heroUrl} aboutUrl={aboutUrl} faviconUrl={faviconUrl} galleryUrls={galleryUrls} isAr={isAr} />
+                <HomePreview name={nameWatch} palette={palette} logoUrl={logoUrl} heroUrl={heroUrl} aboutUrl={aboutUrl} faviconUrl={faviconUrl} galleryUrls={galleryUrls} aboutBullets={aboutBullets} isAr={isAr} />
             </div>
 
             {/* Contact details — fill the front-page contact section */}

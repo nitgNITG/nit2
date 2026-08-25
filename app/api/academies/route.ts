@@ -55,6 +55,7 @@ type Brand = {
     favicon?: BrandImage;
     hero?: BrandImage;
     about?: BrandImage;
+    about_bullets?: string[];
     gallery?: BrandImage[];
 };
 
@@ -107,6 +108,14 @@ function sanitizeBrand(raw: unknown): Brand {
     for (const k of ["logo", "logocompact", "favicon", "hero", "about"] as const) {
         const v = validImage(b[k]);
         if (v) out[k] = v;
+    }
+    // About bullet points (chips) — plain text, cap 8.
+    if (Array.isArray(b.about_bullets)) {
+        const items = b.about_bullets
+            .filter((x): x is string => typeof x === "string" && x.trim() !== "")
+            .map((x) => x.trim().slice(0, 200))
+            .slice(0, 8);
+        if (items.length) out.about_bullets = items;
     }
     // Gallery — an array of images (cap 8).
     if (Array.isArray(b.gallery)) {
