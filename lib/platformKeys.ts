@@ -4,6 +4,7 @@
 // (A Next.js route.ts file may only export request handlers, so this can't live there.)
 export const PLATFORM_KEYS = [
     'google_client_id',
+    'google_client_secret',
     'apple_client_id',
     'facebook_app_id',
     'android_version',

@@ -12,6 +12,7 @@ const GROUPS: { title: string; note: string; fields: FieldDef[] }[] = [
         note: 'Bound to the app binary — the SAME value for every academy. Changing these breaks social login until every academy is re-synced.',
         fields: [
             { key: 'google_client_id', label: 'Google client id', placeholder: '000-abc.apps.googleusercontent.com' },
+            { key: 'google_client_secret', label: 'Google client secret', hint: 'Enables "Sign in with Google" on every academy login page. Add each academy domain’s https://<domain>/admin/oauth2callback.php to the OAuth client’s authorized redirect URIs.', placeholder: 'GOCSPX-…' },
             { key: 'apple_client_id', label: 'Apple client id', placeholder: 'com.nit.academy.service' },
             { key: 'facebook_app_id', label: 'Facebook app id', placeholder: '000000000000000' },
         ],

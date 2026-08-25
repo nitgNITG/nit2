@@ -360,6 +360,16 @@ if [[ -n "${BRAND_GALLERY:-}" && -f /root/apply_gallery.php ]]; then
     docker exec "$CONTAINER" sh -c 'rm -f /var/www/moodledata/apply_gallery.php /var/www/moodledata/gal_*' || true
 fi
 
+# ── Login / signup page background image (theme_nit stored-file, not a section) ─
+if [[ -n "${BRAND_LOGIN:-}" && -f "${BRAND_LOGIN}" && -f /root/apply_login.php ]]; then
+    log "applying login background image"
+    LOGIN_IN="/var/www/moodledata/login_upload.${BRAND_LOGIN##*.}"
+    docker cp /root/apply_login.php "$CONTAINER:/var/www/moodledata/apply_login.php"
+    docker cp "$BRAND_LOGIN" "$CONTAINER:$LOGIN_IN"
+    docker exec -e LOGIN_IMAGE="$LOGIN_IN" "$CONTAINER" php /var/www/moodledata/apply_login.php || echo "!! login-bg step failed (site still live)"
+    docker exec "$CONTAINER" rm -f /var/www/moodledata/apply_login.php "$LOGIN_IN" || true
+fi
+
 # ── Contact + social — phone / WhatsApp / social icons into the contact section
 if [[ -n "${BRAND_CONTACT_PHONE:-}${BRAND_CONTACT_WHATSAPP:-}${BRAND_SOCIAL_FACEBOOK:-}${BRAND_SOCIAL_INSTAGRAM:-}${BRAND_SOCIAL_YOUTUBE:-}${BRAND_SOCIAL_TIKTOK:-}${BRAND_SOCIAL_WEBSITE:-}" && -f /root/apply_contact.php ]]; then
     log "applying contact + social"
@@ -382,7 +392,7 @@ docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_l
 docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=definition --set="${LICENSE_DEFINITION:-}" || echo "!! could not set licence definition"
 
 # ── Global platform settings (local_multitopics) ────────────────────────────
-for _skey in google_client_id apple_client_id facebook_app_id android_version android_url ios_version ios_url; do
+for _skey in google_client_id google_client_secret apple_client_id facebook_app_id android_version android_url ios_version ios_url; do
     _senv="SETTING_$(echo "$_skey" | tr '[:lower:]' '[:upper:]')"
     _sval="${!_senv:-}"
     if [[ -n "$_sval" ]]; then
@@ -390,6 +400,17 @@ for _skey in google_client_id apple_client_id facebook_app_id android_version an
         docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_multitopics --name="$_skey" --set="$_sval" || echo "!! could not set $_skey"
     fi
 done
+
+# ── Google web login — only when BOTH an OAuth client id + secret are provided ─
+if [[ -n "${SETTING_GOOGLE_CLIENT_ID:-}" && -n "${SETTING_GOOGLE_CLIENT_SECRET:-}" && -f /root/apply_google_login.php ]]; then
+    log "enabling Sign in with Google"
+    docker cp /root/apply_google_login.php "$CONTAINER:/var/www/moodledata/apply_google_login.php"
+    docker exec \
+        -e GOOGLE_CLIENT_ID="${SETTING_GOOGLE_CLIENT_ID}" \
+        -e GOOGLE_CLIENT_SECRET="${SETTING_GOOGLE_CLIENT_SECRET}" \
+        "$CONTAINER" php /var/www/moodledata/apply_google_login.php || echo "!! google-login step failed (site still live)"
+    docker exec "$CONTAINER" rm -f /var/www/moodledata/apply_google_login.php || true
+fi
 
 docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
 

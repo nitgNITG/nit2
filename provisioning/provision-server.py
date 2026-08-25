@@ -34,7 +34,7 @@ TIER_RE     = re.compile(r"^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])$")
 # Global platform-settings keys we accept and forward to create.sh (as SETTING_<KEY>).
 # Whitelisted so a caller can't inject arbitrary Moodle config names.
 SETTING_KEYS = {
-    "google_client_id", "apple_client_id", "facebook_app_id",
+    "google_client_id", "google_client_secret", "apple_client_id", "facebook_app_id",
     "android_version", "android_url", "ios_version", "ios_url",
 }
 
@@ -144,6 +144,9 @@ def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: 
         about = _stage_image(stage, "about", brand.get("about"))
         if about:
             env["BRAND_ABOUT"] = about
+        login = _stage_image(stage, "login", brand.get("login"))
+        if login:
+            env["BRAND_LOGIN"] = login
         about_bullets = brand.get("about_bullets")
         if isinstance(about_bullets, list):
             items = [str(x).strip()[:200] for x in about_bullets if str(x).strip()][:8]

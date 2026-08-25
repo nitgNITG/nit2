@@ -55,6 +55,7 @@ type Brand = {
     favicon?: BrandImage;
     hero?: BrandImage;
     about?: BrandImage;
+    login?: BrandImage;
     about_bullets?: string[];
     gallery?: BrandImage[];
 };
@@ -105,7 +106,7 @@ function sanitizeBrand(raw: unknown): Brand {
         }
         return null;
     };
-    for (const k of ["logo", "logocompact", "favicon", "hero", "about"] as const) {
+    for (const k of ["logo", "logocompact", "favicon", "hero", "about", "login"] as const) {
         const v = validImage(b[k]);
         if (v) out[k] = v;
     }

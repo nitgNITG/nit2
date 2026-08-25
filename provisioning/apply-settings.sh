@@ -20,7 +20,7 @@ CONTAINER="saas_moodle_${SLUG}"
 docker ps --format '{{.Names}}' | grep -qx "$CONTAINER" || die "container $CONTAINER is not running"
 
 applied=0
-for _skey in google_client_id apple_client_id facebook_app_id android_version android_url ios_version ios_url; do
+for _skey in google_client_id google_client_secret apple_client_id facebook_app_id android_version android_url ios_version ios_url; do
     _senv="SETTING_$(echo "$_skey" | tr '[:lower:]' '[:upper:]')"
     _sval="${!_senv:-}"
     if [[ -n "$_sval" ]]; then
@@ -29,6 +29,18 @@ for _skey in google_client_id apple_client_id facebook_app_id android_version an
             && applied=$((applied + 1)) || echo "!! could not set $_skey"
     fi
 done
+
+# Google web login — (re)configure when both id + secret are present.
+if [[ -n "${SETTING_GOOGLE_CLIENT_ID:-}" && -n "${SETTING_GOOGLE_CLIENT_SECRET:-}" && -f /root/apply_google_login.php ]]; then
+    log "enabling Sign in with Google"
+    docker cp /root/apply_google_login.php "$CONTAINER:/var/www/moodledata/apply_google_login.php"
+    docker exec \
+        -e GOOGLE_CLIENT_ID="${SETTING_GOOGLE_CLIENT_ID}" \
+        -e GOOGLE_CLIENT_SECRET="${SETTING_GOOGLE_CLIENT_SECRET}" \
+        "$CONTAINER" php /var/www/moodledata/apply_google_login.php \
+        && applied=$((applied + 1)) || echo "!! google-login step failed"
+    docker exec "$CONTAINER" rm -f /var/www/moodledata/apply_google_login.php || true
+fi
 
 docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
 log "applied $applied setting(s) to $SLUG"

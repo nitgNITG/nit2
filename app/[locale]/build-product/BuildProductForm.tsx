@@ -24,12 +24,17 @@ const PALETTE_PRESETS: { name: string; dark: boolean; p: Palette }[] = [
     { name: 'Indigo', dark: true, p: { primary: '#7c6cd6', accent: '#9b8cf0', secondary: '#1a1730', background: '#0d0b1a', surface: '#171334', text: '#eeeaff' } },
     { name: 'Ruby', dark: true, p: { primary: '#c2456b', accent: '#e06a8c', secondary: '#2a1420', background: '#170a10', surface: '#241019', text: '#fdeef3' } },
     { name: 'Amber', dark: true, p: { primary: '#d4933a', accent: '#e8b45c', secondary: '#2a2012', background: '#17120a', surface: '#241c10', text: '#fdf5e8' } },
-    // ── Light ──
-    { name: 'Sky', dark: false, p: { primary: '#2a63d0', accent: '#2a63d0', secondary: '#eef2fb', background: '#ffffff', surface: '#f4f7fd', text: '#16202f' } },
-    { name: 'Mint', dark: false, p: { primary: '#1c9a63', accent: '#1c9a63', secondary: '#ecf6f0', background: '#ffffff', surface: '#f2faf5', text: '#12241b' } },
-    { name: 'Lavender', dark: false, p: { primary: '#6a58cf', accent: '#6a58cf', secondary: '#f0edfb', background: '#ffffff', surface: '#f6f4fd', text: '#1b1730' } },
-    { name: 'Rose', dark: false, p: { primary: '#c23b63', accent: '#c23b63', secondary: '#fbecf1', background: '#ffffff', surface: '#fdf4f7', text: '#2a141c' } },
-    { name: 'Sand', dark: false, p: { primary: '#b07417', accent: '#c88f27', secondary: '#f6efe4', background: '#fffdf8', surface: '#faf4ea', text: '#2a2313' } },
+    // ── Light — derived from real academy brand palettes ──
+    // Royal navy + gold (al3alamy.com).
+    { name: 'Royal', dark: false, p: { primary: '#00126c', accent: '#c9a227', secondary: '#eaeef9', background: '#ffffff', surface: '#f3f5fb', text: '#0b1230' } },
+    // Deep teal + warm gold (xmathsacademy.com).
+    { name: 'Teal Gold', dark: false, p: { primary: '#0e504d', accent: '#c7ae72', secondary: '#eaf3f1', background: '#ffffff', surface: '#f2f8f6', text: '#14201f' } },
+    // Fresh emerald green (kotoof.org).
+    { name: 'Emerald', dark: false, p: { primary: '#167b44', accent: '#1f9e57', secondary: '#eaf5ee', background: '#ffffff', surface: '#f2f9f4', text: '#12241a' } },
+    // Brick red + navy (3alemny.net).
+    { name: 'Brick', dark: false, p: { primary: '#92251e', accent: '#b23a2e', secondary: '#fbeeec', background: '#ffffff', surface: '#fbf4f3', text: '#183041' } },
+    // Deep blue + slate (mrfathybakrmathematics.com).
+    { name: 'Navy', dark: false, p: { primary: '#003362', accent: '#1f6fb2', secondary: '#e9eef4', background: '#ffffff', surface: '#f2f6fa', text: '#10233a' } },
 ]
 type License = { key: string; name: string; price: number; active: boolean; maxCourses: number; features: Record<string, boolean> }
 const FEATURE_LABELS: Record<string, string> = { drm: 'DRM video', coupons: 'coupons', offers: 'offers', subscriptions: 'subscriptions', packages: 'packages', jitsi: 'live sessions' }
@@ -107,6 +112,9 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
     const [about, setAbout] = useState<File | null>(null) // about/instructor photo
     const aboutUrl = useMemo(() => (about ? URL.createObjectURL(about) : null), [about])
     useEffect(() => () => { if (aboutUrl) URL.revokeObjectURL(aboutUrl) }, [aboutUrl])
+    const [login, setLogin] = useState<File | null>(null) // login/signup page background
+    const loginUrl = useMemo(() => (login ? URL.createObjectURL(login) : null), [login])
+    useEffect(() => () => { if (loginUrl) URL.revokeObjectURL(loginUrl) }, [loginUrl])
     const [aboutBullets, setAboutBullets] = useState<string[]>([]) // about points (chips)
     const [bulletDraft, setBulletDraft] = useState('')
     const addBullet = () => {
@@ -200,6 +208,7 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
             if (favicon) brand.favicon = { filename: favicon.name, data_b64: await fileToBase64(favicon) }
             if (hero) brand.hero = { filename: hero.name, data_b64: await fileToBase64(hero) }
             if (about) brand.about = { filename: about.name, data_b64: await fileToBase64(about) }
+            if (login) brand.login = { filename: login.name, data_b64: await fileToBase64(login) }
             if (gallery.length) {
                 brand.gallery = await Promise.all(
                     gallery.map(async (f) => ({ filename: f.name, data_b64: await fileToBase64(f) })),
@@ -231,6 +240,7 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
             setFavicon(null)
             setHero(null)
             setAbout(null)
+            setLogin(null)
             setGallery([])
             setAboutBullets([])
             // In the dashboard modal we hand control back (close + refresh);
@@ -502,6 +512,31 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                         />
                         {gallery.length > 0 && <p className='mt-1 text-xs text-[#1E7D67]' dir='ltr'>{gallery.length} {isAr ? 'صورة' : 'images'}</p>}
                     </div>
+                </div>
+
+                {/* Login / signup page background image */}
+                <div className='mt-4'>
+                    <label htmlFor='login' className='mb-1.5 block text-sm font-semibold text-[#0B2923]'>
+                        {isAr ? 'صورة خلفية صفحة تسجيل الدخول' : 'Login page background image'}{' '}
+                        <span className='text-xs font-normal text-gray-400'>({t('optional')})</span>
+                    </label>
+                    <input
+                        id='login'
+                        type='file'
+                        accept='image/png,image/jpeg,image/webp'
+                        onChange={pickImage(setLogin, 1.5 * 1024 * 1024, ['image/png', 'image/jpeg', 'image/webp'], '1.5 MB')}
+                        className='block w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-[#1E7D67]/10 file:px-4 file:py-2.5 file:font-semibold file:text-[#1E7D67] hover:file:bg-[#1E7D67]/15'
+                    />
+                    <p className='mt-1.5 text-xs text-gray-500'>
+                        {isAr
+                            ? 'تظهر خلف نموذج تسجيل الدخول والتسجيل. يُضاف تعتيم خفيف تلقائيًا لسهولة القراءة.'
+                            : 'Shown behind the login & signup form. A subtle dark overlay is added for readability.'}
+                    </p>
+                    {login && <p className='mt-1 truncate text-xs text-[#1E7D67]' dir='ltr'>{login.name}</p>}
+                    {loginUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={loginUrl} alt='' className='mt-2 h-28 w-full rounded-lg object-cover' />
+                    )}
                 </div>
 
                 {/* Live preview — updates as you type name / pick colours / upload images */}
