@@ -149,6 +149,7 @@ if [[ -n "${BRAND_CONTACT_PHONE:-}${BRAND_CONTACT_WHATSAPP:-}${BRAND_SOCIAL_FACE
         -e SOCIAL_FACEBOOK="${BRAND_SOCIAL_FACEBOOK:-}" -e SOCIAL_INSTAGRAM="${BRAND_SOCIAL_INSTAGRAM:-}" \
         -e SOCIAL_YOUTUBE="${BRAND_SOCIAL_YOUTUBE:-}" -e SOCIAL_TIKTOK="${BRAND_SOCIAL_TIKTOK:-}" \
         -e SOCIAL_WEBSITE="${BRAND_SOCIAL_WEBSITE:-}" \
+        -e ICON_COLOR="${BRAND_COLOR_PRIMARY:-}" \
         "$CONTAINER" php /var/www/moodledata/apply_contact.php || echo "!! contact step failed"
     docker exec "$CONTAINER" rm -f /var/www/moodledata/apply_contact.php || true
 fi
