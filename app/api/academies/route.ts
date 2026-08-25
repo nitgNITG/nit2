@@ -49,6 +49,7 @@ type Brand = {
     colors?: Record<string, string>; // brand-colour roles (hex) chosen in the build form
     contact_phone?: string;
     contact_whatsapp?: string;
+    social?: Record<string, string>;
     logo?: BrandImage;
     logocompact?: BrandImage;
     favicon?: BrandImage;
@@ -73,6 +74,16 @@ function sanitizeBrand(raw: unknown): Brand {
     for (const k of ["contact_phone", "contact_whatsapp"] as const) {
         const v = b[k];
         if (typeof v === "string" && v.trim()) out[k] = v.trim().slice(0, 40);
+    }
+    // Social links — http(s) URLs only, known networks.
+    if (b.social && typeof b.social === "object") {
+        const sin = b.social as Record<string, unknown>;
+        const sout: Record<string, string> = {};
+        for (const k of ["facebook", "instagram", "youtube", "tiktok", "website"]) {
+            const v = sin[k];
+            if (typeof v === "string" && /^https?:\/\//i.test(v.trim())) sout[k] = v.trim().slice(0, 300);
+        }
+        if (Object.keys(sout).length) out.social = sout;
     }
     // Brand colours — keep only the known roles with valid #rrggbb hex.
     if (b.colors && typeof b.colors === "object") {

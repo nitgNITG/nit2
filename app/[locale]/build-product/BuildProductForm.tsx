@@ -43,6 +43,11 @@ type FormValues = {
     tier: string
     contactPhone: string
     contactWhatsapp: string
+    socialFacebook: string
+    socialInstagram: string
+    socialYoutube: string
+    socialTiktok: string
+    socialWebsite: string
     _hp?: string // honeypot — stays empty for humans
 }
 
@@ -83,7 +88,7 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
         setValue,
         formState: { errors, isSubmitting },
     } = useForm<FormValues>({
-        defaultValues: { name: '', fullnameEn: '', shortnameAr: '', shortnameEn: '', slug: '', tier: 'demo', contactPhone: '', contactWhatsapp: '', _hp: '' },
+        defaultValues: { name: '', fullnameEn: '', shortnameAr: '', shortnameEn: '', slug: '', tier: 'demo', contactPhone: '', contactWhatsapp: '', socialFacebook: '', socialInstagram: '', socialYoutube: '', socialTiktok: '', socialWebsite: '', _hp: '' },
     })
 
     const [done, setDone] = useState<SuccessInfo | null>(null)
@@ -174,6 +179,14 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                     brand.shortname_en = values.shortnameEn?.trim() || undefined
                 }
             }
+            const social: Record<string, string> = {}
+            if (values.socialFacebook?.trim()) social.facebook = values.socialFacebook.trim()
+            if (values.socialInstagram?.trim()) social.instagram = values.socialInstagram.trim()
+            if (values.socialYoutube?.trim()) social.youtube = values.socialYoutube.trim()
+            if (values.socialTiktok?.trim()) social.tiktok = values.socialTiktok.trim()
+            if (values.socialWebsite?.trim()) social.website = values.socialWebsite.trim()
+            if (Object.keys(social).length) brand.social = social
+
             if (logo) brand.logo = { filename: logo.name, data_b64: await fileToBase64(logo) }
             if (logocompact) brand.logocompact = { filename: logocompact.name, data_b64: await fileToBase64(logocompact) }
             if (favicon) brand.favicon = { filename: favicon.name, data_b64: await fileToBase64(favicon) }
@@ -487,6 +500,26 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                         className={`w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none transition-colors focus:border-[#1E7D67] focus:bg-white ${isAr ? 'text-right' : ''}`}
                         {...register('contactWhatsapp')}
                     />
+                </div>
+            </div>
+
+            {/* Social links — only the ones filled show on the site (as icons, new tab) */}
+            <div className='mb-6'>
+                <label className='mb-1.5 block font-bold text-[#0B2923]'>
+                    {isAr ? 'روابط التواصل الاجتماعي' : 'Social links'}{' '}
+                    <span className='text-sm font-normal text-gray-400'>({t('optional')})</span>
+                </label>
+                <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+                    {([['socialFacebook', 'Facebook'], ['socialInstagram', 'Instagram'], ['socialYoutube', 'YouTube'], ['socialTiktok', 'TikTok'], ['socialWebsite', isAr ? 'الموقع' : 'Website']] as const).map(([field, label]) => (
+                        <input
+                            key={field}
+                            type='url'
+                            dir='ltr'
+                            placeholder={`${label} URL`}
+                            className='w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition-colors focus:border-[#1E7D67] focus:bg-white'
+                            {...register(field)}
+                        />
+                    ))}
                 </div>
             </div>
 

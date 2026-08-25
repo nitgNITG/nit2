@@ -356,11 +356,15 @@ if [[ -n "${BRAND_GALLERY:-}" && -f /root/apply_gallery.php ]]; then
     docker exec "$CONTAINER" sh -c 'rm -f /var/www/moodledata/apply_gallery.php /var/www/moodledata/gal_*' || true
 fi
 
-# ── Contact details — phone / WhatsApp into the front-page contact section ───
-if [[ -n "${BRAND_CONTACT_PHONE:-}${BRAND_CONTACT_WHATSAPP:-}" && -f /root/apply_contact.php ]]; then
-    log "applying contact details"
+# ── Contact + social — phone / WhatsApp / social icons into the contact section
+if [[ -n "${BRAND_CONTACT_PHONE:-}${BRAND_CONTACT_WHATSAPP:-}${BRAND_SOCIAL_FACEBOOK:-}${BRAND_SOCIAL_INSTAGRAM:-}${BRAND_SOCIAL_YOUTUBE:-}${BRAND_SOCIAL_TIKTOK:-}${BRAND_SOCIAL_WEBSITE:-}" && -f /root/apply_contact.php ]]; then
+    log "applying contact + social"
     docker cp /root/apply_contact.php "$CONTAINER:/var/www/moodledata/apply_contact.php"
-    docker exec -e CONTACT_PHONE="${BRAND_CONTACT_PHONE:-}" -e CONTACT_WHATSAPP="${BRAND_CONTACT_WHATSAPP:-}" \
+    docker exec \
+        -e CONTACT_PHONE="${BRAND_CONTACT_PHONE:-}" -e CONTACT_WHATSAPP="${BRAND_CONTACT_WHATSAPP:-}" \
+        -e SOCIAL_FACEBOOK="${BRAND_SOCIAL_FACEBOOK:-}" -e SOCIAL_INSTAGRAM="${BRAND_SOCIAL_INSTAGRAM:-}" \
+        -e SOCIAL_YOUTUBE="${BRAND_SOCIAL_YOUTUBE:-}" -e SOCIAL_TIKTOK="${BRAND_SOCIAL_TIKTOK:-}" \
+        -e SOCIAL_WEBSITE="${BRAND_SOCIAL_WEBSITE:-}" \
         "$CONTAINER" php /var/www/moodledata/apply_contact.php || echo "!! contact step failed (site still live)"
     docker exec "$CONTAINER" rm -f /var/www/moodledata/apply_contact.php || true
 fi

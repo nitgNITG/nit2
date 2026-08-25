@@ -159,6 +159,12 @@ def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: 
         wa = str(brand.get("contact_whatsapp", "") or "").strip()
         if wa:
             env["BRAND_CONTACT_WHATSAPP"] = wa[:40]
+        social = brand.get("social")
+        if isinstance(social, dict):
+            for k in ("facebook", "instagram", "youtube", "tiktok", "website"):
+                v = str(social.get(k, "") or "").strip()
+                if v.startswith("http"):
+                    env["BRAND_SOCIAL_" + k.upper()] = v[:300]
 
     try:
         with open(logpath, "ab", buffering=0) as log:
