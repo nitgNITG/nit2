@@ -295,6 +295,11 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
             className='w-full max-w-xl mx-auto rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 p-6 sm:p-8'
             noValidate
         >
+            {/* ══ 1. Identity — language, name, slug (the essentials) ══ */}
+            <p className='mb-4 text-xs font-bold uppercase tracking-wide text-[#1E7D67]'>
+                {isAr ? '١ · هوية المنصة' : '1 · Platform identity'}
+            </p>
+
             {/* Platform language — decides which name boxes to show + the academy language */}
             <div className='mb-5'>
                 <label className='mb-1.5 block font-bold text-[#0B2923]'>
@@ -386,8 +391,137 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                 )}
             </div>
 
-            {/* Brand colours (6 controls → theme_nit roles) + live preview */}
-            <div className='mb-6 mt-2'>
+            {/* ══ 2. Plan — identifier + licence (required) ══ */}
+            <p className='mb-4 mt-8 text-xs font-bold uppercase tracking-wide text-[#1E7D67]'>
+                {isAr ? '٢ · المعرّف والباقة' : '2 · Identifier & plan'}
+            </p>
+
+            {/* English identifier (slug → branch + future subdomain) */}
+            <div className='mb-2'>
+                <label htmlFor='slug' className='mb-1.5 block font-bold text-[#0B2923]'>
+                    {t('slugLabel')} <span className='text-red-500'>*</span>
+                </label>
+                <input
+                    id='slug'
+                    type='text'
+                    dir='ltr'
+                    placeholder='ahmed-academy'
+                    className={`w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 font-mono outline-none transition-colors focus:border-[#1E7D67] focus:bg-white ${isAr ? 'text-right' : ''}`}
+                    {...register('slug', {
+                        required: t('slugRequired'),
+                        pattern: { value: /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/, message: t('slugInvalid') },
+                    })}
+                />
+                <p className='mt-1.5 text-sm text-gray-500'>{t('slugHint')}</p>
+                {errors.slug && <p className='mt-1 text-sm text-red-500'>{errors.slug.message}</p>}
+            </div>
+
+            {/* Live preview of what will be created */}
+            {slugPreview && (
+                <div className='mb-5 rounded-lg bg-[#1E7D67]/5 px-4 py-2 text-sm text-[#1E7D67]' dir='ltr'>
+                    {t('previewLabel')}: <span className='font-mono font-bold'>client/{slugPreview}</span>
+                </div>
+            )}
+
+            {/* Licence picker → the local_license tier the academy is provisioned with */}
+            <div className='mb-5'>
+                <label className='mb-1.5 block font-bold text-[#0B2923]'>
+                    {isAr ? 'الباقة' : 'License'} <span className='text-red-500'>*</span>
+                </label>
+                <div className='grid grid-cols-2 gap-2'>
+                    {licenses.map((lic) => {
+                        const on = selectedTier === lic.key
+                        const summary = [
+                            `${lic.maxCourses < 0 ? (isAr ? 'كورسات بلا حد' : 'unlimited courses') : `${lic.maxCourses} ${isAr ? 'كورسات' : 'courses'}`}`,
+                            ...Object.keys(lic.features || {}).filter((f) => lic.features[f]).map((f) => FEATURE_LABELS[f] ?? f),
+                        ].slice(0, 3)
+                        return (
+                            <button
+                                type='button'
+                                key={lic.key}
+                                onClick={() => setValue('tier', lic.key)}
+                                className={`text-start rounded-xl border p-3 transition-colors ${on ? 'border-[#1E7D67] bg-[#1E7D67]/5 ring-1 ring-[#1E7D67]' : 'border-gray-200 bg-gray-50 hover:border-gray-300'}`}
+                            >
+                                <div className='flex items-baseline justify-between gap-2'>
+                                    <span className='font-bold text-[#0B2923]'>{lic.name}</span>
+                                    <span className='text-sm font-bold text-[#1E7D67]' dir='ltr'>
+                                        {lic.price === 0 ? (isAr ? 'مجاني' : 'Free') : `$${lic.price}`}
+                                    </span>
+                                </div>
+                                <ul className='mt-1 list-disc ps-4 text-xs text-gray-500'>
+                                    {summary.map((f, i) => (
+                                        <li key={i}>{f}</li>
+                                    ))}
+                                </ul>
+                            </button>
+                        )
+                    })}
+                </div>
+            </div>
+            <input type='hidden' {...register('tier')} />
+
+            {/* ══ 3. Branding & appearance — logos, colours, images (optional) ══ */}
+            <p className='mb-4 mt-8 text-xs font-bold uppercase tracking-wide text-[#1E7D67]'>
+                {isAr ? '٣ · الهوية البصرية' : '3 · Branding & appearance'}
+            </p>
+
+            {/* Logo + compact logo + favicon (shown in the live preview below) */}
+            <div className='mb-5'>
+                <p className='mb-3 font-bold text-[#0B2923]'>
+                    {t('brandingSectionTitle')}{' '}
+                    <span className='text-sm font-normal text-gray-400'>({t('optional')})</span>
+                </p>
+                <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+                    {/* Logo */}
+                    <div>
+                        <label htmlFor='logo' className='mb-1.5 block text-sm font-semibold text-[#0B2923]'>
+                            {t('logoLabel')}
+                        </label>
+                        <input
+                            id='logo'
+                            type='file'
+                            accept='image/png,image/svg+xml,image/jpeg,image/webp'
+                            onChange={pickImage(setLogo, LOGO_MAX, LOGO_TYPES, '1.5 MB')}
+                            className='block w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-[#1E7D67]/10 file:px-4 file:py-2.5 file:font-semibold file:text-[#1E7D67] hover:file:bg-[#1E7D67]/15'
+                        />
+                        <p className='mt-1.5 text-xs text-gray-500'>{t('logoHint')}</p>
+                        {logo && <p className='mt-1 truncate text-xs text-[#1E7D67]' dir='ltr'>{logo.name}</p>}
+                    </div>
+                    {/* Compact logo — Moodle's logocompact (emblem/icon) */}
+                    <div>
+                        <label htmlFor='logocompact' className='mb-1.5 block text-sm font-semibold text-[#0B2923]'>
+                            {t('logocompactLabel')}
+                        </label>
+                        <input
+                            id='logocompact'
+                            type='file'
+                            accept='image/png,image/svg+xml,image/jpeg,image/webp'
+                            onChange={pickImage(setLogocompact, LOGO_MAX, LOGO_TYPES, '1.5 MB')}
+                            className='block w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-[#1E7D67]/10 file:px-4 file:py-2.5 file:font-semibold file:text-[#1E7D67] hover:file:bg-[#1E7D67]/15'
+                        />
+                        <p className='mt-1.5 text-xs text-gray-500'>{t('logocompactHint')}</p>
+                        {logocompact && <p className='mt-1 truncate text-xs text-[#1E7D67]' dir='ltr'>{logocompact.name}</p>}
+                    </div>
+                    {/* Favicon */}
+                    <div>
+                        <label htmlFor='favicon' className='mb-1.5 block text-sm font-semibold text-[#0B2923]'>
+                            {t('faviconLabel')}
+                        </label>
+                        <input
+                            id='favicon'
+                            type='file'
+                            accept='image/png,image/x-icon,image/vnd.microsoft.icon,image/svg+xml'
+                            onChange={pickImage(setFavicon, FAVICON_MAX, FAVICON_TYPES, '512 KB')}
+                            className='block w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-[#1E7D67]/10 file:px-4 file:py-2.5 file:font-semibold file:text-[#1E7D67] hover:file:bg-[#1E7D67]/15'
+                        />
+                        <p className='mt-1.5 text-xs text-gray-500'>{t('faviconHint')}</p>
+                        {favicon && <p className='mt-1 truncate text-xs text-[#1E7D67]' dir='ltr'>{favicon.name}</p>}
+                    </div>
+                </div>
+            </div>
+
+            {/* Brand colours (6 controls → theme_nit roles) + images + live preview */}
+            <div className='mb-6'>
                 <label className='mb-1.5 block font-bold text-[#0B2923]'>
                     {isAr ? 'ألوان المنصة' : 'Brand colours'}
                 </label>
@@ -546,6 +680,11 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                 <HomePreview name={nameWatch} palette={palette} logoUrl={logoUrl} heroUrl={heroUrl} aboutUrl={aboutUrl} faviconUrl={faviconUrl} galleryUrls={galleryUrls} aboutBullets={aboutBullets} isAr={isAr} />
             </div>
 
+            {/* ══ 4. Contact — phone, WhatsApp, social (optional) ══ */}
+            <p className='mb-4 mt-8 text-xs font-bold uppercase tracking-wide text-[#1E7D67]'>
+                {isAr ? '٤ · وسائل التواصل' : '4 · Contact'}
+            </p>
+
             {/* Contact details — fill the front-page contact section */}
             <div className='mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2'>
                 <div>
@@ -595,125 +734,6 @@ const BuildProductForm = ({ onSuccess }: { onSuccess?: () => void } = {}) => {
                             {...register(field)}
                         />
                     ))}
-                </div>
-            </div>
-
-            {/* English identifier (slug → branch + future subdomain) */}
-            <div className='mb-2'>
-                <label htmlFor='slug' className='mb-1.5 block font-bold text-[#0B2923]'>
-                    {t('slugLabel')} <span className='text-red-500'>*</span>
-                </label>
-                <input
-                    id='slug'
-                    type='text'
-                    dir='ltr'
-                    placeholder='ahmed-academy'
-                    className={`w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 font-mono outline-none transition-colors focus:border-[#1E7D67] focus:bg-white ${isAr ? 'text-right' : ''}`}
-                    {...register('slug', {
-                        required: t('slugRequired'),
-                        pattern: { value: /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/, message: t('slugInvalid') },
-                    })}
-                />
-                <p className='mt-1.5 text-sm text-gray-500'>{t('slugHint')}</p>
-                {errors.slug && <p className='mt-1 text-sm text-red-500'>{errors.slug.message}</p>}
-            </div>
-
-            {/* Live preview of what will be created */}
-            {slugPreview && (
-                <div className='mb-5 rounded-lg bg-[#1E7D67]/5 px-4 py-2 text-sm text-[#1E7D67]' dir='ltr'>
-                    {t('previewLabel')}: <span className='font-mono font-bold'>client/{slugPreview}</span>
-                </div>
-            )}
-
-            {/* Licence picker → the local_license tier the academy is provisioned with */}
-            <div className='mb-5'>
-                <label className='mb-1.5 block font-bold text-[#0B2923]'>
-                    {isAr ? 'الباقة' : 'License'} <span className='text-red-500'>*</span>
-                </label>
-                <div className='grid grid-cols-2 gap-2'>
-                    {licenses.map((lic) => {
-                        const on = selectedTier === lic.key
-                        const summary = [
-                            `${lic.maxCourses < 0 ? (isAr ? 'كورسات بلا حد' : 'unlimited courses') : `${lic.maxCourses} ${isAr ? 'كورسات' : 'courses'}`}`,
-                            ...Object.keys(lic.features || {}).filter((f) => lic.features[f]).map((f) => FEATURE_LABELS[f] ?? f),
-                        ].slice(0, 3)
-                        return (
-                            <button
-                                type='button'
-                                key={lic.key}
-                                onClick={() => setValue('tier', lic.key)}
-                                className={`text-start rounded-xl border p-3 transition-colors ${on ? 'border-[#1E7D67] bg-[#1E7D67]/5 ring-1 ring-[#1E7D67]' : 'border-gray-200 bg-gray-50 hover:border-gray-300'}`}
-                            >
-                                <div className='flex items-baseline justify-between gap-2'>
-                                    <span className='font-bold text-[#0B2923]'>{lic.name}</span>
-                                    <span className='text-sm font-bold text-[#1E7D67]' dir='ltr'>
-                                        {lic.price === 0 ? (isAr ? 'مجاني' : 'Free') : `$${lic.price}`}
-                                    </span>
-                                </div>
-                                <ul className='mt-1 list-disc ps-4 text-xs text-gray-500'>
-                                    {summary.map((f, i) => (
-                                        <li key={i}>{f}</li>
-                                    ))}
-                                </ul>
-                            </button>
-                        )
-                    })}
-                </div>
-            </div>
-            <input type='hidden' {...register('tier')} />
-
-            {/* Branding — logo + favicon (optional, applied during provisioning) */}
-            <div className='mb-5 mt-6 border-t border-gray-100 pt-5'>
-                <p className='mb-3 font-bold text-[#0B2923]'>
-                    {t('brandingSectionTitle')}{' '}
-                    <span className='text-sm font-normal text-gray-400'>({t('optional')})</span>
-                </p>
-                <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
-                    {/* Logo */}
-                    <div>
-                        <label htmlFor='logo' className='mb-1.5 block text-sm font-semibold text-[#0B2923]'>
-                            {t('logoLabel')}
-                        </label>
-                        <input
-                            id='logo'
-                            type='file'
-                            accept='image/png,image/svg+xml,image/jpeg,image/webp'
-                            onChange={pickImage(setLogo, LOGO_MAX, LOGO_TYPES, '1.5 MB')}
-                            className='block w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-[#1E7D67]/10 file:px-4 file:py-2.5 file:font-semibold file:text-[#1E7D67] hover:file:bg-[#1E7D67]/15'
-                        />
-                        <p className='mt-1.5 text-xs text-gray-500'>{t('logoHint')}</p>
-                        {logo && <p className='mt-1 truncate text-xs text-[#1E7D67]' dir='ltr'>{logo.name}</p>}
-                    </div>
-                    {/* Compact logo — Moodle's logocompact (emblem/icon) */}
-                    <div>
-                        <label htmlFor='logocompact' className='mb-1.5 block text-sm font-semibold text-[#0B2923]'>
-                            {t('logocompactLabel')}
-                        </label>
-                        <input
-                            id='logocompact'
-                            type='file'
-                            accept='image/png,image/svg+xml,image/jpeg,image/webp'
-                            onChange={pickImage(setLogocompact, LOGO_MAX, LOGO_TYPES, '1.5 MB')}
-                            className='block w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-[#1E7D67]/10 file:px-4 file:py-2.5 file:font-semibold file:text-[#1E7D67] hover:file:bg-[#1E7D67]/15'
-                        />
-                        <p className='mt-1.5 text-xs text-gray-500'>{t('logocompactHint')}</p>
-                        {logocompact && <p className='mt-1 truncate text-xs text-[#1E7D67]' dir='ltr'>{logocompact.name}</p>}
-                    </div>
-                    {/* Favicon */}
-                    <div>
-                        <label htmlFor='favicon' className='mb-1.5 block text-sm font-semibold text-[#0B2923]'>
-                            {t('faviconLabel')}
-                        </label>
-                        <input
-                            id='favicon'
-                            type='file'
-                            accept='image/png,image/x-icon,image/vnd.microsoft.icon,image/svg+xml'
-                            onChange={pickImage(setFavicon, FAVICON_MAX, FAVICON_TYPES, '512 KB')}
-                            className='block w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-[#1E7D67]/10 file:px-4 file:py-2.5 file:font-semibold file:text-[#1E7D67] hover:file:bg-[#1E7D67]/15'
-                        />
-                        <p className='mt-1.5 text-xs text-gray-500'>{t('faviconHint')}</p>
-                        {favicon && <p className='mt-1 truncate text-xs text-[#1E7D67]' dir='ltr'>{favicon.name}</p>}
-                    </div>
                 </div>
             </div>
 
