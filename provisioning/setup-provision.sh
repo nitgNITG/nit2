@@ -51,6 +51,25 @@ chmod +x /root/create.sh /root/destroy.sh /root/apply-license.sh /root/apply-set
 echo "==> writing /var/www/html/saas/provision-server.py"
 cp "$SCRIPT_DIR/provision-server.py" /var/www/html/saas/provision-server.py
 
+# ── Preserve operator-set values across redeploys ───────────────────────────
+# This script REWRITES provision.env, so without this a redeploy would reset the
+# image tag back to :latest and blank the SMTP relay. Precedence for each value:
+#   1) a var already exported in this shell   (explicit override)
+#   2) the value already in provision.env      (what the operator set last time)
+#   3) the default in the heredoc below.
+_ENVF=/var/www/html/saas/provision.env
+_keep(){ [[ -f "$_ENVF" ]] && sed -n "s/^$1=//p" "$_ENVF" | tail -1 || true; }
+SAAS_IMAGE="${SAAS_IMAGE:-$(_keep SAAS_IMAGE)}"
+SAAS_ROOT="${SAAS_ROOT:-$(_keep SAAS_ROOT)}"
+SMTP_HOSTS="${SMTP_HOSTS:-$(_keep SMTP_HOSTS)}"
+SMTP_SECURE="${SMTP_SECURE:-$(_keep SMTP_SECURE)}"
+SMTP_AUTHTYPE="${SMTP_AUTHTYPE:-$(_keep SMTP_AUTHTYPE)}"
+SMTP_USER="${SMTP_USER:-$(_keep SMTP_USER)}"
+SMTP_PASS="${SMTP_PASS:-$(_keep SMTP_PASS)}"
+SMTP_MAXBULK="${SMTP_MAXBULK:-$(_keep SMTP_MAXBULK)}"
+SMTP_NOREPLY="${SMTP_NOREPLY:-$(_keep SMTP_NOREPLY)}"
+SMTP_SUPPORTEMAIL="${SMTP_SUPPORTEMAIL:-$(_keep SMTP_SUPPORTEMAIL)}"
+
 echo "==> writing /var/www/html/saas/provision.env"
 cat > /var/www/html/saas/provision.env <<ENVEOF
 PROVISION_SECRET=$SECRET
