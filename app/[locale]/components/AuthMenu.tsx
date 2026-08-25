@@ -15,9 +15,22 @@ export default function AuthMenu({ mobile = false, onNavigate }: { mobile?: bool
 
     useEffect(() => {
         let stop = false
+        // Optimistically restore the last-known auth state (client-only, read
+        // after mount so there's no SSR/hydration mismatch). This means a
+        // returning signed-in user shows their avatar immediately instead of
+        // popping in after the fetch resolves.
+        try {
+            const cached = localStorage.getItem('nit_me')
+            if (cached) setMe(JSON.parse(cached) as Me)
+        } catch { /* ignore */ }
         fetch('/api/me', { cache: 'no-store' })
             .then((r) => r.json())
-            .then((d) => { if (!stop) setMe(d.user ?? null) })
+            .then((d) => {
+                if (stop) return
+                const u = (d.user ?? null) as Me
+                setMe(u)
+                try { localStorage.setItem('nit_me', JSON.stringify(u)) } catch { /* ignore */ }
+            })
             .catch(() => { if (!stop) setMe(null) })
         return () => { stop = true }
     }, [])
@@ -30,11 +43,14 @@ export default function AuthMenu({ mobile = false, onNavigate }: { mobile?: bool
 
     const logout = async () => {
         try { await fetch('/api/logout', { method: 'POST' }) } catch { /* ignore */ }
+        try { localStorage.removeItem('nit_me') } catch { /* ignore */ }
         window.location.href = `/${locale}`
     }
 
-    // Loading — reserve space, don't flash the wrong state.
-    if (me === undefined) return <span className={mobile ? '' : 'inline-block w-8 h-8'} aria-hidden />
+    // Loading — render nothing (no reserved box). Reserving width here and then
+    // collapsing to null for the signed-out majority is what shifted the navbar
+    // on load/redirect; signed-in users are restored instantly from the cache.
+    if (me === undefined) return null
 
     // Signed out → render nothing here; the "Build your product" nav button
     // (which links to /account for login/sign-up) is the only CTA we show.
