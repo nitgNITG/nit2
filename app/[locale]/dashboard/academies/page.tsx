@@ -74,6 +74,19 @@ const AcademiesPage = () => {
         }
     }
 
+    const updateImage = async (slug: string) => {
+        if (!window.confirm(`Recreate "${slug}" onto the latest baked image? Its data (courses, users, files) is preserved; the site restarts for ~30s.`)) return
+        setBusySlug(slug)
+        try {
+            await axios.patch(`/api/academies/${slug}`, { updateImage: true })
+            toast.success(`${slug}: updating to the latest image…`)
+        } catch (err: any) {
+            toast.error(err?.response?.data?.error || 'Image update failed')
+        } finally {
+            setBusySlug(null)
+        }
+    }
+
     const toggleSuspend = async (slug: string, status: string) => {
         const suspend = status !== 'suspended'
         if (suspend && !window.confirm(`Suspend "${slug}"? Users will see a "suspended" notice until you resume it (data is kept).`)) return
@@ -174,6 +187,12 @@ const AcademiesPage = () => {
                                             title='Pull latest code into this academy'
                                             className='rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50'>
                                             {updatingSlug === a.slug ? '…' : '⟳ Update'}
+                                        </button>
+                                        <button type='button' onClick={() => updateImage(a.slug)}
+                                            disabled={busySlug === a.slug || !['live', 'suspended'].includes(a.status)}
+                                            title='Recreate this academy onto the latest baked image (theme/core/plugin changes) — data is preserved'
+                                            className='rounded-lg border border-indigo-300 px-2.5 py-1.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 disabled:opacity-40'>
+                                            {busySlug === a.slug ? '…' : '⟳ Image'}
                                         </button>
                                         <button type='button' onClick={() => setBrandingSlug(a.slug)}
                                             disabled={!['live', 'suspended'].includes(a.status)}

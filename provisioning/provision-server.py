@@ -26,6 +26,7 @@ APPLY_SETTINGS_SH = os.environ.get("APPLY_SETTINGS_SH", "/root/apply-settings.sh
 UPDATE_SITE_SH = os.environ.get("UPDATE_SITE_SH", "/root/update-site.sh")
 APPLY_SUSPEND_SH = os.environ.get("APPLY_SUSPEND_SH", "/root/apply-suspend.sh")
 APPLY_BRANDING_SH = os.environ.get("APPLY_BRANDING_SH", "/root/apply-branding.sh")
+UPDATE_IMAGE_SH = os.environ.get("UPDATE_IMAGE_SH", "/root/update-image.sh")
 LOG_DIR     = os.environ.get("PROVISION_LOG_DIR", "/var/www/html/saas/logs")
 STAGING_DIR = os.environ.get("PROVISION_STAGING_DIR", "/var/www/html/saas/staging")
 PORT        = int(os.environ.get("PROVISION_PORT", "9099"))
@@ -268,6 +269,19 @@ def run_update_site(slug: str, tier: str = "", definition: str = "") -> None:
         )
 
 
+def run_update_image(slug: str) -> None:
+    """Run update-image.sh detached — recreate the academy's container onto the
+    current SAAS_IMAGE (from provision.env), preserving db + moodledata."""
+    logpath = os.path.join(LOG_DIR, f"{slug}.log")
+    with open(logpath, "ab", buffering=0) as log:
+        log.write(f"\n===== update-image {slug} =====\n".encode())
+        subprocess.run(
+            ["bash", UPDATE_IMAGE_SH, slug],
+            stdout=log, stderr=subprocess.STDOUT,
+            env={**os.environ},   # SAAS_IMAGE / SAAS_ROOT come from provision.env
+        )
+
+
 def run_apply_suspend(slug: str, state: str) -> None:
     """Run apply-suspend.sh detached — soft-lock (1) or resume (0) a live academy."""
     logpath = os.path.join(LOG_DIR, f"{slug}.log")
@@ -343,6 +357,15 @@ class Handler(BaseHTTPRequestHandler):
             definition = data.get("definition") if isinstance(data.get("definition"), str) else ""
             threading.Thread(target=run_update_site, args=(slug, tier, definition), daemon=True).start()
             return self._send(202, {"ok": True, "status": "updating-site", "slug": slug})
+
+        # POST /update-image/<slug> — recreate the academy's container onto the
+        # current baked image (SAAS_IMAGE), preserving db + moodledata.
+        if self.path.startswith("/update-image/"):
+            slug = self.path[len("/update-image/"):]
+            if not SLUG_RE.match(slug):
+                return self._send(400, {"error": "invalid slug"})
+            threading.Thread(target=run_update_image, args=(slug,), daemon=True).start()
+            return self._send(202, {"ok": True, "status": "updating-image", "slug": slug})
 
         # POST /apply-branding/<slug>  {brand:{...}, platform_lang?} — re-apply
         # branding (logo/colours/hero/about/gallery/contact/login/footer) to a

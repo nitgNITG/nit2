@@ -82,6 +82,22 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
             : null;
     }
 
+    // Update image — admin-guarded, no DB change; recreate the container onto the
+    // current baked image (preserves db + moodledata). Handled before the
+    // "nothing to update" check because it doesn't write to `data`.
+    if (body?.updateImage) {
+        const user = await getCurrentUser();
+        if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+        if (user.role !== "admin") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+        const academy = await prisma.academy.findUnique({ where: { slug: params.slug } });
+        if (!academy) return NextResponse.json({ error: "not found" }, { status: 404 });
+        if (!["live", "suspended"].includes(academy.status)) {
+            return NextResponse.json({ error: "academy is not live yet" }, { status: 409 });
+        }
+        await triggerUpdateImage(params.slug);
+        return NextResponse.json({ ok: true, slug: params.slug, status: "updating-image" });
+    }
+
     // Suspend / resume — admin-guarded (soft-lock via local_license).
     let suspendChanged: boolean | null = null;
     if (body?.suspend !== undefined) {
@@ -106,6 +122,24 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
             return NextResponse.json({ error: "not found" }, { status: 404 });
         }
         return NextResponse.json({ error: err?.message || "update failed" }, { status: 400 });
+    }
+}
+
+// Ask server B to recreate the academy's container onto the current baked image
+// (SAAS_IMAGE), preserving its db + moodledata. Best-effort.
+async function triggerUpdateImage(slug: string): Promise<void> {
+    const base = process.env.PROVISION_URL;
+    const secret = process.env.PROVISION_SECRET;
+    if (!base || !secret) return;
+    try {
+        const url = new URL(base);
+        url.pathname = `/update-image/${slug}`;
+        await fetch(url.toString(), {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Provision-Secret": secret },
+        });
+    } catch (e) {
+        console.error("[academies] update-image trigger failed", slug, e);
     }
 }
 
