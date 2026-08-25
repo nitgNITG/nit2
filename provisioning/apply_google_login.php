@@ -68,7 +68,16 @@ $showvalue = defined('\core\oauth2\issuer::EVERYWHERE')
     : 1;
 $issuer->set('showonloginpage', $showvalue);
 $issuer->set('enabled', 1);
+// Don't require a confirmation email when a Google sign-in matches/creates an
+// account — otherwise the user is stuck on "This account is pending email
+// confirmation". Google has already verified the address, so linking is safe.
+$issuer->set('requireconfirmation', 0);
 $issuer->update();
+
+// Also let a Google login LINK to an existing local account with the same email
+// (e.g. the admin), instead of blocking. auth_oauth2 gates this behind
+// `allowlinkedlogin`.
+set_config('allowlinkedlogin', 1, 'auth_oauth2');
 
 // ── 3. Enable the oauth2 auth plugin ────────────────────────────────────────
 $enabled = false;
