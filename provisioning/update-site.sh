@@ -64,6 +64,14 @@ fi
 log "running upgrade (picks up any new plugin versions)"
 docker exec "$CONTAINER" php /var/www/html/admin/cli/upgrade.php --non-interactive || echo "!! upgrade step reported an issue (site still up)"
 
+# Ensure the app web-service token exists (back-fills academies created before it).
+if [[ -f /root/apply_apptoken.php ]]; then
+    log "ensuring the mobile app web-service token"
+    docker cp /root/apply_apptoken.php "$CONTAINER:/var/www/moodledata/apply_apptoken.php"
+    docker exec "$CONTAINER" php /var/www/moodledata/apply_apptoken.php || echo "!! app-token step failed"
+    docker exec "$CONTAINER" rm -f /var/www/moodledata/apply_apptoken.php || true
+fi
+
 if [[ -n "${LICENSE_TIER:-}" ]]; then
     log "re-applying licence tier=$LICENSE_TIER (enforcement on)"
     docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=tier       --set="$LICENSE_TIER" || echo "!! could not set licence tier"

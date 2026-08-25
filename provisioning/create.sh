@@ -415,6 +415,14 @@ fi
 
 docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
 
+# ── App web-service token — publish admin_token for getsettings.php / the app ─
+if [[ -f /root/apply_apptoken.php ]]; then
+    log "provisioning the mobile app web-service token"
+    docker cp /root/apply_apptoken.php "$CONTAINER:/var/www/moodledata/apply_apptoken.php"
+    docker exec "$CONTAINER" php /var/www/moodledata/apply_apptoken.php || echo "!! app-token step failed (site still live)"
+    docker exec "$CONTAINER" rm -f /var/www/moodledata/apply_apptoken.php || true
+fi
+
 # ── Welcome: unique admin password + email the customer their login ─────────
 # OWNER_EMAIL / OWNER_NAME / OWNER_LOCALE are passed by the provisioner (nit2).
 # Gives each academy its own admin password (not the template's shared one),
