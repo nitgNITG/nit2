@@ -11,4 +11,8 @@ export const PLATFORM_KEYS = [
     'android_url',
     'ios_version',
     'ios_url',
+    // App video-overlay watermark style (served by getsettings.php).
+    'watermark_color',
+    'watermark_speed',
+    'watermark_fontsize',
 ] as const

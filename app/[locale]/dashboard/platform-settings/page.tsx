@@ -27,6 +27,15 @@ const GROUPS: { title: string; note: string; fields: FieldDef[] }[] = [
             { key: 'ios_url', label: 'App Store URL', placeholder: 'https://apps.apple.com/app/id000000000' },
         ],
     },
+    {
+        title: 'Video watermark (app)',
+        note: 'The anti-piracy overlay drawn on video/PDF in the app. Global style defaults — the watermark is turned on per academy.',
+        fields: [
+            { key: 'watermark_color', label: 'Colour', hint: '6 hex digits, NO leading # (e.g. ff3b30). Blank = white.', placeholder: 'ffffff' },
+            { key: 'watermark_speed', label: 'Drift speed', hint: 'Decimal, e.g. 0.002.', placeholder: '0.002' },
+            { key: 'watermark_fontsize', label: 'Font size', hint: 'Number, e.g. 14.', placeholder: '14' },
+        ],
+    },
 ]
 
 const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key))

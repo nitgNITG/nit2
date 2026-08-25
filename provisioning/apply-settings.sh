@@ -20,7 +20,7 @@ CONTAINER="saas_moodle_${SLUG}"
 docker ps --format '{{.Names}}' | grep -qx "$CONTAINER" || die "container $CONTAINER is not running"
 
 applied=0
-for _skey in google_client_id google_client_secret apple_client_id facebook_app_id android_version android_url ios_version ios_url; do
+for _skey in google_client_id google_client_secret apple_client_id facebook_app_id android_version android_url ios_version ios_url watermark_color watermark_speed watermark_fontsize; do
     _senv="SETTING_$(echo "$_skey" | tr '[:lower:]' '[:upper:]')"
     _sval="${!_senv:-}"
     if [[ -n "$_sval" ]]; then

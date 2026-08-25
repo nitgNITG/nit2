@@ -38,6 +38,8 @@ TIER_RE     = re.compile(r"^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])$")
 SETTING_KEYS = {
     "google_client_id", "google_client_secret", "apple_client_id", "facebook_app_id",
     "android_version", "android_url", "ios_version", "ios_url",
+    # App overlay (local_multitopics) — global watermark style defaults.
+    "watermark_color", "watermark_speed", "watermark_fontsize",
 }
 
 MAX_BODY   = 12 * 1024 * 1024   # 12 MB total request (base64 inflates ~33%)

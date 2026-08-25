@@ -393,7 +393,7 @@ docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_l
 docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=definition --set="${LICENSE_DEFINITION:-}" || echo "!! could not set licence definition"
 
 # ── Global platform settings (local_multitopics) ────────────────────────────
-for _skey in google_client_id google_client_secret apple_client_id facebook_app_id android_version android_url ios_version ios_url; do
+for _skey in google_client_id google_client_secret apple_client_id facebook_app_id android_version android_url ios_version ios_url watermark_color watermark_speed watermark_fontsize; do
     _senv="SETTING_$(echo "$_skey" | tr '[:lower:]' '[:upper:]')"
     _sval="${!_senv:-}"
     if [[ -n "$_sval" ]]; then
