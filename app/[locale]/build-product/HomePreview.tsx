@@ -163,6 +163,12 @@ export default function HomePreview({ name, palette, logoUrl, heroUrl, aboutUrl,
                     <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 10 }}>{t('انضم إلينا اليوم', 'Join us today')}</div>
                     <span style={{ background: c.primary, color: c.text, padding: '10px 22px', borderRadius: 6, fontSize: 13, fontWeight: 700 }}>📞 {t('تواصل معنا', 'Contact us')}</span>
                 </div>
+
+                {/* footer */}
+                <div style={{ background: c.secondary, borderTop: `1px solid ${c.border}`, padding: '16px', textAlign: 'center', color: c.textSecondary, fontSize: 12 }}>
+                    <div style={{ fontWeight: 800, color: c.text, marginBottom: 4 }}>{displayName}</div>
+                    © {new Date().getFullYear()} — {t('جميع الحقوق محفوظة', 'All rights reserved')} · N.I.T
+                </div>
             </div>
         </div>
     )

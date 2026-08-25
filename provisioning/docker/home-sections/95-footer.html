@@ -1,0 +1,30 @@
+<!-- NIT default FOOTER. data-nit-section="footer" so provisioning can tweak it.
+     Brand-aware; edit the columns/links from the front-page editor. -->
+<div dir="auto" data-nit-section="footer" style="background: var(--nit-brand-secondary); color: var(--nit-brand-textsecondary); border-top:1px solid var(--nit-brand-borderprimary);">
+  <div style="max-width:1140px; margin:0 auto; padding:48px 20px 24px; display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:32px;">
+    <!-- About column -->
+    <div>
+      <div style="font-size:18px; font-weight:800; color: var(--nit-brand-textprimary); margin-bottom:10px;">{mlang ar}أكاديميتك{mlang}{mlang en}Your Academy{mlang}</div>
+      <p style="font-size:13px; line-height:1.8; margin:0;">{mlang ar}نبذة قصيرة عن الأكاديمية تظهر هنا. عدّلها من محرر الصفحة الرئيسية.{mlang}{mlang en}A short line about the academy. Edit it from the front-page editor.{mlang}</p>
+    </div>
+    <!-- Quick links -->
+    <div>
+      <div style="font-size:14px; font-weight:bold; color: var(--nit-brand-textprimary); margin-bottom:12px;">{mlang ar}روابط سريعة{mlang}{mlang en}Quick links{mlang}</div>
+      <div style="display:flex; flex-direction:column; gap:8px; font-size:13px;">
+        <a href="/" style="color: var(--nit-brand-textsecondary); text-decoration:none;">{mlang ar}الرئيسية{mlang}{mlang en}Home{mlang}</a>
+        <a href="/course/index.php" style="color: var(--nit-brand-textsecondary); text-decoration:none;">{mlang ar}الكورسات{mlang}{mlang en}Courses{mlang}</a>
+        <a href="/login/index.php" style="color: var(--nit-brand-textsecondary); text-decoration:none;">{mlang ar}تسجيل الدخول{mlang}{mlang en}Log in{mlang}</a>
+      </div>
+    </div>
+    <!-- Contact -->
+    <div>
+      <div style="font-size:14px; font-weight:bold; color: var(--nit-brand-textprimary); margin-bottom:12px;">{mlang ar}تواصل معنا{mlang}{mlang en}Contact{mlang}</div>
+      <p style="font-size:13px; line-height:1.8; margin:0;">{mlang ar}للاستفسار والتسجيل تواصل معنا عبر بيانات التواصل بالأعلى.{mlang}{mlang en}Reach us via the contact details above.{mlang}</p>
+    </div>
+  </div>
+  <div style="border-top:1px solid var(--nit-brand-borderprimary); padding:16px 20px; text-align:center; font-size:12px;">
+    © <span data-nit-year>2026</span> — {mlang ar}جميع الحقوق محفوظة{mlang}{mlang en}All rights reserved{mlang}
+    &nbsp;·&nbsp; <a href="https://nitg-eg.com" target="_blank" rel="noopener" style="color: var(--nit-brand-accenttext); text-decoration:none;">N.I.T</a>
+  </div>
+</div>
+<script>(function(){var y=document.querySelector('[data-nit-year]'); if(y){y.textContent=new Date().getFullYear();}})();</script>
