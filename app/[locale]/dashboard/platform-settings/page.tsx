@@ -37,6 +37,7 @@ const PlatformSettingsPage = () => {
     const [loading, setLoading] = useState(false)
     const [saving, setSaving] = useState(false)
     const [applying, setApplying] = useState(false)
+    const [applyingGoogle, setApplyingGoogle] = useState(false)
     const [freeLimit, setFreeLimit] = useState('1')
     const [savingLimit, setSavingLimit] = useState(false)
 
@@ -81,6 +82,25 @@ const PlatformSettingsPage = () => {
             toast.error(err?.response?.data?.error || 'Apply failed')
         } finally {
             setApplying(false)
+        }
+    }
+
+    // Enable "Sign in with Google" on every live academy (pushes just the OAuth
+    // credentials, which triggers apply_google_login.php in each academy).
+    const applyGoogle = async () => {
+        if (!(form.google_client_id ?? '').trim() || !(form.google_client_secret ?? '').trim()) {
+            toast.error('Enter and save both the Google client id and secret first.')
+            return
+        }
+        if (!window.confirm('Enable "Sign in with Google" on every live academy now?')) return
+        setApplyingGoogle(true)
+        try {
+            const { data } = await axios.post('/api/platform-settings/apply-google')
+            toast.success(`Google login queued for ${data.queued}/${data.academies} academies`)
+        } catch (err: any) {
+            toast.error(err?.response?.data?.error || 'Apply failed')
+        } finally {
+            setApplyingGoogle(false)
         }
     }
 
@@ -150,6 +170,21 @@ const PlatformSettingsPage = () => {
                                 {field.hint && <p className='text-xs text-gray-400 mt-1'>{field.hint}</p>}
                             </div>
                         ))}
+                        {group.title === 'OAuth client ids' && (
+                            <div className='border-t border-gray-100 pt-4'>
+                                <button type='button' onClick={applyGoogle}
+                                    disabled={applyingGoogle || loading || !(form.google_client_id ?? '').trim() || !(form.google_client_secret ?? '').trim()}
+                                    className='inline-flex items-center gap-2 border border-[#268F79] px-5 py-2 rounded-md text-[#268F79] font-semibold hover:bg-[#268F79]/5 disabled:opacity-50'>
+                                    {applyingGoogle ? 'Enabling…' : '🔑 Enable Google login on all academies'}
+                                </button>
+                                <p className='text-xs text-gray-400 mt-2'>
+                                    Turns on &ldquo;Sign in with Google&rdquo; for every <strong>live</strong> academy.
+                                    Save the client id + secret first. New academies get it automatically at build time.
+                                    Remember to add each academy domain&rsquo;s <span className='font-mono'>/admin/oauth2callback.php</span> to
+                                    the Google OAuth client&rsquo;s authorized redirect URIs.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 ))}
 
