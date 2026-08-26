@@ -72,6 +72,15 @@ if ($waDigits !== '') { $buttons .= $icon('https://wa.me/' . $waDigits, $svgbody
 foreach ($social as $s) {
     if ($s['url'] !== '') { $buttons .= $icon($s['url'], $s['body'], true); }
 }
+// Also persist the contact/social links as theme_nit config so the mobile
+// design-system endpoint (design_system.php → links block) returns them. The
+// front-page block above is for the web; this is the app's copy of the same data.
+set_config('contact_phone', $phone, 'theme_nit');
+set_config('support_phone', $wa !== '' ? $wa : $phone, 'theme_nit');
+foreach (['facebook', 'instagram', 'youtube', 'tiktok', 'website'] as $net) {
+    set_config('social_' . $net, $social[$net]['url'] ?? '', 'theme_nit');
+}
+
 if ($buttons === '') { fwrite(STDERR, "no contact/social provided — leaving placeholder\n"); exit(0); }
 
 $html =
