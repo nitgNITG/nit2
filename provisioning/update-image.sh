@@ -31,7 +31,15 @@ DATA_DIR="$CLIENT_DIR/moodledata"
 CONF="$CLIENT_DIR/config.php"
 
 docker ps -a --format '{{.Names}}' | grep -qx "$CONTAINER" || die "container $CONTAINER not found"
-docker image inspect "$IMAGE" >/dev/null 2>&1 || die "image '$IMAGE' not found — pull it first (docker pull $IMAGE)"
+
+# Make sure the target image is present. Try to pull it (the button target tag is
+# often newer than what's on disk); only fail if it's still missing afterwards so
+# we never recreate the container against a phantom image.
+if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+    log "pulling $IMAGE"
+    docker pull "$IMAGE" >/dev/null 2>&1 || true
+fi
+docker image inspect "$IMAGE" >/dev/null 2>&1 || die "image '$IMAGE' not found and pull failed — check SAAS_IMAGE + GHCR login"
 
 # A per-client config.php means this is a baked (image) academy. Custom-code
 # clients bind-mount /var/www/html and manage their own code — refuse those

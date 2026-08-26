@@ -13,7 +13,6 @@ const AcademiesPage = () => {
     const [loading, setLoading] = useState(true)
     const [savingSlug, setSavingSlug] = useState<string | null>(null)
     const [updatingAll, setUpdatingAll] = useState(false)
-    const [updatingSlug, setUpdatingSlug] = useState<string | null>(null)
     const [busySlug, setBusySlug] = useState<string | null>(null)
     const [brandingSlug, setBrandingSlug] = useState<string | null>(null)
 
@@ -67,11 +66,13 @@ const AcademiesPage = () => {
         }
     }
 
+    // Recreate EVERY live academy onto the latest baked image (the baked
+    // equivalent of "pull latest code" — data is preserved).
     const updateAll = async () => {
-        if (!window.confirm('Pull the latest code into every live academy now?')) return
+        if (!window.confirm('Update every live academy onto the latest image now? Each restarts for ~30s; data is preserved.')) return
         setUpdatingAll(true)
         try {
-            const { data } = await axios.post('/api/academies/update-sites')
+            const { data } = await axios.post('/api/academies/update-images')
             toast.success(`Update queued for ${data.queued}/${data.academies} academies`)
         } catch (err: any) {
             toast.error(err?.response?.data?.error || 'Update failed')
@@ -80,20 +81,8 @@ const AcademiesPage = () => {
         }
     }
 
-    const updateOne = async (slug: string) => {
-        setUpdatingSlug(slug)
-        try {
-            await axios.post('/api/academies/update-sites', { slug })
-            toast.success(`${slug}: pulling latest code…`)
-        } catch (err: any) {
-            toast.error(err?.response?.data?.error || 'Update failed')
-        } finally {
-            setUpdatingSlug(null)
-        }
-    }
-
     const updateImage = async (slug: string) => {
-        if (!window.confirm(`Recreate "${slug}" onto the latest baked image? Its data (courses, users, files) is preserved; the site restarts for ~30s.`)) return
+        if (!window.confirm(`Update "${slug}" onto the latest image? Its data (courses, users, files) is preserved; the site restarts for ~30s.`)) return
         setBusySlug(slug)
         try {
             await axios.patch(`/api/academies/${slug}`, { updateImage: true })
@@ -150,10 +139,10 @@ const AcademiesPage = () => {
                     type='button'
                     onClick={updateAll}
                     disabled={updatingAll}
-                    title='Pull the latest code into every live academy (after a saas-demo push)'
-                    className='shrink-0 rounded-md border border-[#268F79] px-4 py-2 text-sm font-semibold text-[#268F79] hover:bg-[#268F79]/5 disabled:opacity-60'
+                    title='Recreate every live academy onto the latest baked image (after a new image is built + SAAS_IMAGE bumped). Data is preserved.'
+                    className='shrink-0 rounded-md border border-indigo-400 px-4 py-2 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 disabled:opacity-60'
                 >
-                    {updatingAll ? 'Updating…' : '⟳ Update all sites'}
+                    {updatingAll ? 'Updating…' : '⟳ Update all to latest image'}
                 </button>
             </div>
 
@@ -212,16 +201,11 @@ const AcademiesPage = () => {
                                 </td>
                                 <td className='px-4 py-3'>
                                     <div className='flex flex-wrap gap-1.5'>
-                                        <button type='button' onClick={() => updateOne(a.slug)} disabled={updatingSlug === a.slug}
-                                            title='Pull latest code into this academy'
-                                            className='rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50'>
-                                            {updatingSlug === a.slug ? '…' : '⟳ Update'}
-                                        </button>
                                         <button type='button' onClick={() => updateImage(a.slug)}
                                             disabled={busySlug === a.slug || !['live', 'suspended'].includes(a.status)}
-                                            title='Recreate this academy onto the latest baked image (theme/core/plugin changes) — data is preserved'
+                                            title='Update this academy onto the latest baked image (theme/core/plugin changes + token/settings refresh) — data is preserved'
                                             className='rounded-lg border border-indigo-300 px-2.5 py-1.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 disabled:opacity-40'>
-                                            {busySlug === a.slug ? '…' : '⟳ Image'}
+                                            {busySlug === a.slug ? '…' : '⟳ Update'}
                                         </button>
                                         <button type='button' onClick={() => setBrandingSlug(a.slug)}
                                             disabled={!['live', 'suspended'].includes(a.status)}
