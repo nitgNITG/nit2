@@ -45,7 +45,8 @@ cp "$SCRIPT_DIR/apply_footer.php"   /root/apply_footer.php
 cp "$SCRIPT_DIR/apply_apptoken.php" /root/apply_apptoken.php
 cp "$SCRIPT_DIR/apply-branding.sh"  /root/apply-branding.sh
 cp "$SCRIPT_DIR/update-image.sh"    /root/update-image.sh
-chmod +x /root/create.sh /root/destroy.sh /root/apply-license.sh /root/apply-settings.sh /root/update-site.sh /root/apply-suspend.sh /root/apply-branding.sh /root/update-image.sh
+cp "$SCRIPT_DIR/bump-image.sh"      /root/bump-image.sh
+chmod +x /root/create.sh /root/destroy.sh /root/apply-license.sh /root/apply-settings.sh /root/update-site.sh /root/apply-suspend.sh /root/apply-branding.sh /root/update-image.sh /root/bump-image.sh
 
 # ── The HTTP service — copied verbatim from the repo (NOT inlined), so branding,
 #    licence tier, and /apply-license stay in one place: provision-server.py ───
