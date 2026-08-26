@@ -80,6 +80,36 @@ foreach ($required as $fname) {
     }
 }
 
+// 2c. Let NORMAL logged-in users call the web service. webservice/rest:use ships
+// with EMPTY archetypes (Moodle grants it to NO role by default), so a freshly
+// registered student gets webservice_access_exception on EVERY function while
+// the admin token still works (admin bypasses capability checks via
+// is_siteadmin). Grant it to the authenticated-user role at system context so
+// every logged-in user (students, teachers) can use the app.
+require_once($CFG->libdir . '/accesslib.php');
+$syscontext = context_system::instance();
+$roleids = [];
+if (!empty($CFG->defaultuserroleid)) {
+    $roleids[] = (int) $CFG->defaultuserroleid;
+}
+if ($r = $DB->get_record('role', ['shortname' => 'user'], 'id')) {
+    $roleids[] = (int) $r->id;
+}
+$roleids = array_values(array_unique(array_filter($roleids)));
+foreach ($roleids as $rid) {
+    assign_capability('webservice/rest:use', CAP_ALLOW, $rid, $syscontext->id, true);
+}
+if ($roleids) {
+    $syscontext->mark_dirty();
+    echo "granted webservice/rest:use to role(s): " . implode(',', $roleids) . "\n";
+}
+// Keep the mobile service open to any authorised user (never an allow-list).
+if (!empty($service->restrictedusers)) {
+    $service->restrictedusers = 0;
+    $DB->update_record('external_services', $service);
+    echo "cleared restrictedusers on service #{$service->id}\n";
+}
+
 // 3. Reuse the admin's permanent mobile token, or mint one.
 $admin = get_admin();
 if (!$admin) {
