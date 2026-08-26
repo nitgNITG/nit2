@@ -20,4 +20,6 @@ export const PLATFORM_KEYS = [
     'privacy_url',
     'about_url',
     'faq_url',
+    // Published app + developer name (shown on the built-in legal/delete pages).
+    'app_name',
 ] as const

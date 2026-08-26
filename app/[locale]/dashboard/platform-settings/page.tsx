@@ -38,10 +38,11 @@ const GROUPS: { title: string; note: string; fields: FieldDef[] }[] = [
     },
     {
         title: 'Legal links (app)',
-        note: 'Default Terms / Privacy / About / FAQ pages shown in the app for EVERY academy. An academy can override these in the build form. The pages should render chrome-less (add ?embedded=1 if your page supports it).',
+        note: 'Default Terms / Privacy / About / FAQ pages shown in the app for EVERY academy. Terms, Privacy and the Play-required account-deletion page are built in (local/multitopics/legal.php) — leave the URLs blank to use them, or set a URL to override. An academy can also override these in the build form.',
         fields: [
-            { key: 'terms_url', label: 'Terms URL', placeholder: 'https://nitg-eg.com/terms?embedded=1' },
-            { key: 'privacy_url', label: 'Privacy URL', placeholder: 'https://nitg-eg.com/privacy?embedded=1' },
+            { key: 'app_name', label: 'Published app name', hint: 'The app + developer name shown on your store listing. Used on the built-in legal/delete-account pages. Blank = each academy uses its own site name.', placeholder: 'N.I.T Academy' },
+            { key: 'terms_url', label: 'Terms URL (optional override)', placeholder: 'blank = built-in page' },
+            { key: 'privacy_url', label: 'Privacy URL (optional override)', placeholder: 'blank = built-in page' },
             { key: 'about_url', label: 'About URL', placeholder: 'https://nitg-eg.com/about?embedded=1' },
             { key: 'faq_url', label: 'FAQ URL', placeholder: 'https://nitg-eg.com/faq?embedded=1' },
         ],

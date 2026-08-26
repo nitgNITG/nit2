@@ -42,6 +42,9 @@ SETTING_KEYS = {
     "watermark_color", "watermark_speed", "watermark_fontsize",
     # Shared legal links (theme_nit) — default Terms/Privacy/About/FAQ URLs.
     "terms_url", "privacy_url", "about_url", "faq_url",
+    # Published app + developer name (local_multitopics) — shown on the built-in
+    # legal/delete-account pages. One app, so the same for every academy.
+    "app_name",
 }
 
 MAX_BODY   = 12 * 1024 * 1024   # 12 MB total request (base64 inflates ~33%)
