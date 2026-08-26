@@ -90,9 +90,13 @@ export async function POST(req: NextRequest) {
     });
 
     if (!session.ok) {
-        await prisma.payment.update({ where: { orderId }, data: { status: "failed", failureReason: session.error } }).catch(() => {});
-        console.error("[kashier/create] session failed", session.error);
-        return NextResponse.json({ error: "تعذّر فتح صفحة الدفع، حاول تاني." }, { status: 502 });
+        const detail = session.error;
+        const raw = (session as any).raw;
+        await prisma.payment.update({ where: { orderId }, data: { status: "failed", failureReason: `${detail} :: ${JSON.stringify(raw ?? "")}`.slice(0, 900) } }).catch(() => {});
+        console.error("[kashier/create] session failed", detail, raw);
+        // Surface Kashier's actual message — this is a paid setup phase and the
+        // owner/admin needs to see WHY Kashier rejected the session.
+        return NextResponse.json({ error: "تعذّر فتح صفحة الدفع، حاول تاني.", detail, kashier: raw }, { status: 502 });
     }
 
     await prisma.payment.update({ where: { orderId }, data: { sessionId: session.sessionId } }).catch(() => {});
