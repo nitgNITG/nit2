@@ -31,7 +31,9 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
         live = false;
     }
 
-    if (live && academy.status !== "live") {
+    // A suspended academy still serves a 200 notice page — don't let reachability
+    // flip it back to "live". Only promote from the provisioning states.
+    if (live && academy.status !== "live" && academy.status !== "suspended") {
         try { await prisma.academy.update({ where: { slug }, data: { status: "live" } }); } catch {}
     }
     return NextResponse.json({ slug, live, url });

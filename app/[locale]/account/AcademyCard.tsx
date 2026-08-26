@@ -1,23 +1,62 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { connectLinks } from '@/lib/connectLinks'
 import DeletePlatformButton from './DeletePlatformButton'
 
 const MONO = "'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace"
 
-export type ClientAcademy = { id: string; name: string; slug: string; status: string; createdAt: string }
+export type ClientAcademy = {
+    id: string; name: string; slug: string; status: string; createdAt: string
+    tier?: string
+    validUntil?: string | null
+}
 
 export default function AcademyCard({ academy, domain }: { academy: ClientAcademy; domain: string }) {
     const t = useTranslations('Dashboard')
+    const locale = useLocale()
+    const isAr = locale === 'ar'
+    const tr = (ar: string, en: string) => (isAr ? ar : en)
     const [live, setLive] = useState(academy.status === 'live')
     const [qr, setQr] = useState<string>('')
+    const [renewing, setRenewing] = useState(false)
     const links = connectLinks(academy.slug, domain)
 
+    // Subscription term. validUntil null = never expires (free/unlimited plan).
+    const suspended = academy.status === 'suspended'
+    const expiryMs = academy.validUntil ? Date.parse(academy.validUntil) : null
+    const expired = expiryMs != null && expiryMs < Date.now()
+    const daysLeft = expiryMs != null ? Math.ceil((expiryMs - Date.now()) / 86_400_000) : null
+    const showRenew = expiryMs != null && (expired || (daysLeft != null && daysLeft <= 30))
+    const expiryLabel = expiryMs != null
+        ? new Date(expiryMs).toLocaleDateString(isAr ? 'ar-EG' : 'en-GB', { year: 'numeric', month: 'short', day: 'numeric' })
+        : null
+
+    const renew = async () => {
+        if (renewing || !academy.tier) return
+        setRenewing(true)
+        try {
+            const res = await fetch('/api/payments/kashier/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ purpose: 'renew', slug: academy.slug, tier: academy.tier }),
+            })
+            const data = await res.json()
+            if (res.ok && data.url) { window.location.href = data.url; return }
+            alert(data.error || tr('تعذّر بدء التجديد، حاول تاني.', 'Could not start renewal, please try again.'))
+        } catch {
+            alert(tr('تعذّر بدء التجديد، حاول تاني.', 'Could not start renewal, please try again.'))
+        } finally {
+            setRenewing(false)
+        }
+    }
+
     // While the site is still being prepared, poll until it answers 200.
+    // Suspended academies still serve a notice page (200), so skip polling — we
+    // don't want to flip the badge to "live" while the term is expired.
     useEffect(() => {
-        if (live) return
+        if (live || suspended) return
         let stopped = false
         let attempts = 0
         const check = async () => {
@@ -47,7 +86,9 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
     return (
         <div className='rounded-2xl bg-[#F5F3EE] ring-1 ring-black/5 p-5 flex flex-col gap-3 shadow-sm'>
             <div className='flex items-center gap-2'>
-                {live ? (
+                {suspended ? (
+                    <span className='h-2.5 w-2.5 rounded-full bg-red-500' />
+                ) : live ? (
                     <span className='relative flex h-2.5 w-2.5'>
                         <span className='absolute inline-flex h-full w-full rounded-full bg-[#00FFB2] opacity-60 animate-ping motion-reduce:hidden' />
                         <span className='relative inline-flex h-2.5 w-2.5 rounded-full bg-[#00c98e]' />
@@ -55,8 +96,8 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
                 ) : (
                     <span className='h-2.5 w-2.5 rounded-full bg-[#E8A13C] animate-pulse motion-reduce:animate-none' />
                 )}
-                <span className={`text-xs font-bold ${live ? 'text-[#0b8f66]' : 'text-[#b9791f]'}`}>
-                    {live ? t('statusLive') : t('statusPreparing')}
+                <span className={`text-xs font-bold ${suspended ? 'text-red-600' : live ? 'text-[#0b8f66]' : 'text-[#b9791f]'}`}>
+                    {suspended ? tr('موقوفة', 'Suspended') : live ? t('statusLive') : t('statusPreparing')}
                 </span>
             </div>
 
@@ -119,9 +160,44 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
                         </div>
                     </div>
                 </div>
+            ) : suspended ? (
+                <div className='mt-1 rounded-lg bg-red-500/10 px-4 py-2 text-sm text-red-700 text-center'>
+                    {tr('انتهى اشتراك هذه الأكاديمية وتم إيقافها مؤقتاً. جدّد الاشتراك لإعادة تشغيلها — بياناتك محفوظة.',
+                        'This academy’s subscription ended and it is paused. Renew to bring it back — your data is safe.')}
+                </div>
             ) : (
                 <div className='mt-1 rounded-lg bg-[#E8A13C]/10 px-4 py-2 text-sm text-[#b9791f] text-center'>
                     {t('preparingHint')}
+                </div>
+            )}
+
+            {/* Subscription term + renew (only for plans that expire). */}
+            {expiryMs != null && (
+                <div className='rounded-lg bg-white/60 ring-1 ring-black/5 px-3 py-2 text-xs'>
+                    <div className='flex items-center justify-between gap-2'>
+                        <span className='text-[#0B2923]/60'>
+                            {expired
+                                ? tr('انتهى في', 'Expired on')
+                                : tr('ساري حتى', 'Valid until')}
+                        </span>
+                        <span dir='ltr' className={`font-bold ${expired ? 'text-red-600' : daysLeft != null && daysLeft <= 7 ? 'text-[#b9791f]' : 'text-[#0B2923]'}`}>
+                            {expiryLabel}
+                        </span>
+                    </div>
+                    {!expired && daysLeft != null && daysLeft <= 30 && (
+                        <p className='mt-0.5 text-[#b9791f]'>
+                            {tr(`باقي ${daysLeft} يوم`, `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`)}
+                        </p>
+                    )}
+                    {showRenew && academy.tier && (
+                        <button
+                            onClick={renew}
+                            disabled={renewing}
+                            className='mt-2 w-full rounded-lg bg-[#0B2923] px-3 py-1.5 text-xs font-bold text-[#00FFB2] hover:bg-[#0e3329] disabled:opacity-60 transition-colors'
+                        >
+                            {renewing ? tr('جارٍ التحويل…', 'Redirecting…') : tr('تجديد الاشتراك', 'Renew subscription')}
+                        </button>
+                    )}
                 </div>
             )}
 

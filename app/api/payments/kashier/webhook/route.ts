@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prismaMysql";
 import { verifyWebhook, isPaidStatus } from "@/lib/kashier";
-import { provisionAcademy, licenseToDefinition } from "@/lib/provisionAcademy";
+import { provisionAcademy, licenseToDefinition, triggerSuspend } from "@/lib/provisionAcademy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -84,12 +84,15 @@ export async function POST(req: NextRequest) {
             if (slug) {
                 const now = new Date();
                 const validUntil = durationDays > 0 ? new Date(now.getTime() + durationDays * 86_400_000) : null;
+                // Was it suspended (e.g. expired past grace)? Resume Moodle if so.
+                const prev = await prisma.academy.findUnique({ where: { slug } }).catch(() => null);
                 await prisma.academy.update({
                     where: { slug },
                     data: { tier: payment.licenseKey, status: "live", subscribedAt: now, validUntil },
                 }).catch((e) => console.error("[kashier/webhook] academy update failed", slug, e));
                 // Push the new licence to the live Moodle (best-effort).
                 await triggerApplyLicense(slug, payment.licenseKey, definition);
+                if (prev?.status === "suspended") await triggerSuspend(slug, false);
             }
         }
     } catch (e) {

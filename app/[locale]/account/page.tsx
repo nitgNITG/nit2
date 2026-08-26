@@ -69,6 +69,8 @@ export default async function AccountPage() {
         })
         const academies = rows.map((a) => ({
             id: a.id, name: a.name, slug: a.slug, status: a.status, createdAt: a.createdAt.toISOString(),
+            tier: a.tier,
+            validUntil: a.validUntil ? a.validUntil.toISOString() : null,
         }))
         content = (
             <Dashboard

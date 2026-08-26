@@ -56,6 +56,28 @@ export async function triggerProvision(
     }
 }
 
+/**
+ * Ask server B to soft-lock (suspend) or unlock (resume) a live academy. Data is
+ * preserved either way — reversible. Best-effort/fire-and-forget. Used by the
+ * expiry cron (suspend) and the renew webhook (resume).
+ */
+export async function triggerSuspend(slug: string, suspended: boolean): Promise<void> {
+    const base = process.env.PROVISION_URL;
+    const secret = process.env.PROVISION_SECRET;
+    if (!base || !secret) return;
+    try {
+        const url = new URL(base);
+        url.pathname = `/suspend/${slug}`;
+        await fetch(url.toString(), {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Provision-Secret": secret },
+            body: JSON.stringify({ suspended }),
+        });
+    } catch (e) {
+        console.error("[provision] suspend trigger failed", slug, e);
+    }
+}
+
 export type ProvisionInput = {
     slug: string;
     name: string;
