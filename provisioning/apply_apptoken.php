@@ -51,6 +51,35 @@ if (empty($service->enabled)) {
     $DB->update_record('external_services', $service);
 }
 
+// 2b. Expose the functions the app needs BEFORE login on this service.
+// The stock mobile service does NOT include core_user_create_users, so an app
+// signup fails with `webservice_access_exception` (accessexception) until it is
+// added. Manual additions to the mobile service persist across upgrades — Moodle
+// only auto-manages the functions plugins declare for mobile in db/services.php,
+// it does not strip extras. The token's user is the site admin, so it already
+// has moodle/user:create + webservice/rest:use.
+$required = [
+    'core_user_create_users',   // registration (the failing call)
+];
+foreach ($required as $fname) {
+    // Only add functions that actually exist on this core.
+    if (!$DB->record_exists('external_functions', ['name' => $fname])) {
+        fwrite(STDERR, "function {$fname} not installed on this core — skipping\n");
+        continue;
+    }
+    $inservice = $DB->record_exists('external_services_functions', [
+        'externalserviceid' => $service->id,
+        'functionname'      => $fname,
+    ]);
+    if (!$inservice) {
+        $DB->insert_record('external_services_functions', (object) [
+            'externalserviceid' => $service->id,
+            'functionname'      => $fname,
+        ]);
+        echo "added function {$fname} to service #{$service->id}\n";
+    }
+}
+
 // 3. Reuse the admin's permanent mobile token, or mint one.
 $admin = get_admin();
 if (!$admin) {
