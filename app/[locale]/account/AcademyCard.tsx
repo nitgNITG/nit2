@@ -13,6 +13,8 @@ export type ClientAcademy = {
     validUntil?: string | null
 }
 
+type Tier = { key: string; name: string; price: number; priceEgp?: number; active: boolean; order?: number }
+
 export default function AcademyCard({ academy, domain }: { academy: ClientAcademy; domain: string }) {
     const t = useTranslations('Dashboard')
     const locale = useLocale()
@@ -21,6 +23,9 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
     const [live, setLive] = useState(academy.status === 'live')
     const [qr, setQr] = useState<string>('')
     const [renewing, setRenewing] = useState(false)
+    const [tiers, setTiers] = useState<Tier[]>([])
+    const [upgradeTo, setUpgradeTo] = useState('')
+    const [upgrading, setUpgrading] = useState(false)
     const links = connectLinks(academy.slug, domain)
 
     // Subscription term. validUntil null = never expires (free/unlimited plan).
@@ -49,6 +54,43 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
             alert(tr('تعذّر بدء التجديد، حاول تاني.', 'Could not start renewal, please try again.'))
         } finally {
             setRenewing(false)
+        }
+    }
+
+    // Load tiers once the site is live so we can offer paid upgrades.
+    useEffect(() => {
+        if (!live || !academy.tier) return
+        let cancelled = false
+        fetch('/api/licenses', { cache: 'no-store' })
+            .then((r) => r.json())
+            .then((d) => { if (!cancelled) setTiers((d.licenses ?? []).filter((l: Tier) => l.active)) })
+            .catch(() => { /* upgrade is optional */ })
+        return () => { cancelled = true }
+    }, [live, academy.tier])
+
+    // Rank tiers by order then EGP charge; offer only strictly-higher paid tiers.
+    const rank = (t: Tier) => (t.order ?? 0) * 1_000_000 + (t.priceEgp ?? 0)
+    const current = tiers.find((t) => t.key === academy.tier)
+    const upgradeOptions = current
+        ? tiers.filter((t) => (t.priceEgp ?? 0) > 0 && rank(t) > rank(current))
+        : []
+
+    const upgrade = async () => {
+        if (upgrading || !upgradeTo) return
+        setUpgrading(true)
+        try {
+            const res = await fetch('/api/payments/kashier/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ purpose: 'upgrade', slug: academy.slug, tier: upgradeTo }),
+            })
+            const data = await res.json()
+            if (res.ok && data.url) { window.location.href = data.url; return }
+            alert(data.error || tr('تعذّر بدء الترقية، حاول تاني.', 'Could not start upgrade, please try again.'))
+        } catch {
+            alert(tr('تعذّر بدء الترقية، حاول تاني.', 'Could not start upgrade, please try again.'))
+        } finally {
+            setUpgrading(false)
         }
     }
 
@@ -198,6 +240,34 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
                             {renewing ? tr('جارٍ التحويل…', 'Redirecting…') : tr('تجديد الاشتراك', 'Renew subscription')}
                         </button>
                     )}
+                </div>
+            )}
+
+            {/* Upgrade to a higher paid tier (only when live + options exist). */}
+            {live && upgradeOptions.length > 0 && (
+                <div className='rounded-lg bg-white/60 ring-1 ring-black/5 px-3 py-2 text-xs'>
+                    <p className='text-[#0B2923]/60 mb-1.5'>{tr('ترقية الباقة', 'Upgrade plan')}</p>
+                    <div className='flex gap-2'>
+                        <select
+                            value={upgradeTo}
+                            onChange={(e) => setUpgradeTo(e.target.value)}
+                            className='min-w-0 flex-1 rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs text-[#0B2923]'
+                        >
+                            <option value=''>{tr('اختر باقة…', 'Choose a plan…')}</option>
+                            {upgradeOptions.map((o) => (
+                                <option key={o.key} value={o.key}>
+                                    {o.name} — {o.priceEgp} {isAr ? 'ج.م' : 'EGP'}
+                                </option>
+                            ))}
+                        </select>
+                        <button
+                            onClick={upgrade}
+                            disabled={upgrading || !upgradeTo}
+                            className='shrink-0 rounded-lg bg-[#0B2923] px-3 py-1.5 text-xs font-bold text-[#00FFB2] hover:bg-[#0e3329] disabled:opacity-60 transition-colors'
+                        >
+                            {upgrading ? tr('جارٍ…', '…') : tr('ترقية', 'Upgrade')}
+                        </button>
+                    </div>
                 </div>
             )}
 
