@@ -42,5 +42,17 @@ if [[ -n "${SETTING_GOOGLE_CLIENT_ID:-}" && -n "${SETTING_GOOGLE_CLIENT_SECRET:-
     docker exec "$CONTAINER" rm -f /var/www/moodledata/apply_google_login.php || true
 fi
 
+# Shared legal links (theme_nit) — push the platform Terms/Privacy/About/FAQ URLs.
+_setlink(){  # $1 = base key (e.g. link_terms), $2 = url
+    [[ -n "$2" ]] || return 0
+    docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=theme_nit --name="${1}_en" --set="$2" >/dev/null 2>&1 || true
+    docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=theme_nit --name="${1}_ar" --set="$2" >/dev/null 2>&1 || true
+    applied=$((applied + 1)); log "set theme_nit/${1}"
+}
+_setlink link_terms   "${SETTING_TERMS_URL:-}"
+_setlink link_privacy "${SETTING_PRIVACY_URL:-}"
+_setlink link_about   "${SETTING_ABOUT_URL:-}"
+_setlink link_faq     "${SETTING_FAQ_URL:-}"
+
 docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
 log "applied $applied setting(s) to $SLUG"

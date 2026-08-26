@@ -15,4 +15,9 @@ export const PLATFORM_KEYS = [
     'watermark_color',
     'watermark_speed',
     'watermark_fontsize',
+    // Shared legal links (app design-system) — default for every academy.
+    'terms_url',
+    'privacy_url',
+    'about_url',
+    'faq_url',
 ] as const

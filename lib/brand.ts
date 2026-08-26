@@ -22,6 +22,7 @@ export type Brand = {
     login?: BrandImage;
     about_bullets?: string[];
     gallery?: BrandImage[];
+    links?: Record<string, string>; // per-academy legal links (terms/privacy/about/faq)
 };
 
 const MAX_NAME_LEN = 200;
@@ -50,6 +51,16 @@ export function sanitizeBrand(raw: unknown): Brand {
             if (typeof v === "string" && /^https?:\/\//i.test(v.trim())) sout[k] = v.trim().slice(0, 300);
         }
         if (Object.keys(sout).length) out.social = sout;
+    }
+    // Per-academy legal links — http(s) URLs only.
+    if (b.links && typeof b.links === "object") {
+        const lin = b.links as Record<string, unknown>;
+        const lout: Record<string, string> = {};
+        for (const k of ["terms", "privacy", "about", "faq"]) {
+            const v = lin[k];
+            if (typeof v === "string" && /^https?:\/\//i.test(v.trim())) lout[k] = v.trim().slice(0, 500);
+        }
+        if (Object.keys(lout).length) out.links = lout;
     }
     // Brand colours — keep only the known roles with valid #rrggbb hex.
     if (b.colors && typeof b.colors === "object") {

@@ -434,6 +434,21 @@ if [[ -n "${SETTING_GOOGLE_CLIENT_ID:-}" && -n "${SETTING_GOOGLE_CLIENT_SECRET:-
     docker exec "$CONTAINER" rm -f /var/www/moodledata/apply_google_login.php || true
 fi
 
+# ── Legal links (app design-system links block) ─────────────────────────────
+# Terms / Privacy / About / FAQ URLs served by design_system.php. A per-academy
+# value (BRAND_LINK_*) wins; otherwise the shared platform default (SETTING_*_URL).
+# Stored in theme_nit as link_<x>_en + link_<x>_ar (same URL for both languages).
+_setlink(){  # $1 = base key (e.g. link_terms), $2 = url
+    [[ -n "$2" ]] || return 0
+    docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=theme_nit --name="${1}_en" --set="$2" >/dev/null 2>&1 || true
+    docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=theme_nit --name="${1}_ar" --set="$2" >/dev/null 2>&1 || true
+    log "set theme_nit/${1} = $2"
+}
+_setlink link_terms   "${BRAND_LINK_TERMS:-${SETTING_TERMS_URL:-}}"
+_setlink link_privacy "${BRAND_LINK_PRIVACY:-${SETTING_PRIVACY_URL:-}}"
+_setlink link_about   "${BRAND_LINK_ABOUT:-${SETTING_ABOUT_URL:-}}"
+_setlink link_faq     "${BRAND_LINK_FAQ:-${SETTING_FAQ_URL:-}}"
+
 docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
 
 # ── App web-service token — publish admin_token for getsettings.php / the app ─

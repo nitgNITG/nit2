@@ -40,6 +40,8 @@ SETTING_KEYS = {
     "android_version", "android_url", "ios_version", "ios_url",
     # App overlay (local_multitopics) — global watermark style defaults.
     "watermark_color", "watermark_speed", "watermark_fontsize",
+    # Shared legal links (theme_nit) — default Terms/Privacy/About/FAQ URLs.
+    "terms_url", "privacy_url", "about_url", "faq_url",
 }
 
 MAX_BODY   = 12 * 1024 * 1024   # 12 MB total request (base64 inflates ~33%)
@@ -139,6 +141,13 @@ def _apply_brand_env(env: dict, brand: dict, stage: str) -> None:
             v = str(social.get(k, "") or "").strip()
             if v.startswith("http"):
                 env["BRAND_SOCIAL_" + k.upper()] = v[:300]
+    # Per-academy legal links (override the shared platform defaults).
+    links = brand.get("links")
+    if isinstance(links, dict):
+        for k in ("terms", "privacy", "about", "faq"):
+            v = str(links.get(k, "") or "").strip()
+            if v.startswith("http"):
+                env["BRAND_LINK_" + k.upper()] = v[:500]
 
 
 def run_apply_branding(slug: str, brand: dict, platform_lang: str = "") -> None:

@@ -36,6 +36,16 @@ const GROUPS: { title: string; note: string; fields: FieldDef[] }[] = [
             { key: 'watermark_fontsize', label: 'Font size', hint: 'Number, e.g. 14.', placeholder: '14' },
         ],
     },
+    {
+        title: 'Legal links (app)',
+        note: 'Default Terms / Privacy / About / FAQ pages shown in the app for EVERY academy. An academy can override these in the build form. The pages should render chrome-less (add ?embedded=1 if your page supports it).',
+        fields: [
+            { key: 'terms_url', label: 'Terms URL', placeholder: 'https://nitg-eg.com/terms?embedded=1' },
+            { key: 'privacy_url', label: 'Privacy URL', placeholder: 'https://nitg-eg.com/privacy?embedded=1' },
+            { key: 'about_url', label: 'About URL', placeholder: 'https://nitg-eg.com/about?embedded=1' },
+            { key: 'faq_url', label: 'FAQ URL', placeholder: 'https://nitg-eg.com/faq?embedded=1' },
+        ],
+    },
 ]
 
 const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key))

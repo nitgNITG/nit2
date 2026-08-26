@@ -53,6 +53,8 @@ type FormValues = {
     socialYoutube: string
     socialTiktok: string
     socialWebsite: string
+    linkTerms: string
+    linkPrivacy: string
     _hp?: string // honeypot — stays empty for humans
 }
 
@@ -96,7 +98,7 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
         setValue,
         formState: { errors, isSubmitting },
     } = useForm<FormValues>({
-        defaultValues: { name: '', fullnameEn: '', shortnameAr: '', shortnameEn: '', slug: '', tier: 'demo', contactPhone: '', contactWhatsapp: '', socialFacebook: '', socialInstagram: '', socialYoutube: '', socialTiktok: '', socialWebsite: '', _hp: '' },
+        defaultValues: { name: '', fullnameEn: '', shortnameAr: '', shortnameEn: '', slug: '', tier: 'demo', contactPhone: '', contactWhatsapp: '', socialFacebook: '', socialInstagram: '', socialYoutube: '', socialTiktok: '', socialWebsite: '', linkTerms: '', linkPrivacy: '', _hp: '' },
     })
 
     const [done, setDone] = useState<SuccessInfo | null>(null)
@@ -204,6 +206,10 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
             if (values.socialTiktok?.trim()) social.tiktok = values.socialTiktok.trim()
             if (values.socialWebsite?.trim()) social.website = values.socialWebsite.trim()
             if (Object.keys(social).length) brand.social = social
+            const links: Record<string, string> = {}
+            if (values.linkTerms?.trim()) links.terms = values.linkTerms.trim()
+            if (values.linkPrivacy?.trim()) links.privacy = values.linkPrivacy.trim()
+            if (Object.keys(links).length) brand.links = links
             if (aboutBullets.length) brand.about_bullets = aboutBullets
 
             if (logo) brand.logo = { filename: logo.name, data_b64: await fileToBase64(logo) }
@@ -748,6 +754,27 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                             {...register(field)}
                         />
                     ))}
+                </div>
+            </div>
+
+            {/* Legal links — per-academy override of the platform default (app only) */}
+            <div className='mb-6'>
+                <label className='mb-1.5 block font-bold text-[#0B2923]'>
+                    {isAr ? 'روابط قانونية (اختياري)' : 'Legal links'}{' '}
+                    <span className='text-sm font-normal text-gray-400'>({t('optional')})</span>
+                </label>
+                <p className='mb-2 text-xs text-gray-500'>
+                    {isAr
+                        ? 'روابط الشروط والخصوصية التي تظهر في التطبيق. اتركها فارغة لاستخدام الافتراضي العام.'
+                        : 'Terms & Privacy URLs shown in the app. Leave blank to use the platform default.'}
+                </p>
+                <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+                    <input type='url' dir='ltr' placeholder={isAr ? 'رابط الشروط' : 'Terms URL'}
+                        className='w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition-colors focus:border-[#1E7D67] focus:bg-white'
+                        {...register('linkTerms')} />
+                    <input type='url' dir='ltr' placeholder={isAr ? 'رابط الخصوصية' : 'Privacy URL'}
+                        className='w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition-colors focus:border-[#1E7D67] focus:bg-white'
+                        {...register('linkPrivacy')} />
                 </div>
             </div>
 
