@@ -302,6 +302,19 @@ case "${PLATFORM_LANG:-both}" in
     *)  log "language: Arabic + English"; _cfg lang ar; _cfg langmenu 1; _cfg langlist "en,ar"; _cfg langdetect 1 ;;
 esac
 
+# ── App-friendly password policy ─────────────────────────────────────────────
+# The stock policy demands upper+lower+digit+special, and core returns that
+# failure as an HTML (<div>…) string the app can't present cleanly. Disable the
+# complexity rules and keep a simple length floor so app self-registration works
+# with ordinary passwords. Admins can still tighten it later per academy.
+log "relaxing the password policy for app registration"
+_cfg passwordpolicy 0
+_cfg minpasswordlength 6
+_cfg minpassworddigits 0
+_cfg minpasswordlower 0
+_cfg minpasswordupper 0
+_cfg minpasswordnonalphanum 0
+
 # ── Brand palette (theme_nit Brand Colors) — from the build form's 6 pickers ──
 # BRAND_COLOR_* are #rrggbb. We set Group 1 (the site-wide default) roles from
 # them and DERIVE the rest (accent-text, secondary text, borders) so the live
