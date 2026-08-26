@@ -64,6 +64,17 @@ sleep 6
 docker exec "$CONTAINER" php /var/www/html/admin/cli/upgrade.php --non-interactive || true
 docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
 
+# Ensure the app web-service token is valid. Baked academies have no git-pull
+# path (update-site.sh), so this is where a stale/invalid admin_token gets
+# re-minted — apply_apptoken.php reuses the admin's real token or mints one and
+# republishes local_multitopics/admin_token.
+if [[ -f /root/apply_apptoken.php ]]; then
+    log "ensuring the mobile app web-service token"
+    docker cp /root/apply_apptoken.php "$CONTAINER:/var/www/moodledata/apply_apptoken.php"
+    docker exec "$CONTAINER" php /var/www/moodledata/apply_apptoken.php || echo "!! app-token step failed"
+    docker exec "$CONTAINER" rm -f /var/www/moodledata/apply_apptoken.php || true
+fi
+
 CODE="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/" || echo 000)"
 log "health check http://127.0.0.1:$PORT/ -> $CODE"
 case "$CODE" in
