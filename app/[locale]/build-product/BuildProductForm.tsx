@@ -36,7 +36,7 @@ const PALETTE_PRESETS: { name: string; dark: boolean; p: Palette }[] = [
     // Deep blue + slate (mrfathybakrmathematics.com).
     { name: 'Navy', dark: false, p: { primary: '#003362', accent: '#1f6fb2', secondary: '#e9eef4', background: '#ffffff', surface: '#f2f6fa', text: '#10233a' } },
 ]
-type License = { key: string; name: string; price: number; active: boolean; maxCourses: number; features: Record<string, boolean> }
+type License = { key: string; name: string; price: number; priceEgp?: number; active: boolean; maxCourses: number; features: Record<string, boolean> }
 const FEATURE_LABELS: Record<string, string> = { drm: 'DRM video', coupons: 'coupons', offers: 'offers', subscriptions: 'subscriptions', packages: 'packages', jitsi: 'live sessions' }
 
 type FormValues = {
@@ -224,8 +224,38 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                 )
             }
 
+            // Paid tier (create mode only) → start Kashier checkout instead of
+            // provisioning now. On success the client is redirected to Kashier's
+            // hosted page; the academy is provisioned by the webhook after payment.
+            if (!isEdit) {
+                const selected = licenses.find((l) => l.key === values.tier)
+                if (selected && (selected.priceEgp ?? 0) > 0) {
+                    const pr = await fetch('/api/payments/kashier/create', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            name: values.name,
+                            slug: values.slug.toLowerCase().trim(),
+                            tier: values.tier,
+                            brand,
+                            locale,
+                            platform_lang: platformLang,
+                            purpose: 'new_academy',
+                        }),
+                    })
+                    const pd = await pr.json()
+                    if (!pr.ok || !pd?.url) {
+                        toast.error(pd?.error || t('errorGeneric'))
+                        return
+                    }
+                    // Off to Kashier's hosted payment page.
+                    window.location.href = pd.url
+                    return
+                }
+            }
+
             // Re-apply-branding mode → push the brand to the existing academy;
-            // create mode → provision a new one.
+            // create mode (free tier) → provision a new one.
             const res = isEdit
                 ? await fetch(`/api/academies/${editSlug}/branding`, {
                     method: 'POST',
@@ -464,7 +494,9 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                                 <div className='flex items-baseline justify-between gap-2'>
                                     <span className='font-bold text-[#0B2923]'>{lic.name}</span>
                                     <span className='text-sm font-bold text-[#1E7D67]' dir='ltr'>
-                                        {lic.price === 0 ? (isAr ? 'مجاني' : 'Free') : `$${lic.price}`}
+                                        {(lic.priceEgp ?? 0) > 0
+                                            ? `${lic.priceEgp} ${isAr ? 'ج.م' : 'EGP'}`
+                                            : lic.price === 0 ? (isAr ? 'مجاني' : 'Free') : `$${lic.price}`}
                                     </span>
                                 </div>
                                 <ul className='mt-1 list-disc ps-4 text-xs text-gray-500'>

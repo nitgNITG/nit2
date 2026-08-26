@@ -9,6 +9,7 @@ type License = {
     name: string
     active: boolean
     price: number
+    priceEgp: number
     durationDays: number
     maxCourses: number
     maxTeachers: number
@@ -23,7 +24,7 @@ const FEATURE_KEYS = ['drm', 'coupons', 'offers', 'subscriptions', 'packages', '
 const LIMIT_KEYS = ['quiz', 'video', 'pdf', 'default']
 
 const blank = (): License => ({
-    key: '', name: '', active: true, price: 0, durationDays: 365,
+    key: '', name: '', active: true, price: 0, priceEgp: 0, durationDays: 365,
     maxCourses: -1, maxTeachers: -1, videoSource: 'all', order: 0,
     limits: { quiz: -1, video: -1, pdf: -1, default: -1 },
     features: Object.fromEntries(FEATURE_KEYS.map((f) => [f, false])),
@@ -131,6 +132,12 @@ const LicensesPage = () => {
                         <div>
                             <label className='block text-sm font-semibold mb-1'>Price (USD)</label>
                             <input type='number' min={0} className='w-full border rounded-lg px-3 py-2' value={form.price} onChange={num('price')} />
+                            <p className='text-xs text-gray-400 mt-1'>Display only.</p>
+                        </div>
+                        <div>
+                            <label className='block text-sm font-semibold mb-1'>Charge (EGP)</label>
+                            <input type='number' min={0} className='w-full border rounded-lg px-3 py-2' value={form.priceEgp} onChange={num('priceEgp')} />
+                            <p className='text-xs text-gray-400 mt-1'>Actual Kashier charge. <span className='font-mono'>0</span> = free (no payment).</p>
                         </div>
                     </div>
 

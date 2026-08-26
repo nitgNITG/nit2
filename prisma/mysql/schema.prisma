@@ -82,6 +82,7 @@ model License {
   name         String
   active       Boolean  @default(true)
   price        Int      @default(0) // USD (display only)
+  priceEgp     Int      @default(0) // actual charge in EGP via Kashier; 0 = free (no payment)
   durationDays Int      @default(365) // 0 = never expires
   maxCourses   Int      @default(-1) // -1 = unlimited
   maxTeachers  Int      @default(-1)
@@ -90,4 +91,31 @@ model License {
   features     Json // toggles e.g. {"drm":false,"coupons":true,"subscriptions":false,"packages":false,"jitsi":false,"offers":false}
   order        Int      @default(0)
   createdAt    DateTime @default(now())
+}
+
+// A Kashier payment for a paid academy licence. Created `pending` when the client
+// starts checkout; flipped to `paid` by the verified Kashier webhook, which then
+// runs the deferred action (provision a new academy / change tier / renew).
+// For a `new_academy` payment the pending create payload lives in `payloadJson`
+// so the webhook can provision exactly what the client configured — nothing is
+// created until money is confirmed.
+model Payment {
+  id             String    @id @default(uuid())
+  orderId        String    @unique // our merchant order id — Kashier's merchantOrderId
+  userId         String // client User id (Mongo app user; joined by string)
+  licenseKey     String // License.key being purchased
+  purpose        String    @default("new_academy") // new_academy | upgrade | renew
+  amount         Int // charged amount, minor unit-free (whole currency units)
+  currency       String    @default("EGP")
+  status         String    @default("pending") // pending | paid | failed | expired
+  academySlug    String? // set for upgrade/renew, and for new_academy once provisioned
+  payloadJson    Json? // the pending academy-create payload (name, slug, brand, …)
+  sessionId      String? // Kashier session _id
+  providerRef    String? // Kashier transactionId / kashierOrderId once paid
+  failureReason  String?   @db.Text
+  createdAt      DateTime  @default(now())
+  paidAt         DateTime?
+
+  @@index([userId])
+  @@index([status])
 }
