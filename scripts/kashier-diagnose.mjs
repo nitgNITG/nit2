@@ -8,22 +8,11 @@
 //
 // It creates a throwaway session (no Payment row, no provisioning) — safe to run.
 
-import fs from "node:fs";
-import path from "node:path";
-
-// Minimal .env loader (Next loads .env itself; a bare node script does not).
-function loadEnv() {
-    const p = path.resolve(process.cwd(), ".env");
-    if (!fs.existsSync(p)) return;
-    for (const line of fs.readFileSync(p, "utf8").split(/\r?\n/)) {
-        const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-        if (!m) continue;
-        let v = m[2].trim();
-        if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
-        if (process.env[m[1]] === undefined) process.env[m[1]] = v;
-    }
-}
-loadEnv();
+// Load .env EXACTLY like the Next app (same dotenv rules for quotes + inline
+// comments) so this probe is authoritative: if the token works here, it works
+// in the app — and if it doesn't, the app has the same problem.
+import { loadEnvConfig } from "@next/env";
+loadEnvConfig(process.cwd());
 
 const BASE_URL = (process.env.KASHIER_BASE_URL || "https://api.kashier.io").replace(/\/+$/, "");
 const merchantId = process.env.KASHIER_MERCHANT_ID || "";
