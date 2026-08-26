@@ -62,12 +62,19 @@ fi
 
 # ── Platform language (ar | en | both) ──────────────────────────────────────
 _cfg(){ docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --name="$1" --set="$2" >/dev/null 2>&1 || true; }
+# Pin every user's stored language for single-language academies (langlist alone
+# doesn't change existing users — e.g. a Google account that picked up 'ar').
+_forcelang(){
+    docker exec -e L="$1" "$CONTAINER" php -r 'define("CLI_SCRIPT",true); require("/var/www/html/config.php"); global $DB; $DB->execute("UPDATE {user} SET lang = ?", [getenv("L")]);' >/dev/null 2>&1 \
+        || echo "!! could not force user language to $1"
+}
 if [[ -n "${PLATFORM_LANG:-}" ]]; then
     case "$PLATFORM_LANG" in
-        ar) log "language: Arabic only";  _cfg lang ar; _cfg langmenu 0; _cfg langlist ar ;;
-        en) log "language: English only"; _cfg lang en; _cfg langmenu 0; _cfg langlist en ;;
-        *)  log "language: Arabic + English"; _cfg lang ar; _cfg langmenu 1; _cfg langlist "en,ar" ;;
+        ar) log "language: Arabic only";  _cfg lang ar; _cfg langmenu 0; _cfg langlist ar; _cfg langdetect 0; _forcelang ar ;;
+        en) log "language: English only"; _cfg lang en; _cfg langmenu 0; _cfg langlist en; _cfg langdetect 0; _forcelang en ;;
+        *)  log "language: Arabic + English"; _cfg lang ar; _cfg langmenu 1; _cfg langlist "en,ar"; _cfg langdetect 1 ;;
     esac
+    docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php >/dev/null 2>&1 || true
 fi
 
 # ── Brand palette (theme_nit Brand Colors, Group 1) ─────────────────────────

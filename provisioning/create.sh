@@ -288,10 +288,18 @@ docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=theme_n
 
 # ── Platform language (from the build form: ar | en | both) ──────────────────
 _cfg(){ docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --name="$1" --set="$2" >/dev/null 2>&1 || true; }
+# Force EVERY user's stored language to $1. langlist only limits the language
+# MENU — it does NOT change a user whose profile lang is already something else
+# (e.g. a Google-created account that picked up 'ar'). For an en-only / ar-only
+# academy we pin all users so the whole UI is in the requested language.
+_forcelang(){
+    docker exec -e L="$1" "$CONTAINER" php -r 'define("CLI_SCRIPT",true); require("/var/www/html/config.php"); global $DB; $DB->execute("UPDATE {user} SET lang = ?", [getenv("L")]);' >/dev/null 2>&1 \
+        || echo "!! could not force user language to $1"
+}
 case "${PLATFORM_LANG:-both}" in
-    ar) log "language: Arabic only";  _cfg lang ar; _cfg langmenu 0; _cfg langlist ar ;;
-    en) log "language: English only"; _cfg lang en; _cfg langmenu 0; _cfg langlist en ;;
-    *)  log "language: Arabic + English"; _cfg lang ar; _cfg langmenu 1; _cfg langlist "en,ar" ;;
+    ar) log "language: Arabic only";  _cfg lang ar; _cfg langmenu 0; _cfg langlist ar; _cfg langdetect 0; _forcelang ar ;;
+    en) log "language: English only"; _cfg lang en; _cfg langmenu 0; _cfg langlist en; _cfg langdetect 0; _forcelang en ;;
+    *)  log "language: Arabic + English"; _cfg lang ar; _cfg langmenu 1; _cfg langlist "en,ar"; _cfg langdetect 1 ;;
 esac
 
 # ── Brand palette (theme_nit Brand Colors) — from the build form's 6 pickers ──
