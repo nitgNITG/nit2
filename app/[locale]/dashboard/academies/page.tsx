@@ -19,6 +19,24 @@ const AcademiesPage = () => {
 
     const licenseName = (key: string) => licenses.find((l) => l.key === key)?.name ?? key
 
+    // Each academy's Google OAuth redirect URI must be added to the Web OAuth
+    // client's "Authorized redirect URIs" in the Google Cloud Console (Google
+    // has no API/wildcard for this). Domain matches provisioning/create.sh.
+    const ACADEMY_DOMAIN = 'academy2026.nitg-eg.com'
+    const GOOGLE_CONSOLE_URL =
+        'https://console.cloud.google.com/auth/clients/31169484251-lkhbei8fv9eq6tc03u498569l9jobj9r.apps.googleusercontent.com?authuser=1&project=new-academy-504912'
+    const redirectUri = (slug: string) => `https://${slug}.${ACADEMY_DOMAIN}/admin/oauth2callback.php`
+    const copyRedirect = async (slug: string) => {
+        const url = redirectUri(slug)
+        try {
+            await navigator.clipboard.writeText(url)
+            toast.success('Redirect URI copied — paste it into Google Cloud → Authorized redirect URIs')
+        } catch {
+            // Clipboard API can fail (insecure context / permissions) — show it to copy by hand.
+            window.prompt('Copy this redirect URI into Google Cloud → Authorized redirect URIs:', url)
+        }
+    }
+
     const load = useCallback(async () => {
         setLoading(true)
         try {
@@ -139,6 +157,17 @@ const AcademiesPage = () => {
                 </button>
             </div>
 
+            {/* Google login redirect-URI helper — Google has no API/wildcard for this. */}
+            <div className='rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900'>
+                <strong>Google login:</strong> for each academy, click <span className='font-semibold'>🔗 OAuth URL</span> to
+                copy its redirect URI, then paste it into the{' '}
+                <a href={GOOGLE_CONSOLE_URL} target='_blank' rel='noopener noreferrer' className='font-semibold underline'>
+                    Google Cloud OAuth client
+                </a>{' '}
+                → <span className='font-mono'>Authorized redirect URIs</span> → Save. Sign in to Google as{' '}
+                <span className='font-mono'>nitteam2024@gmail.com</span>. Google offers no API or wildcard, so this is one line per academy.
+            </div>
+
             <div className='bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto'>
                 <table className='w-full text-sm'>
                     <thead className='bg-gray-50 text-left text-gray-500'>
@@ -199,6 +228,11 @@ const AcademiesPage = () => {
                                             title='Re-apply branding (logo, colours, hero, about, gallery, contact, login, footer) to this live academy'
                                             className='rounded-lg border border-[#268F79]/50 px-2.5 py-1.5 text-xs font-semibold text-[#268F79] hover:bg-[#268F79]/5 disabled:opacity-40'>
                                             🎨 Branding
+                                        </button>
+                                        <button type='button' onClick={() => copyRedirect(a.slug)}
+                                            title={`Copy this academy's Google OAuth redirect URI:\n${redirectUri(a.slug)}\nThen paste it into the Google Cloud OAuth client (nitteam2024@gmail.com).`}
+                                            className='rounded-lg border border-blue-300 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50'>
+                                            🔗 OAuth URL
                                         </button>
                                         <button type='button' onClick={() => toggleSuspend(a.slug, a.status)} disabled={busySlug === a.slug}
                                             title={a.status === 'suspended' ? 'Resume this academy' : 'Suspend (soft-lock) this academy'}
