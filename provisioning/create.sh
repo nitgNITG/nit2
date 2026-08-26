@@ -190,6 +190,12 @@ fi
 echo "require_once(__DIR__ . '/lib/setup.php');" >> "$CONFIG_TARGET"
 
 # ── 5. Start the container ──────────────────────────────────────────────────
+# Pull the baked image first so a NEW academy also gets the freshest build when
+# SAAS_IMAGE is a moving tag (…:latest). Immutable version tags = fast no-op.
+if [[ "${CUSTOM_CODE:-0}" != "1" ]]; then
+    log "pulling $IMAGE"
+    docker pull "$IMAGE" >/dev/null 2>&1 || true
+fi
 log "starting container $CONTAINER on 127.0.0.1:$PORT"
 if [[ "${CUSTOM_CODE:-0}" == "1" ]]; then
     docker run -d --name "$CONTAINER" --network "$NET" --restart unless-stopped \

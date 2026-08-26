@@ -32,13 +32,14 @@ CONF="$CLIENT_DIR/config.php"
 
 docker ps -a --format '{{.Names}}' | grep -qx "$CONTAINER" || die "container $CONTAINER not found"
 
-# Make sure the target image is present. Try to pull it (the button target tag is
-# often newer than what's on disk); only fail if it's still missing afterwards so
-# we never recreate the container against a phantom image.
-if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
-    log "pulling $IMAGE"
-    docker pull "$IMAGE" >/dev/null 2>&1 || true
-fi
+# Always try to pull the target image before recreating. A pinned version tag
+# (…:2026.08.12) is immutable so this is a fast no-op; a MOVING tag (…:latest)
+# is refreshed to whatever CI last published — this is what lets SAAS_IMAGE=…:latest
+# mean "always the newest" without editing provision.env each release. Best-effort
+# (offline / rate-limit tolerated); only fail if the image is still absent, so we
+# never recreate against a phantom image.
+log "pulling $IMAGE"
+docker pull "$IMAGE" >/dev/null 2>&1 || true
 docker image inspect "$IMAGE" >/dev/null 2>&1 || die "image '$IMAGE' not found and pull failed — check SAAS_IMAGE + GHCR login"
 
 # A per-client config.php means this is a baked (image) academy. Custom-code
