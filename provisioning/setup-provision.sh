@@ -48,7 +48,8 @@ cp "$SCRIPT_DIR/apply-branding.sh"  /root/apply-branding.sh
 cp "$SCRIPT_DIR/update-image.sh"    /root/update-image.sh
 cp "$SCRIPT_DIR/bump-image.sh"      /root/bump-image.sh
 cp "$SCRIPT_DIR/saas-cron.sh"       /root/saas-cron.sh
-chmod +x /root/create.sh /root/destroy.sh /root/cleanup-orphans.sh /root/apply-license.sh /root/apply-settings.sh /root/update-site.sh /root/apply-suspend.sh /root/apply-branding.sh /root/update-image.sh /root/bump-image.sh /root/saas-cron.sh
+cp "$SCRIPT_DIR/saas-quota.sh"      /root/saas-quota.sh
+chmod +x /root/create.sh /root/destroy.sh /root/cleanup-orphans.sh /root/apply-license.sh /root/apply-settings.sh /root/update-site.sh /root/apply-suspend.sh /root/apply-branding.sh /root/update-image.sh /root/bump-image.sh /root/saas-cron.sh /root/saas-quota.sh
 
 # ── The HTTP service — copied verbatim from the repo (NOT inlined), so branding,
 #    licence tier, and /apply-license stay in one place: provision-server.py ───
@@ -73,6 +74,7 @@ SMTP_PASS="${SMTP_PASS:-$(_keep SMTP_PASS)}"
 SMTP_MAXBULK="${SMTP_MAXBULK:-$(_keep SMTP_MAXBULK)}"
 SMTP_NOREPLY="${SMTP_NOREPLY:-$(_keep SMTP_NOREPLY)}"
 SMTP_SUPPORTEMAIL="${SMTP_SUPPORTEMAIL:-$(_keep SMTP_SUPPORTEMAIL)}"
+SAAS_QUOTA_ENFORCE="${SAAS_QUOTA_ENFORCE:-$(_keep SAAS_QUOTA_ENFORCE)}"
 
 echo "==> writing /var/www/html/saas/provision.env"
 cat > /var/www/html/saas/provision.env <<ENVEOF
@@ -99,6 +101,11 @@ APPLY_SUSPEND_SH=/root/apply-suspend.sh
 PROVISION_LOG_DIR=/var/www/html/saas/logs
 PROVISION_STAGING_DIR=/var/www/html/saas/staging
 PROVISION_PORT=9099
+# Per-academy storage quota. Report-only until you set enforce=1; then an academy
+# over its tier's cap is auto-suspended (reversible). Tier caps in GB; the script
+# defaults (demo 1 / basic 5 / standard 20 / pro 100) apply if these are unset.
+SAAS_QUOTA_ENFORCE=${SAAS_QUOTA_ENFORCE:-0}
+APPLY_SUSPEND_SH=/root/apply-suspend.sh
 ENVEOF
 chmod 600 /var/www/html/saas/provision.env
 
@@ -149,6 +156,36 @@ CRONTEOF
 systemctl daemon-reload
 systemctl enable --now saas-cron.timer
 systemctl is-active saas-cron.timer && echo "==> saas-cron.timer is active"
+
+# ── Per-academy storage quota (hourly monitor; enforcement off by default) ───
+# Guards the shared disk: measures each academy's moodledata against its licence
+# tier's allowance, warns as it fills, and (only if SAAS_QUOTA_ENFORCE=1 in
+# provision.env) suspends an academy that blows past its cap. Report-only by
+# default — a wrong cap can't lock a customer out until you opt in.
+echo "==> installing saas-quota timer (hourly per-academy storage check)"
+cat > /etc/systemd/system/saas-quota.service <<'QSVCEOF'
+[Unit]
+Description=Per-academy moodledata storage quota check
+After=docker.service
+[Service]
+Type=oneshot
+EnvironmentFile=-/var/www/html/saas/provision.env
+ExecStart=/root/saas-quota.sh
+User=root
+QSVCEOF
+cat > /etc/systemd/system/saas-quota.timer <<'QTMREOF'
+[Unit]
+Description=Run the per-academy storage quota check hourly
+[Timer]
+OnCalendar=*-*-* *:17:00
+AccuracySec=1min
+Persistent=false
+[Install]
+WantedBy=timers.target
+QTMREOF
+systemctl daemon-reload
+systemctl enable --now saas-quota.timer
+systemctl is-active saas-quota.timer && echo "==> saas-quota.timer is active"
 
 echo "==> creating Apache vhost for $SUB"
 a2enmod proxy proxy_http >/dev/null 2>&1 || true
