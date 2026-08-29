@@ -20,6 +20,10 @@ die(){ echo "ERROR: $*" >&2; exit 1; }
 ROOT="${SAAS_ROOT:-/var/www/html/saas}"
 NET="saas_net"
 IMAGE="${SAAS_IMAGE:-ghcr.io/nitgg/saas-moodle:latest}"
+# Per-academy resource caps — kept in sync with create.sh so recreating onto a
+# new image doesn't strip the noisy-neighbor limits.
+ACADEMY_MEM="${ACADEMY_MEM:-2g}"
+ACADEMY_CPUS="${ACADEMY_CPUS:-2}"
 
 SLUG="${1:-}"
 [[ -n "$SLUG" ]] || die "Usage: bash update-image.sh <slug>"
@@ -58,6 +62,7 @@ fi
 
 _run_on(){  # $1 = image
     docker run -d --name "$CONTAINER" --network "$NET" --restart unless-stopped \
+        --memory="$ACADEMY_MEM" --memory-swap="$ACADEMY_MEM" --cpus="$ACADEMY_CPUS" \
         -v "$CONF":/var/www/html/config.php:ro \
         -v "$DATA_DIR":/var/www/moodledata \
         -p "127.0.0.1:$PORT:80" \

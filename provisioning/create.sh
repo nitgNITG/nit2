@@ -26,6 +26,11 @@ NET="saas_net"
 DB_CONTAINER="saas_mariadb"
 IMAGE="${SAAS_IMAGE:-saas-moodle:latest}"   # ← baked image, not moodle-new:latest
 PORT_BASE=8100
+# Per-academy resource caps (noisy-neighbor containment). memory-swap = memory
+# disables container swap so one busy academy can't swap the whole host to death.
+# Tune per Phase-05 load tests; override via env when creating.
+ACADEMY_MEM="${ACADEMY_MEM:-2g}"
+ACADEMY_CPUS="${ACADEMY_CPUS:-2}"
 LE_EMAIL="admin@nitg-eg.com"
 
 SRC_DB_CONTAINER="moodle_db_new"
@@ -216,12 +221,14 @@ fi
 log "starting container $CONTAINER on 127.0.0.1:$PORT"
 if [[ "${CUSTOM_CODE:-0}" == "1" ]]; then
     docker run -d --name "$CONTAINER" --network "$NET" --restart unless-stopped \
+        --memory="$ACADEMY_MEM" --memory-swap="$ACADEMY_MEM" --cpus="$ACADEMY_CPUS" \
         -v "$CODE_DIR":/var/www/html \
         -v "$DATA_DIR":/var/www/moodledata \
         -p "127.0.0.1:$PORT:80" \
         "$IMAGE"
 else
     docker run -d --name "$CONTAINER" --network "$NET" --restart unless-stopped \
+        --memory="$ACADEMY_MEM" --memory-swap="$ACADEMY_MEM" --cpus="$ACADEMY_CPUS" \
         -v "$CONF":/var/www/html/config.php:ro \
         -v "$DATA_DIR":/var/www/moodledata \
         -p "127.0.0.1:$PORT:80" \
