@@ -64,6 +64,19 @@ ensure_infra(){
 
     docker network inspect "$NET" >/dev/null 2>&1 || { docker network create "$NET"; log "created network $NET"; }
 
+    # Tuned config for the SHARED DB. The stock defaults (max_connections=151,
+    # innodb_buffer_pool_size=128M) are far too small when every academy shares
+    # one MariaDB: one busy tenant's Apache workers exhaust the connection cap and
+    # lock out the others, and the tiny pool makes queries disk-bound for everyone.
+    SAAS_MYCNF="$ROOT/mariadb-saas.cnf"
+    if [[ ! -f "$SAAS_MYCNF" ]]; then
+        cat > "$SAAS_MYCNF" <<'CNF'
+[mysqld]
+max_connections = 500
+innodb_buffer_pool_size = 1G
+table_open_cache = 4000
+CNF
+    fi
     if ! docker ps -a --format '{{.Names}}' | grep -qx "$DB_CONTAINER"; then
         log "starting shared MariaDB ($DB_CONTAINER)"
         # Publish on 127.0.0.1 only (host-local) so a host tool like phpMyAdmin can
@@ -71,6 +84,7 @@ ensure_infra(){
         docker run -d --name "$DB_CONTAINER" --network "$NET" --restart unless-stopped \
             -e MYSQL_ROOT_PASSWORD="$DB_ROOT_PW" \
             -v saas_db_data:/var/lib/mysql \
+            -v "$SAAS_MYCNF":/etc/mysql/conf.d/zz-saas-tuning.cnf:ro \
             -p 127.0.0.1:3308:3306 \
             mariadb:11.4
         log "waiting for shared MariaDB"
