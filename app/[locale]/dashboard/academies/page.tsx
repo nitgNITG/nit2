@@ -3,9 +3,31 @@ import React, { useCallback, useEffect, useState } from 'react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 import BuildProductForm from '../../build-product/BuildProductForm'
+import { storageInfo, formatBytes } from '@/lib/storageTiers'
 
 type Academy = { id: string; name: string; slug: string; status: string; tier: string }
 type License = { key: string; name: string; active: boolean }
+
+// Per-academy moodledata usage bar. `used` is bytes from server B; the cap comes
+// from the academy's tier. Colours: green ok, amber ≥80%, red over quota.
+const StorageBar = ({ used, tier, loading }: { used: number | undefined; tier: string; loading: boolean }) => {
+    if (loading && used === undefined) return <span className='text-xs text-gray-300'>…</span>
+    if (used === undefined) return <span className='text-xs text-gray-300' title='Storage unavailable'>—</span>
+    const info = storageInfo(used, tier)
+    const bar = info.status === 'over' ? 'bg-red-500' : info.status === 'warn' ? 'bg-amber-500' : 'bg-emerald-500'
+    const txt = info.status === 'over' ? 'text-red-600' : info.status === 'warn' ? 'text-amber-600' : 'text-gray-600'
+    return (
+        <div className='min-w-[130px]' title={`${formatBytes(used)} of ${info.capGb} GB (${info.pct}%)`}>
+            <div className='flex justify-between text-xs mb-1'>
+                <span className={`font-medium ${txt}`}>{formatBytes(used)}</span>
+                <span className='text-gray-400'>/ {info.capGb} GB</span>
+            </div>
+            <div className='h-1.5 w-full rounded-full bg-gray-100 overflow-hidden'>
+                <div className={`h-full rounded-full ${bar}`} style={{ width: `${Math.min(100, info.pct)}%` }} />
+            </div>
+        </div>
+    )
+}
 
 const AcademiesPage = () => {
     const [academies, setAcademies] = useState<Academy[]>([])
@@ -15,6 +37,9 @@ const AcademiesPage = () => {
     const [updatingAll, setUpdatingAll] = useState(false)
     const [busySlug, setBusySlug] = useState<string | null>(null)
     const [brandingSlug, setBrandingSlug] = useState<string | null>(null)
+    const [usage, setUsage] = useState<Record<string, number>>({})
+    const [hostDiskPct, setHostDiskPct] = useState<number | null>(null)
+    const [usageLoading, setUsageLoading] = useState(true)
 
     const licenseName = (key: string) => licenses.find((l) => l.key === key)?.name ?? key
 
@@ -50,6 +75,23 @@ const AcademiesPage = () => {
     }, [])
 
     useEffect(() => { load() }, [load])
+
+    // Storage usage comes from server B (a disk scan) — fetch it separately so a
+    // slow/unreachable provisioning box never blocks the academies table.
+    const loadUsage = useCallback(async () => {
+        setUsageLoading(true)
+        try {
+            const { data } = await axios.get('/api/academies/usage')
+            setUsage(data.academies ?? {})
+            setHostDiskPct(typeof data.host_disk_pct === 'number' ? data.host_disk_pct : null)
+        } catch {
+            // leave usage empty — the column shows "—"
+        } finally {
+            setUsageLoading(false)
+        }
+    }, [])
+
+    useEffect(() => { loadUsage() }, [loadUsage])
 
     const changeTier = async (slug: string, tier: string) => {
         const prev = academies
@@ -135,15 +177,25 @@ const AcademiesPage = () => {
                         Licences are defined on the <strong>Licenses</strong> page.
                     </p>
                 </div>
-                <button
-                    type='button'
-                    onClick={updateAll}
-                    disabled={updatingAll}
-                    title='Recreate every live academy onto the latest baked image (after a new image is built + SAAS_IMAGE bumped). Data is preserved.'
-                    className='shrink-0 rounded-md border border-indigo-400 px-4 py-2 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 disabled:opacity-60'
-                >
-                    {updatingAll ? 'Updating…' : '⟳ Update all to latest image'}
-                </button>
+                <div className='flex shrink-0 items-center gap-3'>
+                    {hostDiskPct !== null && (
+                        <span
+                            title='Disk used on the academies server (server B). Above ~85% means it is time to free space or add disk.'
+                            className={`rounded-md border px-3 py-2 text-xs font-semibold ${hostDiskPct >= 85 ? 'border-red-300 bg-red-50 text-red-600' : hostDiskPct >= 70 ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-gray-200 bg-gray-50 text-gray-600'}`}
+                        >
+                            🖥 Server disk {hostDiskPct}%
+                        </span>
+                    )}
+                    <button
+                        type='button'
+                        onClick={updateAll}
+                        disabled={updatingAll}
+                        title='Recreate every live academy onto the latest baked image (after a new image is built + SAAS_IMAGE bumped). Data is preserved.'
+                        className='rounded-md border border-indigo-400 px-4 py-2 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 disabled:opacity-60'
+                    >
+                        {updatingAll ? 'Updating…' : '⟳ Update all to latest image'}
+                    </button>
+                </div>
             </div>
 
             {/* Google login redirect-URI helper — Google has no API/wildcard for this. */}
@@ -163,6 +215,7 @@ const AcademiesPage = () => {
                         <tr>
                             <th className='px-4 py-3 font-semibold'>Academy</th>
                             <th className='px-4 py-3 font-semibold'>Status</th>
+                            <th className='px-4 py-3 font-semibold'>Storage</th>
                             <th className='px-4 py-3 font-semibold'>Licence</th>
                             <th className='px-4 py-3 font-semibold'>Change licence</th>
                             <th className='px-4 py-3 font-semibold'>Manage</th>
@@ -170,9 +223,9 @@ const AcademiesPage = () => {
                     </thead>
                     <tbody className='divide-y divide-gray-100'>
                         {loading ? (
-                            <tr><td colSpan={5} className='px-4 py-10 text-center text-gray-400'>Loading…</td></tr>
+                            <tr><td colSpan={6} className='px-4 py-10 text-center text-gray-400'>Loading…</td></tr>
                         ) : academies.length === 0 ? (
-                            <tr><td colSpan={5} className='px-4 py-10 text-center text-gray-400'>No academies yet.</td></tr>
+                            <tr><td colSpan={6} className='px-4 py-10 text-center text-gray-400'>No academies yet.</td></tr>
                         ) : academies.map((a) => (
                             <tr key={a.id} className='hover:bg-gray-50'>
                                 <td className='px-4 py-3'>
@@ -183,6 +236,9 @@ const AcademiesPage = () => {
                                     <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${a.status === 'suspended' ? 'bg-red-50 text-red-600' : a.status === 'live' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
                                         {a.status}
                                     </span>
+                                </td>
+                                <td className='px-4 py-3'>
+                                    <StorageBar used={usage[a.slug]} tier={a.tier} loading={usageLoading} />
                                 </td>
                                 <td className='px-4 py-3 font-semibold text-[#0B2923]'>{licenseName(a.tier)}</td>
                                 <td className='px-4 py-3'>

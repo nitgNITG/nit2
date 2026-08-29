@@ -15,7 +15,7 @@ Security: shared-secret auth, strict slug validation, args passed as a list
 (never a shell string), bound to 127.0.0.1 (reached only via the Apache vhost).
 No third-party dependencies — Python 3 stdlib only.
 """
-import os, re, json, hmac, base64, shutil, subprocess, threading
+import os, re, json, hmac, base64, shutil, subprocess, threading, time, glob
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 SECRET           = os.environ.get("PROVISION_SECRET", "")
@@ -30,6 +30,7 @@ UPDATE_IMAGE_SH = os.environ.get("UPDATE_IMAGE_SH", "/root/update-image.sh")
 LOG_DIR     = os.environ.get("PROVISION_LOG_DIR", "/var/www/html/saas/logs")
 STAGING_DIR = os.environ.get("PROVISION_STAGING_DIR", "/var/www/html/saas/staging")
 PORT        = int(os.environ.get("PROVISION_PORT", "9099"))
+SAAS_ROOT   = os.environ.get("SAAS_ROOT", "/var/www/html/saas")
 SLUG_RE     = re.compile(r"^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])$")
 # Licence keys are now dynamic (any slug), not a fixed set — validate by pattern.
 TIER_RE     = re.compile(r"^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])$")
@@ -308,6 +309,46 @@ def run_apply_suspend(slug: str, state: str) -> None:
         )
 
 
+# ── Storage usage (for the dashboard's per-academy storage bar) ──────────────
+# Scans each academy's moodledata on disk and returns its size in bytes. Cheap
+# (a metadata walk, cached briefly), no docker exec — the caller already knows
+# each academy's tier and turns bytes into a used/cap bar. Runs as root so it can
+# read the root-owned client dirs.
+_USAGE_CACHE = {"at": 0.0, "data": None}
+_USAGE_TTL = 30  # seconds — a storage bar doesn't need to be live-to-the-byte
+
+
+def _dir_bytes(path: str) -> int:
+    try:
+        out = subprocess.run(["du", "-sb", path], capture_output=True, text=True, timeout=60)
+        return int(out.stdout.split("\t", 1)[0]) if out.returncode == 0 and out.stdout else 0
+    except Exception:
+        return 0
+
+
+def collect_usage() -> dict:
+    now = time.time()
+    if _USAGE_CACHE["data"] is not None and (now - _USAGE_CACHE["at"]) < _USAGE_TTL:
+        return _USAGE_CACHE["data"]
+    academies = {}
+    for md in sorted(glob.glob(os.path.join(SAAS_ROOT, "clients", "*", "moodledata"))):
+        slug = os.path.basename(os.path.dirname(md))
+        if not SLUG_RE.match(slug):
+            continue
+        academies[slug] = _dir_bytes(md)
+    try:
+        du = shutil.disk_usage(SAAS_ROOT)
+        host_disk_pct = round(du.used * 100 / du.total) if du.total else 0
+        host_free_bytes = du.free
+    except Exception:
+        host_disk_pct, host_free_bytes = 0, 0
+    data = {"academies": academies, "host_disk_pct": host_disk_pct,
+            "host_free_bytes": host_free_bytes, "generated_at": int(now)}
+    _USAGE_CACHE["at"] = now
+    _USAGE_CACHE["data"] = data
+    return data
+
+
 class Handler(BaseHTTPRequestHandler):
     def _send(self, code, obj):
         body = json.dumps(obj, ensure_ascii=False).encode()
@@ -447,6 +488,12 @@ class Handler(BaseHTTPRequestHandler):
         return self._send(202, {"ok": True, "status": "provisioning", "slug": slug})
 
     def do_GET(self):
+        # GET /usage — per-academy moodledata size + host disk headroom.
+        if self.path == "/usage":
+            if not self._authed():
+                return self._send(401, {"error": "unauthorized"})
+            return self._send(200, collect_usage())
+
         if not self.path.startswith("/status/"):
             return self._send(404, {"error": "not found"})
         if not self._authed():

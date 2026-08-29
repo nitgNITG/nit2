@@ -78,6 +78,33 @@ export async function triggerSuspend(slug: string, suspended: boolean): Promise<
     }
 }
 
+/** Per-academy moodledata usage from server B (bytes) + host disk headroom.
+ * Best-effort: returns null if the provisioning service is unreachable. */
+export async function fetchAcademyUsage(): Promise<
+    { academies: Record<string, number>; host_disk_pct: number; host_free_bytes: number } | null
+> {
+    const base = process.env.PROVISION_URL;
+    const secret = process.env.PROVISION_SECRET;
+    if (!base || !secret) return null;
+    try {
+        const url = new URL(base);
+        url.pathname = "/usage";
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 8000);
+        const res = await fetch(url.toString(), {
+            headers: { "X-Provision-Secret": secret },
+            cache: "no-store",
+            signal: ctrl.signal,
+        });
+        clearTimeout(timer);
+        if (!res.ok) return null;
+        return await res.json();
+    } catch (e) {
+        console.error("[provision] usage fetch failed", e);
+        return null;
+    }
+}
+
 export type ProvisionInput = {
     slug: string;
     name: string;
