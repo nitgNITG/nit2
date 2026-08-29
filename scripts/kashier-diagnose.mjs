@@ -9,9 +9,29 @@
 // It creates a throwaway session (no Payment row, no provisioning) — safe to run.
 
 // Load .env EXACTLY like the Next app (same dotenv rules for quotes + inline
-// comments) so this probe is authoritative: if the token works here, it works
-// in the app — and if it doesn't, the app has the same problem.
-import { loadEnvConfig } from "@next/env";
+// comments + $-expansion) so this probe is authoritative: if the token works
+// here, it works in the app — and if it doesn't, the app has the same problem.
+import fs from "node:fs";
+import path from "node:path";
+import nextEnv from "@next/env"; // CommonJS — must default-import, then destructure
+const { loadEnvConfig } = nextEnv;
+
+// Pre-scan the raw .env for the #1 gotcha: @next/env runs dotenv-expand, so an
+// unescaped `$` in a value is treated as a variable reference and TRUNCATES the
+// value there. Kashier secret keys often contain `$` → "401 Invalid token".
+function warnDollar() {
+    const p = path.resolve(process.cwd(), ".env");
+    if (!fs.existsSync(p)) return;
+    for (const line of fs.readFileSync(p, "utf8").split(/\r?\n/)) {
+        const m = line.match(/^\s*(KASHIER_[A-Z_]+)\s*=\s*(.*)$/);
+        if (!m) continue;
+        // An unescaped $ (not preceded by a backslash) will be expanded away.
+        if (/(^|[^\\])\$/.test(m[2])) {
+            console.log(`⚠ ${m[1]} contains an unescaped '$' — dotenv-expand will TRUNCATE it. Escape each $ as \\$ in .env.`);
+        }
+    }
+}
+warnDollar();
 loadEnvConfig(process.cwd());
 
 const BASE_URL = (process.env.KASHIER_BASE_URL || "https://api.kashier.io").replace(/\/+$/, "");
