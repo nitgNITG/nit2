@@ -23,8 +23,10 @@ MAXJOBS="${SAAS_CRON_CONCURRENCY:-6}"
 mapfile -t CONTAINERS < <(docker ps --format '{{.Names}}' | grep '^saas_moodle_' || true)
 [[ ${#CONTAINERS[@]} -eq 0 ]] && exit 0
 
+# Run as www-data (uid 33, the Apache user that owns moodledata) — running cron
+# as root would create root-owned cache/temp files Apache then can't read.
 printf '%s\n' "${CONTAINERS[@]}" \
     | xargs -r -P "$MAXJOBS" -I{} \
-        docker exec {} php /var/www/html/admin/cli/cron.php >/dev/null 2>&1
+        docker exec -u www-data {} php /var/www/html/admin/cli/cron.php >/dev/null 2>&1
 
 exit 0
