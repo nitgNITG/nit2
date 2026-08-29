@@ -46,7 +46,8 @@ cp "$SCRIPT_DIR/apply_apptoken.php" /root/apply_apptoken.php
 cp "$SCRIPT_DIR/apply-branding.sh"  /root/apply-branding.sh
 cp "$SCRIPT_DIR/update-image.sh"    /root/update-image.sh
 cp "$SCRIPT_DIR/bump-image.sh"      /root/bump-image.sh
-chmod +x /root/create.sh /root/destroy.sh /root/apply-license.sh /root/apply-settings.sh /root/update-site.sh /root/apply-suspend.sh /root/apply-branding.sh /root/update-image.sh /root/bump-image.sh
+cp "$SCRIPT_DIR/saas-cron.sh"       /root/saas-cron.sh
+chmod +x /root/create.sh /root/destroy.sh /root/apply-license.sh /root/apply-settings.sh /root/update-site.sh /root/apply-suspend.sh /root/apply-branding.sh /root/update-image.sh /root/bump-image.sh /root/saas-cron.sh
 
 # ── The HTTP service — copied verbatim from the repo (NOT inlined), so branding,
 #    licence tier, and /apply-license stay in one place: provision-server.py ───
@@ -120,6 +121,33 @@ systemctl enable saas-provision
 systemctl restart saas-provision
 sleep 1
 systemctl is-active saas-provision && echo "==> service is active"
+
+# ── Moodle cron for every academy (a oneshot service driven by a 1-min timer) ─
+# Without this, no academy runs scheduled tasks: queued email/notifications,
+# backups, cleanup and enrolment expiry never fire.
+echo "==> installing saas-cron timer (runs Moodle cron in every academy each minute)"
+cat > /etc/systemd/system/saas-cron.service <<'CRONEOF'
+[Unit]
+Description=Run Moodle cron in every academy container
+After=docker.service
+[Service]
+Type=oneshot
+ExecStart=/root/saas-cron.sh
+User=root
+CRONEOF
+cat > /etc/systemd/system/saas-cron.timer <<'CRONTEOF'
+[Unit]
+Description=Drive Moodle cron for all academies every minute
+[Timer]
+OnCalendar=*-*-* *:*:00
+AccuracySec=10s
+Persistent=false
+[Install]
+WantedBy=timers.target
+CRONTEOF
+systemctl daemon-reload
+systemctl enable --now saas-cron.timer
+systemctl is-active saas-cron.timer && echo "==> saas-cron.timer is active"
 
 echo "==> creating Apache vhost for $SUB"
 a2enmod proxy proxy_http >/dev/null 2>&1 || true
