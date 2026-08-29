@@ -66,9 +66,12 @@ ensure_infra(){
 
     if ! docker ps -a --format '{{.Names}}' | grep -qx "$DB_CONTAINER"; then
         log "starting shared MariaDB ($DB_CONTAINER)"
+        # Publish on 127.0.0.1 only (host-local) so a host tool like phpMyAdmin can
+        # reach the academies' DBs; never exposed to the public network.
         docker run -d --name "$DB_CONTAINER" --network "$NET" --restart unless-stopped \
             -e MYSQL_ROOT_PASSWORD="$DB_ROOT_PW" \
             -v saas_db_data:/var/lib/mysql \
+            -p 127.0.0.1:3308:3306 \
             mariadb:11.4
         log "waiting for shared MariaDB"
         for _ in $(seq 1 30); do
