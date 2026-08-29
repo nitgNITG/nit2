@@ -42,16 +42,24 @@ while read -r name; do
     LIVE["moodle_${slug//-/_}"]=1
 done < <(docker ps -a --format '{{.Names}}' | grep '^saas_moodle_' || true)
 
-log "live academies: ${#LIVE[@]} → schemas: ${!LIVE[*]:-(none)}"
+# Note: list keys separately — `${!LIVE[*]:-default}` is parsed as INDIRECT
+# expansion (not "list array keys"), which silently resolves to $1.
+if [[ ${#LIVE[@]} -gt 0 ]]; then LIVE_KEYS="${!LIVE[*]}"; else LIVE_KEYS="(none)"; fi
+log "live academies: ${#LIVE[@]} → schemas: $LIVE_KEYS"
 
 # ── All academy schemas in the shared DB ────────────────────────────────────
+# Capture + guard: an empty result means the query failed (wrong root pw, DB
+# down) — abort rather than mistake it for "no orphans" and report all-clear.
+ALL_DBS="$(myq "SHOW DATABASES;")"
+[[ -n "$ALL_DBS" ]] || die "SHOW DATABASES returned nothing — DB query failed (check DB_ROOT_PW / $DB_CONTAINER)"
+
 ORPHANS=()
 while read -r db; do
     [[ -n "$db" ]] || continue
     case "$db" in information_schema|performance_schema|mysql|sys) continue ;; esac
     [[ "$db" == moodle_* ]] || continue          # only academy schemas
     if [[ -z "${LIVE[$db]:-}" ]]; then ORPHANS+=("$db"); fi
-done < <(myq "SHOW DATABASES;")
+done <<< "$ALL_DBS"
 
 if [[ ${#ORPHANS[@]} -eq 0 ]]; then
     log "no orphan schemas — nothing to do."
