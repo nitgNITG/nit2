@@ -30,6 +30,7 @@ mkdir -p /var/www/html/saas/logs
 echo "==> installing provisioning scripts to /root"
 cp "$SCRIPT_DIR/create.sh"         /root/create.sh
 cp "$SCRIPT_DIR/destroy.sh"        /root/destroy.sh
+cp "$SCRIPT_DIR/cleanup-orphans.sh" /root/cleanup-orphans.sh
 cp "$SCRIPT_DIR/apply-license.sh"  /root/apply-license.sh
 cp "$SCRIPT_DIR/apply-settings.sh" /root/apply-settings.sh
 cp "$SCRIPT_DIR/update-site.sh"    /root/update-site.sh
@@ -47,7 +48,7 @@ cp "$SCRIPT_DIR/apply-branding.sh"  /root/apply-branding.sh
 cp "$SCRIPT_DIR/update-image.sh"    /root/update-image.sh
 cp "$SCRIPT_DIR/bump-image.sh"      /root/bump-image.sh
 cp "$SCRIPT_DIR/saas-cron.sh"       /root/saas-cron.sh
-chmod +x /root/create.sh /root/destroy.sh /root/apply-license.sh /root/apply-settings.sh /root/update-site.sh /root/apply-suspend.sh /root/apply-branding.sh /root/update-image.sh /root/bump-image.sh /root/saas-cron.sh
+chmod +x /root/create.sh /root/destroy.sh /root/cleanup-orphans.sh /root/apply-license.sh /root/apply-settings.sh /root/update-site.sh /root/apply-suspend.sh /root/apply-branding.sh /root/update-image.sh /root/bump-image.sh /root/saas-cron.sh
 
 # ── The HTTP service — copied verbatim from the repo (NOT inlined), so branding,
 #    licence tier, and /apply-license stay in one place: provision-server.py ───
