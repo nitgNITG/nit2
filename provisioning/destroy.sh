@@ -31,6 +31,7 @@ SLUG="${1:-}"
 [[ "$SLUG" =~ ^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])$ ]] || die "Invalid slug (lowercase letters/digits/hyphens, 3-40)."
 
 DB_NAME="moodle_${SLUG//-/_}"
+DB_USER="$DB_NAME"   # per-academy DB user (create.sh derives it from the slug)
 CONTAINER="saas_moodle_${SLUG}"
 SUBDOMAIN="${SLUG}.${DOMAIN}"
 CLIENT_DIR="$ROOT/clients/$SLUG"
@@ -53,10 +54,16 @@ if [[ -f "$ROOT/saas.env" ]]; then
     source "$ROOT/saas.env"
 fi
 if [[ -n "${DB_ROOT_PW:-}" ]] && docker ps --format '{{.Names}}' | grep -qx "$DB_CONTAINER"; then
-    log "dropping database $DB_NAME"
-    docker exec -i "$DB_CONTAINER" mariadb -uroot -p"$DB_ROOT_PW" \
-        -e "DROP DATABASE IF EXISTS \`$DB_NAME\`;" >/dev/null 2>&1 \
-        || echo "!! failed to drop database $DB_NAME"
+    log "dropping database $DB_NAME + its scoped user"
+    # Drop the schema AND the per-academy user, so teardown leaves no orphaned
+    # schema or dangling grant behind. The DROP USER targets only this academy's
+    # own user ('moodle_<slug>'); the legacy shared 'moodle' user (still used by
+    # older academies) is never touched.
+    docker exec -i "$DB_CONTAINER" mariadb -uroot -p"$DB_ROOT_PW" >/dev/null 2>&1 <<SQL || echo "!! failed to drop database/user $DB_NAME"
+DROP DATABASE IF EXISTS \`$DB_NAME\`;
+DROP USER IF EXISTS '$DB_USER'@'%';
+FLUSH PRIVILEGES;
+SQL
 else
     log "shared DB unavailable or DB_ROOT_PW unset — skipping database drop"
 fi

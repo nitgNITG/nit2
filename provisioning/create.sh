@@ -48,6 +48,13 @@ SLUG="${1:-}"; NAME="${2:-}"
 [[ "$SLUG" =~ ^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])$ ]] || die "Invalid slug (lowercase letters/digits/hyphens, 3-40)."
 
 DB_NAME="moodle_${SLUG//-/_}"
+# Per-academy DB user scoped to ONLY this academy's schema, with a unique random
+# password. Replaces the old shared 'moodle'/'moodle' user that had ALL PRIVILEGES
+# on every tenant's schema — a leaked config.php there = read/write to all tenants.
+# The username is derived from the slug (so destroy.sh can drop it without state),
+# the password lives only in this academy's config.php.
+DB_USER="$DB_NAME"
+DB_PASS="$(openssl rand -hex 24)"
 CONTAINER="saas_moodle_${SLUG}"
 SUBDOMAIN="${SLUG}.${DOMAIN}"
 CLIENT_DIR="$ROOT/clients/$SLUG"
@@ -157,8 +164,10 @@ chown -R 33:33 "$DATA_DIR"
 log "creating database $DB_NAME"
 docker exec -i "$DB_CONTAINER" mariadb -uroot -p"$DB_ROOT_PW" <<SQL
 CREATE DATABASE IF NOT EXISTS \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER IF NOT EXISTS 'moodle'@'%' IDENTIFIED BY 'moodle';
-GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO 'moodle'@'%';
+-- Per-academy user, scoped to ONLY this schema. OR REPLACE guarantees the user's
+-- password matches the freshly generated one written into config.php below.
+CREATE OR REPLACE USER '$DB_USER'@'%' IDENTIFIED BY '$DB_PASS';
+GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'%';
 FLUSH PRIVILEGES;
 SQL
 log "importing template"
@@ -175,8 +184,8 @@ unset(\$CFG); global \$CFG; \$CFG = new stdClass();
 \$CFG->dblibrary = 'native';
 \$CFG->dbhost    = '$DB_CONTAINER';
 \$CFG->dbname    = '$DB_NAME';
-\$CFG->dbuser    = 'moodle';
-\$CFG->dbpass    = 'moodle';
+\$CFG->dbuser    = '$DB_USER';
+\$CFG->dbpass    = '$DB_PASS';
 \$CFG->prefix    = 'mdl_';
 \$CFG->dboptions = array('dbpersist'=>0,'dbport'=>'','dbsocket'=>'','dbcollation'=>'utf8mb4_unicode_ci');
 \$CFG->wwwroot   = 'https://$SUBDOMAIN';
