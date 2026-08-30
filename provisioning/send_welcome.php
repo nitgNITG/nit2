@@ -36,8 +36,13 @@ if (!$admin) { fwrite(STDERR, "admin user '$username' not found\n"); exit(1); }
 // Point the admin account at the customer + set the generated password.
 if ($email !== '' && validate_email($email)) { $admin->email = $email; }
 if ($name !== '') {
-    $admin->firstname = $name;
-    $admin->lastname  = '';
+    // Split "First Last" → firstname + lastname (Moodle requires a non-empty
+    // lastname). First whitespace-separated word is the first name, the rest is
+    // the last name; a single-word name falls back to a placeholder the owner
+    // can edit later.
+    $parts = preg_split('/\s+/', trim($name), 2);
+    $admin->firstname = $parts[0];
+    $admin->lastname  = (isset($parts[1]) && trim($parts[1]) !== '') ? trim($parts[1]) : '-';
 }
 $DB->update_record('user', $admin);
 update_internal_user_password($admin, $password);

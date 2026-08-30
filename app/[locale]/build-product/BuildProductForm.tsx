@@ -496,7 +496,7 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                                     <span className='text-sm font-bold text-[#1E7D67]' dir='ltr'>
                                         {(lic.priceEgp ?? 0) > 0
                                             ? `${lic.priceEgp} ${isAr ? 'ج.م' : 'EGP'}`
-                                            : lic.price === 0 ? (isAr ? 'مجاني' : 'Free') : `$${lic.price}`}
+                                            : (isAr ? 'مجاني' : 'Free')}
                                     </span>
                                 </div>
                                 <ul className='mt-1 list-disc ps-4 text-xs text-gray-500'>

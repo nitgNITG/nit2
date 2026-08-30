@@ -131,11 +131,6 @@ const LicensesPage = () => {
                                 onChange={(e) => setForm((f) => f ? { ...f, name: e.target.value } : f)} placeholder='Enterprise' />
                         </div>
                         <div>
-                            <label className='block text-sm font-semibold mb-1'>Price (USD)</label>
-                            <input type='number' min={0} className='w-full border rounded-lg px-3 py-2' value={form.price} onChange={num('price')} />
-                            <p className='text-xs text-gray-400 mt-1'>Display only.</p>
-                        </div>
-                        <div>
                             <label className='block text-sm font-semibold mb-1'>Charge (EGP)</label>
                             <input type='number' min={0} className='w-full border rounded-lg px-3 py-2' value={form.priceEgp} onChange={num('priceEgp')} />
                             <p className='text-xs text-gray-400 mt-1'>Actual Kashier charge. <span className='font-mono'>0</span> = free (no payment).</p>
@@ -232,7 +227,7 @@ const LicensesPage = () => {
                                     <p className='font-bold text-lg'>{l.name}</p>
                                     <p className='text-xs text-gray-400 font-mono'>{l.key}</p>
                                 </div>
-                                <span className='text-[#268F79] font-bold'>{l.price === 0 ? 'Free' : `$${l.price}`}</span>
+                                <span className='text-[#268F79] font-bold'>{(l.priceEgp ?? 0) === 0 ? 'Free' : `${l.priceEgp} EGP`}</span>
                             </div>
                             <ul className='text-xs text-gray-600 space-y-0.5'>
                                 <li>Courses: <b>{cap(l.maxCourses)}</b> · Teachers: <b>{cap(l.maxTeachers)}</b> · Storage: <b>{l.storageGb ?? 1} GB</b></li>
