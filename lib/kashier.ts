@@ -19,10 +19,27 @@ const BASE_URL = (
   process.env.KASHIER_BASE_URL || "https://api.kashier.io"
 ).replace(/\/+$/, "");
 
+// Next loads .env through dotenv-expand, which TRUNCATES a value at any
+// unescaped `$` (it reads it as a variable reference). Kashier secrets often
+// contain `$`, so we support a base64 fallback that can never be truncated: set
+// KASHIER_SECRET_KEY_B64 / KASHIER_API_KEY_B64 to base64(value) and it wins.
+function fromB64(v: string): string {
+  try {
+    return Buffer.from(v, "base64").toString("utf8");
+  } catch {
+    return "";
+  }
+}
 function cfg() {
   const merchantId = process.env.KASHIER_MERCHANT_ID || "";
-  const apiKey = process.env.KASHIER_API_KEY || "";
-  const secretKey = process.env.KASHIER_SECRET_KEY || "";
+  const apiKey =
+    (process.env.KASHIER_API_KEY_B64
+      ? fromB64(process.env.KASHIER_API_KEY_B64)
+      : process.env.KASHIER_API_KEY) || "";
+  const secretKey =
+    (process.env.KASHIER_SECRET_KEY_B64
+      ? fromB64(process.env.KASHIER_SECRET_KEY_B64)
+      : process.env.KASHIER_SECRET_KEY) || "";
   return { merchantId, apiKey, secretKey };
 }
 
