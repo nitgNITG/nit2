@@ -55,7 +55,21 @@ export async function POST(req: NextRequest) {
     }
 
     const orderId = "acad_" + crypto.randomUUID().replace(/-/g, "").slice(0, 24);
-    const base = (process.env.APP_BASE_URL || new URL(req.url).origin).replace(/\/+$/, "");
+    // Kashier validates merchantRedirect/serverWebhook as absolute URLs, so `base`
+    // MUST be a full origin with a scheme. APP_BASE_URL may be missing a scheme or
+    // unset (then we fall back to the request origin). Normalise + validate here.
+    let base: string;
+    try {
+        let raw = (process.env.APP_BASE_URL || "").trim();
+        if (raw && !/^https?:\/\//i.test(raw)) raw = "https://" + raw; // tolerate "dev.nitg-eg.com"
+        base = new URL(raw || new URL(req.url).origin).origin;
+    } catch {
+        base = new URL(req.url).origin;
+    }
+    if (!/^https?:\/\//i.test(base)) {
+        console.error("[kashier/create] APP_BASE_URL is not a valid absolute URL:", process.env.APP_BASE_URL);
+        return NextResponse.json({ error: "إعداد APP_BASE_URL غير صحيح على الخادم." }, { status: 500 });
+    }
 
     // Persist the pending payment WITH the create payload so the webhook can
     // provision exactly what the client configured — after payment is confirmed.
