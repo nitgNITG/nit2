@@ -46,8 +46,6 @@ function cfg() {
 /** True only when all three Kashier credentials are configured. */
 export function kashierConfigured(): boolean {
   const { merchantId, apiKey, secretKey } = cfg();
-  console.log({ merchantId, apiKey, secretKey });
-
   return !!merchantId && !!apiKey && !!secretKey;
 }
 
