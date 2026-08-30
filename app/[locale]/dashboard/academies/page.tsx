@@ -6,14 +6,15 @@ import BuildProductForm from '../../build-product/BuildProductForm'
 import { storageInfo, formatBytes } from '@/lib/storageTiers'
 
 type Academy = { id: string; name: string; slug: string; status: string; tier: string }
-type License = { key: string; name: string; active: boolean }
+type License = { key: string; name: string; active: boolean; storageGb?: number }
 
-// Per-academy moodledata usage bar. `used` is bytes from server B; the cap comes
-// from the academy's tier. Colours: green ok, amber ≥80%, red over quota.
-const StorageBar = ({ used, tier, loading }: { used: number | undefined; tier: string; loading: boolean }) => {
+// Per-academy moodledata usage bar. `used` is bytes from server B; `cap` is the
+// GB quota from the academy's licence (falls back to the tier default inside
+// storageInfo). Colours: green ok, amber ≥80%, red over quota.
+const StorageBar = ({ used, cap, loading }: { used: number | undefined; cap: number | string | undefined; loading: boolean }) => {
     if (loading && used === undefined) return <span className='text-xs text-gray-300'>…</span>
     if (used === undefined) return <span className='text-xs text-gray-300' title='Storage unavailable'>—</span>
-    const info = storageInfo(used, tier)
+    const info = storageInfo(used, cap)
     const bar = info.status === 'over' ? 'bg-red-500' : info.status === 'warn' ? 'bg-amber-500' : 'bg-emerald-500'
     const txt = info.status === 'over' ? 'text-red-600' : info.status === 'warn' ? 'text-amber-600' : 'text-gray-600'
     return (
@@ -238,7 +239,7 @@ const AcademiesPage = () => {
                                     </span>
                                 </td>
                                 <td className='px-4 py-3'>
-                                    <StorageBar used={usage[a.slug]} tier={a.tier} loading={usageLoading} />
+                                    <StorageBar used={usage[a.slug]} cap={licenses.find((l) => l.key === a.tier)?.storageGb ?? a.tier} loading={usageLoading} />
                                 </td>
                                 <td className='px-4 py-3 font-semibold text-[#0B2923]'>{licenseName(a.tier)}</td>
                                 <td className='px-4 py-3'>

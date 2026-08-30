@@ -26,5 +26,12 @@ docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_l
 # Dynamic licence definition (JSON) from the control plane — limits/features live
 # here now; empty clears it so local_license falls back to its built-in default.
 docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=definition --set="${LICENSE_DEFINITION:-}"
+# Storage quota (GB) — parsed out of the licence definition JSON and stored as a
+# plain cfg so saas-quota.sh can read it per academy without JSON-parsing.
+STORAGE_GB="$(python3 -c 'import json,os; d=json.loads(os.environ.get("LICENSE_DEFINITION") or "{}"); v=d.get("storagegb"); print(int(v) if str(v).lstrip("-").isdigit() and int(v)>0 else "")' 2>/dev/null || true)"
+if [[ -n "$STORAGE_GB" ]]; then
+    log "storage quota -> ${STORAGE_GB}G"
+    docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=storagegb --set="$STORAGE_GB" >/dev/null 2>&1 || true
+fi
 docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
 log "done"

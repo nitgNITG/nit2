@@ -6,6 +6,7 @@ export type LicenseRow = {
     name: string
     maxCourses: number
     maxTeachers: number
+    storageGb: number
     videoSource: string
     durationDays: number
     limits: unknown
@@ -19,6 +20,7 @@ export function toLicenseDefinition(lic: LicenseRow): string {
         name: lic.name,
         maxcourses: lic.maxCourses,
         maxteachers: lic.maxTeachers,
+        storagegb: lic.storageGb,
         videosource: lic.videoSource,
         durationdays: lic.durationDays,
         features,

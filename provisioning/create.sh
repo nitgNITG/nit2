@@ -451,6 +451,9 @@ log "setting local_license tier=$TIER (enforcement on)"
 docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=tier    --set="$TIER" || echo "!! could not set licence tier (site still live)"
 docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=enabled --set=1       || echo "!! could not enable licence enforcement"
 docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=definition --set="${LICENSE_DEFINITION:-}" || echo "!! could not set licence definition"
+# Storage quota (GB), parsed from the licence definition JSON → plain cfg for saas-quota.sh.
+STORAGE_GB="$(python3 -c 'import json,os; d=json.loads(os.environ.get("LICENSE_DEFINITION") or "{}"); v=d.get("storagegb"); print(int(v) if str(v).lstrip("-").isdigit() and int(v)>0 else "")' 2>/dev/null || true)"
+[[ -n "$STORAGE_GB" ]] && docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=storagegb --set="$STORAGE_GB" >/dev/null 2>&1 || true
 
 # ── Global platform settings (local_multitopics) ────────────────────────────
 for _skey in google_client_id google_client_secret apple_client_id facebook_app_id android_version android_url ios_version ios_url watermark_color watermark_speed watermark_fontsize app_name; do

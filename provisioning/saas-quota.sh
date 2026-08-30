@@ -63,7 +63,10 @@ for c in $(docker ps --format '{{.Names}}' | grep '^saas_moodle_' || true); do
     used_b=$(du -sb "$dir" 2>/dev/null | cut -f1); used_b="${used_b:-0}"
     tier=$(docker exec "$c" php /var/www/html/admin/cli/cfg.php --component=local_license --name=tier 2>/dev/null | tr -d '[:space:]')
     [[ -n "$tier" ]] || tier="demo"
-    cap_gb="$(cap_gb_for "$tier")"
+    # Dynamic per-academy cap set from the licence's storageGb (create/apply-license
+    # write local_license/storagegb). Fall back to the tier default map if unset.
+    cap_gb=$(docker exec "$c" php /var/www/html/admin/cli/cfg.php --component=local_license --name=storagegb 2>/dev/null | tr -d '[:space:]')
+    [[ "$cap_gb" =~ ^[0-9]+$ && "$cap_gb" -gt 0 ]] || cap_gb="$(cap_gb_for "$tier")"
     cap_b=$(( cap_gb * 1024 * 1024 * 1024 ))
     pct=$(( cap_b > 0 ? used_b * 100 / cap_b : 0 ))
     used_h=$(numfmt --to=iec --suffix=B "$used_b" 2>/dev/null || echo "${used_b}B")

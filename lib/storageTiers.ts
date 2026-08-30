@@ -31,8 +31,12 @@ export type StorageInfo = {
     status: "ok" | "warn" | "over";
 };
 
-export function storageInfo(usedBytes: number, tier: string | null | undefined): StorageInfo {
-    const capGb = storageCapGb(tier);
+// Pass the academy's actual cap in GB (from its licence's storageGb). When it's
+// missing (older licence row without the field), fall back to the tier default.
+export function storageInfo(usedBytes: number, capGbOrTier: number | string | null | undefined): StorageInfo {
+    const capGb = typeof capGbOrTier === "number" && capGbOrTier > 0
+        ? capGbOrTier
+        : storageCapGb(typeof capGbOrTier === "string" ? capGbOrTier : undefined);
     const capBytes = capGb * 1024 * 1024 * 1024;
     const pct = capBytes > 0 ? Math.round((usedBytes * 100) / capBytes) : 0;
     const status: StorageInfo["status"] = pct >= 100 ? "over" : pct >= 80 ? "warn" : "ok";
