@@ -24,21 +24,31 @@ if (!fs.existsSync(ENV_PATH)) {
     process.exit(1);
 }
 
-// Raw parse: pull KEY=VALUE straight from the file. Strip only surrounding
-// quotes and un-escape \$ -> $ (so an escaped or bare $ both yield the TRUE
-// value). Deliberately does NOT expand or stop at $.
+// Raw parse: pull KEY=VALUE straight from the file, applying dotenv's quote +
+// inline-comment rules but WITHOUT $-expansion — so we get the TRUE full value
+// (including any literal $) that dotenv-expand would otherwise truncate.
 function rawValue(name) {
     const lines = fs.readFileSync(ENV_PATH, "utf8").split(/\r?\n/);
     for (const line of lines) {
         const m = line.match(new RegExp(`^\\s*${name}\\s*=(.*)$`));
         if (!m) continue;
-        let v = m[1].replace(/\r$/, "");
-        // strip one layer of matching surrounding quotes
-        if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
-            v = v.slice(1, -1);
+        const rest = m[1].replace(/\r$/, "");
+        const q = rest[0];
+        if (q === '"' || q === "'") {
+            // quoted: value is up to the matching unescaped quote; ignore the rest
+            // (that's where a trailing `# comment` lives).
+            let out = "";
+            for (let i = 1; i < rest.length; i++) {
+                const c = rest[i];
+                if (c === "\\" && i + 1 < rest.length) { out += rest[++i]; continue; }
+                if (c === q) break;
+                out += c;
+            }
+            return out;
         }
-        v = v.replace(/\\\$/g, "$"); // \$ -> $
-        return v;
+        // unquoted: strip a ` #...` inline comment, then trim; keep literal $.
+        const hash = rest.search(/\s#/);
+        return (hash >= 0 ? rest.slice(0, hash) : rest).trim().replace(/\\\$/g, "$");
     }
     return "";
 }
@@ -104,7 +114,16 @@ console.log("\n── verdict ──");
 if (testOk) console.log("✓ Keys are valid for TEST. Set KASHIER_BASE_URL=https://test-api.kashier.io");
 else if (liveOk) console.log("✓ Keys are valid for LIVE. Set KASHIER_BASE_URL=https://api.kashier.io  (you were pointing at test!)");
 else console.log("✗ Still rejected with the full secret → the key VALUES are wrong/expired, or api-key & secret are swapped in the dashboard. Regenerate keys in Kashier and re-copy.");
-if (secretKey.length > appSecret.length) {
-    console.log("\nNOTE: even once the keys are right, the APP will keep failing until the $ truncation");
-    console.log("is fixed in .env (escape every $ as \\$), because the running app uses the truncated value.");
+
+// The permanent fix: paste these base64 lines into .env (base64 has no $, so
+// dotenv-expand can never truncate them). The code prefers *_B64 when present.
+if (testOk || liveOk) {
+    console.log("\n── paste these into .env (replaces the plain KASHIER_*_KEY lines) ──");
+    console.log(`KASHIER_SECRET_KEY_B64=${Buffer.from(secretKey, "utf8").toString("base64")}`);
+    if (/\$/.test(apiKey)) {
+        console.log(`KASHIER_API_KEY_B64=${Buffer.from(apiKey, "utf8").toString("base64")}`);
+    } else {
+        console.log("(KASHIER_API_KEY has no $, it's fine as-is)");
+    }
+    console.log("then: pm2 restart 14 && node scripts/kashier-diagnose.mjs");
 }
