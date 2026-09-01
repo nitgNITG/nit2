@@ -493,18 +493,13 @@ _setlink link_faq     "${BRAND_LINK_FAQ:-${SETTING_FAQ_URL:-}}"
 
 docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
 
-# ── App web-service token — publish admin_token for getsettings.php / the app ─
-if [[ -f /root/apply_apptoken.php ]]; then
-    log "provisioning the mobile app web-service token"
-    docker cp /root/apply_apptoken.php "$CONTAINER:/var/www/moodledata/apply_apptoken.php"
-    docker exec "$CONTAINER" php /var/www/moodledata/apply_apptoken.php || echo "!! app-token step failed (site still live)"
-    docker exec "$CONTAINER" rm -f /var/www/moodledata/apply_apptoken.php || true
-fi
-
 # ── Welcome: unique admin password + email the customer their login ─────────
 # OWNER_EMAIL / OWNER_NAME / OWNER_LOCALE are passed by the provisioner (nit2).
 # Gives each academy its own admin password (not the template's shared one),
 # forces a change on first login, and emails the customer their credentials.
+# MUST run BEFORE the app-token step: changing the admin password makes Moodle
+# delete that user's web-service tokens, so minting the token first would leave
+# a dead admin_token (invalidtoken in the app). Order matters — do not swap.
 if [[ -f /root/send_welcome.php ]]; then
     log "setting admin credentials + emailing the customer"
     WELCOME_PASS="Nit-$(openssl rand -hex 6)"
@@ -516,6 +511,16 @@ if [[ -f /root/send_welcome.php ]]; then
     docker exec "$CONTAINER" rm -f /var/www/moodledata/send_welcome.php || true
 else
     log "send_welcome.php not installed at /root — skipping welcome email"
+fi
+
+# ── App web-service token — publish admin_token for getsettings.php / the app ─
+# AFTER send_welcome (see above): the admin password is now final, so the token
+# minted here won't be wiped by a later password change.
+if [[ -f /root/apply_apptoken.php ]]; then
+    log "provisioning the mobile app web-service token"
+    docker cp /root/apply_apptoken.php "$CONTAINER:/var/www/moodledata/apply_apptoken.php"
+    docker exec "$CONTAINER" php /var/www/moodledata/apply_apptoken.php || echo "!! app-token step failed (site still live)"
+    docker exec "$CONTAINER" rm -f /var/www/moodledata/apply_apptoken.php || true
 fi
 
 # ── 6. Apache vhost → enable → SSL → restart (identical to create.sh) ───────
