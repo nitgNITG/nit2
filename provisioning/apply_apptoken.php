@@ -59,7 +59,13 @@ if (empty($service->enabled)) {
 // it does not strip extras. The token's user is the site admin, so it already
 // has moodle/user:create + webservice/rest:use.
 $required = [
-    'core_user_create_users',   // registration (the failing call)
+    'core_user_create_users',      // registration
+    // Manual enrol/unenrol: the app enrols a user into a course with the admin
+    // token (e.g. grant access after purchase / free-course join). The stock
+    // mobile service ships enrol_self_* + enrol_guest_* but NOT manual enrol, so
+    // the admin-token call fails with accessexception until it is added here.
+    'enrol_manual_enrol_users',
+    'enrol_manual_unenrol_users',  // revoke access (symmetric)
 ];
 foreach ($required as $fname) {
     // Only add functions that actually exist on this core.
