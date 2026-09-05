@@ -41,6 +41,10 @@ const AcademiesPage = () => {
     const [usage, setUsage] = useState<Record<string, number>>({})
     const [hostDiskPct, setHostDiskPct] = useState<number | null>(null)
     const [usageLoading, setUsageLoading] = useState(true)
+    const [credSlug, setCredSlug] = useState<string | null>(null)
+    const [cred, setCred] = useState<{ username: string; password: string | null; hasPassword: boolean } | null>(null)
+    const [credLoading, setCredLoading] = useState(false)
+    const [resetting, setResetting] = useState(false)
 
     const licenseName = (key: string) => licenses.find((l) => l.key === key)?.name ?? key
 
@@ -150,6 +154,37 @@ const AcademiesPage = () => {
         } finally {
             setBusySlug(null)
         }
+    }
+
+    const openCreds = async (slug: string) => {
+        setCredSlug(slug); setCred(null); setCredLoading(true)
+        try {
+            const { data } = await axios.get(`/api/academies/${slug}/credentials`)
+            setCred({ username: data.username, password: data.password, hasPassword: data.hasPassword })
+        } catch (err: any) {
+            toast.error(err?.response?.data?.error || 'Could not load credentials')
+        } finally {
+            setCredLoading(false)
+        }
+    }
+
+    const resetCreds = async (slug: string) => {
+        if (!window.confirm(`Reset "${slug}" admin password to a new one? The old password stops working; the new one is shown here and emailed to the owner.`)) return
+        setResetting(true)
+        try {
+            const { data } = await axios.post(`/api/academies/${slug}/credentials`)
+            setCred({ username: data.username, password: data.password, hasPassword: true })
+            toast.success('Admin password reset')
+        } catch (err: any) {
+            toast.error(err?.response?.data?.error || 'Reset failed')
+        } finally {
+            setResetting(false)
+        }
+    }
+
+    const copyText = async (t: string) => {
+        try { await navigator.clipboard.writeText(t); toast.success('Copied') }
+        catch { window.prompt('Copy:', t) }
     }
 
     const removeAcademy = async (slug: string) => {
@@ -275,6 +310,12 @@ const AcademiesPage = () => {
                                             className='rounded-lg border border-blue-300 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50'>
                                             🔗 OAuth URL
                                         </button>
+                                        <button type='button' onClick={() => openCreds(a.slug)}
+                                            disabled={!['live', 'suspended'].includes(a.status)}
+                                            title='View the admin login for this academy (recover a lost welcome email) or reset its password'
+                                            className='rounded-lg border border-purple-300 px-2.5 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-50 disabled:opacity-40'>
+                                            🔑 Login
+                                        </button>
                                         <button type='button' onClick={() => toggleSuspend(a.slug, a.status)} disabled={busySlug === a.slug}
                                             title={a.status === 'suspended' ? 'Resume this academy' : 'Suspend (soft-lock) this academy'}
                                             className='rounded-lg border border-amber-300 px-2.5 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50'>
@@ -292,6 +333,55 @@ const AcademiesPage = () => {
                     </tbody>
                 </table>
             </div>
+
+            {/* Admin credentials modal — reveal the stored admin password or reset it. */}
+            {credSlug && (
+                <div className='fixed inset-0 z-[1000] flex items-start justify-center overflow-y-auto bg-black/50 p-4'
+                    onClick={() => setCredSlug(null)}>
+                    <div className='relative my-16 w-full max-w-md rounded-xl bg-white p-6 shadow-xl' onClick={(e) => e.stopPropagation()}>
+                        <div className='mb-4 flex items-center justify-between'>
+                            <h5 className='font-bold text-lg'>🔑 Admin login — <span className='font-mono text-sm'>{credSlug}</span></h5>
+                            <button type='button' onClick={() => setCredSlug(null)} className='text-gray-400 hover:text-gray-700'>✕</button>
+                        </div>
+                        {credLoading ? (
+                            <p className='text-gray-400 py-6 text-center'>Loading…</p>
+                        ) : (
+                            <div className='space-y-4'>
+                                <div>
+                                    <label className='block text-xs font-semibold text-gray-500 mb-1'>Username</label>
+                                    <div className='flex gap-2'>
+                                        <input readOnly value={cred?.username ?? 'admin'} className='flex-1 border rounded-lg px-3 py-2 font-mono text-sm bg-gray-50' />
+                                        <button type='button' onClick={() => copyText(cred?.username ?? 'admin')} className='border rounded-lg px-3 text-sm hover:bg-gray-50'>Copy</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className='block text-xs font-semibold text-gray-500 mb-1'>Password</label>
+                                    {cred?.hasPassword && cred.password ? (
+                                        <div className='flex gap-2'>
+                                            <input readOnly value={cred.password} className='flex-1 border rounded-lg px-3 py-2 font-mono text-sm bg-gray-50' />
+                                            <button type='button' onClick={() => copyText(cred.password!)} className='border rounded-lg px-3 text-sm hover:bg-gray-50'>Copy</button>
+                                        </div>
+                                    ) : (
+                                        <p className='text-sm text-gray-500 rounded-lg bg-gray-50 border px-3 py-2'>
+                                            No saved password (created before this feature, or the owner changed it). Use <b>Reset</b> to set a new one.
+                                        </p>
+                                    )}
+                                </div>
+                                <p className='text-[11px] text-gray-400'>
+                                    This is the password we generated. If the owner changed it in the academy, it can’t be shown here — reset it to regain access.
+                                </p>
+                                <div className='flex gap-3 pt-1'>
+                                    <button type='button' onClick={() => resetCreds(credSlug)} disabled={resetting}
+                                        className='flex-1 bg-gradient-to-r from-[#268F79] to-[#0B2923] text-[#00FFB2] font-bold px-4 py-2 rounded-md disabled:opacity-60'>
+                                        {resetting ? 'Resetting…' : '↻ Reset & resend password'}
+                                    </button>
+                                    <button type='button' onClick={() => setCredSlug(null)} className='border border-gray-300 px-4 py-2 rounded-md text-gray-600 hover:bg-gray-50'>Close</button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Re-apply-branding modal — reuses the build form in edit mode. */}
             {brandingSlug && (

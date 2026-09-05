@@ -502,7 +502,9 @@ docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
 # a dead admin_token (invalidtoken in the app). Order matters — do not swap.
 if [[ -f /root/send_welcome.php ]]; then
     log "setting admin credentials + emailing the customer"
-    WELCOME_PASS="Nit-$(openssl rand -hex 6)"
+    # Prefer the password nit2 generated + stored (encrypted) for recovery; fall
+    # back to a local random one if the provisioner didn't send OWNER_PASS.
+    WELCOME_PASS="${OWNER_PASS:-Nit-$(openssl rand -hex 6)}"
     docker cp /root/send_welcome.php "$CONTAINER:/var/www/moodledata/send_welcome.php"
     docker exec \
         -e WELCOME_USER=admin -e WELCOME_PASS="$WELCOME_PASS" \

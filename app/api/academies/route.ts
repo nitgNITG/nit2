@@ -4,6 +4,7 @@ import prisma from "@/lib/prismaMysql";
 import { getCurrentUser } from "@/lib/auth";
 import { toLicenseDefinition } from "@/lib/licenseDefinition";
 import { type Brand, sanitizeBrand } from "@/lib/brand";
+import { generateAdminPassword, encryptSecret } from "@/lib/secretBox";
 
 // ── SaaS repo that holds the base ("main") every academy branches from ────────
 const OWNER = process.env.SAAS_REPO_OWNER ?? "NITGg";
@@ -59,7 +60,7 @@ async function loadPlatformSettings(): Promise<Record<string, string>> {
 async function triggerProvision(
     slug: string, name: string, brand: Brand, tier: string, settings: Record<string, string>, definition: string,
     owner: { email: string; name: string; locale: string },
-    platformLang: string,
+    platformLang: string, ownerPass: string,
 ): Promise<void> {
     const url = process.env.PROVISION_URL;       // e.g. https://saas-provision.academy2026.nitg-eg.com/provision
     const secret = process.env.PROVISION_SECRET;
@@ -72,6 +73,7 @@ async function triggerProvision(
                 slug, name, brand, tier, settings, definition,
                 owner_email: owner.email, owner_name: owner.name, locale: owner.locale,
                 platform_lang: platformLang,
+                owner_pass: ownerPass, // nit2-generated so we can store it (encrypted) for recovery
             }),
         });
     } catch (e) {
@@ -199,11 +201,12 @@ export async function POST(req: NextRequest) {
         const settings = await loadPlatformSettings();
         const locale = (body?.locale === "en" ? "en" : "ar");
         const platformLang = ["ar", "en", "both"].includes(body?.platform_lang) ? body.platform_lang : "both";
+        const adminPassword = generateAdminPassword(); // stored encrypted below; create.sh uses it
         await triggerProvision(cleanSlug, cleanName, brand, tier, settings, definition, {
             email: user.email,
             name: user.name ?? "",
             locale,
-        }, platformLang);
+        }, platformLang, adminPassword);
 
         // 3) Record it (control plane). Guard the rare race on the unique slug.
         try {
@@ -215,6 +218,7 @@ export async function POST(req: NextRequest) {
                 data: {
                     name: cleanName, slug: cleanSlug, branch, status: "branch_created",
                     tier, ownerId: user.id, subscribedAt: now, validUntil,
+                    adminPasswordEnc: encryptSecret(adminPassword), // null if CREDENTIAL_SECRET unset
                 },
             });
             return NextResponse.json(

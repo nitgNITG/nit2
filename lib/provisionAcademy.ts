@@ -6,6 +6,7 @@
 import prisma from "@/lib/prismaMysql";
 import { toLicenseDefinition } from "@/lib/licenseDefinition";
 import type { Brand } from "@/lib/brand";
+import { generateAdminPassword, encryptSecret } from "@/lib/secretBox";
 
 const OWNER = process.env.SAAS_REPO_OWNER ?? "NITGg";
 const REPO = process.env.SAAS_REPO_NAME ?? "saas-demo";
@@ -36,7 +37,7 @@ export async function triggerProvision(
     slug: string, name: string, brand: Brand, tier: string,
     settings: Record<string, string>, definition: string,
     owner: { email: string; name: string; locale: string },
-    platformLang: string,
+    platformLang: string, ownerPass: string,
 ): Promise<void> {
     const url = process.env.PROVISION_URL;
     const secret = process.env.PROVISION_SECRET;
@@ -49,10 +50,47 @@ export async function triggerProvision(
                 slug, name, brand, tier, settings, definition,
                 owner_email: owner.email, owner_name: owner.name, locale: owner.locale,
                 platform_lang: platformLang,
+                // nit2 generates the admin password so it can store it (encrypted)
+                // for recovery; create.sh uses it verbatim instead of generating.
+                owner_pass: ownerPass,
             }),
         });
     } catch (e) {
         console.error("[provision] trigger failed", e);
+    }
+}
+
+/**
+ * Reset a live academy's admin password to a NEW generated value and re-send the
+ * welcome email. Used to recover access when the original welcome email is lost,
+ * or after the owner changed (and forgot) their password. Server B re-mints the
+ * app token afterwards (a password change wipes web-service tokens). Returns the
+ * new plaintext password on success (caller stores it encrypted), or null.
+ */
+export async function triggerResetWelcome(
+    slug: string, owner?: { email?: string; name?: string; locale?: string },
+): Promise<string | null> {
+    const base = process.env.PROVISION_URL;
+    const secret = process.env.PROVISION_SECRET;
+    if (!base || !secret) return null;
+    const newPass = generateAdminPassword();
+    try {
+        const url = new URL(base);
+        url.pathname = `/reset-welcome/${slug}`;
+        const res = await fetch(url.toString(), {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Provision-Secret": secret },
+            body: JSON.stringify({
+                owner_pass: newPass,
+                owner_email: owner?.email ?? "", owner_name: owner?.name ?? "",
+                locale: owner?.locale ?? "ar",
+            }),
+        });
+        if (!res.ok) return null;
+        return newPass;
+    } catch (e) {
+        console.error("[provision] reset-welcome failed", slug, e);
+        return null;
     }
 }
 
@@ -166,11 +204,13 @@ export async function provisionAcademy(input: ProvisionInput): Promise<Provision
     const brand = { ...input.brand };
     if (!brand.fullname_ar) brand.fullname_ar = input.name;
 
-    // 3) Kick off the live build.
+    // 3) Kick off the live build. nit2 generates the admin password here so it can
+    //    be stored (encrypted) for recovery; create.sh uses it instead of minting.
+    const adminPassword = generateAdminPassword();
     const settings = await loadPlatformSettings();
     await triggerProvision(input.slug, input.name, brand, input.tier, settings, input.definition, {
         email: input.owner.email, name: input.owner.name, locale: input.owner.locale,
-    }, input.platformLang);
+    }, input.platformLang, adminPassword);
 
     // 4) Record the academy with its subscription term.
     try {
@@ -182,6 +222,7 @@ export async function provisionAcademy(input: ProvisionInput): Promise<Provision
             data: {
                 name: input.name, slug: input.slug, branch, status: "branch_created",
                 tier: input.tier, ownerId: input.owner.id, subscribedAt: now, validUntil,
+                adminPasswordEnc: encryptSecret(adminPassword), // null if CREDENTIAL_SECRET unset
             },
         });
         return { ok: true, slug: academy.slug, branch: academy.branch, persisted: true };

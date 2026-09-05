@@ -27,6 +27,7 @@ UPDATE_SITE_SH = os.environ.get("UPDATE_SITE_SH", "/root/update-site.sh")
 APPLY_SUSPEND_SH = os.environ.get("APPLY_SUSPEND_SH", "/root/apply-suspend.sh")
 APPLY_BRANDING_SH = os.environ.get("APPLY_BRANDING_SH", "/root/apply-branding.sh")
 UPDATE_IMAGE_SH = os.environ.get("UPDATE_IMAGE_SH", "/root/update-image.sh")
+RESET_WELCOME_SH = os.environ.get("RESET_WELCOME_SH", "/root/reset-welcome.sh")
 LOG_DIR     = os.environ.get("PROVISION_LOG_DIR", "/var/www/html/saas/logs")
 STAGING_DIR = os.environ.get("PROVISION_STAGING_DIR", "/var/www/html/saas/staging")
 PORT        = int(os.environ.get("PROVISION_PORT", "9099"))
@@ -180,7 +181,7 @@ def run_apply_branding(slug: str, brand: dict, platform_lang: str = "") -> None:
 
 def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: dict = None, definition: str = "",
                owner_email: str = "", owner_name: str = "", locale: str = "ar",
-               platform_lang: str = "both") -> None:
+               platform_lang: str = "both", owner_pass: str = "") -> None:
     """Run create.sh detached, streaming its output to the client's log file.
 
     Branding is passed through create.sh's BRAND_* env contract: names as
@@ -202,6 +203,8 @@ def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: 
     if isinstance(owner_name, str) and owner_name.strip():
         env["OWNER_NAME"] = owner_name.strip()
     env["OWNER_LOCALE"] = "en" if str(locale).strip().lower() == "en" else "ar"
+    if isinstance(owner_pass, str) and owner_pass.strip():
+        env["OWNER_PASS"] = owner_pass.strip()   # create.sh sets the admin password to this
     env["PLATFORM_LANG"] = platform_lang if platform_lang in ("ar", "en", "both") else "both"
     if isinstance(definition, str) and definition.strip():
         env["LICENSE_DEFINITION"] = definition
@@ -295,6 +298,24 @@ def run_update_image(slug: str) -> None:
             stdout=log, stderr=subprocess.STDOUT,
             env={**os.environ},   # SAAS_IMAGE / SAAS_ROOT come from provision.env
         )
+
+
+def run_reset_welcome(slug: str, owner_pass: str, owner_email: str = "",
+                      owner_name: str = "", locale: str = "ar") -> None:
+    """Run reset-welcome.sh detached — set a new admin password on the live
+    academy, re-email it, and re-mint the app token (a password change wipes it)."""
+    env = {**os.environ}
+    env["OWNER_PASS"] = owner_pass
+    if isinstance(owner_email, str) and owner_email.strip():
+        env["OWNER_EMAIL"] = owner_email.strip()
+    if isinstance(owner_name, str) and owner_name.strip():
+        env["OWNER_NAME"] = owner_name.strip()
+    env["OWNER_LOCALE"] = "en" if str(locale).strip().lower() == "en" else "ar"
+    logpath = os.path.join(LOG_DIR, f"{slug}.log")
+    with open(logpath, "ab", buffering=0) as log:
+        log.write(f"\n===== reset-welcome {slug} =====\n".encode())
+        subprocess.run(["bash", RESET_WELCOME_SH, slug],
+                       stdout=log, stderr=subprocess.STDOUT, env=env)
 
 
 def run_apply_suspend(slug: str, state: str) -> None:
@@ -441,6 +462,26 @@ class Handler(BaseHTTPRequestHandler):
             threading.Thread(target=run_apply_branding, args=(slug, brand, platform_lang), daemon=True).start()
             return self._send(202, {"ok": True, "status": "applying-branding", "slug": slug})
 
+        # POST /reset-welcome/<slug>  {owner_pass, owner_email?, owner_name?, locale?}
+        # — reset the admin password to a new value + re-mint the app token.
+        if self.path.startswith("/reset-welcome/"):
+            slug = self.path[len("/reset-welcome/"):]
+            if not SLUG_RE.match(slug):
+                return self._send(400, {"error": "invalid slug"})
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                data = json.loads(self.rfile.read(length) or b"{}")
+            except Exception:
+                return self._send(400, {"error": "bad json"})
+            owner_pass = str(data.get("owner_pass", "")).strip()
+            if not owner_pass:
+                return self._send(400, {"error": "owner_pass required"})
+            threading.Thread(target=run_reset_welcome, args=(
+                slug, owner_pass, str(data.get("owner_email", "")),
+                str(data.get("owner_name", "")), str(data.get("locale", "ar")),
+            ), daemon=True).start()
+            return self._send(202, {"ok": True, "status": "resetting-welcome", "slug": slug})
+
         # POST /suspend/<slug>  {"suspended": true|false} — soft-lock / resume.
         if self.path.startswith("/suspend/"):
             slug = self.path[len("/suspend/"):]
@@ -476,13 +517,14 @@ class Handler(BaseHTTPRequestHandler):
         owner_name = str(data.get("owner_name", "")).strip()
         locale = str(data.get("locale", "ar")).strip().lower()
         platform_lang = str(data.get("platform_lang", "both")).strip().lower()
+        owner_pass = str(data.get("owner_pass", "")).strip()
         if not SLUG_RE.match(slug):
             return self._send(400, {"error": "invalid slug"})
         if not name:
             return self._send(400, {"error": "name required"})
         threading.Thread(
             target=run_create,
-            args=(slug, name, brand, tier, settings, definition, owner_email, owner_name, locale, platform_lang),
+            args=(slug, name, brand, tier, settings, definition, owner_email, owner_name, locale, platform_lang, owner_pass),
             daemon=True,
         ).start()
         return self._send(202, {"ok": True, "status": "provisioning", "slug": slug})

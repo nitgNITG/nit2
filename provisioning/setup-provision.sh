@@ -49,7 +49,8 @@ cp "$SCRIPT_DIR/update-image.sh"    /root/update-image.sh
 cp "$SCRIPT_DIR/bump-image.sh"      /root/bump-image.sh
 cp "$SCRIPT_DIR/saas-cron.sh"       /root/saas-cron.sh
 cp "$SCRIPT_DIR/saas-quota.sh"      /root/saas-quota.sh
-chmod +x /root/create.sh /root/destroy.sh /root/cleanup-orphans.sh /root/apply-license.sh /root/apply-settings.sh /root/update-site.sh /root/apply-suspend.sh /root/apply-branding.sh /root/update-image.sh /root/bump-image.sh /root/saas-cron.sh /root/saas-quota.sh
+cp "$SCRIPT_DIR/reset-welcome.sh"   /root/reset-welcome.sh
+chmod +x /root/create.sh /root/destroy.sh /root/cleanup-orphans.sh /root/apply-license.sh /root/apply-settings.sh /root/update-site.sh /root/apply-suspend.sh /root/apply-branding.sh /root/update-image.sh /root/bump-image.sh /root/saas-cron.sh /root/saas-quota.sh /root/reset-welcome.sh
 
 # ── The HTTP service — copied verbatim from the repo (NOT inlined), so branding,
 #    licence tier, and /apply-license stay in one place: provision-server.py ───
@@ -98,6 +99,7 @@ APPLY_LICENSE_SH=/root/apply-license.sh
 APPLY_SETTINGS_SH=/root/apply-settings.sh
 UPDATE_SITE_SH=/root/update-site.sh
 APPLY_SUSPEND_SH=/root/apply-suspend.sh
+RESET_WELCOME_SH=/root/reset-welcome.sh
 PROVISION_LOG_DIR=/var/www/html/saas/logs
 PROVISION_STAGING_DIR=/var/www/html/saas/staging
 PROVISION_PORT=9099
