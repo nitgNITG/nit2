@@ -40,6 +40,7 @@ export async function triggerProvision(
     owner: { email: string; name: string; locale: string },
     platformLang: string, ownerPass: string,
     integrations: Record<string, string> = {},
+    adminPass: string = "",
 ): Promise<void> {
     const url = process.env.PROVISION_URL;
     const secret = process.env.PROVISION_SECRET;
@@ -55,6 +56,10 @@ export async function triggerProvision(
                 // nit2 generates the admin password so it can store it (encrypted)
                 // for recovery; create.sh uses it verbatim instead of generating.
                 owner_pass: ownerPass,
+                // NIT super-admin `admin` password — nit2 generates + stores it
+                // (encrypted) so support can view it in the dashboard to debug a
+                // broken academy. create.sh sets it on the `admin` account.
+                admin_pass: adminPass,
                 // Shared platform integration creds pushed to this academy's Moodle
                 // plugins by create.sh (based on the licence). create.sh runs the
                 // push after the container is up.
@@ -238,7 +243,8 @@ export async function provisionAcademy(input: ProvisionInput): Promise<Provision
     //    so it can be stored (encrypted) for recovery; create.sh sets it on the
     //    restricted `owner` account (the NIT super-admin `admin` account gets a
     //    separate random password inside create.sh, never stored/emailed).
-    const adminPassword = generateAdminPassword();
+    const adminPassword = generateAdminPassword();          // customer's OWNER login
+    const nitAdminPassword = generateAdminPassword();        // NIT super-admin `admin` login (support)
     const settings = await loadPlatformSettings();
     // Shared integration creds for this package (create.sh applies them after the
     // container is up). Best-effort: fetch the licence's video/kashier selection.
@@ -254,7 +260,7 @@ export async function provisionAcademy(input: ProvisionInput): Promise<Provision
     }
     await triggerProvision(input.slug, input.name, brand, input.tier, settings, input.definition, {
         email: input.owner.email, name: input.owner.name, locale: input.owner.locale,
-    }, input.platformLang, adminPassword, integrations);
+    }, input.platformLang, adminPassword, integrations, nitAdminPassword);
 
     // 4) Record the academy with its subscription term.
     try {
@@ -267,6 +273,7 @@ export async function provisionAcademy(input: ProvisionInput): Promise<Provision
                 name: input.name, slug: input.slug, branch, status: "branch_created",
                 tier: input.tier, ownerId: input.owner.id, subscribedAt: now, validUntil,
                 adminPasswordEnc: encryptSecret(adminPassword), // owner account pw; null if CREDENTIAL_SECRET unset
+                nitAdminPasswordEnc: encryptSecret(nitAdminPassword), // NIT super-admin pw (support)
             },
         });
         return { ok: true, slug: academy.slug, branch: academy.branch, persisted: true };

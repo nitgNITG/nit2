@@ -518,8 +518,9 @@ if [[ -f /root/send_welcome.php ]]; then
     # Owner password: prefer the one nit2 generated + stored (encrypted) for
     # recovery; fall back to a local random one if the provisioner didn't send it.
     OWNER_PASS_EFF="${OWNER_PASS:-Nit-$(openssl rand -hex 6)}"
-    # NIT super-admin password: always a fresh random value, never emailed/stored.
-    ADMIN_PASS_EFF="Nit-$(openssl rand -hex 12)"
+    # NIT super-admin password: prefer the one nit2 generated + stored (encrypted)
+    # so support can view it in the dashboard; fall back to a local random one.
+    ADMIN_PASS_EFF="${ADMIN_PASS:-Nit-$(openssl rand -hex 12)}"
     docker cp /root/send_welcome.php "$CONTAINER:/var/www/moodledata/send_welcome.php"
     docker exec \
         -e OWNER_USER="${OWNER_USER:-owner}" -e OWNER_PASS="$OWNER_PASS_EFF" -e ADMIN_PASS="$ADMIN_PASS_EFF" \

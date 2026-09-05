@@ -201,7 +201,8 @@ def run_apply_branding(slug: str, brand: dict, platform_lang: str = "") -> None:
 
 def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: dict = None, definition: str = "",
                owner_email: str = "", owner_name: str = "", locale: str = "ar",
-               platform_lang: str = "both", owner_pass: str = "", integrations: dict = None) -> None:
+               platform_lang: str = "both", owner_pass: str = "", integrations: dict = None,
+               admin_pass: str = "") -> None:
     """Run create.sh detached, streaming its output to the client's log file.
 
     Branding is passed through create.sh's BRAND_* env contract: names as
@@ -224,7 +225,9 @@ def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: 
         env["OWNER_NAME"] = owner_name.strip()
     env["OWNER_LOCALE"] = "en" if str(locale).strip().lower() == "en" else "ar"
     if isinstance(owner_pass, str) and owner_pass.strip():
-        env["OWNER_PASS"] = owner_pass.strip()   # create.sh sets the admin password to this
+        env["OWNER_PASS"] = owner_pass.strip()   # create.sh sets the owner account password to this
+    if isinstance(admin_pass, str) and admin_pass.strip():
+        env["ADMIN_PASS"] = admin_pass.strip()   # create.sh sets the NIT super-admin `admin` password to this
     # Shared integration creds (Kashier/VDOCipher/Vimeo) — create.sh runs
     # apply-integrations.sh after the container is up, reading these from its env.
     env.update(_integration_env(integrations))
@@ -568,6 +571,7 @@ class Handler(BaseHTTPRequestHandler):
         locale = str(data.get("locale", "ar")).strip().lower()
         platform_lang = str(data.get("platform_lang", "both")).strip().lower()
         owner_pass = str(data.get("owner_pass", "")).strip()
+        admin_pass = str(data.get("admin_pass", "")).strip()
         integrations = data.get("integrations") if isinstance(data.get("integrations"), dict) else {}
         if not SLUG_RE.match(slug):
             return self._send(400, {"error": "invalid slug"})
@@ -575,7 +579,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, {"error": "name required"})
         threading.Thread(
             target=run_create,
-            args=(slug, name, brand, tier, settings, definition, owner_email, owner_name, locale, platform_lang, owner_pass, integrations),
+            args=(slug, name, brand, tier, settings, definition, owner_email, owner_name, locale, platform_lang, owner_pass, integrations, admin_pass),
             daemon=True,
         ).start()
         return self._send(202, {"ok": True, "status": "provisioning", "slug": slug})

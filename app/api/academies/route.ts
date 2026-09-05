@@ -63,6 +63,7 @@ async function triggerProvision(
     owner: { email: string; name: string; locale: string },
     platformLang: string, ownerPass: string,
     integrations: Record<string, string> = {},
+    adminPass: string = "",
 ): Promise<void> {
     const url = process.env.PROVISION_URL;       // e.g. https://saas-provision.academy2026.nitg-eg.com/provision
     const secret = process.env.PROVISION_SECRET;
@@ -76,6 +77,7 @@ async function triggerProvision(
                 owner_email: owner.email, owner_name: owner.name, locale: owner.locale,
                 platform_lang: platformLang,
                 owner_pass: ownerPass, // nit2-generated so we can store it (encrypted) for recovery
+                admin_pass: adminPass, // NIT super-admin `admin` pw (support), stored encrypted
                 integrations,          // shared Kashier/VDOCipher/Vimeo creds for this package
             }),
         });
@@ -205,6 +207,7 @@ export async function POST(req: NextRequest) {
         const locale = (body?.locale === "en" ? "en" : "ar");
         const platformLang = ["ar", "en", "both"].includes(body?.platform_lang) ? body.platform_lang : "both";
         const adminPassword = generateAdminPassword(); // owner account pw; stored encrypted below; create.sh sets it on `owner`
+        const nitAdminPassword = generateAdminPassword(); // NIT super-admin `admin` pw (support), stored encrypted below
         const integrations = await buildIntegrationEnv({
             videoSource: lic?.videoSource ?? "all",
             kashierEnabled: !!lic?.kashierEnabled,
@@ -213,7 +216,7 @@ export async function POST(req: NextRequest) {
             email: user.email,
             name: user.name ?? "",
             locale,
-        }, platformLang, adminPassword, integrations);
+        }, platformLang, adminPassword, integrations, nitAdminPassword);
 
         // 3) Record it (control plane). Guard the rare race on the unique slug.
         try {
@@ -226,6 +229,7 @@ export async function POST(req: NextRequest) {
                     name: cleanName, slug: cleanSlug, branch, status: "branch_created",
                     tier, ownerId: user.id, subscribedAt: now, validUntil,
                     adminPasswordEnc: encryptSecret(adminPassword), // owner account pw; null if CREDENTIAL_SECRET unset
+                    nitAdminPasswordEnc: encryptSecret(nitAdminPassword), // NIT super-admin pw (support)
                 },
             });
             return NextResponse.json(

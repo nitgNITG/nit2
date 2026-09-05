@@ -26,11 +26,20 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     if (!academy) return NextResponse.json({ error: "not found" }, { status: 404 });
 
     const password = decryptSecret(academy.adminPasswordEnc);
+    // NIT super-admin `admin` account — for support: NIT can log in to debug a
+    // broken academy. Only stored for academies provisioned under the restricted
+    // owner model; older ones stay null.
+    const adminPassword = decryptSecret(academy.nitAdminPasswordEnc);
     return NextResponse.json({
         slug: academy.slug,
         username: "owner",
         password,                                   // null if none stored / not decryptable
         hasPassword: !!password,
+        admin: {
+            username: "admin",
+            password: adminPassword,                // null if none stored / not decryptable
+            hasPassword: !!adminPassword,
+        },
         encryptionConfigured: credentialSecretConfigured(),
     });
 }

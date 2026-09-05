@@ -87,6 +87,11 @@ const AcademiesPage = () => {
     username: string;
     password: string | null;
     hasPassword: boolean;
+    admin?: {
+      username: string;
+      password: string | null;
+      hasPassword: boolean;
+    } | null;
   } | null>(null);
   const [credLoading, setCredLoading] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -255,6 +260,7 @@ const AcademiesPage = () => {
         username: data.username,
         password: data.password,
         hasPassword: data.hasPassword,
+        admin: data.admin ?? null,
       });
     } catch (err: any) {
       toast.error(err?.response?.data?.error || "Could not load credentials");
@@ -273,11 +279,12 @@ const AcademiesPage = () => {
     setResetting(true);
     try {
       const { data } = await axios.post(`/api/academies/${slug}/credentials`);
-      setCred({
+      setCred((prev) => ({
         username: data.username,
         password: data.password,
         hasPassword: true,
-      });
+        admin: prev?.admin ?? null, // reset only touches the owner account
+      }));
       toast.success("Owner password reset");
     } catch (err: any) {
       toast.error(err?.response?.data?.error || "Reset failed");
@@ -595,6 +602,49 @@ const AcademiesPage = () => {
                   the academy, it can’t be shown here — reset it to regain
                   access.
                 </p>
+
+                {/* NIT super-admin (support) — the site-admin account, for
+                    debugging a broken academy. Not the customer's login. */}
+                <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-amber-700">
+                      🛠️ NIT super-admin (support)
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      readOnly
+                      value={cred?.admin?.username ?? "admin"}
+                      className="w-28 border rounded-lg px-3 py-2 font-mono text-sm bg-white"
+                    />
+                    {cred?.admin?.hasPassword && cred.admin.password ? (
+                      <>
+                        <input
+                          readOnly
+                          value={cred.admin.password}
+                          className="flex-1 border rounded-lg px-3 py-2 font-mono text-sm bg-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => copyText(cred.admin!.password!)}
+                          className="border rounded-lg px-3 text-sm hover:bg-white"
+                        >
+                          Copy
+                        </button>
+                      </>
+                    ) : (
+                      <p className="flex-1 text-xs text-gray-500 rounded-lg bg-white border px-3 py-2">
+                        Not stored (academy provisioned before this feature).
+                        Reset via CLI on the server if needed.
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-amber-700/80">
+                    Full site-admin access — for debugging only. Don’t share with
+                    the customer.
+                  </p>
+                </div>
+
                 <div className="flex gap-3 pt-1">
                   <button
                     type="button"

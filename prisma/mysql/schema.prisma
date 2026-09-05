@@ -69,10 +69,14 @@ model Academy {
   // (and on plan change / renewal) from the License's durationDays.
   subscribedAt DateTime? // start of the current subscription term
   validUntil   DateTime? // end of the term; null = never expires
-  // Encrypted (AES-256-GCM) generated admin password, so a lost welcome email can
+  // Encrypted (AES-256-GCM) generated OWNER password, so a lost welcome email can
   // be recovered from the dashboard. NOT a login hash and NOT the owner's chosen
   // password — only the value WE generate at provision / on reset. See lib/secretBox.
   adminPasswordEnc String? @db.Text
+  // Encrypted (AES-256-GCM) random password for the NIT super-admin `admin`
+  // account, kept so NIT support can log in to debug a broken academy. This is
+  // the NIT-only super-admin, NOT the customer's owner login. See lib/secretBox.
+  nitAdminPasswordEnc String? @db.Text
   createdAt DateTime @default(now())
 }
 
