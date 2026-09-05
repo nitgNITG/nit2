@@ -120,12 +120,34 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
     const [login, setLogin] = useState<File | null>(null) // login/signup page background
     const loginUrl = useMemo(() => (login ? URL.createObjectURL(login) : null), [login])
     useEffect(() => () => { if (loginUrl) URL.revokeObjectURL(loginUrl) }, [loginUrl])
-    const [aboutBullets, setAboutBullets] = useState<string[]>([]) // about points (chips)
-    const [bulletDraft, setBulletDraft] = useState('')
+    // About points. When the academy is bilingual each entry is an {mlang}-tagged
+    // string ({mlang en}…{mlang}{mlang ar}…{mlang}); the academy's multilang2
+    // filter renders the viewer's language. Single-language academies store plain
+    // text. Same model the site name uses — no backend change needed.
+    const [aboutBullets, setAboutBullets] = useState<string[]>([])
+    const [bulletEn, setBulletEn] = useState('')
+    const [bulletAr, setBulletAr] = useState('')
+    const makeBullet = (en: string, ar: string) => {
+        const e = en.trim(), a = ar.trim()
+        if (e && a) return `{mlang en}${e}{mlang}{mlang ar}${a}{mlang}`
+        return e || a // one side only → plain text
+    }
+    const bulletMatch = (s: string, lang: 'en' | 'ar') =>
+        s.match(new RegExp(`\\{mlang ${lang}\\}([\\s\\S]*?)\\{mlang\\}`, 'i'))?.[1]
+    // Readable chip label: show the available language text(s), tags stripped.
+    const bulletLabel = (s: string) => {
+        const en = bulletMatch(s, 'en'), ar = bulletMatch(s, 'ar')
+        return (en || ar) ? [en, ar].filter(Boolean).join('  ·  ') : s
+    }
+    // One language for the live preview.
+    const bulletPreview = (s: string) => {
+        const en = bulletMatch(s, 'en'), ar = bulletMatch(s, 'ar')
+        return (en || ar) ? ((isAr ? ar : en) || en || ar || '') : s
+    }
     const addBullet = () => {
-        const v = bulletDraft.trim()
+        const v = (hasAr && hasEn) ? makeBullet(bulletEn, bulletAr) : bulletEn.trim()
         if (v && aboutBullets.length < 8 && !aboutBullets.includes(v)) setAboutBullets((a) => [...a, v])
-        setBulletDraft('')
+        setBulletEn(''); setBulletAr('')
     }
     const [gallery, setGallery] = useState<File[]>([]) // up to 8 gallery photos
     const faviconUrl = useMemo(() => (favicon ? URL.createObjectURL(favicon) : null), [favicon])
@@ -638,23 +660,41 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                         <span className='text-xs font-normal text-gray-400'>({t('optional')})</span>
                     </label>
                     <div className='flex gap-2'>
-                        <input
-                            type='text'
-                            value={bulletDraft}
-                            onChange={(e) => setBulletDraft(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addBullet() } }}
-                            placeholder={isAr ? 'اكتب نقطة ثم أضف' : 'Type a point, then Add'}
-                            className='flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition-colors focus:border-[#1E7D67] focus:bg-white'
-                        />
-                        <button type='button' onClick={addBullet} className='rounded-xl bg-[#1E7D67]/10 px-4 py-2.5 text-sm font-semibold text-[#1E7D67] hover:bg-[#1E7D67]/15'>
+                        {hasEn && (
+                            <input
+                                type='text'
+                                value={bulletEn}
+                                onChange={(e) => setBulletEn(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addBullet() } }}
+                                placeholder={hasAr ? 'English point' : (isAr ? 'اكتب نقطة ثم أضف' : 'Type a point, then Add')}
+                                className='flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition-colors focus:border-[#1E7D67] focus:bg-white'
+                            />
+                        )}
+                        {hasAr && (
+                            <input
+                                type='text'
+                                dir='rtl'
+                                value={bulletAr}
+                                onChange={(e) => setBulletAr(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addBullet() } }}
+                                placeholder={hasEn ? 'النقطة بالعربية' : 'اكتب نقطة ثم أضف'}
+                                className='flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition-colors focus:border-[#1E7D67] focus:bg-white'
+                            />
+                        )}
+                        <button type='button' onClick={addBullet} className='shrink-0 rounded-xl bg-[#1E7D67]/10 px-4 py-2.5 text-sm font-semibold text-[#1E7D67] hover:bg-[#1E7D67]/15'>
                             {isAr ? 'أضف' : 'Add'}
                         </button>
                     </div>
+                    {hasAr && hasEn && (
+                        <p className='mt-1 text-xs text-gray-400'>
+                            {isAr ? 'أدخل النقطة بالإنجليزية والعربية — تظهر كل لغة حسب لغة المستخدم.' : 'Enter each point in English and Arabic — each shows in the viewer’s language.'}
+                        </p>
+                    )}
                     {aboutBullets.length > 0 && (
                         <div className='mt-2 flex flex-wrap gap-2'>
                             {aboutBullets.map((b, i) => (
                                 <span key={i} className='inline-flex items-center gap-1.5 rounded-full bg-[#1E7D67]/10 px-3 py-1 text-xs text-[#0B2923]'>
-                                    {b}
+                                    {bulletLabel(b)}
                                     <button type='button' onClick={() => setAboutBullets((a) => a.filter((_, j) => j !== i))} className='text-[#1E7D67] hover:text-red-500'>✕</button>
                                 </span>
                             ))}
@@ -729,7 +769,7 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                 <p className='mb-2 mt-4 text-sm text-gray-500'>
                     {isAr ? 'معاينة مباشرة لمنصتك:' : 'Live preview of your platform:'}
                 </p>
-                <HomePreview name={nameWatch} palette={palette} logoUrl={logoUrl} heroUrl={heroUrl} aboutUrl={aboutUrl} faviconUrl={faviconUrl} galleryUrls={galleryUrls} aboutBullets={aboutBullets} isAr={isAr} />
+                <HomePreview name={nameWatch} palette={palette} logoUrl={logoUrl} heroUrl={heroUrl} aboutUrl={aboutUrl} faviconUrl={faviconUrl} galleryUrls={galleryUrls} aboutBullets={aboutBullets.map(bulletPreview)} isAr={isAr} />
             </div>
 
             {/* ══ 4. Contact — phone, WhatsApp, social (optional) ══ */}
