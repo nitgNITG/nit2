@@ -25,6 +25,7 @@ const Sidebar = () => {
         { label: '🎓 Academies', href: '/dashboard/academies' },
         { label: '🎫 Licenses', href: '/dashboard/licenses' },
         { label: '🌐 Platform Settings', href: '/dashboard/platform-settings' },
+        { label: '🔌 Integrations', href: '/dashboard/integrations' },
         { label: '⚙️ Setup & Health', href: '/dashboard/setup' },
     ]
     const eleRef = useClickOutside(() => { setOpen(false) }, open)
