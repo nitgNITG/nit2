@@ -640,8 +640,8 @@ const AcademiesPage = () => {
                     )}
                   </div>
                   <p className="text-[11px] text-amber-700/80">
-                    Full site-admin access — for debugging only. Don’t share with
-                    the customer.
+                    Full site-admin access — for debugging only. Don’t share
+                    with the customer.
                   </p>
                 </div>
 
