@@ -60,6 +60,18 @@ export async function loadIntegrationMasked(): Promise<Record<string, { set: boo
     return out;
 }
 
+/** Full view WITH decrypted secret values — for an admin "reveal" action only.
+ *  Never use this for a default page load; it puts plaintext secrets on the wire. */
+export async function loadIntegrationRevealed(): Promise<Record<string, { set: boolean; value: string }>> {
+    const secrets = await loadIntegrationSecrets();
+    const out: Record<string, { set: boolean; value: string }> = {};
+    for (const f of INTEGRATION_FIELDS) {
+        const v = secrets[f.key] ?? "";
+        out[f.key] = { set: v !== "", value: v };
+    }
+    return out;
+}
+
 /** Upsert integration settings from an admin PUT. Secrets are encrypted; an empty
  *  string for a secret field means "leave unchanged" (so re-saving the form
  *  without re-typing a secret doesn't wipe it). Plain fields set to "" clear. */
