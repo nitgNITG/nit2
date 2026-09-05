@@ -2,7 +2,10 @@
 // out of route.ts (which may only export request handlers).
 
 export const KEY_RE = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
-export const VIDEO_SOURCES = ["all", "limited", "youtube", "vimeo", "vdocipher"];
+// Only the two integrations NIT actually provisions. Legacy values (all / limited
+// / youtube) are no longer offered; a license carrying one is coerced to "vimeo"
+// the next time it is saved (see parseLicense below).
+export const VIDEO_SOURCES = ["vimeo", "vdocipher"];
 
 // Build a clean, typed License payload (minus `key`) from a request body.
 export function parseLicense(body: any) {
@@ -18,7 +21,7 @@ export function parseLicense(body: any) {
         storageGb: Math.max(1, int(body?.storageGb, 1)), // GB; min 1
         supportedApp: body?.supportedApp !== false, // default true; false = no app access (Demo)
         kashierEnabled: body?.kashierEnabled === true, // push shared Kashier gateway to this package
-        videoSource: VIDEO_SOURCES.includes(body?.videoSource) ? body.videoSource : "all",
+        videoSource: VIDEO_SOURCES.includes(body?.videoSource) ? body.videoSource : "vimeo",
         limits: typeof body?.limits === "object" && body.limits ? body.limits : { quiz: -1, video: -1, pdf: -1, default: -1 },
         features: typeof body?.features === "object" && body.features ? body.features : {},
         order: int(body?.order, 0),

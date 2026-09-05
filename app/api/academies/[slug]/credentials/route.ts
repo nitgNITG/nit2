@@ -14,9 +14,10 @@ async function requireAdmin() {
     return null;
 }
 
-// GET /api/academies/<slug>/credentials — reveal the stored admin password (admin).
-// Only the value WE generated is recoverable; if the owner later changed it in
-// Moodle, this is stale (Moodle keeps only a hash) — use POST to reset.
+// GET /api/academies/<slug>/credentials — reveal the stored OWNER password (admin).
+// The owner logs in on the restricted `owner` account (not the NIT super-admin
+// `admin` account). Only the value WE generated is recoverable; if the owner
+// later changed it in Moodle, this is stale (Moodle keeps only a hash) — use POST.
 export async function GET(_req: Request, { params }: { params: { slug: string } }) {
     const gate = await requireAdmin();
     if (gate) return NextResponse.json({ error: gate.error }, { status: gate.status });
@@ -27,16 +28,16 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     const password = decryptSecret(academy.adminPasswordEnc);
     return NextResponse.json({
         slug: academy.slug,
-        username: "admin",
+        username: "owner",
         password,                                   // null if none stored / not decryptable
         hasPassword: !!password,
         encryptionConfigured: credentialSecretConfigured(),
     });
 }
 
-// POST /api/academies/<slug>/credentials — reset the admin password to a NEW
-// generated value on the live academy, re-mint its app token, and store the new
-// value encrypted. Returns the new password so the admin can copy it.
+// POST /api/academies/<slug>/credentials — reset the OWNER account password to a
+// NEW generated value on the live academy and store it encrypted. The NIT
+// super-admin `admin` account is left untouched. Returns the new password to copy.
 export async function POST(_req: Request, { params }: { params: { slug: string } }) {
     const gate = await requireAdmin();
     if (gate) return NextResponse.json({ error: gate.error }, { status: gate.status });
@@ -59,5 +60,5 @@ export async function POST(_req: Request, { params }: { params: { slug: string }
     } catch (e) {
         console.error("[credentials] store new password failed", params.slug, e);
     }
-    return NextResponse.json({ ok: true, slug: params.slug, username: "admin", password: newPass });
+    return NextResponse.json({ ok: true, slug: params.slug, username: "owner", password: newPass });
 }

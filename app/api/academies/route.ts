@@ -204,7 +204,7 @@ export async function POST(req: NextRequest) {
         const settings = await loadPlatformSettings();
         const locale = (body?.locale === "en" ? "en" : "ar");
         const platformLang = ["ar", "en", "both"].includes(body?.platform_lang) ? body.platform_lang : "both";
-        const adminPassword = generateAdminPassword(); // stored encrypted below; create.sh uses it
+        const adminPassword = generateAdminPassword(); // owner account pw; stored encrypted below; create.sh sets it on `owner`
         const integrations = await buildIntegrationEnv({
             videoSource: lic?.videoSource ?? "all",
             kashierEnabled: !!lic?.kashierEnabled,
@@ -225,7 +225,7 @@ export async function POST(req: NextRequest) {
                 data: {
                     name: cleanName, slug: cleanSlug, branch, status: "branch_created",
                     tier, ownerId: user.id, subscribedAt: now, validUntil,
-                    adminPasswordEnc: encryptSecret(adminPassword), // null if CREDENTIAL_SECRET unset
+                    adminPasswordEnc: encryptSecret(adminPassword), // owner account pw; null if CREDENTIAL_SECRET unset
                 },
             });
             return NextResponse.json(

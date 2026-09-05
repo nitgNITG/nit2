@@ -22,13 +22,13 @@ type License = {
     order: number
 }
 
-const VIDEO_SOURCES = ['all', 'limited', 'youtube', 'vimeo', 'vdocipher']
-const FEATURE_KEYS = ['drm', 'coupons', 'offers', 'subscriptions', 'packages', 'jitsi']
+const VIDEO_SOURCES = ['vimeo', 'vdocipher']
+const FEATURE_KEYS = ['coupons', 'offers', 'subscriptions', 'packages']
 const LIMIT_KEYS = ['quiz', 'video', 'pdf', 'default']
 
 const blank = (): License => ({
     key: '', name: '', active: true, price: 0, priceEgp: 0, durationDays: 365,
-    maxCourses: -1, maxTeachers: -1, storageGb: 1, supportedApp: true, kashierEnabled: false, videoSource: 'all', order: 0,
+    maxCourses: -1, maxTeachers: -1, storageGb: 1, supportedApp: true, kashierEnabled: false, videoSource: 'vimeo', order: 0,
     limits: { quiz: -1, video: -1, pdf: -1, default: -1 },
     features: Object.fromEntries(FEATURE_KEYS.map((f) => [f, false])),
 })

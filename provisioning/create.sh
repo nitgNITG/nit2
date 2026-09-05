@@ -493,21 +493,37 @@ _setlink link_faq     "${BRAND_LINK_FAQ:-${SETTING_FAQ_URL:-}}"
 
 docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
 
-# ── Welcome: unique admin password + email the customer their login ─────────
+# ── Owner role: hardened "Academy Manager" (NOT a site admin) ───────────────
+# The customer runs the academy on a restricted role so they can't change site
+# config / the licence / escalate. Must exist BEFORE send_welcome assigns it.
+if [[ -f /root/ensure_owner_role.php ]]; then
+    log "ensuring the restricted Academy Manager role"
+    docker cp /root/ensure_owner_role.php "$CONTAINER:/var/www/moodledata/ensure_owner_role.php"
+    docker exec "$CONTAINER" php /var/www/moodledata/ensure_owner_role.php || echo "!! owner-role step failed (site still live)"
+    docker exec "$CONTAINER" rm -f /var/www/moodledata/ensure_owner_role.php || true
+else
+    log "ensure_owner_role.php not installed at /root — owner will lack the restricted role"
+fi
+
+# ── Welcome: create the owner account + email the customer their login ───────
 # OWNER_EMAIL / OWNER_NAME / OWNER_LOCALE are passed by the provisioner (nit2).
-# Gives each academy its own admin password (not the template's shared one),
-# forces a change on first login, and emails the customer their credentials.
+# The customer logs in on a dedicated OWNER account (restricted role); the
+# built-in `admin` stays NIT's super-admin, set here to a random NIT password
+# (never emailed) so no academy ships with the template's shared admin password.
 # MUST run BEFORE the app-token step: changing the admin password makes Moodle
 # delete that user's web-service tokens, so minting the token first would leave
 # a dead admin_token (invalidtoken in the app). Order matters — do not swap.
 if [[ -f /root/send_welcome.php ]]; then
-    log "setting admin credentials + emailing the customer"
-    # Prefer the password nit2 generated + stored (encrypted) for recovery; fall
-    # back to a local random one if the provisioner didn't send OWNER_PASS.
-    WELCOME_PASS="${OWNER_PASS:-Nit-$(openssl rand -hex 6)}"
+    log "creating the owner account + emailing the customer"
+    # Owner password: prefer the one nit2 generated + stored (encrypted) for
+    # recovery; fall back to a local random one if the provisioner didn't send it.
+    OWNER_PASS_EFF="${OWNER_PASS:-Nit-$(openssl rand -hex 6)}"
+    # NIT super-admin password: always a fresh random value, never emailed/stored.
+    ADMIN_PASS_EFF="Nit-$(openssl rand -hex 12)"
     docker cp /root/send_welcome.php "$CONTAINER:/var/www/moodledata/send_welcome.php"
     docker exec \
-        -e WELCOME_USER=admin -e WELCOME_PASS="$WELCOME_PASS" \
+        -e OWNER_USER="${OWNER_USER:-owner}" -e OWNER_PASS="$OWNER_PASS_EFF" -e ADMIN_PASS="$ADMIN_PASS_EFF" \
+        -e OWNER_ROLE="${OWNER_ROLE:-academymanager}" \
         -e OWNER_EMAIL="${OWNER_EMAIL:-}" -e OWNER_NAME="${OWNER_NAME:-}" -e OWNER_LOCALE="${OWNER_LOCALE:-ar}" \
         "$CONTAINER" php /var/www/moodledata/send_welcome.php || echo "!! welcome step failed (site still live)"
     docker exec "$CONTAINER" rm -f /var/www/moodledata/send_welcome.php || true

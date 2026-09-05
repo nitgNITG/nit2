@@ -234,8 +234,10 @@ export async function provisionAcademy(input: ProvisionInput): Promise<Provision
     const brand = { ...input.brand };
     if (!brand.fullname_ar) brand.fullname_ar = input.name;
 
-    // 3) Kick off the live build. nit2 generates the admin password here so it can
-    //    be stored (encrypted) for recovery; create.sh uses it instead of minting.
+    // 3) Kick off the live build. nit2 generates the OWNER account password here
+    //    so it can be stored (encrypted) for recovery; create.sh sets it on the
+    //    restricted `owner` account (the NIT super-admin `admin` account gets a
+    //    separate random password inside create.sh, never stored/emailed).
     const adminPassword = generateAdminPassword();
     const settings = await loadPlatformSettings();
     // Shared integration creds for this package (create.sh applies them after the
@@ -264,7 +266,7 @@ export async function provisionAcademy(input: ProvisionInput): Promise<Provision
             data: {
                 name: input.name, slug: input.slug, branch, status: "branch_created",
                 tier: input.tier, ownerId: input.owner.id, subscribedAt: now, validUntil,
-                adminPasswordEnc: encryptSecret(adminPassword), // null if CREDENTIAL_SECRET unset
+                adminPasswordEnc: encryptSecret(adminPassword), // owner account pw; null if CREDENTIAL_SECRET unset
             },
         });
         return { ok: true, slug: academy.slug, branch: academy.branch, persisted: true };

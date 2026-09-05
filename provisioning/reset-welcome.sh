@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # ============================================================================
-#  reset-welcome.sh — set a NEW admin password on a LIVE academy and re-send the
-#  welcome email. Used to recover access when the original welcome email is lost
-#  (or the owner forgot a password they changed).
+#  reset-welcome.sh — set a NEW password on a LIVE academy's OWNER account and
+#  re-send the welcome email. Used to recover access when the original welcome
+#  email is lost (or the owner forgot a password they changed).
 #
-#  The new password is supplied by the caller (nit2 generates it so it can store
-#  it encrypted): OWNER_PASS. Optional OWNER_EMAIL / OWNER_NAME / OWNER_LOCALE
-#  target the email like create.sh does.
+#  Resets the restricted OWNER account (Academy Manager), NOT the NIT super-admin
+#  `admin` account. The new password is supplied by the caller (nit2 generates it
+#  so it can store it encrypted): OWNER_PASS. Optional OWNER_EMAIL / OWNER_NAME /
+#  OWNER_LOCALE target the email like create.sh does.
 #
-#  IMPORTANT: changing the admin password makes Moodle delete that user's
-#  web-service tokens, so this re-mints the mobile app token afterwards (same
-#  ordering lesson as create.sh) — otherwise the app would break with invalidtoken.
+#  The app token belongs to the `admin` account, which we do NOT touch here, so
+#  the token survives — but we re-mint it afterwards as a harmless safety.
 #
 #  Usage:  OWNER_PASS=... [OWNER_EMAIL=...] bash reset-welcome.sh <slug>
 # ============================================================================
@@ -27,12 +27,21 @@ SLUG="${1:-}"
 CONTAINER="saas_moodle_${SLUG}"
 docker ps --format '{{.Names}}' | grep -qx "$CONTAINER" || die "container $CONTAINER is not running"
 
-# 1) Set the new admin password (+ email) via the same script create.sh uses.
+# 0) Make sure the restricted owner role exists (created at provision; also lets
+#    this recover/migrate an academy provisioned before the role model existed).
+if [[ -f /root/ensure_owner_role.php ]]; then
+    docker cp /root/ensure_owner_role.php "$CONTAINER:/var/www/moodledata/ensure_owner_role.php"
+    docker exec "$CONTAINER" php /var/www/moodledata/ensure_owner_role.php || echo "!! owner-role step failed"
+    docker exec "$CONTAINER" rm -f /var/www/moodledata/ensure_owner_role.php || true
+fi
+
+# 1) Reset the OWNER account password (+ email). ADMIN_PASS is intentionally NOT
+#    passed, so the NIT super-admin `admin` account is left untouched.
 if [[ -f /root/send_welcome.php ]]; then
-    log "resetting admin password for $SLUG"
+    log "resetting owner password for $SLUG"
     docker cp /root/send_welcome.php "$CONTAINER:/var/www/moodledata/send_welcome.php"
     docker exec \
-        -e WELCOME_USER=admin -e WELCOME_PASS="$OWNER_PASS" \
+        -e OWNER_USER="${OWNER_USER:-owner}" -e OWNER_PASS="$OWNER_PASS" -e OWNER_ROLE="${OWNER_ROLE:-academymanager}" \
         -e OWNER_EMAIL="${OWNER_EMAIL:-}" -e OWNER_NAME="${OWNER_NAME:-}" -e OWNER_LOCALE="${OWNER_LOCALE:-ar}" \
         "$CONTAINER" php /var/www/moodledata/send_welcome.php || echo "!! send_welcome failed"
     docker exec "$CONTAINER" rm -f /var/www/moodledata/send_welcome.php || true
@@ -49,4 +58,4 @@ if [[ -f /root/apply_apptoken.php ]]; then
 fi
 
 docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
-log "done — admin password reset for $SLUG"
+log "done — owner password reset for $SLUG"
