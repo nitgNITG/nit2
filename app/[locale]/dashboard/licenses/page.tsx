@@ -15,6 +15,7 @@ type License = {
     maxTeachers: number
     storageGb: number
     supportedApp: boolean
+    kashierEnabled: boolean
     videoSource: string
     limits: Record<string, number>
     features: Record<string, boolean>
@@ -27,7 +28,7 @@ const LIMIT_KEYS = ['quiz', 'video', 'pdf', 'default']
 
 const blank = (): License => ({
     key: '', name: '', active: true, price: 0, priceEgp: 0, durationDays: 365,
-    maxCourses: -1, maxTeachers: -1, storageGb: 1, supportedApp: true, videoSource: 'all', order: 0,
+    maxCourses: -1, maxTeachers: -1, storageGb: 1, supportedApp: true, kashierEnabled: false, videoSource: 'all', order: 0,
     limits: { quiz: -1, video: -1, pdf: -1, default: -1 },
     features: Object.fromEntries(FEATURE_KEYS.map((f) => [f, false])),
 })
@@ -177,6 +178,10 @@ const LicensesPage = () => {
                             <label className='flex items-center gap-2 text-sm font-semibold' title='When off, academies on this licence are refused by the mobile app at onboarding (design_system site.supportedapp=false). Use for Demo.'>
                                 <input type='checkbox' checked={form.supportedApp} onChange={(e) => setForm((f) => f ? { ...f, supportedApp: e.target.checked } : f)} />
                                 App access
+                            </label>
+                            <label className='flex items-center gap-2 text-sm font-semibold' title='Push the shared Kashier payment gateway to academies on this licence (credentials set in Platform Settings → Integrations).'>
+                                <input type='checkbox' checked={form.kashierEnabled} onChange={(e) => setForm((f) => f ? { ...f, kashierEnabled: e.target.checked } : f)} />
+                                Kashier payments
                             </label>
                         </div>
                     </div>

@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { toLicenseDefinition } from "@/lib/licenseDefinition";
 import { type Brand, sanitizeBrand } from "@/lib/brand";
 import { generateAdminPassword, encryptSecret } from "@/lib/secretBox";
+import { buildIntegrationEnv } from "@/lib/integrations";
 
 // ── SaaS repo that holds the base ("main") every academy branches from ────────
 const OWNER = process.env.SAAS_REPO_OWNER ?? "NITGg";
@@ -61,6 +62,7 @@ async function triggerProvision(
     slug: string, name: string, brand: Brand, tier: string, settings: Record<string, string>, definition: string,
     owner: { email: string; name: string; locale: string },
     platformLang: string, ownerPass: string,
+    integrations: Record<string, string> = {},
 ): Promise<void> {
     const url = process.env.PROVISION_URL;       // e.g. https://saas-provision.academy2026.nitg-eg.com/provision
     const secret = process.env.PROVISION_SECRET;
@@ -74,6 +76,7 @@ async function triggerProvision(
                 owner_email: owner.email, owner_name: owner.name, locale: owner.locale,
                 platform_lang: platformLang,
                 owner_pass: ownerPass, // nit2-generated so we can store it (encrypted) for recovery
+                integrations,          // shared Kashier/VDOCipher/Vimeo creds for this package
             }),
         });
     } catch (e) {
@@ -202,11 +205,15 @@ export async function POST(req: NextRequest) {
         const locale = (body?.locale === "en" ? "en" : "ar");
         const platformLang = ["ar", "en", "both"].includes(body?.platform_lang) ? body.platform_lang : "both";
         const adminPassword = generateAdminPassword(); // stored encrypted below; create.sh uses it
+        const integrations = await buildIntegrationEnv({
+            videoSource: lic?.videoSource ?? "all",
+            kashierEnabled: !!lic?.kashierEnabled,
+        });
         await triggerProvision(cleanSlug, cleanName, brand, tier, settings, definition, {
             email: user.email,
             name: user.name ?? "",
             locale,
-        }, platformLang, adminPassword);
+        }, platformLang, adminPassword, integrations);
 
         // 3) Record it (control plane). Guard the rare race on the unique slug.
         try {

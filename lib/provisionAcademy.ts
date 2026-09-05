@@ -7,6 +7,7 @@ import prisma from "@/lib/prismaMysql";
 import { toLicenseDefinition } from "@/lib/licenseDefinition";
 import type { Brand } from "@/lib/brand";
 import { generateAdminPassword, encryptSecret } from "@/lib/secretBox";
+import { buildIntegrationEnv, hasIntegrationPayload } from "@/lib/integrations";
 
 const OWNER = process.env.SAAS_REPO_OWNER ?? "NITGg";
 const REPO = process.env.SAAS_REPO_NAME ?? "saas-demo";
@@ -38,6 +39,7 @@ export async function triggerProvision(
     settings: Record<string, string>, definition: string,
     owner: { email: string; name: string; locale: string },
     platformLang: string, ownerPass: string,
+    integrations: Record<string, string> = {},
 ): Promise<void> {
     const url = process.env.PROVISION_URL;
     const secret = process.env.PROVISION_SECRET;
@@ -53,10 +55,38 @@ export async function triggerProvision(
                 // nit2 generates the admin password so it can store it (encrypted)
                 // for recovery; create.sh uses it verbatim instead of generating.
                 owner_pass: ownerPass,
+                // Shared platform integration creds pushed to this academy's Moodle
+                // plugins by create.sh (based on the licence). create.sh runs the
+                // push after the container is up.
+                integrations,
             }),
         });
     } catch (e) {
         console.error("[provision] trigger failed", e);
+    }
+}
+
+/** Push the shared integration creds (Kashier/VDOCipher/Vimeo) to a LIVE academy
+ *  for its licence — used on tier change (the container already exists, so this is
+ *  a separate call rather than riding the create payload). Best-effort. */
+export async function triggerApplyIntegrations(
+    slug: string, license: { videoSource: string; kashierEnabled: boolean },
+): Promise<void> {
+    const base = process.env.PROVISION_URL;
+    const secret = process.env.PROVISION_SECRET;
+    if (!base || !secret) return;
+    try {
+        const integrations = await buildIntegrationEnv(license);
+        if (!hasIntegrationPayload(integrations)) return;
+        const url = new URL(base);
+        url.pathname = `/apply-integrations/${slug}`;
+        await fetch(url.toString(), {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Provision-Secret": secret },
+            body: JSON.stringify({ integrations }),
+        });
+    } catch (e) {
+        console.error("[provision] apply-integrations failed", slug, e);
     }
 }
 
@@ -208,9 +238,21 @@ export async function provisionAcademy(input: ProvisionInput): Promise<Provision
     //    be stored (encrypted) for recovery; create.sh uses it instead of minting.
     const adminPassword = generateAdminPassword();
     const settings = await loadPlatformSettings();
+    // Shared integration creds for this package (create.sh applies them after the
+    // container is up). Best-effort: fetch the licence's video/kashier selection.
+    let integrations: Record<string, string> = {};
+    try {
+        const lic = await prisma.license.findUnique({ where: { key: input.tier } });
+        integrations = await buildIntegrationEnv({
+            videoSource: lic?.videoSource ?? "all",
+            kashierEnabled: !!lic?.kashierEnabled,
+        });
+    } catch (e) {
+        console.error("[provision] build integrations failed", e);
+    }
     await triggerProvision(input.slug, input.name, brand, input.tier, settings, input.definition, {
         email: input.owner.email, name: input.owner.name, locale: input.owner.locale,
-    }, input.platformLang, adminPassword);
+    }, input.platformLang, adminPassword, integrations);
 
     // 4) Record the academy with its subscription term.
     try {

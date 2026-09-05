@@ -92,7 +92,8 @@ model License {
   maxTeachers  Int      @default(-1)
   storageGb    Int      @default(1) // moodledata quota (GB) for academies on this licence
   supportedApp Boolean  @default(true) // may academies on this licence open in the mobile app (design_system site.supportedapp); Demo = false
-  videoSource  String   @default("all") // all|limited|youtube|vimeo|vdocipher
+  videoSource  String   @default("all") // all|limited|youtube|vimeo|vdocipher — selects which video integration is pushed
+  kashierEnabled Boolean @default(false) // push the shared Kashier gateway config to academies on this licence
   limits       Json // per-activity caps e.g. {"quiz":-1,"video":-1,"pdf":-1,"default":-1}
   features     Json // toggles e.g. {"drm":false,"coupons":true,"subscriptions":false,"packages":false,"jitsi":false,"offers":false}
   order        Int      @default(0)

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prismaMysql";
 import { getCurrentUser } from "@/lib/auth";
 import { toLicenseDefinition } from "@/lib/licenseDefinition";
+import { triggerApplyIntegrations } from "@/lib/provisionAcademy";
 
 export const runtime = "nodejs";
 
@@ -33,6 +34,12 @@ async function triggerApplyLicense(slug: string, tier: string): Promise<void> {
             headers: { "Content-Type": "application/json", "X-Provision-Secret": secret },
             body: JSON.stringify({ tier, definition }),
         });
+        // Push the new package's shared integration creds (Kashier/VDOCipher/Vimeo).
+        if (lic) {
+            await triggerApplyIntegrations(slug, {
+                videoSource: lic.videoSource, kashierEnabled: lic.kashierEnabled,
+            });
+        }
     } catch (e) {
         console.error("[academies] apply-license trigger failed", slug, e);
     }

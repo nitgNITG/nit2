@@ -3,26 +3,34 @@ import prisma from "@/lib/prismaMysql";
 import { getCurrentUser } from "@/lib/auth";
 import { parseLicense } from "@/lib/licenseShape";
 import { toLicenseDefinition } from "@/lib/licenseDefinition";
+import { triggerApplyIntegrations } from "@/lib/provisionAcademy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Push an edited licence to every live academy on it, so changes take effect
 // immediately (no manual Change-plan / Update-all-sites). Best-effort.
-async function reapplyToAcademies(key: string, definition: string): Promise<number> {
+async function reapplyToAcademies(
+    key: string, definition: string,
+    integrationLic: { videoSource: string; kashierEnabled: boolean },
+): Promise<number> {
     const base = process.env.PROVISION_URL;
     const secret = process.env.PROVISION_SECRET;
     if (!base || !secret) return 0;
     const academies = await prisma.academy.findMany({ where: { tier: key, status: "live" }, select: { slug: true } });
     await Promise.allSettled(
-        academies.map((a) => {
+        academies.flatMap((a) => {
             const url = new URL(base);
             url.pathname = `/apply-license/${a.slug}`;
-            return fetch(url.toString(), {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "X-Provision-Secret": secret },
-                body: JSON.stringify({ tier: key, definition }),
-            });
+            return [
+                fetch(url.toString(), {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "X-Provision-Secret": secret },
+                    body: JSON.stringify({ tier: key, definition }),
+                }),
+                // also refresh the shared integration creds (videoSource / Kashier may have changed)
+                triggerApplyIntegrations(a.slug, integrationLic),
+            ];
         }),
     );
     return academies.length;
@@ -44,7 +52,9 @@ export async function PUT(req: NextRequest, { params }: { params: { key: string 
         if (!data.name) return NextResponse.json({ error: "name required" }, { status: 400 });
         const license = await prisma.license.update({ where: { key: params.key }, data });
         // Push the new limits/features to every academy already on this licence.
-        const applied = await reapplyToAcademies(params.key, toLicenseDefinition(license));
+        const applied = await reapplyToAcademies(params.key, toLicenseDefinition(license), {
+            videoSource: license.videoSource, kashierEnabled: license.kashierEnabled,
+        });
         return NextResponse.json({ license, applied, message: `License updated${applied ? ` — re-applied to ${applied} academ${applied === 1 ? "y" : "ies"}` : ""}` });
     } catch (err: any) {
         if (err?.code === "P2025") return NextResponse.json({ error: "not found" }, { status: 404 });

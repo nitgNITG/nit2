@@ -525,6 +525,14 @@ if [[ -f /root/apply_apptoken.php ]]; then
     docker exec "$CONTAINER" rm -f /var/www/moodledata/apply_apptoken.php || true
 fi
 
+# ── Shared platform integrations (Kashier/VDOCipher/Vimeo) for this package ──
+# The provisioner passed the relevant creds as env (KASHIER_*/VDOCIPHER_*/VIMEO_*);
+# apply-integrations.sh sets the plugin configs. No-op when none were sent.
+if [[ -f /root/apply-integrations.sh ]]; then
+    log "applying shared integration credentials"
+    bash /root/apply-integrations.sh "$SLUG" || echo "!! integrations step failed (site still live)"
+fi
+
 # ── 6. Apache vhost → enable → SSL → restart (identical to create.sh) ───────
 log "creating apache vhost"
 cat > "$VHOST" <<APACHE

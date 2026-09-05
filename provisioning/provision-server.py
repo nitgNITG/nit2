@@ -28,6 +28,26 @@ APPLY_SUSPEND_SH = os.environ.get("APPLY_SUSPEND_SH", "/root/apply-suspend.sh")
 APPLY_BRANDING_SH = os.environ.get("APPLY_BRANDING_SH", "/root/apply-branding.sh")
 UPDATE_IMAGE_SH = os.environ.get("UPDATE_IMAGE_SH", "/root/update-image.sh")
 RESET_WELCOME_SH = os.environ.get("RESET_WELCOME_SH", "/root/reset-welcome.sh")
+APPLY_INTEGRATIONS_SH = os.environ.get("APPLY_INTEGRATIONS_SH", "/root/apply-integrations.sh")
+# Only these env keys are forwarded to apply-integrations.sh — a fixed allow-list
+# so a caller can never inject arbitrary environment into the shell.
+INTEGRATION_ENV_KEYS = {
+    "VIDEO_SOURCE",
+    "KASHIER_ENABLED", "KASHIER_MERCHANT_ID", "KASHIER_API_KEY", "KASHIER_SECRET_KEY",
+    "KASHIER_SANDBOX", "KASHIER_BASE_URL",
+    "VDOCIPHER_APISECRET", "VDOCIPHER_APIBASE",
+    "VIMEO_ACCESS_TOKEN", "VIMEO_APIBASE", "VIMEO_CLIENT_ID", "VIMEO_CLIENT_SECRET",
+}
+
+
+def _integration_env(integrations) -> dict:
+    """Whitelisted, stringified integration env from a request's integrations dict."""
+    env = {}
+    if isinstance(integrations, dict):
+        for k, v in integrations.items():
+            if k in INTEGRATION_ENV_KEYS and isinstance(v, (str, int)) and str(v) != "":
+                env[k] = str(v)
+    return env
 LOG_DIR     = os.environ.get("PROVISION_LOG_DIR", "/var/www/html/saas/logs")
 STAGING_DIR = os.environ.get("PROVISION_STAGING_DIR", "/var/www/html/saas/staging")
 PORT        = int(os.environ.get("PROVISION_PORT", "9099"))
@@ -181,7 +201,7 @@ def run_apply_branding(slug: str, brand: dict, platform_lang: str = "") -> None:
 
 def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: dict = None, definition: str = "",
                owner_email: str = "", owner_name: str = "", locale: str = "ar",
-               platform_lang: str = "both", owner_pass: str = "") -> None:
+               platform_lang: str = "both", owner_pass: str = "", integrations: dict = None) -> None:
     """Run create.sh detached, streaming its output to the client's log file.
 
     Branding is passed through create.sh's BRAND_* env contract: names as
@@ -205,6 +225,9 @@ def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: 
     env["OWNER_LOCALE"] = "en" if str(locale).strip().lower() == "en" else "ar"
     if isinstance(owner_pass, str) and owner_pass.strip():
         env["OWNER_PASS"] = owner_pass.strip()   # create.sh sets the admin password to this
+    # Shared integration creds (Kashier/VDOCipher/Vimeo) — create.sh runs
+    # apply-integrations.sh after the container is up, reading these from its env.
+    env.update(_integration_env(integrations))
     env["PLATFORM_LANG"] = platform_lang if platform_lang in ("ar", "en", "both") else "both"
     if isinstance(definition, str) and definition.strip():
         env["LICENSE_DEFINITION"] = definition
@@ -298,6 +321,18 @@ def run_update_image(slug: str) -> None:
             stdout=log, stderr=subprocess.STDOUT,
             env={**os.environ},   # SAAS_IMAGE / SAAS_ROOT come from provision.env
         )
+
+
+def run_apply_integrations(slug: str, integrations: dict) -> None:
+    """Run apply-integrations.sh detached — push the shared Kashier/VDOCipher/Vimeo
+    creds to a live academy (used on tier/licence change; create.sh does it inline
+    at provision time)."""
+    env = {**os.environ, **_integration_env(integrations)}
+    logpath = os.path.join(LOG_DIR, f"{slug}.log")
+    with open(logpath, "ab", buffering=0) as log:
+        log.write(f"\n===== apply-integrations {slug} =====\n".encode())
+        subprocess.run(["bash", APPLY_INTEGRATIONS_SH, slug],
+                       stdout=log, stderr=subprocess.STDOUT, env=env)
 
 
 def run_reset_welcome(slug: str, owner_pass: str, owner_email: str = "",
@@ -462,6 +497,21 @@ class Handler(BaseHTTPRequestHandler):
             threading.Thread(target=run_apply_branding, args=(slug, brand, platform_lang), daemon=True).start()
             return self._send(202, {"ok": True, "status": "applying-branding", "slug": slug})
 
+        # POST /apply-integrations/<slug>  {integrations:{...}} — push shared
+        # Kashier/VDOCipher/Vimeo creds to a live academy (tier/licence change).
+        if self.path.startswith("/apply-integrations/"):
+            slug = self.path[len("/apply-integrations/"):]
+            if not SLUG_RE.match(slug):
+                return self._send(400, {"error": "invalid slug"})
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                data = json.loads(self.rfile.read(length) or b"{}")
+            except Exception:
+                return self._send(400, {"error": "bad json"})
+            integrations = data.get("integrations") if isinstance(data.get("integrations"), dict) else {}
+            threading.Thread(target=run_apply_integrations, args=(slug, integrations), daemon=True).start()
+            return self._send(202, {"ok": True, "status": "applying-integrations", "slug": slug})
+
         # POST /reset-welcome/<slug>  {owner_pass, owner_email?, owner_name?, locale?}
         # — reset the admin password to a new value + re-mint the app token.
         if self.path.startswith("/reset-welcome/"):
@@ -518,13 +568,14 @@ class Handler(BaseHTTPRequestHandler):
         locale = str(data.get("locale", "ar")).strip().lower()
         platform_lang = str(data.get("platform_lang", "both")).strip().lower()
         owner_pass = str(data.get("owner_pass", "")).strip()
+        integrations = data.get("integrations") if isinstance(data.get("integrations"), dict) else {}
         if not SLUG_RE.match(slug):
             return self._send(400, {"error": "invalid slug"})
         if not name:
             return self._send(400, {"error": "name required"})
         threading.Thread(
             target=run_create,
-            args=(slug, name, brand, tier, settings, definition, owner_email, owner_name, locale, platform_lang, owner_pass),
+            args=(slug, name, brand, tier, settings, definition, owner_email, owner_name, locale, platform_lang, owner_pass, integrations),
             daemon=True,
         ).start()
         return self._send(202, {"ok": True, "status": "provisioning", "slug": slug})
