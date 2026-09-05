@@ -14,6 +14,7 @@ type License = {
     maxCourses: number
     maxTeachers: number
     storageGb: number
+    supportedApp: boolean
     videoSource: string
     limits: Record<string, number>
     features: Record<string, boolean>
@@ -26,7 +27,7 @@ const LIMIT_KEYS = ['quiz', 'video', 'pdf', 'default']
 
 const blank = (): License => ({
     key: '', name: '', active: true, price: 0, priceEgp: 0, durationDays: 365,
-    maxCourses: -1, maxTeachers: -1, storageGb: 1, videoSource: 'all', order: 0,
+    maxCourses: -1, maxTeachers: -1, storageGb: 1, supportedApp: true, videoSource: 'all', order: 0,
     limits: { quiz: -1, video: -1, pdf: -1, default: -1 },
     features: Object.fromEntries(FEATURE_KEYS.map((f) => [f, false])),
 })
@@ -168,10 +169,14 @@ const LicensesPage = () => {
                                 {VIDEO_SOURCES.map((v) => <option key={v} value={v}>{v}</option>)}
                             </select>
                         </div>
-                        <div className='flex items-end gap-4'>
+                        <div className='flex items-end gap-4 flex-wrap'>
                             <label className='flex items-center gap-2 text-sm font-semibold'>
                                 <input type='checkbox' checked={form.active} onChange={(e) => setForm((f) => f ? { ...f, active: e.target.checked } : f)} />
                                 Active (offered on the build form)
+                            </label>
+                            <label className='flex items-center gap-2 text-sm font-semibold' title='When off, academies on this licence are refused by the mobile app at onboarding (design_system site.supportedapp=false). Use for Demo.'>
+                                <input type='checkbox' checked={form.supportedApp} onChange={(e) => setForm((f) => f ? { ...f, supportedApp: e.target.checked } : f)} />
+                                App access
                             </label>
                         </div>
                     </div>
@@ -231,7 +236,7 @@ const LicensesPage = () => {
                             </div>
                             <ul className='text-xs text-gray-600 space-y-0.5'>
                                 <li>Courses: <b>{cap(l.maxCourses)}</b> · Teachers: <b>{cap(l.maxTeachers)}</b> · Storage: <b>{l.storageGb ?? 1} GB</b></li>
-                                <li>Video: <b>{l.videoSource}</b> · {l.durationDays === 0 ? 'no expiry' : `${l.durationDays}d`}</li>
+                                <li>Video: <b>{l.videoSource}</b> · {l.durationDays === 0 ? 'no expiry' : `${l.durationDays}d`} · App: <b>{l.supportedApp === false ? 'no' : 'yes'}</b></li>
                                 <li className='truncate'>Features: <b>{FEATURE_KEYS.filter((f) => l.features?.[f]).join(', ') || 'none'}</b></li>
                             </ul>
                             <div className='flex gap-2 pt-2 border-t'>
