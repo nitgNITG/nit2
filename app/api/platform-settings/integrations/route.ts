@@ -30,6 +30,7 @@ export async function PUT(req: NextRequest) {
         return NextResponse.json({ ok: true, updated });
     } catch (err) {
         console.error("[integrations] write failed", err);
-        return NextResponse.json({ error: "write failed" }, { status: 500 });
+        const message = err instanceof Error ? err.message : "write failed";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

@@ -9,7 +9,7 @@
 // Secrets are stored in PlatformSetting under an "int_" prefix. Secret fields are
 // encrypted; plain fields (base URLs, sandbox flag, public client id) are not.
 import prisma from "@/lib/prismaMysql";
-import { encryptSecret, decryptSecret } from "@/lib/secretBox";
+import { encryptSecret, decryptSecret, credentialSecretConfigured } from "@/lib/secretBox";
 
 type Field = { key: string; secret: boolean; label: string };
 
@@ -64,12 +64,33 @@ export async function loadIntegrationMasked(): Promise<Record<string, { set: boo
  *  string for a secret field means "leave unchanged" (so re-saving the form
  *  without re-typing a secret doesn't wipe it). Plain fields set to "" clear. */
 export async function saveIntegrationSettings(body: Record<string, unknown>): Promise<number> {
+    // Refuse to save any secret when encryption is unavailable — otherwise
+    // encryptSecret() returns null and the secret would be stored as an empty
+    // string, silently discarding what the admin typed (the bug this guards).
+    const hasSecretEdit = INTEGRATION_FIELDS.some(
+        (f) => f.secret && f.key in body && String(body[f.key] ?? "") !== "",
+    );
+    if (hasSecretEdit && !credentialSecretConfigured()) {
+        throw new Error("CREDENTIAL_SECRET is not set — cannot encrypt secrets. Set it in the app .env and restart.");
+    }
+
     const ops = [];
     for (const f of INTEGRATION_FIELDS) {
         if (!(f.key in body)) continue;
         const raw = String(body[f.key] ?? "");
         if (f.secret && raw === "") continue; // don't overwrite a stored secret with blank
-        const value = f.secret ? (encryptSecret(raw) ?? "") : raw;
+        let value: string;
+        if (f.secret) {
+            const enc = encryptSecret(raw);
+            if (enc === null) {
+                // Encryption unexpectedly failed even though a key is configured;
+                // never fall back to storing plaintext or an empty value.
+                throw new Error(`Could not encrypt ${f.key}`);
+            }
+            value = enc;
+        } else {
+            value = raw;
+        }
         const storeKey = STORE_PREFIX + f.key;
         ops.push(
             prisma.platformSetting.upsert({
