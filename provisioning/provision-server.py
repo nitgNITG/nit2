@@ -68,6 +68,9 @@ SETTING_KEYS = {
     # Published app + developer name (local_multitopics) — shown on the built-in
     # legal/delete-account pages. One app, so the same for every academy.
     "app_name",
+    # Max editable-image size (MB) → theme_nit/maximagemb (create.sh handles it
+    # specially, not via the local_multitopics loop). Enforced by the inline editor.
+    "max_image_mb",
 }
 
 MAX_BODY   = 12 * 1024 * 1024   # 12 MB total request (base64 inflates ~33%)

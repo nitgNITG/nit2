@@ -465,6 +465,13 @@ for _skey in google_client_id google_client_secret apple_client_id facebook_app_
     fi
 done
 
+# Max editable-image size (MB) → theme_nit/maximagemb, so the in-academy inline
+# editor enforces the same cap as the control plane's max_image_mb setting.
+if [[ -n "${SETTING_MAX_IMAGE_MB:-}" ]]; then
+    log "setting theme_nit/maximagemb=${SETTING_MAX_IMAGE_MB}"
+    docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=theme_nit --name=maximagemb --set="${SETTING_MAX_IMAGE_MB}" || echo "!! could not set maximagemb"
+fi
+
 # ── Google web login — only when BOTH an OAuth client id + secret are provided ─
 if [[ -n "${SETTING_GOOGLE_CLIENT_ID:-}" && -n "${SETTING_GOOGLE_CLIENT_SECRET:-}" && -f /root/apply_google_login.php ]]; then
     log "enabling Sign in with Google"
