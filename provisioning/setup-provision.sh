@@ -82,6 +82,8 @@ SMTP_MAXBULK="${SMTP_MAXBULK:-$(_keep SMTP_MAXBULK)}"
 SMTP_NOREPLY="${SMTP_NOREPLY:-$(_keep SMTP_NOREPLY)}"
 SMTP_SUPPORTEMAIL="${SMTP_SUPPORTEMAIL:-$(_keep SMTP_SUPPORTEMAIL)}"
 SAAS_QUOTA_ENFORCE="${SAAS_QUOTA_ENFORCE:-$(_keep SAAS_QUOTA_ENFORCE)}"
+TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-$(_keep TELEGRAM_BOT_TOKEN)}"
+TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-$(_keep TELEGRAM_CHAT_ID)}"
 
 echo "==> writing /var/www/html/saas/provision.env"
 cat > /var/www/html/saas/provision.env <<ENVEOF
@@ -99,6 +101,10 @@ SMTP_PASS=${SMTP_PASS:-}
 SMTP_MAXBULK=${SMTP_MAXBULK:-10}
 SMTP_NOREPLY=${SMTP_NOREPLY:-}
 SMTP_SUPPORTEMAIL=${SMTP_SUPPORTEMAIL:-}
+# Telegram bot for the rollout completion ping (bump-image.sh --all). Set the real
+# values here on server B; they persist across redeploys. Leave blank to disable.
+TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
 CREATE_SH=/root/create.sh
 DESTROY_SH=/root/destroy.sh
 APPLY_LICENSE_SH=/root/apply-license.sh

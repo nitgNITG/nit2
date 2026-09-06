@@ -79,6 +79,20 @@ if [[ "$DOALL" == "1" ]]; then
             fi
         done
         log "done: $ok updated, $fail failed"
+        # Completion ping — server-side truth that every container was recreated
+        # (the GitHub job only knows the request was accepted). Best-effort; needs
+        # TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID in the environment (provision.env).
+        if [[ -n "${TELEGRAM_BOT_TOKEN:-}" && -n "${TELEGRAM_CHAT_ID:-}" ]]; then
+            if [[ "$fail" -eq 0 ]]; then
+                TG_MSG="✅ SaaS rollout complete — ${ok} academy(ies) now on ${IMAGE}."
+            else
+                TG_MSG="⚠️ SaaS rollout finished with errors — ${ok} updated, ${fail} FAILED on ${IMAGE}. Check bump-image.log."
+            fi
+            curl -fsS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                --data-urlencode chat_id="${TELEGRAM_CHAT_ID}" \
+                --data-urlencode text="${TG_MSG}" >/dev/null 2>&1 \
+                || echo "!! telegram completion ping failed"
+        fi
     fi
 fi
 
