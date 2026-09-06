@@ -308,6 +308,9 @@ export async function provisionAcademy(input: ProvisionInput): Promise<Provision
 }
 
 /** Build a definition string from a License row (re-export for callers). */
-export function licenseToDefinition(lic: Parameters<typeof toLicenseDefinition>[0]): string {
-    return toLicenseDefinition(lic);
+export function licenseToDefinition(
+    lic: Parameters<typeof toLicenseDefinition>[0],
+    opts?: Parameters<typeof toLicenseDefinition>[1],
+): string {
+    return toLicenseDefinition(lic, opts);
 }

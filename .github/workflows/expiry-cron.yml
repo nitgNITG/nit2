@@ -1,0 +1,29 @@
+name: Academy Expiry Cron
+
+# Hits the nit2 expiry endpoint once a day. It (1) emails owners whose academy is
+# about to expire (7/3/1 days + on-expiry) and (2) suspends academies past the
+# grace period. Idempotent — safe to run repeatedly / trigger manually.
+on:
+  schedule:
+    - cron: '0 3 * * *'   # 03:00 UTC daily (05:00 Cairo)
+  workflow_dispatch: {}    # allow a manual run from the Actions tab
+
+jobs:
+  ping-expiry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: POST /api/cron/expiry
+        env:
+          BASE_URL: ${{ vars.NIT_BASE_URL }}        # e.g. https://dev.nitg-eg.com
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$BASE_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::error::NIT_BASE_URL (variable) and CRON_SECRET (secret) must be set on the repo."
+            exit 1
+          fi
+          echo "POST ${BASE_URL%/}/api/cron/expiry"
+          curl -fsS -X POST "${BASE_URL%/}/api/cron/expiry" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "Content-Type: application/json" | tee /tmp/out.json
+          echo

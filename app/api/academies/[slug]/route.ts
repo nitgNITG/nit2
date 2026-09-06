@@ -26,7 +26,13 @@ async function triggerApplyLicense(slug: string, tier: string): Promise<void> {
     if (!base || !secret) return;
     try {
         const lic = await prisma.license.findUnique({ where: { key: tier } });
-        const definition = lic ? toLicenseDefinition(lic) : "";
+        const definition = lic
+            ? toLicenseDefinition(lic, {
+                  validUntil: (lic.durationDays ?? 0) > 0
+                      ? new Date(Date.now() + (lic.durationDays ?? 0) * 86_400_000)
+                      : null,
+              })
+            : "";
         const url = new URL(base);
         url.pathname = `/apply-license/${slug}`;
         await fetch(url.toString(), {

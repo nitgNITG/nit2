@@ -47,7 +47,11 @@ export async function POST(req: NextRequest) {
     // ── Confirmed paid ──────────────────────────────────────────────────────
     const lic = await prisma.license.findFirst({ where: { key: payment.licenseKey } }).catch(() => null);
     const durationDays = lic?.durationDays ?? 0;
-    const definition = lic ? licenseToDefinition(lic) : "";
+    const definition = lic
+        ? licenseToDefinition(lic, {
+              validUntil: durationDays > 0 ? new Date(Date.now() + durationDays * 86_400_000) : null,
+          })
+        : "";
 
     // Mark paid first (idempotency guard) — a second webhook now short-circuits.
     await prisma.payment.update({

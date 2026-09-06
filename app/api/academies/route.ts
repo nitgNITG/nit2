@@ -119,7 +119,13 @@ export async function POST(req: NextRequest) {
             lic = await prisma.license.findFirst({ where: { active: true }, orderBy: [{ price: "asc" }, { order: "asc" }] });
         }
         const tier = lic?.key ?? "demo";
-        const definition = lic ? toLicenseDefinition(lic) : "";
+        const definition = lic
+            ? toLicenseDefinition(lic, {
+                  validUntil: (lic.durationDays ?? 0) > 0
+                      ? new Date(Date.now() + (lic.durationDays ?? 0) * 86_400_000)
+                      : null,
+              })
+            : "";
 
         // Free-academy quota — a global limit per user account (free_academy_limit).
         // Applies only to FREE licences (price 0), counting the client's academies
