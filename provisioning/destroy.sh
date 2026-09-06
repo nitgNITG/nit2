@@ -40,6 +40,22 @@ VHOST_SSL="/etc/apache2/sites-available/${SUBDOMAIN}-le-ssl.conf"
 
 log "destroying client=$SLUG  subdomain=$SUBDOMAIN  container=$CONTAINER  db=$DB_NAME"
 
+# ── 0. Free the academy's videos from the SHARED external providers ──────────
+# Runs INSIDE the still-running container (needs Moodle's DB + plugin creds), so
+# it MUST happen before the container is removed and the DB dropped. Best-effort:
+# a provider outage or missing creds never blocks teardown. Skip with
+# SAAS_SKIP_MEDIA_CLEANUP=1 (e.g. to tear down fast when the providers are down).
+CLEANUP_MEDIA_PHP="${CLEANUP_MEDIA_PHP:-/root/cleanup_external_media.php}"
+if [[ "${SAAS_SKIP_MEDIA_CLEANUP:-0}" != "1" ]] \
+        && [[ -f "$CLEANUP_MEDIA_PHP" ]] \
+        && docker ps --format '{{.Names}}' | grep -qx "$CONTAINER"; then
+    log "deleting external videos (VDOCipher/Vimeo) before teardown"
+    docker cp "$CLEANUP_MEDIA_PHP" "$CONTAINER:/var/www/moodledata/cleanup_external_media.php" >/dev/null 2>&1 \
+        && docker exec "$CONTAINER" php /var/www/moodledata/cleanup_external_media.php \
+        || echo "!! external media cleanup failed (continuing teardown)"
+    docker exec "$CONTAINER" rm -f /var/www/moodledata/cleanup_external_media.php >/dev/null 2>&1 || true
+fi
+
 # ── 1. Stop + remove the container ──────────────────────────────────────────
 if docker ps -a --format '{{.Names}}' | grep -qx "$CONTAINER"; then
     log "removing container $CONTAINER"

@@ -36,6 +36,7 @@ cp "$SCRIPT_DIR/apply-settings.sh" /root/apply-settings.sh
 cp "$SCRIPT_DIR/update-site.sh"    /root/update-site.sh
 cp "$SCRIPT_DIR/apply-suspend.sh"  /root/apply-suspend.sh
 cp "$SCRIPT_DIR/send_welcome.php"  /root/send_welcome.php
+cp "$SCRIPT_DIR/cleanup_external_media.php" /root/cleanup_external_media.php
 cp "$SCRIPT_DIR/ensure_owner_role.php" /root/ensure_owner_role.php
 cp "$SCRIPT_DIR/enable_payment_provider.php" /root/enable_payment_provider.php
 cp "$SCRIPT_DIR/apply_hero.php"    /root/apply_hero.php
