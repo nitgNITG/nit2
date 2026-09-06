@@ -260,7 +260,22 @@ export async function GET(req: NextRequest) {
             where: status ? { status } : undefined,
             orderBy: { createdAt: "desc" },
         });
-        return NextResponse.json({ academies });
+        // Attach owner name/email — ownerId is a plain-string join, not a relation.
+        const ownerIds = Array.from(
+            new Set(academies.map((a) => a.ownerId).filter(Boolean) as string[]),
+        );
+        const owners = ownerIds.length
+            ? await prisma.user.findMany({
+                  where: { id: { in: ownerIds } },
+                  select: { id: true, name: true, email: true },
+              })
+            : [];
+        const ownerById = new Map(owners.map((u) => [u.id, u]));
+        const withOwners = academies.map((a) => ({
+            ...a,
+            owner: a.ownerId ? ownerById.get(a.ownerId) ?? null : null,
+        }));
+        return NextResponse.json({ academies: withOwners });
     } catch (err) {
         console.error("[academies] list failed", err);
         return NextResponse.json({ academies: [], error: "list failed" }, { status: 200 });

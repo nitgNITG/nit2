@@ -11,12 +11,50 @@ type Academy = {
   slug: string;
   status: string;
   tier: string;
+  validUntil?: string | null;
+  subscribedAt?: string | null;
+  createdAt?: string | null;
+  owner?: { id: string; name: string | null; email: string } | null;
 };
 type License = {
   key: string;
   name: string;
   active: boolean;
   storageGb?: number;
+};
+
+// Display-only mirror of LICENSE_GRACE_DAYS (server default) so the badge matches
+// when the expiry cron actually suspends.
+const GRACE_DAYS = 3;
+
+const fmtDate = (d?: string | null) =>
+  d
+    ? new Date(d).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : "—";
+
+// Expiry badge from validUntil + the academy's own status.
+const expiryBadge = (
+  validUntil?: string | null,
+  status?: string,
+): { text: string; cls: string } => {
+  if (status === "suspended")
+    return { text: "Suspended", cls: "bg-red-50 text-red-600" };
+  if (!validUntil) return { text: "No expiry", cls: "bg-gray-100 text-gray-500" };
+  const days = Math.ceil((new Date(validUntil).getTime() - Date.now()) / 86_400_000);
+  if (days < -GRACE_DAYS)
+    return { text: "Expired", cls: "bg-red-50 text-red-600" };
+  if (days < 0)
+    return {
+      text: `Expired · ${GRACE_DAYS + days}d grace`,
+      cls: "bg-amber-50 text-amber-700",
+    };
+  if (days <= 7)
+    return { text: `Expiring · ${days}d`, cls: "bg-amber-50 text-amber-700" };
+  return { text: "Active", cls: "bg-emerald-50 text-emerald-700" };
 };
 
 // Per-academy moodledata usage bar. `used` is bytes from server B; `cap` is the
@@ -381,9 +419,12 @@ const AcademiesPage = () => {
           <thead className="bg-gray-50 text-left text-gray-500">
             <tr>
               <th className="px-4 py-3 font-semibold">Academy</th>
+              <th className="px-4 py-3 font-semibold">Owner</th>
               <th className="px-4 py-3 font-semibold">Status</th>
               <th className="px-4 py-3 font-semibold">Storage</th>
               <th className="px-4 py-3 font-semibold">Licence</th>
+              <th className="px-4 py-3 font-semibold">Valid until</th>
+              <th className="px-4 py-3 font-semibold">Subscribed</th>
               <th className="px-4 py-3 font-semibold">Change licence</th>
               <th className="px-4 py-3 font-semibold">Manage</th>
             </tr>
@@ -392,7 +433,7 @@ const AcademiesPage = () => {
             {loading ? (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={9}
                   className="px-4 py-10 text-center text-gray-400"
                 >
                   Loading…
@@ -401,7 +442,7 @@ const AcademiesPage = () => {
             ) : academies.length === 0 ? (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={9}
                   className="px-4 py-10 text-center text-gray-400"
                 >
                   No academies yet.
@@ -415,6 +456,20 @@ const AcademiesPage = () => {
                     <div className="text-xs text-gray-400 font-mono">
                       {a.slug}
                     </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {a.owner ? (
+                      <div className="min-w-[140px]">
+                        <div className="text-gray-800">
+                          {a.owner.name || "—"}
+                        </div>
+                        <div className="text-xs text-gray-400 font-mono truncate max-w-[200px]">
+                          {a.owner.email}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-300">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span
@@ -435,6 +490,26 @@ const AcademiesPage = () => {
                   </td>
                   <td className="px-4 py-3 font-semibold text-[#0B2923]">
                     {licenseName(a.tier)}
+                  </td>
+                  <td className="px-4 py-3">
+                    {(() => {
+                      const b = expiryBadge(a.validUntil, a.status);
+                      return (
+                        <div className="min-w-[130px]">
+                          <span
+                            className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${b.cls}`}
+                          >
+                            {b.text}
+                          </span>
+                          <div className="text-xs text-gray-400 mt-0.5">
+                            {fmtDate(a.validUntil)}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-gray-500">
+                    {fmtDate(a.subscribedAt ?? a.createdAt)}
                   </td>
                   <td className="px-4 py-3">
                     <select
