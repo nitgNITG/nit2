@@ -57,6 +57,25 @@ const expiryBadge = (
   return { text: "Active", cls: "bg-emerald-50 text-emerald-700" };
 };
 
+// Inline "more" icon (three dots) — avoids adding a lucide-react dependency.
+const MoreHorizontalIcon = () => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <circle cx="12" cy="12" r="1" />
+    <circle cx="19" cy="12" r="1" />
+    <circle cx="5" cy="12" r="1" />
+  </svg>
+);
+
 // Per-academy moodledata usage bar. `used` is bytes from server B; `cap` is the
 // GB quota from the academy's licence (falls back to the tier default inside
 // storageInfo). Colours: green ok, amber ≥80%, red over quota.
@@ -133,6 +152,8 @@ const AcademiesPage = () => {
   } | null>(null);
   const [credLoading, setCredLoading] = useState(false);
   const [resetting, setResetting] = useState(false);
+  // Open row-actions menu: which academy + where to render the fixed dropdown.
+  const [menu, setMenu] = useState<{ slug: string; top: number; left: number } | null>(null);
 
   const licenseName = (key: string) =>
     licenses.find((l) => l.key === key)?.name ?? key;
@@ -530,68 +551,117 @@ const AcademiesPage = () => {
                     </select>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => updateImage(a.slug)}
-                        disabled={
-                          busySlug === a.slug ||
-                          !["live", "suspended"].includes(a.status)
-                        }
-                        title="Update this academy onto the latest baked image (theme/core/plugin changes + token/settings refresh) — data is preserved"
-                        className="rounded-lg border border-indigo-300 px-2.5 py-1.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 disabled:opacity-40"
-                      >
-                        {busySlug === a.slug ? "…" : "⟳ Update"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setBrandingSlug(a.slug)}
-                        disabled={!["live", "suspended"].includes(a.status)}
-                        title="Re-apply branding (logo, colours, hero, about, gallery, contact, login, footer) to this live academy"
-                        className="rounded-lg border border-[#268F79]/50 px-2.5 py-1.5 text-xs font-semibold text-[#268F79] hover:bg-[#268F79]/5 disabled:opacity-40"
-                      >
-                        🎨 Branding
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => copyRedirect(a.slug)}
-                        title={`Copy this academy's Google OAuth redirect URI:\n${redirectUri(a.slug)}\nThen paste it into the Google Cloud OAuth client (nitteam2024@gmail.com).`}
-                        className="rounded-lg border border-blue-300 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50"
-                      >
-                        🔗 OAuth URL
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openCreds(a.slug)}
-                        disabled={!["live", "suspended"].includes(a.status)}
-                        title="View the admin login for this academy (recover a lost welcome email) or reset its password"
-                        className="rounded-lg border border-purple-300 px-2.5 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-50 disabled:opacity-40"
-                      >
-                        🔑 Login
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleSuspend(a.slug, a.status)}
-                        disabled={busySlug === a.slug}
-                        title={
-                          a.status === "suspended"
-                            ? "Resume this academy"
-                            : "Suspend (soft-lock) this academy"
-                        }
-                        className="rounded-lg border border-amber-300 px-2.5 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50"
-                      >
-                        {a.status === "suspended" ? "▶ Resume" : "⏸ Suspend"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeAcademy(a.slug)}
-                        disabled={busySlug === a.slug}
-                        title="Delete this academy permanently"
-                        className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 disabled:opacity-50"
-                      >
-                        🗑 Delete
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        const r = e.currentTarget.getBoundingClientRect();
+                        setMenu(
+                          menu?.slug === a.slug
+                            ? null
+                            : {
+                                slug: a.slug,
+                                top: r.bottom + 4,
+                                left: Math.max(8, r.right - 200),
+                              },
+                        );
+                      }}
+                      aria-haspopup="menu"
+                      aria-expanded={menu?.slug === a.slug}
+                      title="Actions"
+                      className="rounded-lg border border-gray-300 px-2 py-1.5 text-gray-600 hover:bg-gray-50"
+                    >
+                      <MoreHorizontalIcon />
+                    </button>
+                    {menu?.slug === a.slug && (
+                      <>
+                        {/* Backdrop closes the menu on any outside click. */}
+                        <div
+                          className="fixed inset-0 z-[90]"
+                          onClick={() => setMenu(null)}
+                        />
+                        <div
+                          className="fixed z-[100] w-52 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 text-sm shadow-xl"
+                          style={{ top: menu.top, left: menu.left }}
+                          role="menu"
+                        >
+                          <button
+                            type="button"
+                            role="menuitem"
+                            disabled={
+                              busySlug === a.slug ||
+                              !["live", "suspended"].includes(a.status)
+                            }
+                            onClick={() => {
+                              setMenu(null);
+                              updateImage(a.slug);
+                            }}
+                            className="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+                          >
+                            {busySlug === a.slug ? "⟳ Updating…" : "⟳ Update image"}
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            disabled={!["live", "suspended"].includes(a.status)}
+                            onClick={() => {
+                              setMenu(null);
+                              setBrandingSlug(a.slug);
+                            }}
+                            className="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+                          >
+                            🎨 Branding
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setMenu(null);
+                              copyRedirect(a.slug);
+                            }}
+                            className="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                          >
+                            🔗 Copy OAuth URL
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            disabled={!["live", "suspended"].includes(a.status)}
+                            onClick={() => {
+                              setMenu(null);
+                              openCreds(a.slug);
+                            }}
+                            className="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+                          >
+                            🔑 Login credentials
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            disabled={busySlug === a.slug}
+                            onClick={() => {
+                              setMenu(null);
+                              toggleSuspend(a.slug, a.status);
+                            }}
+                            className="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+                          >
+                            {a.status === "suspended" ? "▶ Resume" : "⏸ Suspend"}
+                          </button>
+                          <div className="my-1 border-t border-gray-100" />
+                          <button
+                            type="button"
+                            role="menuitem"
+                            disabled={busySlug === a.slug}
+                            onClick={() => {
+                              setMenu(null);
+                              removeAcademy(a.slug);
+                            }}
+                            className="block w-full px-3 py-2 text-left text-red-600 hover:bg-red-50 disabled:opacity-40"
+                          >
+                            🗑 Delete
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))
