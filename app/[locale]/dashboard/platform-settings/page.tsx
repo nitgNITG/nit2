@@ -47,6 +47,13 @@ const GROUPS: { title: string; note: string; fields: FieldDef[] }[] = [
             { key: 'faq_url', label: 'FAQ URL', placeholder: 'https://nitg-eg.com/faq?embedded=1' },
         ],
     },
+    {
+        title: 'Lifecycle',
+        note: 'Automatic cleanup of expired academies. Deletion only ever touches academies that are already suspended (expired past the grace period) — a renewed academy is never affected.',
+        fields: [
+            { key: 'auto_delete_days', label: 'Auto-delete after (days suspended)', hint: 'Days a suspended (expired) academy is kept before it is PERMANENTLY deleted — container, database, files and GitHub branch. 0 or blank = never auto-delete (keep forever until you delete it by hand).', placeholder: '0 = never' },
+        ],
+    },
 ]
 
 const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key))

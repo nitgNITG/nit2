@@ -77,6 +77,7 @@ export async function triggerProvision(
  *  needs no mail transport of its own. */
 export async function triggerExpiryReminder(
     slug: string, daysLeft: number, renewUrl: string,
+    opts?: { expiryDate?: string; sendEmail?: boolean },
 ): Promise<void> {
     const base = process.env.PROVISION_URL;
     const secret = process.env.PROVISION_SECRET;
@@ -87,7 +88,15 @@ export async function triggerExpiryReminder(
         await fetch(url.toString(), {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-Provision-Secret": secret },
-            body: JSON.stringify({ days_left: daysLeft, renew_url: renewUrl }),
+            // expiry_date keeps the academy's local_license/expirydate in sync with
+            // nit2's validUntil (so the in-academy banner always matches); send_email
+            // gates the actual reminder email (false = sync only, no email sent).
+            body: JSON.stringify({
+                days_left: daysLeft,
+                renew_url: renewUrl,
+                expiry_date: opts?.expiryDate ?? "",
+                send_email: opts?.sendEmail !== false,
+            }),
         });
     } catch (e) {
         console.error("[provision] expiry-reminder failed", slug, e);
@@ -198,6 +207,52 @@ export async function fetchAcademyUsage(): Promise<
     } catch (e) {
         console.error("[provision] usage fetch failed", e);
         return null;
+    }
+}
+
+/** Tell server B to tear the live site down (container + db + files + vhost + cert).
+ * Best-effort, fire-and-forget. */
+export async function triggerDeprovision(slug: string): Promise<void> {
+    const base = process.env.PROVISION_URL;
+    const secret = process.env.PROVISION_SECRET;
+    if (!base || !secret) return;
+    try {
+        const url = new URL(base);
+        url.pathname = `/deprovision/${slug}`;
+        await fetch(url.toString(), { method: "DELETE", headers: { "X-Provision-Secret": secret } });
+    } catch (e) {
+        console.error("[provision] deprovision trigger failed", slug, e);
+    }
+}
+
+/** Full teardown used by the expiry cron's auto-delete: tear down the live site,
+ * delete the client GitHub branch (so the slug frees up), and remove the
+ * control-plane row. Best-effort per step; returns whether the row was removed. */
+export async function deprovisionAndDeleteAcademy(slug: string): Promise<boolean> {
+    let branch = "";
+    try {
+        const a = await prisma.academy.findUnique({ where: { slug }, select: { branch: true } });
+        branch = a?.branch ?? "";
+    } catch { /* fall through — still attempt teardown */ }
+
+    await triggerDeprovision(slug);
+
+    const token = process.env.GITHUB_TOKEN;
+    if (token && branch) {
+        try {
+            await fetch(`${GH_API}/repos/${OWNER}/${REPO}/git/refs/heads/${branch}`, {
+                method: "DELETE", headers: ghHeaders(token),
+            });
+        } catch (e) {
+            console.error("[provision] branch delete failed", slug, e);
+        }
+    }
+    try {
+        await prisma.academy.delete({ where: { slug } });
+        return true;
+    } catch (e) {
+        console.error("[provision] row delete failed", slug, e);
+        return false;
     }
 }
 

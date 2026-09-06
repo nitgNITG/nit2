@@ -22,4 +22,7 @@ export const PLATFORM_KEYS = [
     'faq_url',
     // Published app + developer name (shown on the built-in legal/delete pages).
     'app_name',
+    // Lifecycle: days AFTER an academy is suspended (expired) before it is
+    // permanently auto-deleted by the expiry cron. 0 (or blank) = never.
+    'auto_delete_days',
 ] as const

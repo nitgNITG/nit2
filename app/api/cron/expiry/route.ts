@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prismaMysql";
 import { Prisma } from "prismamysql";
-import { triggerSuspend, triggerExpiryReminder } from "@/lib/provisionAcademy";
+import { triggerSuspend, triggerExpiryReminder, deprovisionAndDeleteAcademy } from "@/lib/provisionAcademy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -81,6 +81,36 @@ export async function POST(req: NextRequest) {
         }
     }
 
+    // 1c) Auto-delete: PERMANENTLY remove academies that have been suspended
+    // (expired past grace) for longer than the platform's `auto_delete_days`.
+    // Opt-in and conservative: only status='suspended' rows are eligible, so an
+    // academy must have already been expired + suspended by step (1); a renewed
+    // one is 'live' again and never matches. 0 / blank = never auto-delete.
+    let autoDeleteDays = 0;
+    try {
+        const row = await prisma.platformSetting.findUnique({ where: { key: "auto_delete_days" } });
+        autoDeleteDays = Math.max(0, parseInt(row?.value ?? "0", 10) || 0);
+    } catch (e) {
+        console.error("[cron/expiry] auto_delete_days read failed", e);
+    }
+    const deleted: string[] = [];
+    if (autoDeleteDays > 0) {
+        const delCutoff = new Date(now - autoDeleteDays * 86_400_000);
+        const toDelete = await prisma.academy
+            .findMany({
+                where: { status: "suspended", validUntil: { not: null, lt: delCutoff } },
+                select: { slug: true },
+            })
+            .catch((e) => { console.error("[cron/expiry] delete query failed", e); return []; });
+        for (const a of toDelete) {
+            try {
+                if (await deprovisionAndDeleteAcademy(a.slug)) deleted.push(a.slug);
+            } catch (e) {
+                console.error("[cron/expiry] auto-delete failed", a.slug, e);
+            }
+        }
+    }
+
     // 2) Abandoned checkouts → mark expired so they stop showing as pending.
     const staleBefore = new Date(now - 60 * 60_000);
     let expiredPayments = 0;
@@ -94,5 +124,5 @@ export async function POST(req: NextRequest) {
         console.error("[cron/expiry] payment sweep failed", e);
     }
 
-    return NextResponse.json({ ok: true, graceDays, suspended, reminded, expiredPayments });
+    return NextResponse.json({ ok: true, graceDays, suspended, reminded, deleted, autoDeleteDays, expiredPayments });
 }
