@@ -35,6 +35,18 @@ _set(){ # $1=component $2=name $3=value
         && log "set $1/$2" || echo "!! could not set $1/$2 (plugin missing?)"
 }
 
+# Enable/disable a local_payments provider ROW (separate from its credentials —
+# checkout only considers enabled providers). Soft-fails if local_payments or the
+# provider isn't there. Requires /root/enable_payment_provider.php on the server.
+_set_provider(){ # $1=provider name $2=1|0
+    [[ -f /root/enable_payment_provider.php ]] || { echo "!! enable_payment_provider.php not installed — cannot toggle $1"; return 0; }
+    docker cp /root/enable_payment_provider.php "$CONTAINER:/var/www/moodledata/enable_payment_provider.php" >/dev/null 2>&1
+    docker exec -e PP_PROVIDER="$1" -e PP_ENABLED="$2" \
+        "$CONTAINER" php /var/www/moodledata/enable_payment_provider.php >/dev/null 2>&1 \
+        && log "provider $1 enabled=$2" || echo "!! could not set provider $1 enabled=$2"
+    docker exec "$CONTAINER" rm -f /var/www/moodledata/enable_payment_provider.php >/dev/null 2>&1 || true
+}
+
 # ── Kashier (payments) ───────────────────────────────────────────────────────
 if [[ "${KASHIER_ENABLED:-0}" == "1" ]]; then
     _set paymentprovider_kashier merchant_id  "${KASHIER_MERCHANT_ID:-}"
@@ -43,6 +55,11 @@ if [[ "${KASHIER_ENABLED:-0}" == "1" ]]; then
     _set paymentprovider_kashier sandbox_mode "${KASHIER_SANDBOX:-}"
     _set paymentprovider_kashier base_url     "${KASHIER_BASE_URL:-}"
 fi
+# Track the Kashier PROVIDER's enabled state to the licence, independent of the
+# creds above: on when the package includes Kashier, off otherwise (the licence,
+# not a manual toggle, governs). KASHIER_ENABLED is absent for non-Kashier
+# packages, so it defaults to 0 = disabled — that's what disables it on downgrade.
+_set_provider kashier "${KASHIER_ENABLED:-0}"
 
 # ── VDOCipher (video DRM) ────────────────────────────────────────────────────
 _set local_vdocipher apisecret "${VDOCIPHER_APISECRET:-}"
