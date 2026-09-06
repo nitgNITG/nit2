@@ -54,6 +54,13 @@ const GROUPS: { title: string; note: string; fields: FieldDef[] }[] = [
             { key: 'auto_delete_days', label: 'Auto-delete after (days suspended)', hint: 'Days a suspended (expired) academy is kept before it is PERMANENTLY deleted — container, database, files and GitHub branch. 0 or blank = never auto-delete (keep forever until you delete it by hand).', placeholder: '0 = never' },
         ],
     },
+    {
+        title: 'Uploads',
+        note: 'Size limit for editable images across the build form and the in-academy inline editor.',
+        fields: [
+            { key: 'max_image_mb', label: 'Max image size (MB)', hint: 'Applies to logo, hero, about, gallery and login images. Blank = 1.5. Keep it modest — larger images slow every page that shows them.', placeholder: '1.5' },
+        ],
+    },
 ]
 
 const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key))

@@ -25,4 +25,7 @@ export const PLATFORM_KEYS = [
     // Lifecycle: days AFTER an academy is suspended (expired) before it is
     // permanently auto-deleted by the expiry cron. 0 (or blank) = never.
     'auto_delete_days',
+    // Max upload size (MB) for editable images (logo/hero/about/gallery/login),
+    // in the build form and the in-academy inline editor. Blank = 1.5.
+    'max_image_mb',
 ] as const

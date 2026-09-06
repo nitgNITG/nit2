@@ -71,7 +71,9 @@ SETTING_KEYS = {
 }
 
 MAX_BODY   = 12 * 1024 * 1024   # 12 MB total request (base64 inflates ~33%)
-MAX_IMAGE  = 3 * 1024 * 1024    # 3 MB per decoded image
+# Per-decoded-image cap. Must be >= the platform's max_image_mb (nit2) or a
+# larger allowed upload would be rejected here. Configurable via provision.env.
+MAX_IMAGE  = int(os.environ.get("MAX_IMAGE_MB", "5") or "5") * 1024 * 1024
 # extension -> magic-byte prefixes that must match (SVG is validated as text).
 IMAGE_MAGIC = {
     "png":  [b"\x89PNG\r\n\x1a\n"],

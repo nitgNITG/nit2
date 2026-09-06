@@ -110,6 +110,9 @@ APPLY_INTEGRATIONS_SH=/root/apply-integrations.sh
 PROVISION_LOG_DIR=/var/www/html/saas/logs
 PROVISION_STAGING_DIR=/var/www/html/saas/staging
 PROVISION_PORT=9099
+# Per-image upload cap enforced by provision-server.py. Keep >= nit2's
+# max_image_mb platform setting, or a larger allowed image is rejected here.
+MAX_IMAGE_MB=${MAX_IMAGE_MB:-5}
 # Per-academy storage quota. Report-only until you set enforce=1; then an academy
 # over its tier's cap is auto-suspended (reversible). Tier caps in GB; the script
 # defaults (demo 1 / basic 5 / standard 20 / pro 100) apply if these are unset.

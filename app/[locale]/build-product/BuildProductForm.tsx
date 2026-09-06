@@ -103,6 +103,9 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
 
     const [done, setDone] = useState<SuccessInfo | null>(null)
     const [licenses, setLicenses] = useState<License[]>([])
+    // Editable-image size cap (bytes), from the platform setting max_image_mb.
+    const [imgMax, setImgMax] = useState(LOGO_MAX)
+    const imgMaxLabel = `${(imgMax / 1_048_576).toFixed(1)} MB`
     const [logo, setLogo] = useState<File | null>(null)
     const [logocompact, setLogocompact] = useState<File | null>(null)
     const [favicon, setFavicon] = useState<File | null>(null)
@@ -175,6 +178,17 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
             })
             .catch(() => { })
         // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
+    // Load the configurable image-size cap (falls back to the compiled default).
+    useEffect(() => {
+        fetch('/api/public-settings')
+            .then((r) => (r.ok ? r.json() : null))
+            .then((d) => {
+                const mb = Number(d?.maxImageMb)
+                if (Number.isFinite(mb) && mb > 0) setImgMax(mb * 1_048_576)
+            })
+            .catch(() => { })
     }, [])
 
     // Validate an image pick against the type/size caps; toast + reject on fail.
@@ -555,7 +569,7 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                             id='logo'
                             type='file'
                             accept='image/png,image/svg+xml,image/jpeg,image/webp'
-                            onChange={pickImage(setLogo, LOGO_MAX, LOGO_TYPES, '1.5 MB')}
+                            onChange={pickImage(setLogo, imgMax, LOGO_TYPES, imgMaxLabel)}
                             className='block w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-[#1E7D67]/10 file:px-4 file:py-2.5 file:font-semibold file:text-[#1E7D67] hover:file:bg-[#1E7D67]/15'
                         />
                         <p className='mt-1.5 text-xs text-gray-500'>{t('logoHint')}</p>
@@ -570,7 +584,7 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                             id='logocompact'
                             type='file'
                             accept='image/png,image/svg+xml,image/jpeg,image/webp'
-                            onChange={pickImage(setLogocompact, LOGO_MAX, LOGO_TYPES, '1.5 MB')}
+                            onChange={pickImage(setLogocompact, imgMax, LOGO_TYPES, imgMaxLabel)}
                             className='block w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-[#1E7D67]/10 file:px-4 file:py-2.5 file:font-semibold file:text-[#1E7D67] hover:file:bg-[#1E7D67]/15'
                         />
                         <p className='mt-1.5 text-xs text-gray-500'>{t('logocompactHint')}</p>
@@ -647,7 +661,7 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                         id='hero'
                         type='file'
                         accept='image/png,image/jpeg,image/webp'
-                        onChange={pickImage(setHero, 1.5 * 1024 * 1024, ['image/png', 'image/jpeg', 'image/webp'], '1.5 MB')}
+                        onChange={pickImage(setHero, imgMax, ['image/png', 'image/jpeg', 'image/webp'], imgMaxLabel)}
                         className='block w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-[#1E7D67]/10 file:px-4 file:py-2.5 file:font-semibold file:text-[#1E7D67] hover:file:bg-[#1E7D67]/15'
                     />
                     {hero && <p className='mt-1 truncate text-xs text-[#1E7D67]' dir='ltr'>{hero.name}</p>}
@@ -713,7 +727,7 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                             id='about'
                             type='file'
                             accept='image/png,image/jpeg,image/webp'
-                            onChange={pickImage(setAbout, 1.5 * 1024 * 1024, ['image/png', 'image/jpeg', 'image/webp'], '1.5 MB')}
+                            onChange={pickImage(setAbout, imgMax, ['image/png', 'image/jpeg', 'image/webp'], imgMaxLabel)}
                             className='block w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-[#1E7D67]/10 file:px-4 file:py-2.5 file:font-semibold file:text-[#1E7D67] hover:file:bg-[#1E7D67]/15'
                         />
                         {about && <p className='mt-1 truncate text-xs text-[#1E7D67]' dir='ltr'>{about.name}</p>}
@@ -730,8 +744,8 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                             accept='image/png,image/jpeg,image/webp'
                             onChange={(e) => {
                                 const files = Array.from(e.target.files ?? []).slice(0, 8)
-                                const ok = files.filter((f) => f.size <= 1.5 * 1024 * 1024 && ['image/png', 'image/jpeg', 'image/webp'].includes(f.type))
-                                if (ok.length < files.length) toast.error(t('imageTooLarge', { max: '1.5 MB' }))
+                                const ok = files.filter((f) => f.size <= imgMax && ['image/png', 'image/jpeg', 'image/webp'].includes(f.type))
+                                if (ok.length < files.length) toast.error(t('imageTooLarge', { max: imgMaxLabel }))
                                 setGallery(ok)
                             }}
                             className='block w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-[#1E7D67]/10 file:px-4 file:py-2.5 file:font-semibold file:text-[#1E7D67] hover:file:bg-[#1E7D67]/15'
@@ -750,7 +764,7 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                         id='login'
                         type='file'
                         accept='image/png,image/jpeg,image/webp'
-                        onChange={pickImage(setLogin, 1.5 * 1024 * 1024, ['image/png', 'image/jpeg', 'image/webp'], '1.5 MB')}
+                        onChange={pickImage(setLogin, imgMax, ['image/png', 'image/jpeg', 'image/webp'], imgMaxLabel)}
                         className='block w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-[#1E7D67]/10 file:px-4 file:py-2.5 file:font-semibold file:text-[#1E7D67] hover:file:bg-[#1E7D67]/15'
                     />
                     <p className='mt-1.5 text-xs text-gray-500'>
