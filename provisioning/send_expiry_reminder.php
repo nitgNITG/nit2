@@ -27,6 +27,18 @@ global $DB, $CFG;
 $daysleft = (int) getenv('DAYS_LEFT');
 $renewurl = trim((string) getenv('RENEW_URL')) ?: $CFG->wwwroot;
 $owneruser = getenv('OWNER_USER') ?: 'owner';
+$expirydate = trim((string) getenv('EXPIRY_DATE'));   // YYYY-MM-DD (sync target)
+$sendemail  = getenv('SEND_EMAIL') !== '0';           // '0' = sync only, no email
+
+// Keep the academy's local_license/expirydate in sync with nit2's validUntil so
+// the in-academy banner always matches. Runs every cron tick, even without email.
+if ($expirydate !== '') {
+    set_config('expirydate', $expirydate, 'local_license');
+    echo "expirydate synced -> {$expirydate}\n";
+}
+if (!$sendemail) {
+    exit(0);   // sync-only run — no reminder email this time.
+}
 
 // Recipient: the owner account, else the built-in admin.
 $to = $DB->get_record('user', ['username' => $owneruser, 'deleted' => 0]);

@@ -369,13 +369,18 @@ def run_apply_suspend(slug: str, state: str) -> None:
         )
 
 
-def run_expiry_reminder(slug: str, days_left: int, renew_url: str = "") -> None:
-    """Run send-expiry-reminder.sh detached — email the owner (via the academy's
-    Moodle mail) that the subscription is about to expire / has expired."""
+def run_expiry_reminder(slug: str, days_left: int, renew_url: str = "",
+                        expiry_date: str = "", send_email: bool = True) -> None:
+    """Run send-expiry-reminder.sh detached — sync the academy's expirydate to
+    validUntil (so the in-academy banner matches) and, when send_email is set,
+    email the owner (via the academy's Moodle mail) about the upcoming expiry."""
     env = {**os.environ}
     env["DAYS_LEFT"] = str(int(days_left))
     if isinstance(renew_url, str) and renew_url.strip():
         env["RENEW_URL"] = renew_url.strip()
+    if isinstance(expiry_date, str) and expiry_date.strip():
+        env["EXPIRY_DATE"] = expiry_date.strip()
+    env["SEND_EMAIL"] = "1" if send_email else "0"
     logpath = os.path.join(LOG_DIR, f"{slug}.log")
     with open(logpath, "ab", buffering=0) as log:
         log.write(f"\n===== expiry-reminder {slug} (days_left={days_left}) =====\n".encode())
@@ -548,7 +553,11 @@ class Handler(BaseHTTPRequestHandler):
             except Exception:
                 days_left = 0
             renew_url = str(data.get("renew_url", ""))
-            threading.Thread(target=run_expiry_reminder, args=(slug, days_left, renew_url), daemon=True).start()
+            expiry_date = str(data.get("expiry_date", ""))
+            send_email = bool(data.get("send_email", True))
+            threading.Thread(target=run_expiry_reminder,
+                             args=(slug, days_left, renew_url, expiry_date, send_email),
+                             daemon=True).start()
             return self._send(202, {"ok": True, "status": "sending-expiry-reminder", "slug": slug})
 
         # POST /reset-welcome/<slug>  {owner_pass, owner_email?, owner_name?, locale?}

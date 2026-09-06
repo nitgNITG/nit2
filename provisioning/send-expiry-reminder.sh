@@ -25,10 +25,11 @@ docker ps --format '{{.Names}}' | grep -qx "$CONTAINER" || die "container $CONTA
 
 [[ -f /root/send_expiry_reminder.php ]] || die "/root/send_expiry_reminder.php not installed"
 
-log "emailing expiry reminder for $SLUG (days_left=${DAYS_LEFT:-?})"
+log "expiry reminder for $SLUG (days_left=${DAYS_LEFT:-?}, expiry=${EXPIRY_DATE:-}, email=${SEND_EMAIL:-1})"
 docker cp /root/send_expiry_reminder.php "$CONTAINER:/var/www/moodledata/send_expiry_reminder.php"
 docker exec \
     -e DAYS_LEFT="${DAYS_LEFT:-0}" -e RENEW_URL="${RENEW_URL:-}" \
-    "$CONTAINER" php /var/www/moodledata/send_expiry_reminder.php || echo "!! reminder email failed"
+    -e EXPIRY_DATE="${EXPIRY_DATE:-}" -e SEND_EMAIL="${SEND_EMAIL:-1}" \
+    "$CONTAINER" php /var/www/moodledata/send_expiry_reminder.php || echo "!! reminder step failed"
 docker exec "$CONTAINER" rm -f /var/www/moodledata/send_expiry_reminder.php || true
 log "done — expiry reminder for $SLUG"

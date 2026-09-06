@@ -65,17 +65,24 @@ export async function POST(req: NextRequest) {
             a.expiryRemindersSent && typeof a.expiryRemindersSent === "object"
                 ? { ...(a.expiryRemindersSent as Record<string, unknown>) }
                 : {};
-        // Largest unsent threshold that the academy has reached.
+        // Largest unsent threshold reached (undefined = no email due this run).
         const stage = REMIND_DAYS.find((t) => daysLeft <= t && !sent[`d${t}`]);
-        if (stage === undefined) continue;
+        const sendEmail = stage !== undefined;
+        // Keep the academy's local_license/expirydate in sync with validUntil (as
+        // YYYY-MM-DD, UTC) every run, so the in-academy banner always matches —
+        // even when no reminder email is due.
+        const d = a.validUntil;
+        const expiryDate = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
         try {
-            await triggerExpiryReminder(a.slug, daysLeft, renewUrl);
-            sent[`d${stage}`] = Date.now();
-            await prisma.academy.update({
-                where: { slug: a.slug },
-                data: { expiryRemindersSent: sent as Prisma.InputJsonValue },
-            });
-            reminded.push(a.slug);
+            await triggerExpiryReminder(a.slug, daysLeft, renewUrl, { expiryDate, sendEmail });
+            if (sendEmail) {
+                sent[`d${stage}`] = Date.now();
+                await prisma.academy.update({
+                    where: { slug: a.slug },
+                    data: { expiryRemindersSent: sent as Prisma.InputJsonValue },
+                });
+                reminded.push(a.slug);
+            }
         } catch (e) {
             console.error("[cron/expiry] reminder failed", a.slug, e);
         }
