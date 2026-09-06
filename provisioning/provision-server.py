@@ -30,6 +30,9 @@ UPDATE_IMAGE_SH = os.environ.get("UPDATE_IMAGE_SH", "/root/update-image.sh")
 RESET_WELCOME_SH = os.environ.get("RESET_WELCOME_SH", "/root/reset-welcome.sh")
 APPLY_INTEGRATIONS_SH = os.environ.get("APPLY_INTEGRATIONS_SH", "/root/apply-integrations.sh")
 SEND_EXPIRY_REMINDER_SH = os.environ.get("SEND_EXPIRY_REMINDER_SH", "/root/send-expiry-reminder.sh")
+BUMP_IMAGE_SH = os.environ.get("BUMP_IMAGE_SH", "/root/bump-image.sh")
+# Baked-image tag: date form (2026.09.11 / 2026.09) or "latest". No leading "v".
+IMAGE_TAG_RE = re.compile(r"^(?:latest|[0-9]{4}\.[0-9]{2}(?:\.[0-9]+)?)$")
 # Only these env keys are forwarded to apply-integrations.sh — a fixed allow-list
 # so a caller can never inject arbitrary environment into the shell.
 INTEGRATION_ENV_KEYS = {
@@ -395,6 +398,22 @@ def run_expiry_reminder(slug: str, days_left: int, renew_url: str = "",
         )
 
 
+def run_bump_image(tag: str) -> None:
+    """Roll every academy onto the given baked-image tag via bump-image.sh --all.
+
+    Detached (start_new_session) on purpose: bump-image.sh restarts the
+    saas-provision service, which would otherwise kill this very process
+    mid-run. Fully independent, logs to bump-image.log."""
+    logpath = os.path.join(LOG_DIR, "bump-image.log")
+    log = open(logpath, "ab", buffering=0)
+    log.write(f"\n===== update-image -> {tag} (all) =====\n".encode())
+    subprocess.Popen(
+        ["bash", BUMP_IMAGE_SH, tag, "--all"],
+        stdout=log, stderr=subprocess.STDOUT,
+        env={**os.environ}, start_new_session=True,
+    )
+
+
 # ── Storage usage (for the dashboard's per-academy storage bar) ──────────────
 # Scans each academy's moodledata on disk and returns its size in bytes. Cheap
 # (a metadata walk, cached briefly), no docker exec — the caller already knows
@@ -564,6 +583,21 @@ class Handler(BaseHTTPRequestHandler):
                              args=(slug, days_left, renew_url, expiry_date, send_email),
                              daemon=True).start()
             return self._send(202, {"ok": True, "status": "sending-expiry-reminder", "slug": slug})
+
+        # POST /update-image  {"tag": "2026.09.11"} — roll EVERY academy onto a new
+        # baked-image tag (bump-image.sh --all). Called by the GitHub build-image
+        # workflow after it publishes a new tag. Detached: it restarts this service.
+        if self.path == "/update-image":
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                data = json.loads(self.rfile.read(length) or b"{}")
+            except Exception:
+                return self._send(400, {"error": "bad json"})
+            tag = str(data.get("tag", "")).strip().lstrip("v")
+            if not IMAGE_TAG_RE.match(tag):
+                return self._send(400, {"error": "invalid tag"})
+            run_bump_image(tag)
+            return self._send(202, {"ok": True, "status": "updating-image", "tag": tag})
 
         # POST /reset-welcome/<slug>  {owner_pass, owner_email?, owner_name?, locale?}
         # — reset the admin password to a new value + re-mint the app token.
