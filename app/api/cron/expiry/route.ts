@@ -45,7 +45,16 @@ export async function POST(req: NextRequest) {
     // grace). Each stage is sent at most once per term (tracked in
     // expiryRemindersSent, cleared on renewal / plan change).
     const REMIND_DAYS = [7, 3, 1, 0];
-    const base = (process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || "").replace(/\/$/, "");
+    // Build the renew link from the host the cron was actually called on (the
+    // scheduler hits the public URL), so the email link is correct regardless of
+    // NEXT_PUBLIC_BASE_URL (which Next bakes at build time and is often localhost).
+    const hdrHost = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
+    const hdrProto = req.headers.get("x-forwarded-proto") || "https";
+    const base = (
+        hdrHost
+            ? `${hdrProto}://${hdrHost}`
+            : (process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || "")
+    ).replace(/\/$/, "");
     const renewUrl = base ? `${base}/account` : "";
     const soon = await prisma.academy
         .findMany({
