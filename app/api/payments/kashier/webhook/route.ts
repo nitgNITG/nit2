@@ -88,7 +88,8 @@ export async function POST(req: NextRequest) {
                 const prev = await prisma.academy.findUnique({ where: { slug } }).catch(() => null);
                 await prisma.academy.update({
                     where: { slug },
-                    data: { tier: payment.licenseKey, status: "live", subscribedAt: now, validUntil },
+                    // Clear expiry reminders so the fresh term re-arms 7/3/1/on-expiry.
+                    data: { tier: payment.licenseKey, status: "live", subscribedAt: now, validUntil, expiryRemindersSent: {} },
                 }).catch((e) => console.error("[kashier/webhook] academy update failed", slug, e));
                 // Push the new licence to the live Moodle (best-effort).
                 await triggerApplyLicense(slug, payment.licenseKey, definition);

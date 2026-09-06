@@ -53,7 +53,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
     let body: any;
     try { body = await req.json(); } catch { return NextResponse.json({ error: "bad json" }, { status: 400 }); }
 
-    const data: { status?: string; tier?: string; subscribedAt?: Date; validUntil?: Date | null } = {};
+    const data: {
+        status?: string;
+        tier?: string;
+        subscribedAt?: Date;
+        validUntil?: Date | null;
+        expiryRemindersSent?: Record<string, never>;
+    } = {};
 
     // Status transition — worker-guarded.
     if (body?.status !== undefined) {
@@ -87,6 +93,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
         data.validUntil = (lic.durationDays ?? 0) > 0
             ? new Date(now.getTime() + lic.durationDays * 86_400_000)
             : null;
+        // Fresh term → re-arm the expiry reminders (7/3/1/on-expiry).
+        data.expiryRemindersSent = {};
     }
 
     // Update image — admin-guarded, no DB change; recreate the container onto the

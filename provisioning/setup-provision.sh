@@ -53,7 +53,9 @@ cp "$SCRIPT_DIR/saas-cron.sh"       /root/saas-cron.sh
 cp "$SCRIPT_DIR/saas-quota.sh"      /root/saas-quota.sh
 cp "$SCRIPT_DIR/reset-welcome.sh"   /root/reset-welcome.sh
 cp "$SCRIPT_DIR/apply-integrations.sh" /root/apply-integrations.sh
-chmod +x /root/create.sh /root/destroy.sh /root/cleanup-orphans.sh /root/apply-license.sh /root/apply-settings.sh /root/update-site.sh /root/apply-suspend.sh /root/apply-branding.sh /root/update-image.sh /root/bump-image.sh /root/saas-cron.sh /root/saas-quota.sh /root/reset-welcome.sh /root/apply-integrations.sh
+cp "$SCRIPT_DIR/send-expiry-reminder.sh" /root/send-expiry-reminder.sh
+cp "$SCRIPT_DIR/send_expiry_reminder.php" /root/send_expiry_reminder.php
+chmod +x /root/create.sh /root/destroy.sh /root/cleanup-orphans.sh /root/apply-license.sh /root/apply-settings.sh /root/update-site.sh /root/apply-suspend.sh /root/apply-branding.sh /root/update-image.sh /root/bump-image.sh /root/saas-cron.sh /root/saas-quota.sh /root/reset-welcome.sh /root/apply-integrations.sh /root/send-expiry-reminder.sh
 
 # ── The HTTP service — copied verbatim from the repo (NOT inlined), so branding,
 #    licence tier, and /apply-license stay in one place: provision-server.py ───

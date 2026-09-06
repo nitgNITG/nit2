@@ -77,6 +77,10 @@ model Academy {
   // account, kept so NIT support can log in to debug a broken academy. This is
   // the NIT-only super-admin, NOT the customer's owner login. See lib/secretBox.
   nitAdminPasswordEnc String? @db.Text
+  // Which pre-expiry reminder emails have already been sent for the CURRENT term,
+  // e.g. {"d7":<epoch>,"d3":…,"d1":…,"d0":…}. Cleared when the term is renewed or
+  // the plan changes, so a fresh term re-arms the reminders. Avoids daily spam.
+  expiryRemindersSent Json?
   createdAt DateTime @default(now())
 }
 

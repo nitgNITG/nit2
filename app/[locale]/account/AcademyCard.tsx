@@ -213,6 +213,22 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
                 </div>
             )}
 
+            {/* Prominent expiry warning — final week or already expired (still in
+                grace, before the suspend cron pauses it). Suspended shows its own
+                banner above, so skip it here. */}
+            {!suspended && expiryMs != null &&
+                (expired || (daysLeft != null && daysLeft <= 7)) && (
+                <div
+                    className={`rounded-lg px-4 py-2.5 text-sm text-center font-semibold ${expired ? 'bg-red-500/10 text-red-700' : 'bg-[#E8A13C]/15 text-[#b9791f]'}`}
+                >
+                    {expired
+                        ? tr('انتهى اشتراك أكاديميتك — جدّد الآن قبل إيقافها. بياناتك محفوظة.',
+                            'Your academy has expired — renew now before it’s paused. Your data is safe.')
+                        : tr(`ينتهي اشتراك أكاديميتك خلال ${daysLeft} يوم — جدّد الآن لتجنّب أي انقطاع.`,
+                            `Your academy expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'} — renew now to avoid interruption.`)}
+                </div>
+            )}
+
             {/* Subscription term + renew (only for plans that expire). */}
             {expiryMs != null && (
                 <div className='rounded-lg bg-white/60 ring-1 ring-black/5 px-3 py-2 text-xs'>

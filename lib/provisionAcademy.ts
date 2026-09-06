@@ -71,6 +71,29 @@ export async function triggerProvision(
     }
 }
 
+/** Ask server B to email the academy's OWNER (via the academy's own Moodle mail)
+ *  that the subscription is about to expire (days_left > 0) or has expired
+ *  (days_left <= 0). Best-effort — reuses the send_welcome email path so nit2
+ *  needs no mail transport of its own. */
+export async function triggerExpiryReminder(
+    slug: string, daysLeft: number, renewUrl: string,
+): Promise<void> {
+    const base = process.env.PROVISION_URL;
+    const secret = process.env.PROVISION_SECRET;
+    if (!base || !secret) return;
+    try {
+        const url = new URL(base);
+        url.pathname = `/expiry-reminder/${slug}`;
+        await fetch(url.toString(), {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Provision-Secret": secret },
+            body: JSON.stringify({ days_left: daysLeft, renew_url: renewUrl }),
+        });
+    } catch (e) {
+        console.error("[provision] expiry-reminder failed", slug, e);
+    }
+}
+
 /** Push the shared integration creds (Kashier/VDOCipher/Vimeo) to a LIVE academy
  *  for its licence — used on tier change (the container already exists, so this is
  *  a separate call rather than riding the create payload). Best-effort. */

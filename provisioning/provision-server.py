@@ -29,6 +29,7 @@ APPLY_BRANDING_SH = os.environ.get("APPLY_BRANDING_SH", "/root/apply-branding.sh
 UPDATE_IMAGE_SH = os.environ.get("UPDATE_IMAGE_SH", "/root/update-image.sh")
 RESET_WELCOME_SH = os.environ.get("RESET_WELCOME_SH", "/root/reset-welcome.sh")
 APPLY_INTEGRATIONS_SH = os.environ.get("APPLY_INTEGRATIONS_SH", "/root/apply-integrations.sh")
+SEND_EXPIRY_REMINDER_SH = os.environ.get("SEND_EXPIRY_REMINDER_SH", "/root/send-expiry-reminder.sh")
 # Only these env keys are forwarded to apply-integrations.sh — a fixed allow-list
 # so a caller can never inject arbitrary environment into the shell.
 INTEGRATION_ENV_KEYS = {
@@ -368,6 +369,22 @@ def run_apply_suspend(slug: str, state: str) -> None:
         )
 
 
+def run_expiry_reminder(slug: str, days_left: int, renew_url: str = "") -> None:
+    """Run send-expiry-reminder.sh detached — email the owner (via the academy's
+    Moodle mail) that the subscription is about to expire / has expired."""
+    env = {**os.environ}
+    env["DAYS_LEFT"] = str(int(days_left))
+    if isinstance(renew_url, str) and renew_url.strip():
+        env["RENEW_URL"] = renew_url.strip()
+    logpath = os.path.join(LOG_DIR, f"{slug}.log")
+    with open(logpath, "ab", buffering=0) as log:
+        log.write(f"\n===== expiry-reminder {slug} (days_left={days_left}) =====\n".encode())
+        subprocess.run(
+            ["bash", SEND_EXPIRY_REMINDER_SH, slug],
+            stdout=log, stderr=subprocess.STDOUT, env=env,
+        )
+
+
 # ── Storage usage (for the dashboard's per-academy storage bar) ──────────────
 # Scans each academy's moodledata on disk and returns its size in bytes. Cheap
 # (a metadata walk, cached briefly), no docker exec — the caller already knows
@@ -514,6 +531,25 @@ class Handler(BaseHTTPRequestHandler):
             integrations = data.get("integrations") if isinstance(data.get("integrations"), dict) else {}
             threading.Thread(target=run_apply_integrations, args=(slug, integrations), daemon=True).start()
             return self._send(202, {"ok": True, "status": "applying-integrations", "slug": slug})
+
+        # POST /expiry-reminder/<slug>  {days_left, renew_url?} — email the owner
+        # (via the academy's Moodle mail) that the subscription is about to expire.
+        if self.path.startswith("/expiry-reminder/"):
+            slug = self.path[len("/expiry-reminder/"):]
+            if not SLUG_RE.match(slug):
+                return self._send(400, {"error": "invalid slug"})
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                data = json.loads(self.rfile.read(length) or b"{}")
+            except Exception:
+                return self._send(400, {"error": "bad json"})
+            try:
+                days_left = int(data.get("days_left", 0))
+            except Exception:
+                days_left = 0
+            renew_url = str(data.get("renew_url", ""))
+            threading.Thread(target=run_expiry_reminder, args=(slug, days_left, renew_url), daemon=True).start()
+            return self._send(202, {"ok": True, "status": "sending-expiry-reminder", "slug": slug})
 
         # POST /reset-welcome/<slug>  {owner_pass, owner_email?, owner_name?, locale?}
         # — reset the admin password to a new value + re-mint the app token.
