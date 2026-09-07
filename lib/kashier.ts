@@ -77,6 +77,11 @@ export type CreateSessionInput = {
   successUrl: string; // client is redirected here after paying
   metadata?: Record<string, unknown>;
   maxFailureAttempts?: number;
+  // Ask the hosted checkout to save the card on file (card-on-file), so the
+  // returned token can be reused for recurring/auto-renew charges. Sends the
+  // Kashier session `saveCard` field (default mode "optional"; override with
+  // KASHIER_SAVE_CARD_MODE). Off unless explicitly requested.
+  saveCard?: boolean;
 };
 
 export type CreateSessionResult =
@@ -113,6 +118,14 @@ export async function createSession(
       email: input.customerEmail,
     },
     metaData: { ...(input.metadata || {}), merchant_order_id: input.orderId },
+    // saveCard tells the checkout to store the card for reuse; retrieveSavedCard
+    // shows the customer their previously-saved cards. Only when requested.
+    ...(input.saveCard
+      ? {
+          saveCard: process.env.KASHIER_SAVE_CARD_MODE || "optional",
+          retrieveSavedCard: true,
+        }
+      : {}),
   };
   if (input.maxFailureAttempts && input.maxFailureAttempts > 0) {
     body.maxFailureAttempts = input.maxFailureAttempts;

@@ -91,6 +91,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "تعذّر بدء عملية الدفع، حاول تاني." }, { status: 500 });
     }
 
+    // Save the card on file when the buyer opted into auto-renew (body.autoRenew),
+    // or globally while testing (KASHIER_SAVE_CARD=1). Needed so the returned token
+    // is reusable for recurring charges.
+    const saveCard = body?.autoRenew === true || process.env.KASHIER_SAVE_CARD === "1";
+
     const session = await createSession({
         orderId,
         amount,
@@ -101,6 +106,7 @@ export async function POST(req: NextRequest) {
         webhookUrl: `${base}/api/payments/kashier/webhook`,
         successUrl: `${base}/${locale}/payment/callback?order=${orderId}`,
         metadata: { purpose, licenseKey: lic.key, slug },
+        saveCard,
     });
 
     if (!session.ok) {
