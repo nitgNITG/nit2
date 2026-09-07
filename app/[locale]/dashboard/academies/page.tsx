@@ -14,6 +14,7 @@ type Academy = {
   validUntil?: string | null;
   subscribedAt?: string | null;
   createdAt?: string | null;
+  googleOauthAdded?: boolean;
   owner?: { id: string; name: string | null; email: string } | null;
 };
 type License = {
@@ -184,6 +185,25 @@ const AcademiesPage = () => {
         "Copy this redirect URI into Google Cloud → Authorized redirect URIs:",
         url,
       );
+    }
+  };
+
+  // Flip the per-academy bookkeeping flag: whether this academy's redirect URI has
+  // been added to the Google console. Optimistic; reverts on failure.
+  const toggleGoogleOauth = async (slug: string, added: boolean) => {
+    setAcademies((list) =>
+      list.map((a) => (a.slug === slug ? { ...a, googleOauthAdded: added } : a)),
+    );
+    try {
+      await axios.patch(`/api/academies/${slug}`, { googleOauthAdded: added });
+      toast.success(
+        added ? "Marked: Google URL added ✓" : "Marked: Google URL not added",
+      );
+    } catch {
+      setAcademies((list) =>
+        list.map((a) => (a.slug === slug ? { ...a, googleOauthAdded: !added } : a)),
+      );
+      toast.error("Could not update Google OAuth status");
     }
   };
 
@@ -559,6 +579,24 @@ const AcademiesPage = () => {
                     <div className="text-xs text-gray-400 font-mono">
                       {a.slug}
                     </div>
+                    {/* Google redirect-URI bookkeeping — click to toggle. */}
+                    <button
+                      type="button"
+                      onClick={() => toggleGoogleOauth(a.slug, !a.googleOauthAdded)}
+                      title={
+                        a.googleOauthAdded
+                          ? "This academy's redirect URI is added to the Google console — click to unmark"
+                          : "Redirect URI NOT added to the Google console yet — add it (🔗 Copy OAuth URL), then click to mark done"
+                      }
+                      className={
+                        "mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold " +
+                        (a.googleOauthAdded
+                          ? "bg-green-100 text-green-800 hover:bg-green-200"
+                          : "bg-amber-100 text-amber-800 hover:bg-amber-200")
+                      }
+                    >
+                      {a.googleOauthAdded ? "✓ Google URL added" : "✗ Google URL missing"}
+                    </button>
                   </td>
                   <td className="px-4 py-3">
                     {a.owner ? (
@@ -725,6 +763,19 @@ const AcademiesPage = () => {
                             className="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
                           >
                             🔗 Copy OAuth URL
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setMenu(null);
+                              toggleGoogleOauth(a.slug, !a.googleOauthAdded);
+                            }}
+                            className="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                          >
+                            {a.googleOauthAdded
+                              ? "↩︎ Google URL added — unmark"
+                              : "✓ Mark Google URL added"}
                           </button>
                           <button
                             type="button"

@@ -81,6 +81,10 @@ model Academy {
   // e.g. {"d7":<epoch>,"d3":…,"d1":…,"d0":…}. Cleared when the term is renewed or
   // the plan changes, so a fresh term re-arms the reminders. Avoids daily spam.
   expiryRemindersSent Json?
+  // Has THIS academy's Google OAuth redirect URI been added to the Google Cloud
+  // console yet? Google offers no API/wildcard, so it's a manual step per academy;
+  // the admin ticks this once done. Purely a bookkeeping flag for the dashboard.
+  googleOauthAdded Boolean @default(false)
   createdAt DateTime @default(now())
 }
 

@@ -66,6 +66,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
         subscribedAt?: Date;
         validUntil?: Date | null;
         expiryRemindersSent?: Record<string, never>;
+        googleOauthAdded?: boolean;
     } = {};
 
     // Status transition — worker-guarded.
@@ -150,8 +151,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
         validUntilChanged = d;
     }
 
+    // Google OAuth redirect-URI bookkeeping — admin-guarded. Just flips the flag
+    // that records whether the admin has added this academy's redirect URI to the
+    // Google console (manual step; no side effects on the live site).
+    if (body?.googleOauthAdded !== undefined) {
+        const user = await getCurrentUser();
+        if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+        if (user.role !== "admin") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+        data.googleOauthAdded = !!body.googleOauthAdded;
+    }
+
     if (Object.keys(data).length === 0) {
-        return NextResponse.json({ error: "nothing to update (status, tier, suspend or validUntil)" }, { status: 400 });
+        return NextResponse.json({ error: "nothing to update (status, tier, suspend, validUntil or googleOauthAdded)" }, { status: 400 });
     }
 
     try {
@@ -198,7 +209,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
 
         return NextResponse.json({
             ok: true, slug: academy.slug, status: finalStatus, tier: academy.tier,
-            validUntil: academy.validUntil,
+            validUntil: academy.validUntil, googleOauthAdded: academy.googleOauthAdded,
         });
     } catch (err: any) {
         if (err?.code === "P2025") {
