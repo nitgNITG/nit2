@@ -21,6 +21,7 @@ export type Brand = {
     about?: BrandImage;
     login?: BrandImage;
     about_bullets?: string[];
+    about_subheader?: string; // About <h3> subheader; may carry {mlang} tags
     gallery?: BrandImage[];
     links?: Record<string, string>; // per-academy legal links (terms/privacy/about/faq)
 };
@@ -92,6 +93,11 @@ export function sanitizeBrand(raw: unknown): Brand {
             .map((x) => x.trim().slice(0, 200))
             .slice(0, 8);
         if (items.length) out.about_bullets = items;
+    }
+    // About subheader (the <h3>) — text, may carry {mlang} tags; cap generous
+    // so a bilingual {mlang en}…{mlang}{mlang ar}…{mlang} string fits.
+    if (typeof b.about_subheader === "string" && b.about_subheader.trim() !== "") {
+        out.about_subheader = b.about_subheader.trim().slice(0, 400);
     }
     // Gallery — an array of images (cap 8).
     if (Array.isArray(b.gallery)) {

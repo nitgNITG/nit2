@@ -130,6 +130,9 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
     const [aboutBullets, setAboutBullets] = useState<string[]>([])
     const [bulletEn, setBulletEn] = useState('')
     const [bulletAr, setBulletAr] = useState('')
+    // About subheader (the <h3> under "About") — same EN/AR → {mlang} model.
+    const [subheaderEn, setSubheaderEn] = useState('')
+    const [subheaderAr, setSubheaderAr] = useState('')
     const makeBullet = (en: string, ar: string) => {
         const e = en.trim(), a = ar.trim()
         if (e && a) return `{mlang en}${e}{mlang}{mlang ar}${a}{mlang}`
@@ -247,6 +250,8 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
             if (values.linkPrivacy?.trim()) links.privacy = values.linkPrivacy.trim()
             if (Object.keys(links).length) brand.links = links
             if (aboutBullets.length) brand.about_bullets = aboutBullets
+            const subheader = (hasAr && hasEn) ? makeBullet(subheaderEn, subheaderAr) : subheaderEn.trim()
+            if (subheader) brand.about_subheader = subheader
 
             if (logo) brand.logo = { filename: logo.name, data_b64: await fileToBase64(logo) }
             if (logocompact) brand.logocompact = { filename: logocompact.name, data_b64: await fileToBase64(logocompact) }
@@ -665,6 +670,35 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                         className='block w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-[#1E7D67]/10 file:px-4 file:py-2.5 file:font-semibold file:text-[#1E7D67] hover:file:bg-[#1E7D67]/15'
                     />
                     {hero && <p className='mt-1 truncate text-xs text-[#1E7D67]' dir='ltr'>{hero.name}</p>}
+                </div>
+
+                {/* About subheader (the <h3> under "About") */}
+                <div className='mt-4'>
+                    <label className='mb-1.5 block text-sm font-semibold text-[#0B2923]'>
+                        {isAr ? 'العنوان الفرعي للنبذة' : 'About subheader'}{' '}
+                        <span className='text-xs font-normal text-gray-400'>({t('optional')})</span>
+                    </label>
+                    <div className='flex gap-2'>
+                        {hasEn && (
+                            <input
+                                type='text'
+                                value={subheaderEn}
+                                onChange={(e) => setSubheaderEn(e.target.value)}
+                                placeholder={hasAr ? 'English subheader' : (isAr ? 'العنوان الفرعي' : 'Subheader')}
+                                className='flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition-colors focus:border-[#1E7D67] focus:bg-white'
+                            />
+                        )}
+                        {hasAr && (
+                            <input
+                                type='text'
+                                dir='rtl'
+                                value={subheaderAr}
+                                onChange={(e) => setSubheaderAr(e.target.value)}
+                                placeholder={hasEn ? 'العنوان الفرعي بالعربية' : 'العنوان الفرعي'}
+                                className='flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition-colors focus:border-[#1E7D67] focus:bg-white'
+                            />
+                        )}
+                    </div>
                 </div>
 
                 {/* About bullet points (chips) */}

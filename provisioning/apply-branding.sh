@@ -106,7 +106,7 @@ if [[ -n "${BRAND_HERO:-}" && -f "${BRAND_HERO}" && -f /root/apply_hero.php ]]; 
 fi
 
 # ── About (image + bullet points) ───────────────────────────────────────────
-if [[ ( -n "${BRAND_ABOUT:-}" || -n "${BRAND_ABOUT_BULLETS:-}" ) && -f /root/apply_about.php ]]; then
+if [[ ( -n "${BRAND_ABOUT:-}" || -n "${BRAND_ABOUT_BULLETS:-}" || -n "${BRAND_ABOUT_SUBHEADER:-}" ) && -f /root/apply_about.php ]]; then
     log "applying about section"
     docker cp /root/apply_about.php "$CONTAINER:/var/www/moodledata/apply_about.php"
     ABOUT_IN=""
@@ -114,7 +114,7 @@ if [[ ( -n "${BRAND_ABOUT:-}" || -n "${BRAND_ABOUT_BULLETS:-}" ) && -f /root/app
         ABOUT_IN="/var/www/moodledata/about_upload.${BRAND_ABOUT##*.}"
         docker cp "$BRAND_ABOUT" "$CONTAINER:$ABOUT_IN"
     fi
-    docker exec -e ABOUT_IMAGE="$ABOUT_IN" -e ABOUT_BULLETS="${BRAND_ABOUT_BULLETS:-}" \
+    docker exec -e ABOUT_IMAGE="$ABOUT_IN" -e ABOUT_BULLETS="${BRAND_ABOUT_BULLETS:-}" -e ABOUT_SUBHEADER="${BRAND_ABOUT_SUBHEADER:-}" \
         "$CONTAINER" php /var/www/moodledata/apply_about.php || echo "!! about step failed"
     docker exec "$CONTAINER" rm -f /var/www/moodledata/apply_about.php "$ABOUT_IN" || true
 fi

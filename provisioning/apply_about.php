@@ -12,8 +12,9 @@ global $DB;
 $bulletsRaw = (string) getenv('ABOUT_BULLETS');
 $bullets = array_values(array_filter(array_map('trim', explode('|||', $bulletsRaw)), fn($b) => $b !== ''));
 $imgPath = getenv('ABOUT_IMAGE') ?: '';
+$subheader = trim((string) getenv('ABOUT_SUBHEADER')); // may carry {mlang} tags
 
-if (!$bullets && ($imgPath === '' || !is_file($imgPath))) { fwrite(STDERR, "nothing to apply for about\n"); exit(0); }
+if (!$bullets && $subheader === '' && ($imgPath === '' || !is_file($imgPath))) { fwrite(STDERR, "nothing to apply for about\n"); exit(0); }
 
 // Image box — fixed 4:3 aspect (consistent dimensions). Data-URI so no file serving.
 $imgStyle = 'background: var(--nit-brand-surface);';
@@ -28,6 +29,10 @@ if ($imgPath !== '' && is_file($imgPath)) {
 
 $e = fn($s) => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
 $name = (string) $DB->get_field('course', 'fullname', ['id' => SITEID]); // {mlang}-tagged; filter renders it
+// Subheader: the client's About subheader if given (escape HTML but keep {mlang}
+// tags — they have no special chars), else the site name. Marked so the inline
+// editor can find and re-edit it.
+$subHtml = $subheader !== '' ? $e($subheader) : $name;
 $items = '';
 foreach ($bullets as $b) {
     $items .= '<li style="display:flex; gap:10px; font-size:15px; color: var(--nit-brand-textsecondary); line-height:1.7;"><span style="color: var(--nit-brand-accent);">◆</span> ' . $e($b) . '</li>';
@@ -41,7 +46,7 @@ $html =
       '<div style="max-width: 1140px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit,minmax(300px,1fr)); gap: 40px; align-items: center;">' .
         '<div>' .
           '<h2 style="font-size: clamp(24px,4vw,34px); font-weight: 800; margin: 0 0 6px; color: var(--nit-brand-accenttext);">{mlang ar}نبذة عن{mlang}{mlang en}About{mlang}</h2>' .
-          '<h3 style="font-size: 20px; font-weight: 700; margin: 0 0 18px;">' . $name . '</h3>' .
+          '<h3 data-nit-about-subheader="1" style="font-size: 20px; font-weight: 700; margin: 0 0 18px;">' . $subHtml . '</h3>' .
           '<ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">' . $items . '</ul>' .
         '</div>' .
         '<div data-nit-about-image style="aspect-ratio:4/3; width:100%; border-radius: 20px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--nit-brand-textprimary) 10%, transparent); ' . $imgStyle . '"></div>' .
