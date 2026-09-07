@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prismaMysql";
 import { getCurrentUser } from "@/lib/auth";
 import { toLicenseDefinition } from "@/lib/licenseDefinition";
-import { triggerApplyIntegrations } from "@/lib/provisionAcademy";
+import { triggerApplyIntegrations, triggerExpiryReminder } from "@/lib/provisionAcademy";
 
 export const runtime = "nodejs";
 
@@ -129,15 +129,55 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
         data.status = suspendChanged ? "suspended" : "live";
     }
 
+    // Extend / set the expiry date — admin-guarded. Sets validUntil directly (a
+    // manual extension, not a plan change), re-arms the reminders, and — if the
+    // academy was suspended (expired) and the new date is in the future — resumes
+    // it. The academy's own local_license/expirydate is synced immediately below.
+    let validUntilChanged: Date | null = null;
+    if (body?.validUntil !== undefined) {
+        const user = await getCurrentUser();
+        if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+        if (user.role !== "admin") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+        const d = new Date(body.validUntil);
+        if (isNaN(d.getTime())) {
+            return NextResponse.json({ error: "invalid date" }, { status: 400 });
+        }
+        data.validUntil = d;
+        data.expiryRemindersSent = {};
+        validUntilChanged = d;
+    }
+
     if (Object.keys(data).length === 0) {
-        return NextResponse.json({ error: "nothing to update (status, tier or suspend)" }, { status: 400 });
+        return NextResponse.json({ error: "nothing to update (status, tier, suspend or validUntil)" }, { status: 400 });
     }
 
     try {
         const academy = await prisma.academy.update({ where: { slug: params.slug }, data });
         if (tierChanged) await triggerApplyLicense(params.slug, tierChanged); // push to the live Moodle
         if (suspendChanged !== null) await triggerSuspend(params.slug, suspendChanged);
-        return NextResponse.json({ ok: true, slug: academy.slug, status: academy.status, tier: academy.tier });
+
+        let finalStatus = academy.status;
+        if (validUntilChanged) {
+            // Sync the academy's local_license/expirydate immediately (no email),
+            // so the in-app banner reflects the new date without waiting for cron.
+            const ymd = `${validUntilChanged.getUTCFullYear()}-${String(validUntilChanged.getUTCMonth() + 1).padStart(2, "0")}-${String(validUntilChanged.getUTCDate()).padStart(2, "0")}`;
+            const daysLeft = Math.ceil((validUntilChanged.getTime() - Date.now()) / 86_400_000);
+            const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
+            const proto = req.headers.get("x-forwarded-proto") || "https";
+            const renewUrl = host ? `${proto}://${host}/account` : "";
+            await triggerExpiryReminder(params.slug, daysLeft, renewUrl, { expiryDate: ymd, sendEmail: false });
+            // Extending a suspended (expired) academy into the future revives it.
+            if (academy.status === "suspended" && validUntilChanged.getTime() > Date.now()) {
+                await prisma.academy.update({ where: { slug: params.slug }, data: { status: "live" } });
+                await triggerSuspend(params.slug, false);
+                finalStatus = "live";
+            }
+        }
+
+        return NextResponse.json({
+            ok: true, slug: academy.slug, status: finalStatus, tier: academy.tier,
+            validUntil: academy.validUntil,
+        });
     } catch (err: any) {
         if (err?.code === "P2025") {
             return NextResponse.json({ error: "not found" }, { status: 404 });

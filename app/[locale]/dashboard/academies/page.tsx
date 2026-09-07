@@ -154,6 +154,10 @@ const AcademiesPage = () => {
   const [resetting, setResetting] = useState(false);
   // Open row-actions menu: which academy + where to render the fixed dropdown.
   const [menu, setMenu] = useState<{ slug: string; top: number; left: number } | null>(null);
+  // Extend-expiry modal.
+  const [expiryAcademy, setExpiryAcademy] = useState<Academy | null>(null);
+  const [expiryValue, setExpiryValue] = useState("");
+  const [savingExpiry, setSavingExpiry] = useState(false);
 
   const licenseName = (key: string) =>
     licenses.find((l) => l.key === key)?.name ?? key;
@@ -380,6 +384,51 @@ const AcademiesPage = () => {
     }
   };
 
+  // Close the actions menu on Escape (keyboard accessibility).
+  useEffect(() => {
+    if (!menu) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenu(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menu]);
+
+  // Open the extend-expiry modal, prefilled with the current expiry (YYYY-MM-DD).
+  const openExpiry = (a: Academy) => {
+    const d = a.validUntil ? new Date(a.validUntil) : null;
+    const ymd = d
+      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+      : "";
+    setExpiryValue(ymd);
+    setExpiryAcademy(a);
+  };
+
+  const saveExpiry = async () => {
+    if (!expiryAcademy || !expiryValue) return;
+    setSavingExpiry(true);
+    try {
+      // Send end-of-day so the chosen day is fully included.
+      const iso = new Date(`${expiryValue}T23:59:59`).toISOString();
+      const { data } = await axios.patch(
+        `/api/academies/${expiryAcademy.slug}`,
+        { validUntil: iso },
+      );
+      const newUntil = data?.validUntil ?? iso;
+      setAcademies((list) =>
+        list.map((a) =>
+          a.slug === expiryAcademy.slug ? { ...a, validUntil: newUntil } : a,
+        ),
+      );
+      toast.success(`${expiryAcademy.slug}: expiry updated`);
+      setExpiryAcademy(null);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || "Could not update expiry");
+    } finally {
+      setSavingExpiry(false);
+    }
+  };
+
   const options = licenses.filter((l) => l.active).map((l) => l.key);
 
   return (
@@ -554,16 +603,23 @@ const AcademiesPage = () => {
                     <button
                       type="button"
                       onClick={(e) => {
+                        if (menu?.slug === a.slug) {
+                          setMenu(null);
+                          return;
+                        }
                         const r = e.currentTarget.getBoundingClientRect();
-                        setMenu(
-                          menu?.slug === a.slug
-                            ? null
-                            : {
-                                slug: a.slug,
-                                top: r.bottom + 4,
-                                left: Math.max(8, r.right - 200),
-                              },
-                        );
+                        // Flip the menu up when there isn't room below (rows near
+                        // the bottom of the page), so it's never clipped.
+                        const estH = 360;
+                        const top =
+                          r.bottom + estH > window.innerHeight
+                            ? Math.max(8, r.top - estH - 4)
+                            : r.bottom + 4;
+                        setMenu({
+                          slug: a.slug,
+                          top,
+                          left: Math.max(8, r.right - 208),
+                        });
                       }}
                       aria-haspopup="menu"
                       aria-expanded={menu?.slug === a.slug}
@@ -580,10 +636,25 @@ const AcademiesPage = () => {
                           onClick={() => setMenu(null)}
                         />
                         <div
-                          className="fixed z-[100] w-52 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 text-sm shadow-xl"
-                          style={{ top: menu.top, left: menu.left }}
+                          className="fixed z-[100] w-52 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 text-sm shadow-xl"
+                          style={{
+                            top: menu.top,
+                            left: menu.left,
+                            maxHeight: "calc(100vh - 16px)",
+                          }}
                           role="menu"
                         >
+                          <a
+                            role="menuitem"
+                            href={`https://${a.slug}.${ACADEMY_DOMAIN}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => setMenu(null)}
+                            className="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                          >
+                            ↗ Open academy
+                          </a>
+                          <div className="my-1 border-t border-gray-100" />
                           <button
                             type="button"
                             role="menuitem"
@@ -646,6 +717,17 @@ const AcademiesPage = () => {
                           >
                             {a.status === "suspended" ? "▶ Resume" : "⏸ Suspend"}
                           </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setMenu(null);
+                              openExpiry(a);
+                            }}
+                            className="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                          >
+                            📅 Extend expiry
+                          </button>
                           <div className="my-1 border-t border-gray-100" />
                           <button
                             type="button"
@@ -669,6 +751,64 @@ const AcademiesPage = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Extend-expiry modal — set a new subscription end date (extend the term). */}
+      {expiryAcademy && (
+        <div
+          className="fixed inset-0 z-[1000] flex items-start justify-center overflow-y-auto bg-black/50 p-4"
+          onClick={() => setExpiryAcademy(null)}
+        >
+          <div
+            className="relative my-24 w-full max-w-sm rounded-xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h5 className="font-bold text-lg">
+                📅 Extend expiry —{" "}
+                <span className="font-mono text-sm">{expiryAcademy.slug}</span>
+              </h5>
+              <button
+                type="button"
+                onClick={() => setExpiryAcademy(null)}
+                className="text-gray-400 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">
+              New valid-until date
+            </label>
+            <input
+              type="date"
+              value={expiryValue}
+              min={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setExpiryValue(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 text-sm"
+            />
+            <p className="mt-2 text-[11px] text-gray-400">
+              Sets the subscription end date. The academy is kept live and its
+              in-app renewal banner + expiry reminders update to the new date.
+            </p>
+            <div className="flex gap-3 pt-4">
+              <button
+                type="button"
+                onClick={saveExpiry}
+                disabled={savingExpiry || !expiryValue}
+                className="flex-1 bg-gradient-to-r from-[#268F79] to-[#0B2923] text-[#00FFB2] font-bold px-4 py-2 rounded-md disabled:opacity-60"
+              >
+                {savingExpiry ? "Saving…" : "Save"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setExpiryAcademy(null)}
+                className="border border-gray-300 px-4 py-2 rounded-md text-gray-600 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Owner credentials modal — reveal the stored owner password or reset it. */}
       {credSlug && (
