@@ -111,7 +111,8 @@ if (cmd === "list") {
   url.searchParams.set("customerReference", ref);
   url.searchParams.set("merchantId", merchantId);
   console.log("\nGET", url.toString());
-  const res = await fetch(url, { headers: { Authorization: AUTH, "api-key": APIKEY, accept: "application/json" } });
+  // Doc-exact: retrieve uses ONLY Authorization: secretKey (no api-key, no hash).
+  const res = await fetch(url, { headers: { Authorization: AUTH, accept: "application/json", "Content-Type": "application/json" } });
   await show(res);
 } else if (cmd === "pay") {
   const [, cardToken, ref, amount = "1"] = args;
@@ -150,7 +151,7 @@ if (cmd === "list") {
   console.log("\nDELETE", url.toString());
   const res = await fetch(url, {
     method: "DELETE",
-    headers: { Authorization: AUTH, "api-key": APIKEY, accept: "application/json", "Content-Type": "application/json" },
+    headers: { Authorization: AUTH, accept: "application/json", "Content-Type": "application/json" },
     body: "{}",
   });
   await show(res);
