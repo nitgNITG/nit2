@@ -158,14 +158,14 @@ export type SavedCard = {
  *  store is keyed by customerReference, so this is how we capture a token after a
  *  first checkout that saved the card. Returns [] on any error. */
 export async function retrieveTokens(customerReference: string): Promise<SavedCard[]> {
-  const { merchantId, secretKey } = kashierCreds();
+  const { merchantId, apiKey, secretKey } = kashierCreds();
   if (!merchantId || !secretKey) return [];
   try {
     const url = new URL(`${fepBase()}/v3/cards/customer`);
     url.searchParams.set("customerReference", customerReference);
     url.searchParams.set("merchantId", merchantId);
     const res = await fetch(url.toString(), {
-      headers: { Authorization: secretKey, accept: "application/json" },
+      headers: { Authorization: secretKey, "api-key": apiKey, accept: "application/json" },
       cache: "no-store",
     });
     if (!res.ok) return [];
@@ -189,14 +189,14 @@ export async function retrieveTokens(customerReference: string): Promise<SavedCa
 /** Delete a saved card token (used when the owner removes/replaces a card).
  *  DELETE /v3/token/:cardToken?customerReference= — Authorization: secretKey. */
 export async function deleteToken(cardToken: string, customerReference: string): Promise<boolean> {
-  const { secretKey } = kashierCreds();
+  const { apiKey, secretKey } = kashierCreds();
   if (!secretKey) return false;
   try {
     const url = new URL(`${fepBase()}/v3/token/${encodeURIComponent(cardToken)}`);
     url.searchParams.set("customerReference", customerReference);
     const res = await fetch(url.toString(), {
       method: "DELETE",
-      headers: { Authorization: secretKey, accept: "application/json", "Content-Type": "application/json" },
+      headers: { Authorization: secretKey, "api-key": apiKey, accept: "application/json", "Content-Type": "application/json" },
       body: "{}",
     });
     return res.ok;

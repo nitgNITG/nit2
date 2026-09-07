@@ -74,6 +74,10 @@ if (!merchantId || !apiKey || !secretKey) {
 }
 
 const FEP = flags.has("--live") ? "https://fep.kashier.io" : "https://test-fep.kashier.io";
+// FEP wants Authorization: secretKey + api-key: apiKey (same as the hosted checkout).
+// --swap-auth tries them reversed, in case this merchant is configured the other way.
+const AUTH = flags.has("--swap-auth") ? apiKey : secretKey;
+const APIKEY = flags.has("--swap-auth") ? secretKey : apiKey;
 const shape = (s) => (s ? `len ${s.length} ${s.slice(0, 4)}…${s.slice(-3)}` : "(empty)");
 console.log("── creds ──");
 console.log("  merchantId:", merchantId);
@@ -107,7 +111,7 @@ if (cmd === "list") {
   url.searchParams.set("customerReference", ref);
   url.searchParams.set("merchantId", merchantId);
   console.log("\nGET", url.toString());
-  const res = await fetch(url, { headers: { Authorization: secretKey, accept: "application/json" } });
+  const res = await fetch(url, { headers: { Authorization: AUTH, "api-key": APIKEY, accept: "application/json" } });
   await show(res);
 } else if (cmd === "pay") {
   const [, cardToken, ref, amount = "1"] = args;
@@ -129,7 +133,7 @@ if (cmd === "list") {
     method: "POST",
     headers: {
       accept: "application/json", "Content-Type": "application/json",
-      Authorization: secretKey, "api-key": apiKey, "Kashier-Hash": hash,
+      Authorization: AUTH, "api-key": APIKEY, "Kashier-Hash": hash,
     },
     body: JSON.stringify(body),
   });
@@ -146,7 +150,7 @@ if (cmd === "list") {
   console.log("\nDELETE", url.toString());
   const res = await fetch(url, {
     method: "DELETE",
-    headers: { Authorization: secretKey, accept: "application/json", "Content-Type": "application/json" },
+    headers: { Authorization: AUTH, "api-key": APIKEY, accept: "application/json", "Content-Type": "application/json" },
     body: "{}",
   });
   await show(res);
