@@ -130,12 +130,15 @@ if (cmd === "list") {
     timestamp: new Date().toISOString(),
   };
   console.log("POST", `${FEP}/v3/orders/`);
+  // The pay-with-token doc shows ONLY the Kashier-Hash header for auth. --hash-only
+  // sends exactly that; by default we ALSO send Authorization+api-key (belt & braces,
+  // some deployments want them). Try --hash-only if the default is rejected.
+  const payHeaders = flags.has("--hash-only")
+    ? { accept: "application/json", "Content-Type": "application/json", "Kashier-Hash": hash }
+    : { accept: "application/json", "Content-Type": "application/json", Authorization: AUTH, "api-key": APIKEY, "Kashier-Hash": hash };
   const res = await fetch(`${FEP}/v3/orders/`, {
     method: "POST",
-    headers: {
-      accept: "application/json", "Content-Type": "application/json",
-      Authorization: AUTH, "api-key": APIKEY, "Kashier-Hash": hash,
-    },
+    headers: payHeaders,
     body: JSON.stringify(body),
   });
   const j = await show(res);

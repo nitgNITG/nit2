@@ -25,6 +25,18 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "invalid signature" }, { status: 401 });
     }
 
+    // Token-capture discovery: when KASHIER_DEBUG_WEBHOOK=1, log the shape of the
+    // webhook payload so we can see WHICH field carries the saved-card token
+    // (cardToken / cardDataToken / …) after a test payment. Values are refs, not
+    // card data. Turn off once the field is known.
+    if (process.env.KASHIER_DEBUG_WEBHOOK === "1") {
+        const d: any = v.raw?.data || {};
+        console.log("[kashier/webhook][debug] event", v.eventType, "data keys:", Object.keys(d));
+        const tokenish = Object.entries(d).filter(([k]) => /token|card|store/i.test(k));
+        if (tokenish.length) console.log("[kashier/webhook][debug] token-ish:", JSON.stringify(Object.fromEntries(tokenish)));
+        if (d.card) console.log("[kashier/webhook][debug] data.card:", JSON.stringify(d.card));
+    }
+
     const orderId = v.merchantOrderId;
     if (!orderId) return NextResponse.json({ status: "ignored" });
 
