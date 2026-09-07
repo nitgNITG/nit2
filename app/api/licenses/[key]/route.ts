@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prismaMysql";
 import { getCurrentUser } from "@/lib/auth";
 import { parseLicense } from "@/lib/licenseShape";
-import { toLicenseDefinition } from "@/lib/licenseDefinition";
+import { toLicenseDefinition, computeUpgradable } from "@/lib/licenseDefinition";
 import { triggerApplyIntegrations } from "@/lib/provisionAcademy";
 
 export const runtime = "nodejs";
@@ -52,7 +52,8 @@ export async function PUT(req: NextRequest, { params }: { params: { key: string 
         if (!data.name) return NextResponse.json({ error: "name required" }, { status: 400 });
         const license = await prisma.license.update({ where: { key: params.key }, data });
         // Push the new limits/features to every academy already on this licence.
-        const applied = await reapplyToAcademies(params.key, toLicenseDefinition(license), {
+        const rankLics = await prisma.license.findMany({ where: { active: true }, select: { key: true, active: true, order: true, priceEgp: true } });
+        const applied = await reapplyToAcademies(params.key, toLicenseDefinition(license, { upgradable: computeUpgradable(params.key, rankLics) }), {
             videoSource: license.videoSource, kashierEnabled: license.kashierEnabled,
         });
         return NextResponse.json({ license, applied, message: `License updated${applied ? ` — re-applied to ${applied} academ${applied === 1 ? "y" : "ies"}` : ""}` });

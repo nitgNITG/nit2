@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prismaMysql";
 import { verifyWebhook, isPaidStatus } from "@/lib/kashier";
 import { provisionAcademy, licenseToDefinition, triggerSuspend } from "@/lib/provisionAcademy";
+import { computeUpgradable } from "@/lib/licenseDefinition";
 import { notifyTelegram } from "@/lib/telegram";
 
 export const runtime = "nodejs";
@@ -48,9 +49,11 @@ export async function POST(req: NextRequest) {
     // ── Confirmed paid ──────────────────────────────────────────────────────
     const lic = await prisma.license.findFirst({ where: { key: payment.licenseKey } }).catch(() => null);
     const durationDays = lic?.durationDays ?? 0;
+    const rankLics = await prisma.license.findMany({ where: { active: true }, select: { key: true, active: true, order: true, priceEgp: true } }).catch(() => []);
     const definition = lic
         ? licenseToDefinition(lic, {
               validUntil: durationDays > 0 ? new Date(Date.now() + durationDays * 86_400_000) : null,
+              upgradable: computeUpgradable(payment.licenseKey, rankLics),
           })
         : "";
 

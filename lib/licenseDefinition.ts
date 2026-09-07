@@ -14,9 +14,20 @@ export type LicenseRow = {
     features: unknown
 }
 
+// Is there a paid licence ranked strictly above `currentKey`? Mirrors the account
+// page's upgrade logic (rank = order×1e6 + priceEgp; only paid, higher tiers).
+export type RankLicense = { key: string; active: boolean; order: number; priceEgp: number };
+export function computeUpgradable(currentKey: string, licenses: RankLicense[]): boolean {
+    const active = licenses.filter((l) => l.active);
+    const cur = active.find((l) => l.key === currentKey);
+    if (!cur) return false;
+    const rank = (l: RankLicense) => (l.order ?? 0) * 1_000_000 + (l.priceEgp ?? 0);
+    return active.some((l) => (l.priceEgp ?? 0) > 0 && rank(l) > rank(cur));
+}
+
 export function toLicenseDefinition(
     lic: LicenseRow,
-    opts?: { validUntil?: Date | null },
+    opts?: { validUntil?: Date | null; upgradable?: boolean },
 ): string {
     const feats = (lic.features && typeof lic.features === "object") ? (lic.features as Record<string, boolean>) : {}
     const features = Object.keys(feats).filter((k) => feats[k])
@@ -31,6 +42,8 @@ export function toLicenseDefinition(
         features,
         limits: (lic.limits && typeof lic.limits === "object") ? lic.limits : { quiz: -1, video: -1, pdf: -1, default: -1 },
     }
+    // Whether the in-academy "Upgrade" link should show (a higher paid tier exists).
+    if (typeof opts?.upgradable === "boolean") out.upgradable = opts.upgradable
     // Renew link for the in-academy expiry banner (same nit2 account page for all).
     const base = (process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || "").replace(/\/$/, "")
     if (base) out.renewurl = `${base}/account`

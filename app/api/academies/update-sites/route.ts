@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prismaMysql";
 import { getCurrentUser } from "@/lib/auth";
-import { toLicenseDefinition } from "@/lib/licenseDefinition";
+import { toLicenseDefinition, computeUpgradable } from "@/lib/licenseDefinition";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
         // Map each licence key → its definition, so update also re-applies the licence.
         const licenses = await prisma.license.findMany();
-        const defByKey = new Map(licenses.map((l) => [l.key, toLicenseDefinition(l)]));
+        const defByKey = new Map(licenses.map((l) => [l.key, toLicenseDefinition(l, { upgradable: computeUpgradable(l.key, licenses) })]));
 
         // Advance every client branch to the base branch first, so the pull below
         // actually delivers new template code. Skipped silently if GH isn't set up.

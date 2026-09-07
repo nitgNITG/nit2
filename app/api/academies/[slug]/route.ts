@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 // Academy control plane lives in MySQL (separate Prisma client), not the Mongo app DB.
 import prisma from "@/lib/prismaMysql";
 import { getCurrentUser } from "@/lib/auth";
-import { toLicenseDefinition } from "@/lib/licenseDefinition";
+import { toLicenseDefinition, computeUpgradable } from "@/lib/licenseDefinition";
 import { triggerApplyIntegrations, triggerExpiryReminder } from "@/lib/provisionAcademy";
 import { notifyTelegram } from "@/lib/telegram";
 
@@ -27,11 +27,13 @@ async function triggerApplyLicense(slug: string, tier: string): Promise<void> {
     if (!base || !secret) return;
     try {
         const lic = await prisma.license.findUnique({ where: { key: tier } });
+        const rankLics = await prisma.license.findMany({ where: { active: true }, select: { key: true, active: true, order: true, priceEgp: true } });
         const definition = lic
             ? toLicenseDefinition(lic, {
                   validUntil: (lic.durationDays ?? 0) > 0
                       ? new Date(Date.now() + (lic.durationDays ?? 0) * 86_400_000)
                       : null,
+                  upgradable: computeUpgradable(tier, rankLics),
               })
             : "";
         const url = new URL(base);
