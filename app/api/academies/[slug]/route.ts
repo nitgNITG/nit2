@@ -4,6 +4,7 @@ import prisma from "@/lib/prismaMysql";
 import { getCurrentUser } from "@/lib/auth";
 import { toLicenseDefinition } from "@/lib/licenseDefinition";
 import { triggerApplyIntegrations, triggerExpiryReminder } from "@/lib/provisionAcademy";
+import { notifyTelegram } from "@/lib/telegram";
 
 export const runtime = "nodejs";
 
@@ -153,8 +154,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
 
     try {
         const academy = await prisma.academy.update({ where: { slug: params.slug }, data });
-        if (tierChanged) await triggerApplyLicense(params.slug, tierChanged); // push to the live Moodle
-        if (suspendChanged !== null) await triggerSuspend(params.slug, suspendChanged);
+        if (tierChanged) {
+            await triggerApplyLicense(params.slug, tierChanged); // push to the live Moodle
+            await notifyTelegram(`🔁 Academy ${params.slug} plan changed → ${tierChanged}`);
+        }
+        if (suspendChanged !== null) {
+            await triggerSuspend(params.slug, suspendChanged);
+            await notifyTelegram(
+                suspendChanged
+                    ? `⏸ Academy ${params.slug} suspended`
+                    : `▶ Academy ${params.slug} resumed`,
+            );
+        }
 
         let finalStatus = academy.status;
         if (validUntilChanged) {
@@ -167,11 +178,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
             const renewUrl = host ? `${proto}://${host}/account` : "";
             await triggerExpiryReminder(params.slug, daysLeft, renewUrl, { expiryDate: ymd, sendEmail: false });
             // Extending a suspended (expired) academy into the future revives it.
+            let revived = false;
             if (academy.status === "suspended" && validUntilChanged.getTime() > Date.now()) {
                 await prisma.academy.update({ where: { slug: params.slug }, data: { status: "live" } });
                 await triggerSuspend(params.slug, false);
                 finalStatus = "live";
+                revived = true;
             }
+            await notifyTelegram(
+                `📅 Academy ${params.slug} expiry extended to ${ymd}` +
+                (revived ? " (resumed)" : ""),
+            );
         }
 
         return NextResponse.json({
@@ -284,5 +301,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: { slug: st
         return NextResponse.json({ error: "delete failed" }, { status: 500 });
     }
 
+    await notifyTelegram(`🗑 Academy deleted: ${slug}`);
     return NextResponse.json({ ok: true, slug });
 }

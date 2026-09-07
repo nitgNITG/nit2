@@ -6,6 +6,7 @@ import { toLicenseDefinition } from "@/lib/licenseDefinition";
 import { type Brand, sanitizeBrand } from "@/lib/brand";
 import { generateAdminPassword, encryptSecret } from "@/lib/secretBox";
 import { buildIntegrationEnv } from "@/lib/integrations";
+import { notifyTelegram } from "@/lib/telegram";
 
 // ── SaaS repo that holds the base ("main") every academy branches from ────────
 const OWNER = process.env.SAAS_REPO_OWNER ?? "NITGg";
@@ -238,6 +239,10 @@ export async function POST(req: NextRequest) {
                     nitAdminPasswordEnc: encryptSecret(nitAdminPassword), // NIT super-admin pw (support)
                 },
             });
+            await notifyTelegram(
+                `🆕 New academy: ${academy.slug} ("${cleanName}") — tier ${tier}` +
+                (user.email ? ` · ${user.email}` : ""),
+            );
             return NextResponse.json(
                 { ok: true, slug: academy.slug, branch: academy.branch },
                 { status: 201 }

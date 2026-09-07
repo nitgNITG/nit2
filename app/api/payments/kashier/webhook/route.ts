@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prismaMysql";
 import { verifyWebhook, isPaidStatus } from "@/lib/kashier";
 import { provisionAcademy, licenseToDefinition, triggerSuspend } from "@/lib/provisionAcademy";
+import { notifyTelegram } from "@/lib/telegram";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -98,6 +99,10 @@ export async function POST(req: NextRequest) {
                 // Push the new licence to the live Moodle (best-effort).
                 await triggerApplyLicense(slug, payment.licenseKey, definition);
                 if (prev?.status === "suspended") await triggerSuspend(slug, false);
+                await notifyTelegram(
+                    `💳 Academy ${slug} ${payment.purpose === "renew" ? "renewed" : "upgraded"} → ` +
+                    `${payment.licenseKey} (paid)`,
+                );
             }
         }
     } catch (e) {

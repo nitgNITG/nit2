@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prismaMysql";
 import { Prisma } from "prismamysql";
 import { triggerSuspend, triggerExpiryReminder, deprovisionAndDeleteAcademy } from "@/lib/provisionAcademy";
+import { notifyTelegram } from "@/lib/telegram";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,6 +39,9 @@ export async function POST(req: NextRequest) {
         } catch (e) {
             console.error("[cron/expiry] suspend failed", a.slug, e);
         }
+    }
+    if (suspended.length) {
+        await notifyTelegram(`⛔ Expired & suspended (${suspended.length}): ${suspended.join(", ")}`);
     }
 
     // 1b) Pre-expiry reminders → email the owner via the academy's own Moodle

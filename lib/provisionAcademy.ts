@@ -8,6 +8,7 @@ import { toLicenseDefinition } from "@/lib/licenseDefinition";
 import type { Brand } from "@/lib/brand";
 import { generateAdminPassword, encryptSecret } from "@/lib/secretBox";
 import { buildIntegrationEnv, hasIntegrationPayload } from "@/lib/integrations";
+import { notifyTelegram } from "@/lib/telegram";
 
 const OWNER = process.env.SAAS_REPO_OWNER ?? "NITGg";
 const REPO = process.env.SAAS_REPO_NAME ?? "saas-demo";
@@ -249,6 +250,7 @@ export async function deprovisionAndDeleteAcademy(slug: string): Promise<boolean
     }
     try {
         await prisma.academy.delete({ where: { slug } });
+        await notifyTelegram(`🗑 Academy auto-deleted (expired past retention): ${slug}`);
         return true;
     } catch (e) {
         console.error("[provision] row delete failed", slug, e);
@@ -354,6 +356,10 @@ export async function provisionAcademy(input: ProvisionInput): Promise<Provision
                 nitAdminPasswordEnc: encryptSecret(nitAdminPassword), // NIT super-admin pw (support)
             },
         });
+        await notifyTelegram(
+            `🆕 New academy: ${academy.slug} ("${input.name}") — tier ${input.tier}` +
+            (input.owner.email ? ` · ${input.owner.email}` : ""),
+        );
         return { ok: true, slug: academy.slug, branch: academy.branch, persisted: true };
     } catch (e: any) {
         if (e?.code === "P2002") return { ok: false, error: "المعرّف ده مستخدم بالفعل، اختار غيره.", status: 409 };
