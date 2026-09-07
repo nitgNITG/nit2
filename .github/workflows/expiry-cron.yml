@@ -1,8 +1,10 @@
 name: Academy Expiry Cron
 
-# Hits the nit2 expiry endpoint once a day. It (1) emails owners whose academy is
-# about to expire (7/3/1 days + on-expiry) and (2) suspends academies past the
-# grace period. Idempotent — safe to run repeatedly / trigger manually.
+# Hits the nit2 expiry endpoint once a day. It (0) auto-renews subscriptions with a
+# saved card token — only when SUBSCRIPTIONS_ENABLED=1, otherwise a no-op — then
+# (1) emails owners whose academy is about to expire (7/3/1 days + on-expiry) and
+# (2) suspends academies past the grace period. Idempotent — safe to run repeatedly
+# / trigger manually.
 on:
   schedule:
     - cron: '0 3 * * *'   # 03:00 UTC daily (05:00 Cairo)
