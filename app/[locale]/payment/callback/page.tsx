@@ -23,6 +23,25 @@ function PaymentCallbackInner() {
     const [status, setStatus] = useState<Status>('pending')
     const [slug, setSlug] = useState<string | null>(null)
 
+    // Kashier returns the reusable card token ONLY on this redirect URL (not the
+    // webhook). If the buyer saved a card, hand it to the server to store (encrypted)
+    // for auto-renew. Fire-and-forget; the endpoint is a no-op unless the feature is
+    // on and the order belongs to the signed-in owner.
+    useEffect(() => {
+        const cardDataToken = params.get('cardDataToken')
+        if (!orderId || !cardDataToken) return
+        fetch('/api/payments/kashier/save-card', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                order: orderId,
+                cardDataToken,
+                maskedCard: params.get('maskedCard') || '',
+                cardBrand: params.get('cardBrand') || '',
+            }),
+        }).catch(() => { /* best-effort */ })
+    }, [orderId, params])
+
     useEffect(() => {
         if (!orderId) { setStatus('error'); return }
         let stop = false

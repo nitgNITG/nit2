@@ -4,6 +4,7 @@ import { verifyWebhook, isPaidStatus } from "@/lib/kashier";
 import { provisionAcademy, licenseToDefinition, triggerSuspend } from "@/lib/provisionAcademy";
 import { computeUpgradable } from "@/lib/licenseDefinition";
 import { notifyTelegram } from "@/lib/telegram";
+import { openSubscription } from "@/lib/billing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -98,6 +99,16 @@ export async function POST(req: NextRequest) {
                 console.error("[kashier/webhook] provision failed after payment", orderId, result.error);
                 await prisma.payment.update({ where: { orderId }, data: { failureReason: `paid-but-provision-failed: ${result.error}` } }).catch(() => {});
                 await notifyTelegram(`❌ PAID but provision FAILED — ${p.slug} (order ${orderId}): ${result.error}`);
+            } else if (p.autoRenew && durationDays > 0) {
+                // Buyer opted into auto-renew → open the recurring subscription. The
+                // saved-card token is captured separately by the callback (save-card);
+                // openSubscription links it if present, and billing falls back to the
+                // user's default card otherwise. No-op unless SUBSCRIPTIONS_ENABLED=1.
+                await openSubscription({
+                    academySlug: String(p.slug), userId: payment.userId, licenseKey: payment.licenseKey,
+                    intervalDays: durationDays, amountEgp: payment.amount, currency: payment.currency,
+                    currentPeriodEnd: new Date(Date.now() + durationDays * 86_400_000),
+                });
             }
         } else {
             // upgrade | renew — move the existing academy to the paid tier + reset term.
@@ -115,6 +126,13 @@ export async function POST(req: NextRequest) {
                 // Push the new licence to the live Moodle (best-effort).
                 await triggerApplyLicense(slug, payment.licenseKey, definition);
                 if (prev?.status === "suspended") await triggerSuspend(slug, false);
+                if (p.autoRenew && durationDays > 0 && validUntil) {
+                    await openSubscription({
+                        academySlug: slug, userId: payment.userId, licenseKey: payment.licenseKey,
+                        intervalDays: durationDays, amountEgp: payment.amount, currency: payment.currency,
+                        currentPeriodEnd: validUntil,
+                    });
+                }
                 await notifyTelegram(
                     `💳 Academy ${slug} ${payment.purpose === "renew" ? "renewed" : "upgraded"} → ` +
                     `${payment.licenseKey} (paid)`,

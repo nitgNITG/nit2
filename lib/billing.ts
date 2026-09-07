@@ -162,6 +162,48 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
   return summary;
 }
 
+/** Open (or refresh) the auto-renew subscription for an academy after a paid term.
+ *  Idempotent on academySlug. Links the user's default saved card if one exists;
+ *  billing falls back to the default card by userId otherwise. No-op while the
+ *  feature is off. Called from the webhook once a paid term's validUntil is known. */
+export async function openSubscription(opts: {
+  academySlug: string;
+  userId: string;
+  licenseKey: string;
+  intervalDays: number;
+  amountEgp: number;
+  currency: string;
+  currentPeriodEnd: Date;
+}): Promise<void> {
+  if (!subscriptionsEnabled()) return;
+  if (!opts.intervalDays || opts.intervalDays <= 0) return; // never-expiring plan: nothing to renew
+  const nextAttemptAt = new Date(opts.currentPeriodEnd.getTime() - renewLeadDays() * DAY);
+  const pm = await prisma.paymentMethod
+    .findFirst({ where: { userId: opts.userId, isDefault: true }, orderBy: { createdAt: "desc" } })
+    .catch(() => null);
+  try {
+    await prisma.subscription.upsert({
+      where: { academySlug: opts.academySlug },
+      create: {
+        academySlug: opts.academySlug, userId: opts.userId, licenseKey: opts.licenseKey,
+        status: "active", autoRenew: true, intervalDays: opts.intervalDays,
+        amountEgp: opts.amountEgp, currency: opts.currency,
+        currentPeriodEnd: opts.currentPeriodEnd, nextAttemptAt,
+        attemptCount: 0, consentAt: new Date(), paymentMethodId: pm?.id ?? null,
+      },
+      update: {
+        // A fresh paid term (renewal / plan change) re-arms billing.
+        licenseKey: opts.licenseKey, status: "active", autoRenew: true,
+        intervalDays: opts.intervalDays, amountEgp: opts.amountEgp, currency: opts.currency,
+        currentPeriodEnd: opts.currentPeriodEnd, nextAttemptAt, attemptCount: 0, lastError: null,
+        ...(pm?.id ? { paymentMethodId: pm.id } : {}),
+      },
+    });
+  } catch (e) {
+    console.error("[billing] openSubscription failed", opts.academySlug, e);
+  }
+}
+
 async function markPastDue(id: string, reason: string, attempt: number): Promise<void> {
   await prisma.subscription.update({
     where: { id },

@@ -73,6 +73,12 @@ export async function POST(req: NextRequest) {
 
     // Persist the pending payment WITH the create payload so the webhook can
     // provision exactly what the client configured — after payment is confirmed.
+    // Save the card on file when the buyer opted into auto-renew (body.autoRenew),
+    // or globally while testing (KASHIER_SAVE_CARD=1). Needed so the returned token
+    // is reusable for recurring charges; also records the auto-renew intent so the
+    // webhook opens a Subscription once the term's validUntil is known.
+    const saveCard = body?.autoRenew === true || process.env.KASHIER_SAVE_CARD === "1";
+
     try {
         await prisma.payment.create({
             data: {
@@ -83,6 +89,7 @@ export async function POST(req: NextRequest) {
                     name, slug, tier: lic.key, brand, locale, platform_lang: platformLang,
                     // Snapshot the owner so the (session-less) webhook can provision.
                     owner_email: user.email, owner_name: user.name ?? "",
+                    autoRenew: saveCard, // recurring intent for the webhook
                 },
             },
         });
@@ -90,11 +97,6 @@ export async function POST(req: NextRequest) {
         console.error("[kashier/create] could not persist payment", e);
         return NextResponse.json({ error: "تعذّر بدء عملية الدفع، حاول تاني." }, { status: 500 });
     }
-
-    // Save the card on file when the buyer opted into auto-renew (body.autoRenew),
-    // or globally while testing (KASHIER_SAVE_CARD=1). Needed so the returned token
-    // is reusable for recurring charges.
-    const saveCard = body?.autoRenew === true || process.env.KASHIER_SAVE_CARD === "1";
 
     const session = await createSession({
         orderId,
