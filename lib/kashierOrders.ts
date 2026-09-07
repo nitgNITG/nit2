@@ -20,6 +20,15 @@ const ORDERS_URL = (
   process.env.KASHIER_ORDERS_URL || "https://test-fep.kashier.io/v3/orders/"
 ).replace(/\s+/g, "");
 
+/** FEP origin (test vs live) shared by the orders / cards / token endpoints.
+ *  Derived from KASHIER_ORDERS_URL so all three stay on the same environment;
+ *  override with KASHIER_FEP_BASE if needed. */
+function fepBase(): string {
+  const override = (process.env.KASHIER_FEP_BASE || "").trim().replace(/\/+$/, "");
+  if (override) return override;
+  try { return new URL(ORDERS_URL).origin; } catch { return "https://test-fep.kashier.io"; }
+}
+
 export type TokenChargeInput = {
   orderId: string; // our merchant order id (Payment.orderId)
   amount: number; // whole EGP (major units), as sent to the hosted checkout
@@ -134,4 +143,65 @@ export async function payWithToken(input: TokenChargeInput): Promise<TokenCharge
       `declined (code ${code || "n/a"})`,
     raw,
   };
+}
+
+export type SavedCard = {
+  cardToken: string;
+  maskedNumber?: string; // e.g. "5123****0008"
+  brand?: string;
+  expMonth?: number;
+  expYear?: number;
+};
+
+/** List a customer's saved cards (card-on-file), newest first if the API orders
+ *  them. GET /v3/cards/customer — Authorization: secretKey, no hash. The token
+ *  store is keyed by customerReference, so this is how we capture a token after a
+ *  first checkout that saved the card. Returns [] on any error. */
+export async function retrieveTokens(customerReference: string): Promise<SavedCard[]> {
+  const { merchantId, secretKey } = kashierCreds();
+  if (!merchantId || !secretKey) return [];
+  try {
+    const url = new URL(`${fepBase()}/v3/cards/customer`);
+    url.searchParams.set("customerReference", customerReference);
+    url.searchParams.set("merchantId", merchantId);
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: secretKey, accept: "application/json" },
+      cache: "no-store",
+    });
+    if (!res.ok) return [];
+    const raw = await res.json().catch(() => ({}));
+    const list: any[] = raw?.paymentMethods || raw?.response?.paymentMethods || [];
+    return list
+      .filter((c) => c?.cardToken)
+      .map((c) => ({
+        cardToken: String(c.cardToken),
+        maskedNumber: c?.number,
+        brand: c?.brand || c?.scheme,
+        expMonth: c?.expiry?.month ? Number(c.expiry.month) : undefined,
+        expYear: c?.expiry?.year ? Number(c.expiry.year) : undefined,
+      }));
+  } catch (e) {
+    console.error("[kashierOrders] retrieveTokens failed", e);
+    return [];
+  }
+}
+
+/** Delete a saved card token (used when the owner removes/replaces a card).
+ *  DELETE /v3/token/:cardToken?customerReference= — Authorization: secretKey. */
+export async function deleteToken(cardToken: string, customerReference: string): Promise<boolean> {
+  const { secretKey } = kashierCreds();
+  if (!secretKey) return false;
+  try {
+    const url = new URL(`${fepBase()}/v3/token/${encodeURIComponent(cardToken)}`);
+    url.searchParams.set("customerReference", customerReference);
+    const res = await fetch(url.toString(), {
+      method: "DELETE",
+      headers: { Authorization: secretKey, accept: "application/json", "Content-Type": "application/json" },
+      body: "{}",
+    });
+    return res.ok;
+  } catch (e) {
+    console.error("[kashierOrders] deleteToken failed", e);
+    return false;
+  }
 }

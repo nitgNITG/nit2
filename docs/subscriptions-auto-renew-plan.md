@@ -85,28 +85,36 @@ implied but not spelled out — verify against a live test order, see §9).
 
 ---
 
-## 3. How we get a reusable token (the hard part)
+## 3. How we get a reusable token — RESOLVED (Kashier keys tokens by customerReference)
 
-We never see card numbers (good — keeps us out of PCI scope). The token must come from
-Kashier during a **first, customer-present** payment. Two candidate mechanisms — we
-confirm which the account supports and pick one:
+We never see card numbers (good — keeps us out of PCI scope). Kashier maintains a
+**card-on-file store keyed by `customer.reference`**, and the token-management docs give
+us a clean, webhook-independent way to read it back:
 
-- **Option A — "save card" flag on the hosted session (preferred).** Add a
-  card-on-file / save-card flag to the `createSession` body so the hosted checkout
-  shows a "save this card for automatic renewal" consent, and Kashier returns the
-  `cardToken` (in the webhook payload and/or order-details) after the first success.
-  We store it and never send the customer back to checkout for renewals.
-  *Action:* confirm the exact session field name with Kashier (candidates seen in the
-  wild: `enableSavingCard`, `savePaymentMethod`, `storeCard`) — **do not guess in code;
-  verify first.**
-- **Option B — first charge via the direct v3/orders `ECOMMERCE` + 3DS flow.** We drive
-  the first payment ourselves (collect card on a Kashier-hosted field/iframe), complete
-  3DS, and read `cardToken` from the response. More surface area; only if A is not
-  available.
+- **Retrieve saved cards**:
+  `GET https://fep.kashier.io/v3/cards/customer?customerReference=<id>&merchantId=<mid>`
+  — header `Authorization: <secretKey>`, **no hash**. Returns `paymentMethods[]`, each
+  with `cardToken`, masked `number` (e.g. `5123****0008`), `expiry.{month,year}`,
+  `nameOnCard`, `type`. (Live host `fep.kashier.io`; test `test-fep.kashier.io`.)
+- **Delete a saved card**:
+  `DELETE https://fep.kashier.io/v3/token/<cardToken>?customerReference=<id>` —
+  `Authorization: <secretKey>`, no hash, body `{}`.
+- **What triggers saving**: the hashing docs describe `CustomerReference` as *"your
+  customer ID **for saving the card**."* Our existing hosted `createSession` **already
+  sends `customer.reference` = the user id**, so cards are (very likely) already being
+  saved on file. There may additionally be a UI consent/opt-in on the hosted page —
+  confirm by test (§9.1): pay once, then call the retrieve endpoint and see if a token
+  appears.
 
-**Recommendation:** ship on **Option A**. It reuses today's hosted-checkout path almost
-verbatim — the only change is the save-card flag + capturing the returned token in the
-webhook.
+**Capture strategy (chosen):** we do **not** depend on the webhook carrying the token.
+After a first successful payment we call **retrieve-tokens by `customerReference`**, take
+the newest card, and store it encrypted in `PaymentMethod`. Renewals then charge it via
+`v3/orders` PAY. Implemented in `lib/kashierOrders.ts` as `retrieveTokens()` /
+`deleteToken()` (dormant until wired into the webhook).
+
+**Probe script:** `scripts/kashier-token-test.mjs` (reads your `.env`, no secrets to
+paste) runs `list` / `pay` / `delete` / `hash` against test or `--live` — this is the
+tool to answer every §9 unknown below.
 
 ### 3.1 Consent & mandate (compliance, not optional)
 Recurring/MIT requires the cardholder to agree, at first payment, to future automatic
@@ -287,25 +295,31 @@ error? }`. Keep it beside `lib/kashier.ts` (which stays the hosted-session modul
 
 ---
 
-## 9. Open questions to confirm with Kashier BEFORE coding (do not guess in code)
+## 9. Open questions — verify with `scripts/kashier-token-test.mjs` (one test order)
 
-1. **Save-card flag** — exact field on `POST /v3/payment/sessions` to store the card and
-   the exact place the `cardToken` is returned (webhook payload key vs order-details
-   GET). This decides §3 Option A vs B.
-2. **Live `v3/orders` host** — test is `test-fep.kashier.io`; confirm the production FEP
-   host and whether our merchant is enabled for MIT/`Recurring`.
-3. **`Kashier-Hash` for `v3/orders`** — confirm it's the same
-   `HMAC_SHA256("/?payment=mid.orderId.amount.currency.customerReference", apiKey)`
-   recipe as hosted checkout (verify with one live test order).
-4. **`customer.reference` stability** — we'll use the Mongo user id; confirm a token is
-   reusable across orders under the same reference (and whether the token is bound to
-   that reference).
-5. **`securityCode`/CVV** — docs say required for `ECOMMERCE`; confirm `Recurring`/MIT
-   does **not** need it (a background charge cannot collect a CVV).
-6. **Currency unit** — we send whole EGP as a string today; confirm `v3/orders` amount is
-   the same (major units) and not piastres.
-7. **Merchant-initiated 3DS exemption** — confirm `Recurring` truly runs without OTP for
-   our MID (some acquirers force step-up).
+Run from the nit2 folder (uses `.env`; add `--live` for the production merchant):
+
+1. **Card actually gets saved** *(the one that matters)* — do a normal checkout in the
+   app, pay with a Kashier test card, then
+   `node scripts/kashier-token-test.mjs list <yourUserId>`. If a `cardToken` comes back,
+   §3 is fully confirmed and no checkout change is needed. If not, the hosted page needs
+   a save-card opt-in enabled on the Kashier account.
+2. **Live host / MIT enabled** — `fep.kashier.io` (live) vs `test-fep.kashier.io`;
+   confirm the merchant is enabled for `interactionSource:"Recurring"`.
+3. **`Kashier-Hash` recipe** — `pay` prints the signed path + hash. If it's rejected as a
+   signature error, retry with `--no-ref` (drop customerReference) and/or
+   `--secret-hash` (sign with the secret key). Whichever is accepted, set `orderHash()`
+   in `lib/kashierOrders.ts` to match (one line).
+4. **`customer.reference` stability** — we use the Mongo user id; the token is bound to
+   that reference (retrieve/pay both take it), so keep it stable per user. ✔ by design.
+5. **`securityCode`/CVV** — docs require it for `ECOMMERCE` only; confirm `Recurring`
+   captures **without** a CVV (the `pay` probe sends none). If it demands one, MIT isn't
+   usable and we fall back to one-click renew.
+6. **Currency unit** — we send whole EGP as a string; confirm `v3/orders` amount matches
+   the hosted checkout (major units, not piastres) via a 1 EGP `pay`.
+7. **3DS exemption on recurring** — if `pay` returns an `AUTHENTICATION…` status, the
+   acquirer forces OTP on MIT for our MID → silent renewal impossible; `lib/billing.ts`
+   already degrades this to `needsAuth` (reminder + manual renew).
 
 ---
 
