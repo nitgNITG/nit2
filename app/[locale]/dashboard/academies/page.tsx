@@ -131,6 +131,7 @@ const StorageBar = ({
 const AcademiesPage = () => {
   const [academies, setAcademies] = useState<Academy[]>([]);
   const [licenses, setLicenses] = useState<License[]>([]);
+  const [googleConfigured, setGoogleConfigured] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingSlug, setSavingSlug] = useState<string | null>(null);
   const [updatingAll, setUpdatingAll] = useState(false);
@@ -194,6 +195,7 @@ const AcademiesPage = () => {
         axios.get("/api/licenses"),
       ]);
       setAcademies(a.data.academies ?? []);
+      setGoogleConfigured(a.data.googleConfigured ?? null);
       setLicenses(l.data.licenses ?? []);
     } catch {
       toast.error("Could not load academies");
@@ -466,7 +468,38 @@ const AcademiesPage = () => {
       </div>
 
       {/* Google login redirect-URI helper — Google has no API/wildcard for this. */}
-      <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+      <div
+        className={
+          googleConfigured === false
+            ? "rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+            : "rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900"
+        }
+      >
+        {/* Boolean: is the shared Google OAuth client (id + secret) configured? */}
+        {googleConfigured !== null && (
+          <div className="mb-2 flex items-center gap-2 font-semibold">
+            {googleConfigured ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-green-800">
+                ✓ Google OAuth client configured
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-200 px-2 py-0.5 text-amber-900">
+                ✗ Google OAuth client NOT configured
+              </span>
+            )}
+            {googleConfigured === false && (
+              <span className="font-normal">
+                — set{" "}
+                <span className="font-mono">google_client_id</span> +{" "}
+                <span className="font-mono">google_client_secret</span> in{" "}
+                <a href="platform-settings" className="font-semibold underline">
+                  Platform Settings
+                </a>{" "}
+                first.
+              </span>
+            )}
+          </div>
+        )}
         <strong>Google login:</strong> for each academy, click{" "}
         <span className="font-semibold">🔗 OAuth URL</span> to copy its redirect
         URI, then paste it into the{" "}

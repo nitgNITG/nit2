@@ -364,6 +364,10 @@ export async function provisionAcademy(input: ProvisionInput): Promise<Provision
     } catch (e: any) {
         if (e?.code === "P2002") return { ok: false, error: "المعرّف ده مستخدم بالفعل، اختار غيره.", status: 409 };
         console.error("[provision] persist failed after branch create", e);
+        await notifyTelegram(
+            `⚠️ Provision issue: ${input.slug} — branch built but NOT recorded in the control plane ` +
+            `(orphaned academy, needs manual fix).`,
+        );
         return { ok: true, slug: input.slug, branch, persisted: false };
     }
 }

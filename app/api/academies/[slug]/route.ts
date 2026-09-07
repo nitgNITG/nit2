@@ -69,6 +69,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
     } = {};
 
     // Status transition — worker-guarded.
+    let buildFailed = false;
     if (body?.status !== undefined) {
         const secret = process.env.WORKER_SECRET;
         if (secret && req.headers.get("x-worker-secret") !== secret) {
@@ -79,6 +80,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
             return NextResponse.json({ error: "invalid status" }, { status: 400 });
         }
         data.status = body.status;
+        buildFailed = body.status === "failed";
     }
 
     // Licence change — admin-guarded. Validate against the (dynamic) License table.
@@ -154,6 +156,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
 
     try {
         const academy = await prisma.academy.update({ where: { slug: params.slug }, data });
+        if (buildFailed) {
+            await notifyTelegram(`❌ Academy ${params.slug} build FAILED — provisioning did not complete.`);
+        }
         if (tierChanged) {
             await triggerApplyLicense(params.slug, tierChanged); // push to the live Moodle
             await notifyTelegram(`🔁 Academy ${params.slug} plan changed → ${tierChanged}`);

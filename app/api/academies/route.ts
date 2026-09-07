@@ -254,6 +254,10 @@ export async function POST(req: NextRequest) {
             }
             // Branch was created but we couldn't persist — surface as success with a note.
             console.error("[academies] persist failed after branch create", dbErr);
+            await notifyTelegram(
+                `⚠️ Provision issue: ${cleanSlug} — branch built but NOT recorded in the control plane ` +
+                `(orphaned academy, needs manual fix).`,
+            );
             return NextResponse.json({ ok: true, slug: cleanSlug, branch, persisted: false }, { status: 201 });
         }
     } catch (err) {
@@ -286,7 +290,22 @@ export async function GET(req: NextRequest) {
             ...a,
             owner: a.ownerId ? ownerById.get(a.ownerId) ?? null : null,
         }));
-        return NextResponse.json({ academies: withOwners });
+        // Is the shared Google OAuth client configured? True only when BOTH the
+        // client id and secret are set in platform settings. The secret value is
+        // never sent to the client — only this boolean — so the dashboard can tell
+        // the admin whether Google login is set up (and to add redirect URIs in the
+        // Google console) without leaking the credential.
+        let googleConfigured = false;
+        try {
+            const rows = await prisma.platformSetting.findMany({
+                where: { key: { in: ["google_client_id", "google_client_secret"] } },
+            });
+            const map = new Map(rows.map((r) => [r.key, (r.value ?? "").trim()]));
+            googleConfigured = !!map.get("google_client_id") && !!map.get("google_client_secret");
+        } catch (e) {
+            console.error("[academies] google-config check failed", e);
+        }
+        return NextResponse.json({ academies: withOwners, googleConfigured });
     } catch (err) {
         console.error("[academies] list failed", err);
         return NextResponse.json({ academies: [], error: "list failed" }, { status: 200 });

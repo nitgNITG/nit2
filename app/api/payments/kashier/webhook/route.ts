@@ -82,6 +82,7 @@ export async function POST(req: NextRequest) {
             if (!result.ok) {
                 console.error("[kashier/webhook] provision failed after payment", orderId, result.error);
                 await prisma.payment.update({ where: { orderId }, data: { failureReason: `paid-but-provision-failed: ${result.error}` } }).catch(() => {});
+                await notifyTelegram(`❌ PAID but provision FAILED — ${p.slug} (order ${orderId}): ${result.error}`);
             }
         } else {
             // upgrade | renew — move the existing academy to the paid tier + reset term.
