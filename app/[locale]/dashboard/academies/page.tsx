@@ -133,6 +133,7 @@ const AcademiesPage = () => {
   const [academies, setAcademies] = useState<Academy[]>([]);
   const [licenses, setLicenses] = useState<License[]>([]);
   const [googleConfigured, setGoogleConfigured] = useState<boolean | null>(null);
+  const [subs, setSubs] = useState<Record<string, { autoRenew: boolean; status: string }>>({});
   const [loading, setLoading] = useState(true);
   const [savingSlug, setSavingSlug] = useState<string | null>(null);
   const [updatingAll, setUpdatingAll] = useState(false);
@@ -210,19 +211,37 @@ const AcademiesPage = () => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [a, l] = await Promise.all([
+      const [a, l, s] = await Promise.all([
         axios.get("/api/academies"),
         axios.get("/api/licenses"),
+        axios.get("/api/subscriptions").catch(() => ({ data: {} })),
       ]);
       setAcademies(a.data.academies ?? []);
       setGoogleConfigured(a.data.googleConfigured ?? null);
       setLicenses(l.data.licenses ?? []);
+      const map: Record<string, { autoRenew: boolean; status: string }> = {};
+      for (const sub of s.data?.subscriptions ?? [])
+        map[sub.academySlug] = { autoRenew: sub.autoRenew, status: sub.status };
+      setSubs(map);
     } catch {
       toast.error("Could not load academies");
     } finally {
       setLoading(false);
     }
   }, []);
+
+  // Toggle a subscription's auto-renew (admin). Optimistic; reverts on failure.
+  const toggleSubAutoRenew = async (slug: string, on: boolean) => {
+    const prev = subs[slug];
+    setSubs((m) => ({ ...m, [slug]: { autoRenew: on, status: on ? "active" : "canceled" } }));
+    try {
+      await axios.patch(`/api/subscriptions/${slug}`, { autoRenew: on });
+      toast.success(on ? "Auto-renew resumed" : "Auto-renew cancelled");
+    } catch {
+      setSubs((m) => ({ ...m, [slug]: prev }));
+      toast.error("Could not update auto-renew");
+    }
+  };
 
   useEffect(() => {
     load();
@@ -597,6 +616,30 @@ const AcademiesPage = () => {
                     >
                       {a.googleOauthAdded ? "✓ Google URL added" : "✗ Google URL missing"}
                     </button>
+                    {/* Auto-renew status (only when a subscription exists). */}
+                    {subs[a.slug] && (
+                      <span
+                        title={
+                          subs[a.slug].autoRenew
+                            ? "Auto-renew is on for this academy"
+                            : `Auto-renew ${subs[a.slug].status === "past_due" ? "past due" : "cancelled"}`
+                        }
+                        className={
+                          "mt-1 ms-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold " +
+                          (subs[a.slug].status === "past_due"
+                            ? "bg-red-100 text-red-700"
+                            : subs[a.slug].autoRenew
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-gray-100 text-gray-500")
+                        }
+                      >
+                        {subs[a.slug].status === "past_due"
+                          ? "⚠ auto-renew past due"
+                          : subs[a.slug].autoRenew
+                            ? "↻ auto-renew on"
+                            : "auto-renew off"}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     {a.owner ? (
@@ -777,6 +820,21 @@ const AcademiesPage = () => {
                               ? "↩︎ Google URL added — unmark"
                               : "✓ Mark Google URL added"}
                           </button>
+                          {subs[a.slug] && (
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                setMenu(null);
+                                toggleSubAutoRenew(a.slug, !subs[a.slug].autoRenew);
+                              }}
+                              className="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                            >
+                              {subs[a.slug].autoRenew
+                                ? "🚫 Cancel auto-renew"
+                                : "↻ Resume auto-renew"}
+                            </button>
+                          )}
                           <button
                             type="button"
                             role="menuitem"

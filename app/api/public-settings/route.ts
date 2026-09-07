@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prismaMysql";
 import { getCurrentUser } from "@/lib/auth";
+import { subscriptionsEnabled } from "@/lib/subscriptions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,5 +22,5 @@ export async function GET() {
     } catch {
         // fall back to the default
     }
-    return NextResponse.json({ maxImageMb });
+    return NextResponse.json({ maxImageMb, autoRenewEnabled: subscriptionsEnabled() });
 }

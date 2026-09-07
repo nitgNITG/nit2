@@ -15,6 +15,11 @@ export type ClientAcademy = {
 }
 
 type Tier = { key: string; name: string; price: number; priceEgp?: number; active: boolean; order?: number }
+type Sub = {
+    academySlug: string; status: string; autoRenew: boolean; amountEgp: number; currency: string
+    intervalDays: number; currentPeriodEnd: string | null; nextAttemptAt: string | null
+    lastError?: string | null; card: { brand?: string | null; last4?: string | null } | null
+}
 
 export default function AcademyCard({ academy, domain }: { academy: ClientAcademy; domain: string }) {
     const t = useTranslations('Dashboard')
@@ -29,7 +34,42 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
     const [upgrading, setUpgrading] = useState(false)
     const [editing, setEditing] = useState(false)
     const [highlight, setHighlight] = useState(false)
+    const [sub, setSub] = useState<Sub | null>(null)
+    const [subBusy, setSubBusy] = useState(false)
     const links = connectLinks(academy.slug, domain)
+
+    // Auto-renew subscription for this academy (if the feature is on and one exists).
+    useEffect(() => {
+        let cancelled = false
+        fetch('/api/subscriptions', { cache: 'no-store' })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((d) => {
+                if (cancelled || !d?.enabled) return
+                setSub((d.subscriptions ?? []).find((s: Sub) => s.academySlug === academy.slug) ?? null)
+            })
+            .catch(() => { /* feature optional */ })
+        return () => { cancelled = true }
+    }, [academy.slug])
+
+    const toggleAutoRenew = async (on: boolean) => {
+        if (subBusy) return
+        if (!on && !confirm(tr('إلغاء التجديد التلقائي؟ ستظل الأكاديمية تعمل حتى نهاية المدة الحالية.',
+            'Cancel auto-renew? Your academy keeps running until the end of the current term.'))) return
+        setSubBusy(true)
+        try {
+            const res = await fetch(`/api/subscriptions/${academy.slug}`, {
+                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ autoRenew: on }),
+            })
+            const d = await res.json()
+            if (res.ok) setSub((prev) => (prev ? { ...prev, autoRenew: d.autoRenew, status: d.status } : prev))
+            else alert(d.error || tr('تعذّر التحديث، حاول تاني.', 'Could not update, please try again.'))
+        } catch {
+            alert(tr('تعذّر التحديث، حاول تاني.', 'Could not update, please try again.'))
+        } finally {
+            setSubBusy(false)
+        }
+    }
 
     // Deep-link support: the in-academy gear dropdown links here with
     // #<slug> (e.g. .../account#demo). Scroll this card into view and flash a
@@ -276,6 +316,44 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
                             {renewing ? tr('جارٍ التحويل…', 'Redirecting…') : tr('تجديد الاشتراك', 'Renew subscription')}
                         </button>
                     )}
+                </div>
+            )}
+
+            {/* Auto-renew subscription — status, next charge, saved card, cancel/resume. */}
+            {sub && (
+                <div className='rounded-lg bg-white/60 ring-1 ring-black/5 px-3 py-2 text-xs'>
+                    <div className='flex items-center justify-between gap-2'>
+                        <span className='text-[#0B2923]/60'>{tr('التجديد التلقائي', 'Auto-renew')}</span>
+                        <span className={`font-bold ${sub.autoRenew ? 'text-[#0b8f66]' : 'text-[#0B2923]/50'}`}>
+                            {sub.autoRenew ? tr('مُفعّل', 'On') : tr('مُلغى', 'Off')}
+                        </span>
+                    </div>
+                    {sub.card && (
+                        <p className='mt-0.5 text-[#0B2923]/60' dir='ltr'>
+                            {(sub.card.brand || 'Card')} •••• {sub.card.last4 || '****'}
+                        </p>
+                    )}
+                    {sub.autoRenew && sub.nextAttemptAt && (
+                        <p className='mt-0.5 text-[#0B2923]/60'>
+                            {tr('التجديد القادم', 'Next charge')}:{' '}
+                            <span dir='ltr' className='font-semibold'>
+                                {new Date(sub.nextAttemptAt).toLocaleDateString(isAr ? 'ar-EG' : 'en-GB', { year: 'numeric', month: 'short', day: 'numeric' })}
+                            </span>{' '}— {sub.amountEgp} {isAr ? 'ج.م' : 'EGP'}
+                        </p>
+                    )}
+                    {sub.status === 'past_due' && (
+                        <p className='mt-0.5 text-red-600'>
+                            {tr('فشل آخر تجديد — سنعيد المحاولة. حدّث بطاقتك بالتجديد يدويًا.',
+                                'Last renewal failed — we’ll retry. Update your card by renewing manually.')}
+                        </p>
+                    )}
+                    <button
+                        onClick={() => toggleAutoRenew(!sub.autoRenew)}
+                        disabled={subBusy}
+                        className='mt-2 w-full rounded-lg border border-[#0B2923]/15 px-3 py-1.5 text-xs font-bold text-[#0B2923] hover:bg-black/5 disabled:opacity-60 transition-colors'
+                    >
+                        {subBusy ? tr('جارٍ…', '…') : sub.autoRenew ? tr('إلغاء التجديد التلقائي', 'Cancel auto-renew') : tr('تفعيل التجديد التلقائي', 'Enable auto-renew')}
+                    </button>
                 </div>
             )}
 

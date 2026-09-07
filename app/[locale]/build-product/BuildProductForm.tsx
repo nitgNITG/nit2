@@ -36,7 +36,7 @@ const PALETTE_PRESETS: { name: string; dark: boolean; p: Palette }[] = [
     // Deep blue + slate (mrfathybakrmathematics.com).
     { name: 'Navy', dark: false, p: { primary: '#003362', accent: '#1f6fb2', secondary: '#e9eef4', background: '#ffffff', surface: '#f2f6fa', text: '#10233a' } },
 ]
-type License = { key: string; name: string; price: number; priceEgp?: number; active: boolean; maxCourses: number; features: Record<string, boolean> }
+type License = { key: string; name: string; price: number; priceEgp?: number; durationDays?: number; active: boolean; maxCourses: number; features: Record<string, boolean> }
 const FEATURE_LABELS: Record<string, string> = { drm: 'DRM video', coupons: 'coupons', offers: 'offers', subscriptions: 'subscriptions', packages: 'packages', jitsi: 'live sessions' }
 
 type FormValues = {
@@ -110,6 +110,8 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
     const [logocompact, setLogocompact] = useState<File | null>(null)
     const [favicon, setFavicon] = useState<File | null>(null)
     const [platformLang, setPlatformLang] = useState<'ar' | 'en' | 'both'>('both') // academy language
+    const [autoRenewEnabled, setAutoRenewEnabled] = useState(false) // is the auto-renew feature on (server flag)
+    const [autoRenew, setAutoRenew] = useState(true) // buyer's choice (paid tier, create mode)
     const hasAr = platformLang !== 'en'
     const hasEn = platformLang !== 'ar'
     const [palette, setPalette] = useState<Palette>(DEFAULT_PALETTE) // brand colours
@@ -190,6 +192,7 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
             .then((d) => {
                 const mb = Number(d?.maxImageMb)
                 if (Number.isFinite(mb) && mb > 0) setImgMax(mb * 1_048_576)
+                setAutoRenewEnabled(!!d?.autoRenewEnabled)
             })
             .catch(() => { })
     }, [])
@@ -282,6 +285,7 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                             locale,
                             platform_lang: platformLang,
                             purpose: 'new_academy',
+                            autoRenew: autoRenewEnabled ? autoRenew : false,
                         }),
                     })
                     const pd = await pr.json()
@@ -551,6 +555,35 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                 </div>
             </div>
             <input type='hidden' {...register('tier')} />
+
+            {/* Auto-renew opt-in — only in create mode, for a paid tier, when the
+                feature is enabled server-side. Saves the card + renews automatically. */}
+            {!isEdit && autoRenewEnabled && (() => {
+                const lic = licenses.find((l) => l.key === selectedTier)
+                if (!lic || (lic.priceEgp ?? 0) <= 0) return null
+                const d = lic.durationDays ?? 0
+                const every = d === 365 ? (isAr ? 'سنويًا' : 'yearly') : d === 30 ? (isAr ? 'شهريًا' : 'monthly') : d > 0 ? (isAr ? `كل ${d} يوم` : `every ${d} days`) : ''
+                return (
+                    <label className='mb-5 flex cursor-pointer items-start gap-3 rounded-xl border border-[#1E7D67]/30 bg-[#1E7D67]/5 p-3'>
+                        <input
+                            type='checkbox'
+                            checked={autoRenew}
+                            onChange={(e) => setAutoRenew(e.target.checked)}
+                            className='mt-0.5 h-5 w-5 accent-[#1E7D67]'
+                        />
+                        <span className='text-sm'>
+                            <span className='font-bold text-[#0B2923]'>
+                                {isAr ? 'تجديد تلقائي' : 'Auto-renew'}
+                            </span>
+                            <span className='block text-gray-600'>
+                                {isAr
+                                    ? `احفظ بطاقتي وجدّد الاشتراك ${every} تلقائيًا (${lic.priceEgp} ج.م) حتى ألغيه. يمكنك الإلغاء في أي وقت من "منصاتي".`
+                                    : `Save my card and renew ${every} automatically (${lic.priceEgp} EGP) until I cancel. You can cancel anytime from "My platforms".`}
+                            </span>
+                        </span>
+                    </label>
+                )
+            })()}
             </>)}
 
             {/* ══ 3. Branding & appearance — logos, colours, images (optional) ══ */}
