@@ -87,20 +87,26 @@ export async function payWithToken(input: TokenChargeInput): Promise<TokenCharge
 
   let raw: any = null;
   try {
+    // Confirmed (2026-09): /v3/orders authenticates on the Kashier-Hash header
+    // ALONE (no Authorization/api-key) — a token charge got past auth to a card
+    // error with just this. See docs/subscriptions-auto-renew-plan.md §9.3.
     const res = await fetch(ORDERS_URL, {
       method: "POST",
       headers: {
         accept: "application/json",
         "Content-Type": "application/json",
-        Authorization: secretKey,
-        "api-key": apiKey,
         "Kashier-Hash": hash,
       },
       body: JSON.stringify(body),
     });
     raw = await res.json().catch(() => ({}));
     if (res.status < 200 || res.status >= 300) {
-      return { ok: false, error: `Kashier v3/orders HTTP ${res.status}`, raw };
+      // Not necessarily fatal for auth: a 400 "Invalid Card Details" means auth
+      // passed but the token/card was rejected — fall through to the parser below.
+      const bodyErr = String(raw?.error?.cause || raw?.messages?.en || "").toLowerCase();
+      if (!bodyErr.includes("card")) {
+        return { ok: false, error: raw?.error?.cause || `Kashier v3/orders HTTP ${res.status}`, raw };
+      }
     }
   } catch (e: any) {
     return { ok: false, error: `Kashier v3/orders request error: ${e?.message || e}` };

@@ -143,9 +143,14 @@ if (cmd === "list") {
   });
   const j = await show(res);
   const captured = String(j?.status).toUpperCase() === "SUCCESS" && String(j?.response?.result).toUpperCase() === "SUCCESS";
-  console.log("\nverdict:", captured ? "✅ CAPTURED — hash recipe + token charge WORK"
-    : (String(j?.response?.status || "").includes("AUTHENTICATION") ? "🔐 needs 3DS/OTP (acquirer forces step-up on recurring)"
-      : "❌ not captured — if it's a hash/signature error, retry with --no-ref and/or --secret-hash"));
+  const cause = String(j?.error?.cause || j?.messages?.en || "").toLowerCase();
+  let verdict;
+  if (captured) verdict = "✅ CAPTURED — hash recipe + token charge WORK";
+  else if (String(j?.response?.status || "").includes("AUTHENTICATION")) verdict = "🔐 needs 3DS/OTP (acquirer forces step-up on recurring)";
+  else if (cause.includes("card")) verdict = "🟡 AUTH OK, hash recipe CONFIRMED — but this cardToken is not a valid saved card for this customerReference. Use a REAL token (from a saved-card checkout under the SAME customer id).";
+  else if (cause.includes("authorization") || cause.includes("forbidden")) verdict = "❌ auth rejected — try without --hash-only, or --swap-auth / --secret-hash / --no-ref";
+  else verdict = "❌ not captured — see the error above";
+  console.log("\nverdict:", verdict);
 } else if (cmd === "delete") {
   const [, cardToken, ref] = args;
   if (!cardToken || !ref) { console.error("usage: delete <cardToken> <customerReference>"); process.exit(1); }

@@ -306,10 +306,13 @@ Run from the nit2 folder (uses `.env`; add `--live` for the production merchant)
    a save-card opt-in enabled on the Kashier account.
 2. **Live host / MIT enabled** — `fep.kashier.io` (live) vs `test-fep.kashier.io`;
    confirm the merchant is enabled for `interactionSource:"Recurring"`.
-3. **`Kashier-Hash` recipe** — `pay` prints the signed path + hash. If it's rejected as a
-   signature error, retry with `--no-ref` (drop customerReference) and/or
-   `--secret-hash` (sign with the secret key). Whichever is accepted, set `orderHash()`
-   in `lib/kashierOrders.ts` to match (one line).
+3. **`Kashier-Hash` recipe — ✅ CONFIRMED (2026-09).** `POST /v3/orders/` with the
+   `Kashier-Hash` header ONLY (no Authorization/api-key — use the probe's `--hash-only`)
+   authenticates. Hash = `HMAC-SHA256("/?payment=MID.orderId.amount.currency.customerReference", API key)`
+   WITH the customerReference — exactly what `lib/kashierOrders.ts` builds. Proof: a
+   token charge got past auth to `Invalid Card Details` (a card error, not an auth
+   error). ⚠ NOTE: `payWithToken()` currently also sends Authorization+api-key; drop
+   those to match the confirmed hash-only form before enabling.
 4. **`customer.reference` stability** — we use the Mongo user id; the token is bound to
    that reference (retrieve/pay both take it), so keep it stable per user. ✔ by design.
 5. **`securityCode`/CVV** — docs require it for `ECOMMERCE` only; confirm `Recurring`
