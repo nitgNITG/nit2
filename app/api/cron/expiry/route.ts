@@ -3,6 +3,7 @@ import prisma from "@/lib/prismaMysql";
 import { Prisma } from "prismamysql";
 import { triggerSuspend, triggerExpiryReminder, deprovisionAndDeleteAcademy } from "@/lib/provisionAcademy";
 import { notifyTelegram } from "@/lib/telegram";
+import { runBillingCycle } from "@/lib/billing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +22,26 @@ export async function POST(req: NextRequest) {
     const graceDays = Math.max(0, Number(process.env.LICENSE_GRACE_DAYS ?? 3) || 0);
     const now = Date.now();
     const cutoff = new Date(now - graceDays * 86_400_000);
+
+    // Build the public origin from the host the cron was actually called on (the
+    // scheduler hits the public URL), so email/renew links are correct regardless
+    // of NEXT_PUBLIC_BASE_URL (which Next bakes at build time and is often localhost).
+    const hdrHost = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
+    const hdrProto = req.headers.get("x-forwarded-proto") || "https";
+    const base = (
+        hdrHost
+            ? `${hdrProto}://${hdrHost}`
+            : (process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || "")
+    ).replace(/\/$/, "");
+    const renewUrl = base ? `${base}/account` : "";
+
+    // 0) Auto-renew billing — charge due subscriptions off-session via saved card
+    // token BEFORE the suspend sweep, so a successful renewal prevents suspension.
+    // No-op unless SUBSCRIPTIONS_ENABLED=1 (returns { skipped:true }).
+    const billing = await runBillingCycle(base).catch((e) => {
+        console.error("[cron/expiry] billing cycle failed", e);
+        return { attempted: 0, renewed: [], failed: [], needsAuth: [] };
+    });
 
     // 1) Expired academies → suspend (soft-lock in Moodle, keep data).
     const expired = await prisma.academy
@@ -49,17 +70,6 @@ export async function POST(req: NextRequest) {
     // grace). Each stage is sent at most once per term (tracked in
     // expiryRemindersSent, cleared on renewal / plan change).
     const REMIND_DAYS = [7, 3, 1, 0];
-    // Build the renew link from the host the cron was actually called on (the
-    // scheduler hits the public URL), so the email link is correct regardless of
-    // NEXT_PUBLIC_BASE_URL (which Next bakes at build time and is often localhost).
-    const hdrHost = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
-    const hdrProto = req.headers.get("x-forwarded-proto") || "https";
-    const base = (
-        hdrHost
-            ? `${hdrProto}://${hdrHost}`
-            : (process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || "")
-    ).replace(/\/$/, "");
-    const renewUrl = base ? `${base}/account` : "";
     const soon = await prisma.academy
         .findMany({
             where: {
@@ -144,5 +154,5 @@ export async function POST(req: NextRequest) {
         console.error("[cron/expiry] payment sweep failed", e);
     }
 
-    return NextResponse.json({ ok: true, graceDays, suspended, reminded, deleted, autoDeleteDays, expiredPayments });
+    return NextResponse.json({ ok: true, graceDays, billing, suspended, reminded, deleted, autoDeleteDays, expiredPayments });
 }

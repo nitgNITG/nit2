@@ -132,9 +132,62 @@ model Payment {
   sessionId      String? // Kashier session _id
   providerRef    String? // Kashier transactionId / kashierOrderId once paid
   failureReason  String?   @db.Text
+  // Auto-renew: links a charge to the subscription that produced it, and the
+  // billing window it covers, so retries are idempotent (one paid Payment per
+  // (subscriptionId, billingCycle)). Null for one-off/manual payments.
+  subscriptionId String?
+  billingCycle   String? // e.g. "2026-10" — the cycle this attempt is for
   createdAt      DateTime  @default(now())
   paidAt         DateTime?
 
   @@index([userId])
   @@index([status])
+  @@index([subscriptionId])
+}
+
+// A recurring subscription for one academy (auto-renew). One active row per
+// academy. The academy's own term (Academy.validUntil) stays the source of truth
+// for "is it live"; this row drives the BILLING side: when to charge next, on
+// what card, how many retries. Entirely dormant unless SUBSCRIPTIONS_ENABLED=1.
+model Subscription {
+  id               String    @id @default(uuid())
+  academySlug      String    @unique // one active subscription per academy
+  userId           String // owner / billing contact (Mongo app user id)
+  licenseKey       String // License.key being billed
+  status           String    @default("active") // active | past_due | canceled | paused
+  autoRenew        Boolean   @default(true)
+  intervalDays     Int // 30 monthly / 365 annual — from License.durationDays
+  amountEgp        Int // recurring charge per cycle (snapshot of License.priceEgp)
+  currency         String    @default("EGP")
+  currentPeriodEnd DateTime // mirrors Academy.validUntil at the last successful charge
+  nextAttemptAt    DateTime? // when the billing cron should next try (null = don't)
+  attemptCount     Int       @default(0) // retries within the CURRENT cycle
+  lastError        String?   @db.Text
+  canceledAt       DateTime?
+  consentAt        DateTime? // when the owner authorized auto-renew (mandate audit)
+  paymentMethodId  String? // the PaymentMethod (saved token) to charge
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status])
+  @@index([nextAttemptAt])
+  @@index([userId])
+}
+
+// A saved card token (card-on-file) for a user. We store ONLY Kashier's opaque
+// token (AES-256-GCM encrypted, never the PAN/CVV) plus display metadata. Reused
+// for background recurring charges via the v3/orders PAY API.
+model PaymentMethod {
+  id                String   @id @default(uuid())
+  userId            String // owner (Mongo app user id)
+  customerReference String // stable ref we send Kashier (== userId)
+  cardTokenEnc      String   @db.Text // AES-256-GCM (lib/secretBox); NEVER plaintext
+  brand             String? // visa | mastercard | meeza …
+  last4             String? // display only, from the masked PAN
+  expMonth          Int?
+  expYear           Int?
+  isDefault         Boolean  @default(true)
+  createdAt         DateTime @default(now())
+
+  @@index([userId])
 }

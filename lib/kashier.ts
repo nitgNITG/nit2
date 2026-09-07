@@ -49,6 +49,13 @@ export function kashierConfigured(): boolean {
   return !!merchantId && !!apiKey && !!secretKey;
 }
 
+/** The resolved Kashier credentials (with the base64 fallback applied). Exposed so
+ *  the direct-order module (lib/kashierOrders.ts) can build the order hash without
+ *  duplicating the env/b64 logic. */
+export function kashierCreds(): { merchantId: string; apiKey: string; secretKey: string } {
+  return cfg();
+}
+
 // PHP rawurlencode (RFC 3986): encodeURIComponent PLUS !*'() — Kashier's signature
 // is built with PHP rawurlencode, so we must match it exactly or every signature
 // check fails on values containing those characters.
