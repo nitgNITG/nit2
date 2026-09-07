@@ -54,5 +54,18 @@ _setlink link_privacy "${SETTING_PRIVACY_URL:-}"
 _setlink link_about   "${SETTING_ABOUT_URL:-}"
 _setlink link_faq     "${SETTING_FAQ_URL:-}"
 
+# Max editable-image size (MB) → theme_nit/maximagemb (same cap as the inline editor).
+if [[ -n "${SETTING_MAX_IMAGE_MB:-}" ]]; then
+    docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=theme_nit --name=maximagemb --set="${SETTING_MAX_IMAGE_MB}" >/dev/null 2>&1 \
+        && { applied=$((applied + 1)); log "set theme_nit/maximagemb"; }
+fi
+
+# Account/dashboard base URL + this academy's slug → in-academy "Upgrade" deep link.
+if [[ -n "${SETTING_ACCOUNT_URL:-}" ]]; then
+    docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=theme_nit --name=accounturl --set="${SETTING_ACCOUNT_URL}" >/dev/null 2>&1 \
+        && { applied=$((applied + 1)); log "set theme_nit/accounturl"; }
+fi
+docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=theme_nit --name=academyslug --set="$SLUG" >/dev/null 2>&1 || true
+
 docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php || true
 log "applied $applied setting(s) to $SLUG"

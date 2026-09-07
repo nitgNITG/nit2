@@ -472,6 +472,14 @@ if [[ -n "${SETTING_MAX_IMAGE_MB:-}" ]]; then
     docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=theme_nit --name=maximagemb --set="${SETTING_MAX_IMAGE_MB}" || echo "!! could not set maximagemb"
 fi
 
+# Control-plane account/dashboard base URL + this academy's slug → the in-academy
+# gear dropdown's "Upgrade" link deep-links to THIS academy (…/account#<slug>).
+if [[ -n "${SETTING_ACCOUNT_URL:-}" ]]; then
+    log "setting theme_nit/accounturl=${SETTING_ACCOUNT_URL}"
+    docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=theme_nit --name=accounturl --set="${SETTING_ACCOUNT_URL}" || echo "!! could not set accounturl"
+fi
+docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=theme_nit --name=academyslug --set="$SLUG" >/dev/null 2>&1 || true
+
 # ── Google web login — only when BOTH an OAuth client id + secret are provided ─
 if [[ -n "${SETTING_GOOGLE_CLIENT_ID:-}" && -n "${SETTING_GOOGLE_CLIENT_SECRET:-}" && -f /root/apply_google_login.php ]]; then
     log "enabling Sign in with Google"

@@ -22,9 +22,15 @@ export async function POST(req: NextRequest) {
             prisma.platformSetting.findMany(),
             prisma.academy.findMany({ where: { status: "live" }, select: { slug: true } }),
         ]);
-        const settings = Object.fromEntries(
+        const settings: Record<string, string> = Object.fromEntries(
             rows.filter((r) => (r.value ?? "").trim() !== "").map((r) => [r.key, r.value]),
         );
+        // Account/dashboard base URL for the in-academy "Upgrade" deep link. Taken
+        // from the host this request came in on (falls back to the configured base).
+        const proto = req.headers.get("x-forwarded-proto") || "https";
+        const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
+        const accountUrl = (host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || "")).replace(/\/$/, "");
+        if (accountUrl) settings.account_url = accountUrl;
 
         // Fire /apply-settings/<slug> for each live academy — best-effort, in parallel.
         const results = await Promise.allSettled(

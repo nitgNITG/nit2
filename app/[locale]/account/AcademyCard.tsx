@@ -28,7 +28,22 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
     const [upgradeTo, setUpgradeTo] = useState('')
     const [upgrading, setUpgrading] = useState(false)
     const [editing, setEditing] = useState(false)
+    const [highlight, setHighlight] = useState(false)
     const links = connectLinks(academy.slug, domain)
+
+    // Deep-link support: the in-academy gear dropdown links here with
+    // #<slug> (e.g. .../account#demo). Scroll this card into view and flash a
+    // ring so the owner lands directly on the academy they came from.
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        if (decodeURIComponent(window.location.hash.replace(/^#/, '')) !== academy.slug) return
+        const el = document.getElementById(academy.slug)
+        if (!el) return
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        setHighlight(true)
+        const timer = setTimeout(() => setHighlight(false), 2600)
+        return () => clearTimeout(timer)
+    }, [academy.slug])
 
     // Subscription term. validUntil null = never expires (free/unlimited plan).
     const suspended = academy.status === 'suspended'
@@ -128,7 +143,10 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
     }, [live, links.deeplink])
 
     return (
-        <div className='rounded-2xl bg-[#F5F3EE] ring-1 ring-black/5 p-5 flex flex-col gap-3 shadow-sm'>
+        <div
+            id={academy.slug}
+            className={`scroll-mt-24 rounded-2xl bg-[#F5F3EE] p-5 flex flex-col gap-3 shadow-sm transition-shadow ${highlight ? 'ring-2 ring-[#00c98e]' : 'ring-1 ring-black/5'}`}
+        >
             <div className='flex items-center gap-2'>
                 {suspended ? (
                     <span className='h-2.5 w-2.5 rounded-full bg-red-500' />

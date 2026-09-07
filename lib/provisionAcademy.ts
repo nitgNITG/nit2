@@ -326,6 +326,12 @@ export async function provisionAcademy(input: ProvisionInput): Promise<Provision
     const adminPassword = generateAdminPassword();          // customer's OWNER login
     const nitAdminPassword = generateAdminPassword();        // NIT super-admin `admin` login (support)
     const settings = await loadPlatformSettings();
+    // Account/dashboard base URL for the in-academy "Upgrade" deep link. This path
+    // has no request context (paid webhook / server-side), so use the configured base.
+    {
+        const accountUrl = (process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || "").replace(/\/$/, "");
+        if (accountUrl) settings.account_url = accountUrl;
+    }
     // Shared integration creds for this package (create.sh applies them after the
     // container is up). Best-effort: fetch the licence's video/kashier selection.
     let integrations: Record<string, string> = {};

@@ -211,6 +211,13 @@ export async function POST(req: NextRequest) {
 
         // Branch created → kick off the live-site build on server B (fire-and-forget).
         const settings = await loadPlatformSettings();
+        // Account/dashboard base URL for the in-academy "Upgrade" deep link.
+        {
+            const proto = req.headers.get("x-forwarded-proto") || "https";
+            const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
+            const accountUrl = (host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || "")).replace(/\/$/, "");
+            if (accountUrl) settings.account_url = accountUrl;
+        }
         const locale = (body?.locale === "en" ? "en" : "ar");
         const platformLang = ["ar", "en", "both"].includes(body?.platform_lang) ? body.platform_lang : "both";
         const adminPassword = generateAdminPassword(); // owner account pw; stored encrypted below; create.sh sets it on `owner`
