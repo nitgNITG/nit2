@@ -12,7 +12,8 @@ import { notifyTelegram } from "@/lib/telegram";
 import { triggerSuspend, triggerExpiryReminder } from "@/lib/provisionAcademy";
 import { payWithToken } from "@/lib/kashierOrders";
 import {
-  subscriptionsEnabled, renewLeadDays, billingRetryDays, billingCycleKey, preRenewNoticeDays,
+  subscriptionsEnabled, billingRetryDays, billingCycleKey,
+  renewLeadDaysResolved, preRenewNoticeDaysResolved,
 } from "@/lib/subscriptions";
 
 export type BillingSummary = {
@@ -42,6 +43,7 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
   const summary: BillingSummary = { attempted: 0, renewed: [], failed: [], needsAuth: [] };
   if (!subscriptionsEnabled()) return { ...summary, skipped: true };
 
+  const lead = await renewLeadDaysResolved();
   const now = new Date();
   const due = await prisma.subscription
     .findMany({
@@ -67,7 +69,7 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
         // A charge already went through for this cycle — just advance the schedule.
         await prisma.subscription.update({
           where: { id: sub.id },
-          data: { nextAttemptAt: new Date(sub.currentPeriodEnd.getTime() - renewLeadDays() * DAY) },
+          data: { nextAttemptAt: new Date(sub.currentPeriodEnd.getTime() - lead * DAY) },
         });
         continue;
       }
@@ -115,7 +117,7 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
           where: { id: sub.id },
           data: {
             status: "active", currentPeriodEnd: newEnd, attemptCount: 0, lastError: null,
-            nextAttemptAt: new Date(newEnd.getTime() - renewLeadDays() * DAY),
+            nextAttemptAt: new Date(newEnd.getTime() - lead * DAY),
             preRenewNotifiedAt: null, // new cycle → re-arm the heads-up
           },
         });
@@ -178,7 +180,7 @@ export async function openSubscription(opts: {
 }): Promise<void> {
   if (!subscriptionsEnabled()) return;
   if (!opts.intervalDays || opts.intervalDays <= 0) return; // never-expiring plan: nothing to renew
-  const nextAttemptAt = new Date(opts.currentPeriodEnd.getTime() - renewLeadDays() * DAY);
+  const nextAttemptAt = new Date(opts.currentPeriodEnd.getTime() - (await renewLeadDaysResolved()) * DAY);
   const pm = await prisma.paymentMethod
     .findFirst({ where: { userId: opts.userId, isDefault: true }, orderBy: { createdAt: "desc" } })
     .catch(() => null);
@@ -213,7 +215,7 @@ export async function openSubscription(opts: {
  */
 export async function runPreRenewNotices(base: string): Promise<{ notified: string[] } | { skipped: true }> {
   if (!subscriptionsEnabled()) return { skipped: true };
-  const noticeDays = preRenewNoticeDays();
+  const noticeDays = await preRenewNoticeDaysResolved();
   if (noticeDays <= 0) return { notified: [] };
 
   const now = Date.now();

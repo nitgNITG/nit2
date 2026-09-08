@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prismaMysql";
 import { getCurrentUser } from "@/lib/auth";
-import { renewLeadDays } from "@/lib/subscriptions";
+import { renewLeadDaysResolved } from "@/lib/subscriptions";
 import { notifyTelegram } from "@/lib/telegram";
 
 export const runtime = "nodejs";
@@ -32,7 +32,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
     const data = on
         ? {
               autoRenew: true, status: "active", canceledAt: null,
-              nextAttemptAt: new Date(sub.currentPeriodEnd.getTime() - renewLeadDays() * DAY),
+              nextAttemptAt: new Date(sub.currentPeriodEnd.getTime() - (await renewLeadDaysResolved()) * DAY),
           }
         : { autoRenew: false, status: "canceled", canceledAt: new Date(), nextAttemptAt: null };
 

@@ -49,9 +49,11 @@ const GROUPS: { title: string; note: string; fields: FieldDef[] }[] = [
     },
     {
         title: 'Lifecycle',
-        note: 'Automatic cleanup of expired academies. Deletion only ever touches academies that are already suspended (expired past the grace period) — a renewed academy is never affected.',
+        note: 'Automatic cleanup of expired academies and auto-renew billing timings. Deletion only ever touches academies that are already suspended (expired past the grace period) — a renewed academy is never affected.',
         fields: [
             { key: 'auto_delete_days', label: 'Auto-delete after (days suspended)', hint: 'Days a suspended (expired) academy is kept before it is PERMANENTLY deleted — container, database, files and GitHub branch. 0 or blank = never auto-delete (keep forever until you delete it by hand).', placeholder: '0 = never' },
+            { key: 'pre_renew_notice_days', label: 'Auto-renew heads-up (days before)', hint: 'Days before an auto-renew charge to email the owner a heads-up ("your card will be charged in N days"). Blank = 3. 0 = no heads-up. Only affects academies with auto-renew on.', placeholder: '3' },
+            { key: 'renew_lead_days', label: 'Auto-renew charge lead (days before term end)', hint: 'How many days BEFORE the term ends to attempt the auto-renew charge. Blank/0 = charge on the expiry day. A small value (1–3) bills just before expiry so a decline still leaves grace time.', placeholder: '0 = on expiry' },
         ],
     },
     {
