@@ -124,7 +124,12 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
     // Show the renew/enable block when expiring/expired, OR (feature on, paid plan,
     // no subscription yet) so an existing owner can opt into auto-renew any time.
     const canOptIn = subEnabled && !sub && isPaidTier
-    const showRenew = isPaidTier && expiryMs != null && (expired || (daysLeft != null && daysLeft <= 30) || canOptIn)
+    // An academy that's actively auto-renewing will be charged automatically, so
+    // don't also nag with a manual "Renew subscription" button. Still show it when
+    // auto-renew is off / past-due (manual pay is then useful).
+    const autoRenewing = !!sub && sub.autoRenew && sub.status === 'active'
+    const showRenew = isPaidTier && expiryMs != null && !autoRenewing
+        && (expired || (daysLeft != null && daysLeft <= 30) || canOptIn)
     const expiryLabel = expiryMs != null
         ? new Date(expiryMs).toLocaleDateString(isAr ? 'ar-EG' : 'en-GB', { year: 'numeric', month: 'short', day: 'numeric' })
         : null
