@@ -5,6 +5,7 @@ import { useRouter } from '@/navigation'
 import { useTranslations } from 'next-intl'
 import AcademyCard, { ClientAcademy } from './AcademyCard'
 import BuildProductForm from '../build-product/BuildProductForm'
+import LocaleLink from '../components/LocaleLink'
 
 type DashUser = { name: string | null; email: string; role: string }
 
@@ -12,6 +13,7 @@ export default function Dashboard({
     user, academies, domain,
 }: { user: DashUser; academies: ClientAcademy[]; domain: string }) {
     const t = useTranslations('Dashboard')
+    const tn = useTranslations('Navbar')
     const router = useRouter()
     const [showCreate, setShowCreate] = useState(false)
 
@@ -24,12 +26,23 @@ export default function Dashboard({
         <div className='bg-[#0B2923] text-white'>
             <div className='mx-auto max-w-6xl px-5 sm:px-8 py-10'>
 
-                {/* Title (account controls live in the navbar) */}
-                <header>
-                    <span className='text-[11px] font-bold tracking-[0.2em] uppercase text-[#00FFB2]/70'>
-                        {t('greeting', { name: user.name || user.email })}
-                    </span>
-                    <h1 className='mt-1 text-2xl font-extrabold'>{t('title')}</h1>
+                {/* Title + quick link to the profile page. */}
+                <header className='flex items-start justify-between gap-4'>
+                    <div>
+                        <span className='text-[11px] font-bold tracking-[0.2em] uppercase text-[#00FFB2]/70'>
+                            {t('greeting', { name: user.name || user.email })}
+                        </span>
+                        <h1 className='mt-1 text-2xl font-extrabold'>{t('title')}</h1>
+                    </div>
+                    <LocaleLink
+                        href='/account/profile'
+                        className='inline-flex shrink-0 items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-white/90 hover:bg-white/10 transition-colors'
+                    >
+                        <span className='flex h-6 w-6 items-center justify-center rounded-full bg-[#00FFB2] text-xs font-extrabold text-[#0B2923]'>
+                            {(user.name || user.email || '?').trim().charAt(0).toUpperCase()}
+                        </span>
+                        {tn('profile')}
+                    </LocaleLink>
                 </header>
 
                 {/* Action bar */}
