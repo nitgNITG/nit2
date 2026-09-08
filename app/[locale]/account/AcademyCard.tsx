@@ -14,7 +14,7 @@ export type ClientAcademy = {
     validUntil?: string | null
 }
 
-type Tier = { key: string; name: string; price: number; priceEgp?: number; active: boolean; order?: number }
+type Tier = { key: string; name: string; price: number; priceEgp?: number; priceEgpMonthly?: number; durationDays?: number; active: boolean; order?: number }
 type Sub = {
     academySlug: string; status: string; autoRenew: boolean; amountEgp: number; currency: string
     intervalDays: number; currentPeriodEnd: string | null; nextAttemptAt: string | null
@@ -35,7 +35,10 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
     const [editing, setEditing] = useState(false)
     const [highlight, setHighlight] = useState(false)
     const [sub, setSub] = useState<Sub | null>(null)
+    const [subEnabled, setSubEnabled] = useState(false) // auto-renew feature on (server flag)
     const [subBusy, setSubBusy] = useState(false)
+    const [renewAuto, setRenewAuto] = useState(true) // opt into auto-renew when renewing
+    const [renewCycle, setRenewCycle] = useState<'monthly' | 'annual'>('annual')
     const links = connectLinks(academy.slug, domain)
 
     // Auto-renew subscription for this academy (if the feature is on and one exists).
@@ -44,8 +47,12 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
         fetch('/api/subscriptions', { cache: 'no-store' })
             .then((r) => (r.ok ? r.json() : null))
             .then((d) => {
-                if (cancelled || !d?.enabled) return
-                setSub((d.subscriptions ?? []).find((s: Sub) => s.academySlug === academy.slug) ?? null)
+                if (cancelled || !d) return
+                setSubEnabled(!!d.enabled)
+                if (!d.enabled) return
+                const found = (d.subscriptions ?? []).find((s: Sub) => s.academySlug === academy.slug) ?? null
+                setSub(found)
+                if (found) setRenewCycle(found.intervalDays === 30 ? 'monthly' : 'annual')
             })
             .catch(() => { /* feature optional */ })
         return () => { cancelled = true }
@@ -90,7 +97,10 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
     const expiryMs = academy.validUntil ? Date.parse(academy.validUntil) : null
     const expired = expiryMs != null && expiryMs < Date.now()
     const daysLeft = expiryMs != null ? Math.ceil((expiryMs - Date.now()) / 86_400_000) : null
-    const showRenew = expiryMs != null && (expired || (daysLeft != null && daysLeft <= 30))
+    // Show the renew/enable block when expiring/expired, OR (feature on, paid plan,
+    // no subscription yet) so an existing owner can opt into auto-renew any time.
+    const canOptIn = subEnabled && !sub
+    const showRenew = expiryMs != null && (expired || (daysLeft != null && daysLeft <= 30) || canOptIn)
     const expiryLabel = expiryMs != null
         ? new Date(expiryMs).toLocaleDateString(isAr ? 'ar-EG' : 'en-GB', { year: 'numeric', month: 'short', day: 'numeric' })
         : null
@@ -99,10 +109,16 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
         if (renewing || !academy.tier) return
         setRenewing(true)
         try {
+            const curTier = tiers.find((t) => t.key === academy.tier)
+            const canMonthly = (curTier?.priceEgpMonthly ?? 0) > 0
+            const cycle = subEnabled && renewCycle === 'monthly' && canMonthly ? 'monthly' : 'annual'
             const res = await fetch('/api/payments/kashier/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ purpose: 'renew', slug: academy.slug, tier: academy.tier }),
+                body: JSON.stringify({
+                    purpose: 'renew', slug: academy.slug, tier: academy.tier,
+                    cycle, autoRenew: subEnabled ? renewAuto : false,
+                }),
             })
             const data = await res.json()
             if (res.ok && data.url) { window.location.href = data.url; return }
@@ -307,15 +323,60 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
                             {tr(`باقي ${daysLeft} يوم`, `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`)}
                         </p>
                     )}
-                    {showRenew && academy.tier && (
-                        <button
-                            onClick={renew}
-                            disabled={renewing}
-                            className='mt-2 w-full rounded-lg bg-[#0B2923] px-3 py-1.5 text-xs font-bold text-[#00FFB2] hover:bg-[#0e3329] disabled:opacity-60 transition-colors'
-                        >
-                            {renewing ? tr('جارٍ التحويل…', 'Redirecting…') : tr('تجديد الاشتراك', 'Renew subscription')}
-                        </button>
-                    )}
+                    {showRenew && academy.tier && (() => {
+                        const curTier = tiers.find((t) => t.key === academy.tier)
+                        const canMonthly = (curTier?.priceEgpMonthly ?? 0) > 0
+                        const price = renewCycle === 'monthly' && canMonthly ? (curTier?.priceEgpMonthly ?? 0) : (curTier?.priceEgp ?? 0)
+                        return (
+                            <div className='mt-2 flex flex-col gap-2'>
+                                {/* Auto-renew opt-in (only when there's no subscription yet + feature on). */}
+                                {canOptIn && (
+                                    <>
+                                        {canMonthly && (
+                                            <div className='inline-flex self-start rounded-full border border-black/10 bg-white p-0.5 text-[11px]'>
+                                                {(['monthly', 'annual'] as const).map((c) => (
+                                                    <button
+                                                        key={c}
+                                                        type='button'
+                                                        onClick={() => setRenewCycle(c)}
+                                                        className={`rounded-full px-2.5 py-0.5 font-bold transition-colors ${renewCycle === c ? 'bg-[#1E7D67] text-white' : 'text-gray-500'}`}
+                                                    >
+                                                        {c === 'monthly' ? tr('شهري', 'Monthly') : tr('سنوي', 'Annual')}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <label className='flex cursor-pointer items-start gap-2 rounded-lg border border-[#1E7D67]/25 bg-[#1E7D67]/5 p-2'>
+                                            <input type='checkbox' checked={renewAuto} onChange={(e) => setRenewAuto(e.target.checked)} className='mt-0.5 h-4 w-4 accent-[#1E7D67]' />
+                                            <span className='text-[#0B2923]/80'>
+                                                {tr(
+                                                    `فعّل التجديد التلقائي — احفظ بطاقتي وجدّد ${renewCycle === 'monthly' ? 'شهريًا' : 'سنويًا'} (${price} ج.م) حتى ألغيه.`,
+                                                    `Turn on auto-renew — save my card and renew ${renewCycle === 'monthly' ? 'monthly' : 'yearly'} (${price} EGP) until I cancel.`,
+                                                )}
+                                            </span>
+                                        </label>
+                                    </>
+                                )}
+                                <button
+                                    onClick={renew}
+                                    disabled={renewing}
+                                    className='w-full rounded-lg bg-[#0B2923] px-3 py-1.5 text-xs font-bold text-[#00FFB2] hover:bg-[#0e3329] disabled:opacity-60 transition-colors'
+                                >
+                                    {renewing
+                                        ? tr('جارٍ التحويل…', 'Redirecting…')
+                                        : canOptIn && renewAuto
+                                            ? tr('جدّد وفعّل التجديد التلقائي', 'Renew & turn on auto-renew')
+                                            : tr('تجديد الاشتراك', 'Renew subscription')}
+                                </button>
+                                {canOptIn && !expired && daysLeft != null && daysLeft > 30 && (
+                                    <p className='text-[10px] text-[#0B2923]/45'>
+                                        {tr('التجديد الآن يمدّد مدتك الحالية ويحفظ بطاقتك للتجديد التلقائي.',
+                                            'Renewing now extends your current term and saves your card for auto-renew.')}
+                                    </p>
+                                )}
+                            </div>
+                        )
+                    })()}
                 </div>
             )}
 
