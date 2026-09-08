@@ -62,3 +62,19 @@ export function billingRetryDays(): number[] {
 export function billingCycleKey(periodEnd: Date): string {
   return `${periodEnd.getUTCFullYear()}-${String(periodEnd.getUTCMonth() + 1).padStart(2, "0")}`;
 }
+
+/** Min hours between two successful charges on the same subscription — a hard
+ *  belt-and-suspenders guard against any scheduling bug charging a card twice in
+ *  quick succession. Default 12h. */
+export function billingCooldownHours(): number {
+  return Math.max(0, Number(process.env.BILLING_COOLDOWN_HOURS ?? 12) || 0);
+}
+
+/** Next-charge date = periodEnd − lead, with lead CLAMPED to < interval so we can
+ *  never bill more than one interval early. This makes a mis-set renew_lead_days
+ *  (e.g. 90 on a 30-day plan) harmless: the next attempt always lands in the future
+ *  relative to a freshly-extended term, instead of in the past (runaway charges). */
+export function scheduleNextAttempt(periodEnd: Date, intervalDays: number, lead: number): Date {
+  const effLead = Math.min(Math.max(0, lead), Math.max(0, intervalDays - 1));
+  return new Date(periodEnd.getTime() - effLead * 86_400_000);
+}

@@ -39,7 +39,7 @@ export type TokenChargeInput = {
 };
 
 export type TokenChargeResult =
-  | { ok: true; captured: true; transactionId: string; cardToken?: string; raw: any }
+  | { ok: true; captured: true; transactionId: string; cardToken?: string; expMonth?: number; expYear?: number; raw: any }
   // needsAuth: the acquirer forced a step-up (3DS/OTP) — a silent MIT charge is not
   // possible; the caller must fall back to a customer-present renewal link.
   | { ok: false; needsAuth: true; error: string; raw?: any }
@@ -121,11 +121,16 @@ export async function payWithToken(input: TokenChargeInput): Promise<TokenCharge
     (code === "00" || String(response?.status || "").toUpperCase() === "CAPTURED");
 
   if (captured) {
+    const exp = response?.paymentMethod?.card?.expiry || {};
+    const em = Number(exp?.month), ey = Number(exp?.year);
     return {
       ok: true,
       captured: true,
       transactionId: String(response?.transactionId || response?.orderId || ""),
       cardToken: response?.paymentMethod?.card?.cardToken,
+      // Kashier returns 2-digit year (e.g. "27") → normalise to 4-digit.
+      expMonth: Number.isFinite(em) && em >= 1 && em <= 12 ? em : undefined,
+      expYear: Number.isFinite(ey) ? (ey < 100 ? 2000 + ey : ey) : undefined,
       raw,
     };
   }

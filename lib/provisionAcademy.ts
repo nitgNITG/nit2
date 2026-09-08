@@ -78,7 +78,11 @@ export async function triggerProvision(
  *  needs no mail transport of its own. */
 export async function triggerExpiryReminder(
     slug: string, daysLeft: number, renewUrl: string,
-    opts?: { expiryDate?: string; sendEmail?: boolean; mode?: "expiry" | "prerenew"; amountEgp?: number; cardLast4?: string },
+    opts?: {
+        expiryDate?: string; sendEmail?: boolean;
+        mode?: "expiry" | "prerenew" | "receipt" | "payment_failed";
+        amountEgp?: number; cardLast4?: string; cardExpiring?: boolean;
+    },
 ): Promise<void> {
     const base = process.env.PROVISION_URL;
     const secret = process.env.PROVISION_SECRET;
@@ -102,6 +106,7 @@ export async function triggerExpiryReminder(
                 mode: opts?.mode ?? "expiry",
                 amount_egp: opts?.amountEgp ?? 0,
                 card_last4: opts?.cardLast4 ?? "",
+                card_expiring: opts?.cardExpiring ? 1 : 0,
             }),
         });
     } catch (e) {

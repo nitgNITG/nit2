@@ -29,9 +29,10 @@ $renewurl = trim((string) getenv('RENEW_URL')) ?: $CFG->wwwroot;
 $owneruser = getenv('OWNER_USER') ?: 'owner';
 $expirydate = trim((string) getenv('EXPIRY_DATE'));   // YYYY-MM-DD (sync target)
 $sendemail  = getenv('SEND_EMAIL') !== '0';           // '0' = sync only, no email
-$mode       = getenv('MODE') ?: 'expiry';             // expiry | prerenew (auto-renew heads-up)
-$amountegp  = (int) getenv('AMOUNT_EGP');             // prerenew: charge amount
-$cardlast4  = trim((string) getenv('CARD_LAST4'));    // prerenew: saved card last 4
+$mode       = getenv('MODE') ?: 'expiry';             // expiry | prerenew | receipt | payment_failed
+$amountegp  = (int) getenv('AMOUNT_EGP');             // charge amount (auto-renew modes)
+$cardlast4  = trim((string) getenv('CARD_LAST4'));    // saved card last 4
+$cardexp    = getenv('CARD_EXPIRING') === '1';        // prerenew: card expires before the charge
 
 // Keep the academy's local_license/expirydate in sync with nit2's validUntil so
 // the in-academy banner always matches. Runs every cron tick, even without email.
@@ -58,26 +59,76 @@ $sitename = format_string($DB->get_field('course', 'fullname', ['id' => SITEID])
 $name     = fullname($to);
 $expired  = $daysleft <= 0;
 
-// ── Auto-renew heads-up (mode=prerenew): the card WILL be charged automatically,
-// so the copy reassures rather than asking the owner to renew manually. ──────────
-if ($mode === 'prerenew') {
-    $cardhint = $cardlast4 !== '' ? "•••• {$cardlast4}" : ($locale === 'en' ? 'your saved card' : 'بطاقتك المحفوظة');
-    if ($locale === 'en') {
-        $subject = "Heads-up: \"{$sitename}\" auto-renews in {$daysleft} day(s)";
-        $body = "Hello {$name},\n\n"
-            . "Your academy \"{$sitename}\" will renew automatically in {$daysleft} day(s). "
-            . "We’ll charge {$amountegp} EGP to {$cardhint} — no action needed.\n\n"
-            . "Want to change or cancel auto-renew? Manage it here: {$renewurl}\n\n— NIT";
-    } else {
-        $subject = "تنبيه: تجديد تلقائي لأكاديمية \"{$sitename}\" خلال {$daysleft} يوم";
-        $body = "مرحباً {$name}،\n\n"
-            . "سيتم تجديد اشتراك أكاديميتك \"{$sitename}\" تلقائياً خلال {$daysleft} يوم. "
-            . "سنخصم {$amountegp} ج.م من {$cardhint} — لا حاجة لأي إجراء.\n\n"
-            . "لتغيير أو إلغاء التجديد التلقائي: {$renewurl}\n\n— NIT";
+// ── Auto-renew billing emails (prerenew | receipt | payment_failed). These modes
+// concern the card-on-file, so the copy speaks to the automatic charge, not a
+// manual renewal. All send + exit here. ─────────────────────────────────────────
+if (in_array($mode, ['prerenew', 'receipt', 'payment_failed'], true)) {
+    $en = $locale === 'en';
+    $cardhint = $cardlast4 !== '' ? "•••• {$cardlast4}" : ($en ? 'your saved card' : 'بطاقتك المحفوظة');
+
+    if ($mode === 'prerenew' && $cardexp) {
+        // Card will be expired by the charge date → ask them to update it.
+        if ($en) {
+            $subject = "Action needed: update your card for \"{$sitename}\"";
+            $body = "Hello {$name},\n\n"
+                . "Your academy \"{$sitename}\" renews automatically in {$daysleft} day(s) for {$amountegp} EGP, "
+                . "but your saved card {$cardhint} will have expired by then — so the renewal will fail.\n\n"
+                . "Please update your card to avoid interruption: {$renewurl}\n\n— NIT";
+        } else {
+            $subject = "مطلوب إجراء: حدّث بطاقتك لأكاديمية \"{$sitename}\"";
+            $body = "مرحباً {$name}،\n\n"
+                . "سيتم تجديد اشتراك أكاديميتك \"{$sitename}\" تلقائياً خلال {$daysleft} يوم بمبلغ {$amountegp} ج.م، "
+                . "لكن بطاقتك المحفوظة {$cardhint} ستكون منتهية الصلاحية — لذا سيفشل التجديد.\n\n"
+                . "برجاء تحديث بطاقتك لتجنّب أي انقطاع: {$renewurl}\n\n— NIT";
+        }
+    } elseif ($mode === 'prerenew') {
+        if ($en) {
+            $subject = "Heads-up: \"{$sitename}\" auto-renews in {$daysleft} day(s)";
+            $body = "Hello {$name},\n\n"
+                . "Your academy \"{$sitename}\" will renew automatically in {$daysleft} day(s). "
+                . "We’ll charge {$amountegp} EGP to {$cardhint} — no action needed.\n\n"
+                . "Want to change or cancel auto-renew? Manage it here: {$renewurl}\n\n— NIT";
+        } else {
+            $subject = "تنبيه: تجديد تلقائي لأكاديمية \"{$sitename}\" خلال {$daysleft} يوم";
+            $body = "مرحباً {$name}،\n\n"
+                . "سيتم تجديد اشتراك أكاديميتك \"{$sitename}\" تلقائياً خلال {$daysleft} يوم. "
+                . "سنخصم {$amountegp} ج.م من {$cardhint} — لا حاجة لأي إجراء.\n\n"
+                . "لتغيير أو إلغاء التجديد التلقائي: {$renewurl}\n\n— NIT";
+        }
+    } elseif ($mode === 'receipt') {
+        $nextline = $expirydate !== '' ? ($en ? "Next renewal: {$expirydate}." : "التجديد القادم: {$expirydate}.") : '';
+        if ($en) {
+            $subject = "Payment received — \"{$sitename}\" renewed";
+            $body = "Hello {$name},\n\n"
+                . "We’ve charged {$amountegp} EGP to {$cardhint} and renewed your academy \"{$sitename}\". "
+                . "{$nextline}\n\n"
+                . "Manage or cancel auto-renew any time: {$renewurl}\n\n— NIT";
+        } else {
+            $subject = "تم استلام الدفع — تم تجديد \"{$sitename}\"";
+            $body = "مرحباً {$name}،\n\n"
+                . "تم خصم {$amountegp} ج.م من {$cardhint} وتجديد اشتراك أكاديميتك \"{$sitename}\". "
+                . "{$nextline}\n\n"
+                . "يمكنك إدارة أو إلغاء التجديد التلقائي في أي وقت: {$renewurl}\n\n— NIT";
+        }
+    } else { // payment_failed
+        if ($en) {
+            $subject = "Payment failed for \"{$sitename}\" — update your card";
+            $body = "Hello {$name},\n\n"
+                . "We couldn’t charge {$amountegp} EGP to your card {$cardhint} to renew \"{$sitename}\". "
+                . "We’ll retry automatically, but to avoid any interruption please update your card or renew: {$renewurl}\n\n"
+                . "Your data stays safe.\n\n— NIT";
+        } else {
+            $subject = "فشل الدفع لأكاديمية \"{$sitename}\" — حدّث بطاقتك";
+            $body = "مرحباً {$name}،\n\n"
+                . "تعذّر خصم {$amountegp} ج.م من بطاقتك {$cardhint} لتجديد \"{$sitename}\". "
+                . "سنعيد المحاولة تلقائياً، ولتجنّب أي انقطاع برجاء تحديث بطاقتك أو التجديد: {$renewurl}\n\n"
+                . "بياناتك محفوظة.\n\n— NIT";
+        }
     }
+
     $from = \core_user::get_support_user();
     if (email_to_user($to, $from, $subject, $body)) {
-        echo "pre-renew notice sent to {$to->email} (daysleft={$daysleft}, amount={$amountegp})\n";
+        echo "billing email ({$mode}) sent to {$to->email} (daysleft={$daysleft}, amount={$amountegp})\n";
     } else {
         fwrite(STDERR, "email_to_user failed (is outbound email/SMTP configured?)\n");
     }

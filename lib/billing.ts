@@ -14,7 +14,17 @@ import { payWithToken } from "@/lib/kashierOrders";
 import {
   subscriptionsEnabled, billingRetryDays, billingCycleKey,
   renewLeadDaysResolved, preRenewNoticeDaysResolved,
+  billingCooldownHours, scheduleNextAttempt,
 } from "@/lib/subscriptions";
+
+/** True when a saved card is already expired, or expires on/before `by` (charge
+ *  date). Cards are valid through the LAST day of their exp month. */
+function cardExpiredBy(pm: { expMonth?: number | null; expYear?: number | null }, by: Date): boolean {
+  if (!pm.expMonth || !pm.expYear) return false; // unknown → don't warn
+  // First day of the month AFTER expiry = when the card stops working.
+  const deadUtc = Date.UTC(pm.expYear, pm.expMonth, 1); // month is 1-based → this is the 1st of next month
+  return deadUtc <= by.getTime();
+}
 
 export type BillingSummary = {
   skipped?: boolean; // feature off
@@ -44,6 +54,7 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
   if (!subscriptionsEnabled()) return { ...summary, skipped: true };
 
   const lead = await renewLeadDaysResolved();
+  const cooldownMs = billingCooldownHours() * 3600_000;
   const now = new Date();
   const due = await prisma.subscription
     .findMany({
@@ -69,9 +80,27 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
         // A charge already went through for this cycle — just advance the schedule.
         await prisma.subscription.update({
           where: { id: sub.id },
-          data: { nextAttemptAt: new Date(sub.currentPeriodEnd.getTime() - lead * DAY) },
+          data: { nextAttemptAt: scheduleNextAttempt(sub.currentPeriodEnd, sub.intervalDays, lead) },
         });
         continue;
+      }
+
+      // Cooldown guard: refuse to charge if THIS subscription had a successful
+      // charge within the cooldown window — a hard stop against any scheduling bug
+      // (e.g. a mis-set lead) charging a card twice in quick succession.
+      if (cooldownMs > 0) {
+        const recent = await prisma.payment.findFirst({
+          where: { subscriptionId: sub.id, status: "paid", paidAt: { gt: new Date(now.getTime() - cooldownMs) } },
+          select: { paidAt: true },
+        });
+        if (recent) {
+          console.warn(`[billing] cooldown: ${sub.academySlug} charged at ${recent.paidAt?.toISOString()} — skipping`);
+          await prisma.subscription.update({
+            where: { id: sub.id },
+            data: { nextAttemptAt: scheduleNextAttempt(sub.currentPeriodEnd, sub.intervalDays, lead) },
+          });
+          continue;
+        }
       }
 
       const pm = sub.paymentMethodId
@@ -109,6 +138,13 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
           where: { orderId },
           data: { status: "paid", paidAt: new Date(), providerRef: charge.transactionId },
         });
+        // Capture the card's expiry from the charge response (the callback never
+        // gives it) so the card-expiry pre-warning can work next cycle.
+        if (charge.expMonth && charge.expYear) {
+          await prisma.paymentMethod.update({
+            where: { id: pm.id }, data: { expMonth: charge.expMonth, expYear: charge.expYear },
+          }).catch(() => {});
+        }
         await prisma.academy.update({
           where: { slug: sub.academySlug },
           data: { status: "live", validUntil: newEnd, subscribedAt: now, expiryRemindersSent: {} },
@@ -117,14 +153,18 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
           where: { id: sub.id },
           data: {
             status: "active", currentPeriodEnd: newEnd, attemptCount: 0, lastError: null,
-            nextAttemptAt: new Date(newEnd.getTime() - lead * DAY),
+            nextAttemptAt: scheduleNextAttempt(newEnd, sub.intervalDays, lead),
             preRenewNotifiedAt: null, // new cycle → re-arm the heads-up
           },
         });
         // Sync the in-academy banner date + resume if it had lapsed into suspension.
         const ymd = `${newEnd.getUTCFullYear()}-${String(newEnd.getUTCMonth() + 1).padStart(2, "0")}-${String(newEnd.getUTCDate()).padStart(2, "0")}`;
         const daysLeft = Math.ceil((newEnd.getTime() - now.getTime()) / DAY);
-        await triggerExpiryReminder(sub.academySlug, daysLeft, base ? `${base}/account` : "", { expiryDate: ymd, sendEmail: false });
+        // One call: syncs the academy's expirydate (banner) AND emails a receipt
+        // confirming the charge + the next renewal date.
+        await triggerExpiryReminder(sub.academySlug, daysLeft, base ? `${base}/account` : "", {
+          expiryDate: ymd, sendEmail: true, mode: "receipt", amountEgp: sub.amountEgp, cardLast4: pm.last4 ?? "",
+        });
         await triggerSuspend(sub.academySlug, false);
 
         summary.renewed.push(sub.academySlug);
@@ -145,10 +185,13 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
         data: { status: "past_due", attemptCount: attempt, lastError: reason.slice(0, 900), nextAttemptAt: retryAt },
       });
 
-      // Dunning email (best-effort) — reuse the Moodle-mail reminder path with a
-      // "renew now / update card" link. daysLeft from the (still current) term.
+      // Dunning email (best-effort): a dedicated "we couldn't charge your card"
+      // notice with the last-4 and a link to update it / renew. daysLeft from the
+      // (still current) term.
       const daysLeft = Math.ceil((sub.currentPeriodEnd.getTime() - now.getTime()) / DAY);
-      await triggerExpiryReminder(sub.academySlug, daysLeft, base ? `${base}/account` : "", { sendEmail: true });
+      await triggerExpiryReminder(sub.academySlug, daysLeft, base ? `${base}/account` : "", {
+        sendEmail: true, mode: "payment_failed", amountEgp: sub.amountEgp, cardLast4: pm.last4 ?? "",
+      });
 
       if ((charge as any).needsAuth) {
         summary.needsAuth.push(sub.academySlug);
@@ -180,7 +223,7 @@ export async function openSubscription(opts: {
 }): Promise<void> {
   if (!subscriptionsEnabled()) return;
   if (!opts.intervalDays || opts.intervalDays <= 0) return; // never-expiring plan: nothing to renew
-  const nextAttemptAt = new Date(opts.currentPeriodEnd.getTime() - (await renewLeadDaysResolved()) * DAY);
+  const nextAttemptAt = scheduleNextAttempt(opts.currentPeriodEnd, opts.intervalDays, await renewLeadDaysResolved());
   const pm = await prisma.paymentMethod
     .findFirst({ where: { userId: opts.userId, isDefault: true }, orderBy: { createdAt: "desc" } })
     .catch(() => null);
@@ -237,8 +280,12 @@ export async function runPreRenewNotices(base: string): Promise<{ notified: stri
         ? await prisma.paymentMethod.findUnique({ where: { id: sub.paymentMethodId } })
         : await prisma.paymentMethod.findFirst({ where: { userId: sub.userId, isDefault: true } });
       const daysLeft = Math.max(0, Math.ceil((sub.nextAttemptAt!.getTime() - now) / DAY));
+      // If the saved card will be expired by the charge date, the heads-up becomes
+      // an "update your card or the renewal will fail" warning instead.
+      const cardExpiring = !!pm && cardExpiredBy(pm, sub.nextAttemptAt!);
       await triggerExpiryReminder(sub.academySlug, daysLeft, base ? `${base}/account` : "", {
         sendEmail: true, mode: "prerenew", amountEgp: sub.amountEgp, cardLast4: pm?.last4 ?? "",
+        cardExpiring,
       });
       await prisma.subscription.update({ where: { id: sub.id }, data: { preRenewNotifiedAt: new Date() } });
       notified.push(sub.academySlug);
