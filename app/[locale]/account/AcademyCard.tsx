@@ -117,10 +117,14 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
     const expiryMs = academy.validUntil ? Date.parse(academy.validUntil) : null
     const expired = expiryMs != null && expiryMs < Date.now()
     const daysLeft = expiryMs != null ? Math.ceil((expiryMs - Date.now()) / 86_400_000) : null
+    // Renewal / auto-renew only applies to PAID tiers — a free trial (priceEgp 0)
+    // can't be charged, so never show the renew/auto-renew block for it (they'd use
+    // the Upgrade dropdown instead). tiers loads once the site is live.
+    const isPaidTier = (tiers.find((t) => t.key === academy.tier)?.priceEgp ?? 0) > 0
     // Show the renew/enable block when expiring/expired, OR (feature on, paid plan,
     // no subscription yet) so an existing owner can opt into auto-renew any time.
-    const canOptIn = subEnabled && !sub
-    const showRenew = expiryMs != null && (expired || (daysLeft != null && daysLeft <= 30) || canOptIn)
+    const canOptIn = subEnabled && !sub && isPaidTier
+    const showRenew = isPaidTier && expiryMs != null && (expired || (daysLeft != null && daysLeft <= 30) || canOptIn)
     const expiryLabel = expiryMs != null
         ? new Date(expiryMs).toLocaleDateString(isAr ? 'ar-EG' : 'en-GB', { year: 'numeric', month: 'short', day: 'numeric' })
         : null
