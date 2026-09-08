@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prismaMysql";
 import { getCurrentUser } from "@/lib/auth";
 import { renewLeadDaysResolved } from "@/lib/subscriptions";
+import { triggerExpiryReminder } from "@/lib/provisionAcademy";
 import { notifyTelegram } from "@/lib/telegram";
 
 export const runtime = "nodejs";
@@ -38,6 +39,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
 
     try {
         const updated = await prisma.subscription.update({ where: { academySlug: params.slug }, data });
+        // Update the in-academy banner flag (renews-automatically vs renew-now).
+        await triggerExpiryReminder(params.slug, 0, "", { sendEmail: false, autoRenew: on });
         await notifyTelegram(
             on
                 ? `🔁 Auto-renew resumed — ${params.slug}`

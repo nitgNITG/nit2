@@ -15,10 +15,12 @@ export type ClientAcademy = {
 }
 
 type Tier = { key: string; name: string; price: number; priceEgp?: number; priceEgpMonthly?: number; durationDays?: number; active: boolean; order?: number }
+type SubPayment = { amount: number; currency: string; status: string; purpose: string; date: string | null }
 type Sub = {
     academySlug: string; status: string; autoRenew: boolean; amountEgp: number; currency: string
     intervalDays: number; currentPeriodEnd: string | null; nextAttemptAt: string | null
     lastError?: string | null; card: { brand?: string | null; last4?: string | null } | null
+    payments?: SubPayment[]
 }
 
 export default function AcademyCard({ academy, domain }: { academy: ClientAcademy; domain: string }) {
@@ -57,6 +59,24 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
             .catch(() => { /* feature optional */ })
         return () => { cancelled = true }
     }, [academy.slug])
+
+    const updateCard = async () => {
+        if (subBusy) return
+        setSubBusy(true)
+        try {
+            const res = await fetch('/api/payments/kashier/create', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ purpose: 'update_card', slug: academy.slug }),
+            })
+            const d = await res.json()
+            if (res.ok && d.url) { window.location.href = d.url; return }
+            alert(d.error || tr('تعذّر بدء تحديث البطاقة.', 'Could not start card update.'))
+        } catch {
+            alert(tr('تعذّر بدء تحديث البطاقة.', 'Could not start card update.'))
+        } finally {
+            setSubBusy(false)
+        }
+    }
 
     const toggleAutoRenew = async (on: boolean) => {
         if (subBusy) return
@@ -408,13 +428,47 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
                                 'Last renewal failed — we’ll retry. Update your card by renewing manually.')}
                         </p>
                     )}
-                    <button
-                        onClick={() => toggleAutoRenew(!sub.autoRenew)}
-                        disabled={subBusy}
-                        className='mt-2 w-full rounded-lg border border-[#0B2923]/15 px-3 py-1.5 text-xs font-bold text-[#0B2923] hover:bg-black/5 disabled:opacity-60 transition-colors'
-                    >
-                        {subBusy ? tr('جارٍ…', '…') : sub.autoRenew ? tr('إلغاء التجديد التلقائي', 'Cancel auto-renew') : tr('تفعيل التجديد التلقائي', 'Enable auto-renew')}
-                    </button>
+                    <div className='mt-2 flex gap-2'>
+                        <button
+                            onClick={() => toggleAutoRenew(!sub.autoRenew)}
+                            disabled={subBusy}
+                            className='flex-1 rounded-lg border border-[#0B2923]/15 px-3 py-1.5 text-xs font-bold text-[#0B2923] hover:bg-black/5 disabled:opacity-60 transition-colors'
+                        >
+                            {subBusy ? tr('جارٍ…', '…') : sub.autoRenew ? tr('إلغاء التجديد التلقائي', 'Cancel auto-renew') : tr('تفعيل التجديد التلقائي', 'Enable auto-renew')}
+                        </button>
+                        {sub.autoRenew && (
+                            <button
+                                onClick={updateCard}
+                                disabled={subBusy}
+                                title={tr('تحديث البطاقة (رسم تحقق بسيط)', 'Update card (small verification charge)')}
+                                className='rounded-lg border border-[#0B2923]/15 px-3 py-1.5 text-xs font-bold text-[#0B2923] hover:bg-black/5 disabled:opacity-60 transition-colors'
+                            >
+                                {tr('تحديث البطاقة', 'Update card')}
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Billing history — recent auto-renew / card charges. */}
+                    {sub.payments && sub.payments.length > 0 && (
+                        <details className='mt-2'>
+                            <summary className='cursor-pointer text-[11px] font-semibold text-[#0B2923]/60'>
+                                {tr('سجل الفواتير', 'Billing history')}
+                            </summary>
+                            <ul className='mt-1 space-y-0.5'>
+                                {sub.payments.map((pmt, i) => (
+                                    <li key={i} className='flex items-center justify-between gap-2 text-[11px]'>
+                                        <span className='text-[#0B2923]/60' dir='ltr'>
+                                            {pmt.date ? new Date(pmt.date).toLocaleDateString(isAr ? 'ar-EG' : 'en-GB', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}
+                                        </span>
+                                        <span dir='ltr' className='font-semibold text-[#0B2923]/80'>{pmt.amount} {isAr ? 'ج.م' : 'EGP'}</span>
+                                        <span className={pmt.status === 'paid' ? 'text-[#0b8f66]' : pmt.status === 'failed' ? 'text-red-600' : 'text-[#b9791f]'}>
+                                            {pmt.status === 'paid' ? '✓' : pmt.status === 'failed' ? '✗' : '…'}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </details>
+                    )}
                 </div>
             )}
 

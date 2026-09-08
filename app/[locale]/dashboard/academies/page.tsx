@@ -133,7 +133,7 @@ const AcademiesPage = () => {
   const [academies, setAcademies] = useState<Academy[]>([]);
   const [licenses, setLicenses] = useState<License[]>([]);
   const [googleConfigured, setGoogleConfigured] = useState<boolean | null>(null);
-  const [subs, setSubs] = useState<Record<string, { autoRenew: boolean; status: string }>>({});
+  const [subs, setSubs] = useState<Record<string, { autoRenew: boolean; status: string; amountEgp?: number; intervalDays?: number }>>({});
   const [loading, setLoading] = useState(true);
   const [savingSlug, setSavingSlug] = useState<string | null>(null);
   const [updatingAll, setUpdatingAll] = useState(false);
@@ -219,9 +219,9 @@ const AcademiesPage = () => {
       setAcademies(a.data.academies ?? []);
       setGoogleConfigured(a.data.googleConfigured ?? null);
       setLicenses(l.data.licenses ?? []);
-      const map: Record<string, { autoRenew: boolean; status: string }> = {};
+      const map: Record<string, { autoRenew: boolean; status: string; amountEgp?: number; intervalDays?: number }> = {};
       for (const sub of s.data?.subscriptions ?? [])
-        map[sub.academySlug] = { autoRenew: sub.autoRenew, status: sub.status };
+        map[sub.academySlug] = { autoRenew: sub.autoRenew, status: sub.status, amountEgp: sub.amountEgp, intervalDays: sub.intervalDays };
       setSubs(map);
     } catch {
       toast.error("Could not load academies");
@@ -555,6 +555,35 @@ const AcademiesPage = () => {
         <span className="font-mono">nitteam2024@gmail.com</span>. Google offers
         no API or wildcard, so this is one line per academy.
       </div>
+
+      {/* Auto-renew stats — active / past-due / cancelled + estimated MRR. */}
+      {(() => {
+        const list = Object.values(subs);
+        if (list.length === 0) return null;
+        const active = list.filter((s) => s.autoRenew && s.status === "active").length;
+        const pastDue = list.filter((s) => s.status === "past_due").length;
+        const canceled = list.filter((s) => !s.autoRenew || s.status === "canceled").length;
+        // MRR: monthly plans count full; annual plans normalise to /12.
+        const mrr = Math.round(
+          list
+            .filter((s) => s.autoRenew && s.status !== "canceled")
+            .reduce((sum, s) => sum + (s.amountEgp ?? 0) / ((s.intervalDays ?? 30) >= 365 ? 12 : 1), 0),
+        );
+        const Stat = ({ label, value, cls }: { label: string; value: React.ReactNode; cls?: string }) => (
+          <div className="flex-1 min-w-[110px] rounded-lg bg-gray-50 px-3 py-2">
+            <div className={`text-lg font-bold ${cls ?? "text-gray-800"}`}>{value}</div>
+            <div className="text-xs text-gray-500">{label}</div>
+          </div>
+        );
+        return (
+          <div className="flex flex-wrap gap-2">
+            <Stat label="Auto-renew active" value={active} cls="text-emerald-700" />
+            <Stat label="Past due" value={pastDue} cls={pastDue ? "text-red-600" : "text-gray-800"} />
+            <Stat label="Cancelled" value={canceled} cls="text-gray-500" />
+            <Stat label="Est. MRR" value={`${mrr} EGP`} cls="text-[#1E7D67]" />
+          </div>
+        );
+      })()}
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
         <table className="w-full text-sm">

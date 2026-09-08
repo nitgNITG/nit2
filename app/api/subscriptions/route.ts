@@ -34,6 +34,21 @@ export async function GET() {
     const byId = new Map(pmsById.map((p) => [p.id, p]));
     const defByUser = new Map(defaults.map((p) => [p.userId, p]));
 
+    // Billing history — the last few renewal/update charges per academy.
+    const slugs = subs.map((s) => s.academySlug);
+    const history = slugs.length
+        ? await prisma.payment.findMany({
+              where: { academySlug: { in: slugs }, purpose: { in: ["renew", "update_card"] } },
+              orderBy: { createdAt: "desc" },
+              select: { academySlug: true, amount: true, currency: true, status: true, purpose: true, createdAt: true, paidAt: true },
+          }).catch(() => [])
+        : [];
+    const histBySlug = new Map<string, typeof history>();
+    for (const h of history) {
+        const arr = histBySlug.get(h.academySlug!) ?? [];
+        if (arr.length < 6) { arr.push(h); histBySlug.set(h.academySlug!, arr); }
+    }
+
     const subscriptions = subs.map((s) => {
         const pm = (s.paymentMethodId && byId.get(s.paymentMethodId)) || defByUser.get(s.userId) || null;
         return {
@@ -42,6 +57,10 @@ export async function GET() {
             intervalDays: s.intervalDays, currentPeriodEnd: s.currentPeriodEnd,
             nextAttemptAt: s.nextAttemptAt, lastError: s.lastError,
             card: pm ? { brand: pm.brand, last4: pm.last4 } : null,
+            payments: (histBySlug.get(s.academySlug) ?? []).map((h) => ({
+                amount: h.amount, currency: h.currency, status: h.status, purpose: h.purpose,
+                date: (h.paidAt ?? h.createdAt),
+            })),
         };
     });
     return NextResponse.json({ subscriptions, enabled: true });

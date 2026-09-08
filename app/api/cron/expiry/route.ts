@@ -3,7 +3,7 @@ import prisma from "@/lib/prismaMysql";
 import { Prisma } from "prismamysql";
 import { triggerSuspend, triggerExpiryReminder, deprovisionAndDeleteAcademy } from "@/lib/provisionAcademy";
 import { notifyTelegram } from "@/lib/telegram";
-import { runBillingCycle, runPreRenewNotices } from "@/lib/billing";
+import { runBillingCycle, runPreRenewNotices, weeklyBillingSummary } from "@/lib/billing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -159,6 +159,11 @@ export async function POST(req: NextRequest) {
         expiredPayments = r.count;
     } catch (e) {
         console.error("[cron/expiry] payment sweep failed", e);
+    }
+
+    // Weekly auto-renew health summary to Telegram (Mondays, UTC).
+    if (new Date().getUTCDay() === 1) {
+        await weeklyBillingSummary().catch((e) => console.error("[cron/expiry] weekly summary failed", e));
     }
 
     return NextResponse.json({ ok: true, graceDays, preRenew, billing, suspended, reminded, deleted, autoDeleteDays, expiredPayments });

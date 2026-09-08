@@ -30,15 +30,12 @@ function PaymentCallbackInner() {
     useEffect(() => {
         const cardDataToken = params.get('cardDataToken')
         if (!orderId || !cardDataToken) return
+        // Send the FULL query string so the server can verify Kashier's redirect
+        // signature before trusting the token.
         fetch('/api/payments/kashier/save-card', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                order: orderId,
-                cardDataToken,
-                maskedCard: params.get('maskedCard') || '',
-                cardBrand: params.get('cardBrand') || '',
-            }),
+            body: JSON.stringify({ search: window.location.search }),
         }).catch(() => { /* best-effort */ })
     }, [orderId, params])
 

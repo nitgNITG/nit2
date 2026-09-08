@@ -164,6 +164,7 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
         // confirming the charge + the next renewal date.
         await triggerExpiryReminder(sub.academySlug, daysLeft, base ? `${base}/account` : "", {
           expiryDate: ymd, sendEmail: true, mode: "receipt", amountEgp: sub.amountEgp, cardLast4: pm.last4 ?? "",
+          autoRenew: true,
         });
         await triggerSuspend(sub.academySlug, false);
 
@@ -246,6 +247,10 @@ export async function openSubscription(opts: {
         ...(pm?.id ? { paymentMethodId: pm.id } : {}),
       },
     });
+    // Tell the academy it's auto-renewing (banner shows "renews on <date>").
+    const d = opts.currentPeriodEnd;
+    const ymd = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+    await triggerExpiryReminder(opts.academySlug, 0, "", { sendEmail: false, expiryDate: ymd, autoRenew: true });
   } catch (e) {
     console.error("[billing] openSubscription failed", opts.academySlug, e);
   }
@@ -294,6 +299,27 @@ export async function runPreRenewNotices(base: string): Promise<{ notified: stri
     }
   }
   return { notified };
+}
+
+/** Post a one-line auto-renew health summary to Telegram (active / past-due /
+ *  cancelled + estimated MRR). The cron calls this weekly. No-op while off. */
+export async function weeklyBillingSummary(): Promise<{ posted: boolean }> {
+  if (!subscriptionsEnabled()) return { posted: false };
+  const subs = await prisma.subscription
+    .findMany({ select: { status: true, autoRenew: true, amountEgp: true, intervalDays: true } })
+    .catch(() => []);
+  if (!subs.length) return { posted: false };
+  const active = subs.filter((s) => s.autoRenew && s.status === "active").length;
+  const pastDue = subs.filter((s) => s.status === "past_due").length;
+  const canceled = subs.filter((s) => !s.autoRenew || s.status === "canceled").length;
+  const mrr = Math.round(
+    subs.filter((s) => s.autoRenew && s.status !== "canceled")
+      .reduce((a, s) => a + (s.amountEgp || 0) / ((s.intervalDays || 30) >= 365 ? 12 : 1), 0),
+  );
+  await notifyTelegram(
+    `📊 Auto-renew weekly — ${active} active · ${pastDue} past-due · ${canceled} cancelled · ~${mrr} EGP MRR`,
+  );
+  return { posted: true };
 }
 
 async function markPastDue(id: string, reason: string, attempt: number): Promise<void> {

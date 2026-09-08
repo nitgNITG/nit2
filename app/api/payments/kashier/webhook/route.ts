@@ -84,7 +84,11 @@ export async function POST(req: NextRequest) {
     const p: any = pj;
 
     try {
-        if (payment.purpose === "new_academy") {
+        if (payment.purpose === "update_card") {
+            // Card-update verification charge — the new token was captured by the
+            // save-card callback; nothing to provision or extend here.
+            await notifyTelegram(`💳 Card updated for ${payment.academySlug || p.slug || "academy"}`);
+        } else if (payment.purpose === "new_academy") {
             const result = await provisionAcademy({
                 slug: String(p.slug),
                 name: String(p.name),

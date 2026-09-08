@@ -3,6 +3,7 @@ import prisma from "@/lib/prismaMysql";
 import { getCurrentUser } from "@/lib/auth";
 import { sanitizeBrand } from "@/lib/brand";
 import { createSession, kashierConfigured } from "@/lib/kashier";
+import { subscriptionsEnabled } from "@/lib/subscriptions";
 import crypto from "crypto";
 
 export const runtime = "nodejs";
@@ -33,6 +34,52 @@ export async function POST(req: NextRequest) {
     const platformLang = ["ar", "en", "both"].includes(body?.platform_lang) ? body.platform_lang : "both";
     const purpose = ["new_academy", "upgrade", "renew"].includes(body?.purpose) ? body.purpose : "new_academy";
     const cycle = body?.cycle === "monthly" ? "monthly" : "annual"; // billing cycle
+
+    // ── Update card ──────────────────────────────────────────────────────────
+    // A small verification charge (default 1 EGP) whose only purpose is to save a
+    // NEW card on file — no term change, no subscription. The save-card callback
+    // captures the new token and re-points the subscription at it.
+    if (body?.purpose === "update_card") {
+        if (!subscriptionsEnabled()) return NextResponse.json({ error: "غير متاح حالياً." }, { status: 400 });
+        const academy = await prisma.academy.findUnique({ where: { slug } }).catch(() => null);
+        if (!academy) return NextResponse.json({ error: "الأكاديمية غير موجودة." }, { status: 404 });
+        if (user.role !== "admin" && academy.ownerId !== user.id) {
+            return NextResponse.json({ error: "forbidden" }, { status: 403 });
+        }
+        const upAmount = Math.max(1, Number(process.env.CARD_UPDATE_AMOUNT_EGP ?? 1) || 1);
+        const orderId = "acad_" + crypto.randomUUID().replace(/-/g, "").slice(0, 24);
+        let base: string;
+        try {
+            let raw = (process.env.APP_BASE_URL || "").trim();
+            if (raw && !/^https?:\/\//i.test(raw)) raw = "https://" + raw;
+            base = new URL(raw || new URL(req.url).origin).origin;
+        } catch { base = new URL(req.url).origin; }
+        try {
+            await prisma.payment.create({
+                data: {
+                    orderId, userId: user.id, licenseKey: academy.tier, purpose: "update_card",
+                    amount: upAmount, currency: "EGP", status: "pending", academySlug: slug,
+                    payloadJson: { updateCard: true, autoRenew: false },
+                },
+            });
+        } catch (e) {
+            console.error("[kashier/create] update_card persist failed", e);
+            return NextResponse.json({ error: "تعذّر بدء التحديث، حاول تاني." }, { status: 500 });
+        }
+        const session = await createSession({
+            orderId, amount: upAmount, currency: "EGP", displayLang: locale,
+            customerReference: user.id, customerEmail: user.email,
+            webhookUrl: `${base}/api/payments/kashier/webhook`,
+            successUrl: `${base}/${locale}/payment/callback?order=${orderId}`,
+            metadata: { purpose: "update_card", slug }, saveCard: true,
+        });
+        if (!session.ok) {
+            await prisma.payment.update({ where: { orderId }, data: { status: "failed", failureReason: session.error?.slice(0, 900) } }).catch(() => {});
+            return NextResponse.json({ error: "تعذّر فتح صفحة الدفع، حاول تاني.", detail: session.error }, { status: 502 });
+        }
+        await prisma.payment.update({ where: { orderId }, data: { sessionId: session.sessionId } }).catch(() => {});
+        return NextResponse.json({ ok: true, url: session.sessionUrl, orderId });
+    }
 
     // Validate the licence and that it's actually a PAID one.
     const lic = requestedKey

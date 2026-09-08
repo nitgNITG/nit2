@@ -380,7 +380,7 @@ def run_apply_suspend(slug: str, state: str) -> None:
 def run_expiry_reminder(slug: str, days_left: int, renew_url: str = "",
                         expiry_date: str = "", send_email: bool = True,
                         mode: str = "expiry", amount_egp: int = 0, card_last4: str = "",
-                        card_expiring: int = 0) -> None:
+                        card_expiring: int = 0, autorenew: str = "") -> None:
     """Run send-expiry-reminder.sh detached — sync the academy's expirydate to
     validUntil (so the in-academy banner matches) and, when send_email is set,
     email the owner (via the academy's Moodle mail). mode 'prerenew' sends an
@@ -396,6 +396,7 @@ def run_expiry_reminder(slug: str, days_left: int, renew_url: str = "",
     env["AMOUNT_EGP"] = str(int(amount_egp or 0))
     env["CARD_LAST4"] = str(card_last4 or "")
     env["CARD_EXPIRING"] = "1" if card_expiring else "0"
+    env["AUTORENEW"] = autorenew if autorenew in ("0", "1") else ""
     logpath = os.path.join(LOG_DIR, f"{slug}.log")
     with open(logpath, "ab", buffering=0) as log:
         log.write(f"\n===== expiry-reminder {slug} (days_left={days_left}) =====\n".encode())
@@ -596,9 +597,10 @@ class Handler(BaseHTTPRequestHandler):
                 card_expiring = int(data.get("card_expiring", 0))
             except Exception:
                 card_expiring = 0
+            autorenew = str(data.get("autorenew", ""))
             threading.Thread(target=run_expiry_reminder,
                              args=(slug, days_left, renew_url, expiry_date, send_email,
-                                   mode, amount_egp, card_last4, card_expiring),
+                                   mode, amount_egp, card_last4, card_expiring, autorenew),
                              daemon=True).start()
             return self._send(202, {"ok": True, "status": "sending-expiry-reminder", "slug": slug})
 

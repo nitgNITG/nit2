@@ -40,6 +40,12 @@ if ($expirydate !== '') {
     set_config('expirydate', $expirydate, 'local_license');
     echo "expirydate synced -> {$expirydate}\n";
 }
+// Auto-renew flag for the in-academy banner ('' = leave unchanged).
+$autorenew = trim((string) getenv('AUTORENEW'));
+if ($autorenew === '0' || $autorenew === '1') {
+    set_config('autorenew', $autorenew, 'local_license');
+    echo "autorenew synced -> {$autorenew}\n";
+}
 if (!$sendemail) {
     exit(0);   // sync-only run — no reminder email this time.
 }
