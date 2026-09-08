@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prismaMysql";
 import { verifyWebhook, isPaidStatus } from "@/lib/kashier";
-import { provisionAcademy, licenseToDefinition, triggerSuspend } from "@/lib/provisionAcademy";
+import { provisionAcademy, licenseToDefinition, triggerSuspend, triggerExpiryReminder } from "@/lib/provisionAcademy";
 import { computeUpgradable } from "@/lib/licenseDefinition";
 import { notifyTelegram } from "@/lib/telegram";
 import { openSubscription } from "@/lib/billing";
@@ -126,10 +126,11 @@ export async function POST(req: NextRequest) {
                 const now = new Date();
                 // Was it suspended (e.g. expired past grace)? Resume Moodle if so.
                 const prev = await prisma.academy.findUnique({ where: { slug } }).catch(() => null);
-                // RENEW stacks on the remaining term (never lose paid time): extend
-                // from the later of now / current validUntil. UPGRADE (plan switch)
-                // starts a fresh term from now.
-                const base = payment.purpose === "renew" && prev?.validUntil && prev.validUntil.getTime() > now.getTime()
+                // BOTH renew AND upgrade STACK on the remaining term — never lose paid
+                // time. Extend from the later of now / current validUntil. (An upgrade
+                // mid-term keeps the remaining days and adds the new term at the new
+                // tier; a renew simply adds another term.)
+                const base = prev?.validUntil && prev.validUntil.getTime() > now.getTime()
                     ? prev.validUntil
                     : now;
                 const validUntil = durationDays > 0 ? new Date(base.getTime() + durationDays * 86_400_000) : null;
@@ -148,9 +149,19 @@ export async function POST(req: NextRequest) {
                         currentPeriodEnd: validUntil,
                     });
                 }
+                // Email a receipt for the manual renew/upgrade (auto-renew charges get
+                // theirs from the billing cron; this covers the customer-present path).
+                if (validUntil) {
+                    const pm = await prisma.paymentMethod.findFirst({ where: { userId: payment.userId, isDefault: true } }).catch(() => null);
+                    const ymd = `${validUntil.getUTCFullYear()}-${String(validUntil.getUTCMonth() + 1).padStart(2, "0")}-${String(validUntil.getUTCDate()).padStart(2, "0")}`;
+                    const daysLeft = Math.ceil((validUntil.getTime() - now.getTime()) / 86_400_000);
+                    await triggerExpiryReminder(slug, daysLeft, "", {
+                        sendEmail: true, mode: "receipt", amountEgp: payment.amount, cardLast4: pm?.last4 ?? "", expiryDate: ymd,
+                    });
+                }
                 await notifyTelegram(
                     `💳 Academy ${slug} ${payment.purpose === "renew" ? "renewed" : "upgraded"} → ` +
-                    `${payment.licenseKey} (paid)`,
+                    `${payment.licenseKey} (paid, until ${validUntil ? validUntil.toISOString().slice(0, 10) : "—"})`,
                 );
             }
         }
