@@ -126,26 +126,34 @@ export async function POST(req: NextRequest) {
                 const now = new Date();
                 // Was it suspended (e.g. expired past grace)? Resume Moodle if so.
                 const prev = await prisma.academy.findUnique({ where: { slug } }).catch(() => null);
-                // BOTH renew AND upgrade STACK on the remaining term — never lose paid
-                // time. Extend from the later of now / current validUntil. (An upgrade
-                // mid-term keeps the remaining days and adds the new term at the new
-                // tier; a renew simply adds another term.)
-                const base = prev?.validUntil && prev.validUntil.getTime() > now.getTime()
-                    ? prev.validUntil
-                    : now;
-                const validUntil = durationDays > 0 ? new Date(base.getTime() + durationDays * 86_400_000) : null;
+
+                // A PRORATED upgrade keeps the SAME end date (they paid only the
+                // difference for the remaining days); future renewals bill the new
+                // tier's full price. Otherwise (renew, or a full upgrade with no time
+                // left) STACK on the remaining term — never lose paid time.
+                const prorated = payment.purpose === "upgrade" && p.proratedUpgrade && p.keepEnd;
+                const validUntil = prorated
+                    ? new Date(p.keepEnd)
+                    : (durationDays > 0
+                        ? new Date((prev?.validUntil && prev.validUntil.getTime() > now.getTime() ? prev.validUntil : now).getTime() + durationDays * 86_400_000)
+                        : null);
+                // Recurring amount + interval for the subscription: a prorated upgrade
+                // sets the FULL new-tier price (not the prorated one-off charge).
+                const subAmount = prorated ? (Number(p.newFullPrice) || payment.amount) : payment.amount;
+                const subInterval = prorated ? (Number(p.cycleDays) || durationDays) : durationDays;
+
                 await prisma.academy.update({
                     where: { slug },
-                    // Clear expiry reminders so the fresh term re-arms 7/3/1/on-expiry.
+                    // Clear expiry reminders so the term re-arms 7/3/1/on-expiry.
                     data: { tier: payment.licenseKey, status: "live", subscribedAt: now, validUntil, expiryRemindersSent: {} },
                 }).catch((e) => console.error("[kashier/webhook] academy update failed", slug, e));
                 // Push the new licence to the live Moodle (best-effort).
                 await triggerApplyLicense(slug, payment.licenseKey, definition);
                 if (prev?.status === "suspended") await triggerSuspend(slug, false);
-                if (p.autoRenew && durationDays > 0 && validUntil) {
+                if (p.autoRenew && subInterval > 0 && validUntil) {
                     await openSubscription({
                         academySlug: slug, userId: payment.userId, licenseKey: payment.licenseKey,
-                        intervalDays: durationDays, amountEgp: payment.amount, currency: payment.currency,
+                        intervalDays: subInterval, amountEgp: subAmount, currency: payment.currency,
                         currentPeriodEnd: validUntil,
                     });
                 }

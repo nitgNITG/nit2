@@ -506,6 +506,26 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
                             {upgrading ? tr('جارٍ…', '…') : tr('ترقية', 'Upgrade')}
                         </button>
                     </div>
+                    {/* Prorated estimate — pay only the difference for the days left. */}
+                    {upgradeTo && (() => {
+                        const nt = tiers.find((t) => t.key === upgradeTo)
+                        const ct = current
+                        const monthly = sub?.intervalDays === 30
+                        const termDays = sub?.intervalDays ?? (ct?.durationDays ?? 365)
+                        const priceOf = (t?: Tier) => (monthly ? (t?.priceEgpMonthly ?? 0) : (t?.priceEgp ?? 0))
+                        const daysLeft = expiryMs != null ? Math.max(0, Math.ceil((expiryMs - Date.now()) / 86_400_000)) : 0
+                        const diff = priceOf(nt) - priceOf(ct)
+                        if (daysLeft <= 0 || diff <= 0) return null
+                        const prorated = Math.max(1, Math.round((diff / termDays) * daysLeft))
+                        return (
+                            <p className='mt-1.5 text-[11px] text-[#0B2923]/60'>
+                                {tr(
+                                    `تدفع الآن ~${prorated} ج.م فقط (الفرق للـ ${daysLeft} يوم المتبقية)، وتبقى نفس تاريخ الانتهاء.`,
+                                    `You pay only ~${prorated} EGP now (the difference for your ${daysLeft} days left); your end date stays the same.`,
+                                )}
+                            </p>
+                        )
+                    })()}
                 </div>
             )}
 

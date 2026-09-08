@@ -81,6 +81,76 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: true, url: session.sessionUrl, orderId });
     }
 
+    // ── Upgrade (prorated) ────────────────────────────────────────────────────
+    // Charge only the PRICE DIFFERENCE for the remaining days, and keep the same
+    // end date — the academy switches to the higher tier immediately without
+    // losing (or re-buying) time. Falls back to a full charge if there's no time
+    // left. Future auto-renewals then bill the new tier's full price.
+    if (body?.purpose === "upgrade") {
+        const academy = await prisma.academy.findUnique({ where: { slug } }).catch(() => null);
+        if (!academy) return NextResponse.json({ error: "الأكاديمية غير موجودة." }, { status: 404 });
+        if (user.role !== "admin" && academy.ownerId !== user.id) {
+            return NextResponse.json({ error: "forbidden" }, { status: 403 });
+        }
+        const newLic = await prisma.license.findFirst({ where: { key: requestedKey, active: true } });
+        if (!newLic) return NextResponse.json({ error: "الباقة غير موجودة." }, { status: 400 });
+        const curLic = await prisma.license.findUnique({ where: { key: academy.tier } });
+        const sub = await prisma.subscription.findUnique({ where: { academySlug: slug } }).catch(() => null);
+        const cycle: "monthly" | "annual" = sub?.intervalDays === 30 ? "monthly" : "annual";
+        const termDays = sub?.intervalDays ?? (curLic?.durationDays ?? 365);
+        const priceOf = (l: any) => (cycle === "monthly" ? (l?.priceEgpMonthly ?? 0) : (l?.priceEgp ?? 0));
+        const curPrice = priceOf(curLic);
+        const newPrice = priceOf(newLic);
+        if (newPrice <= 0) return NextResponse.json({ error: "الباقة دي مجانية." }, { status: 400 });
+        const now = Date.now();
+        const daysLeft = academy.validUntil ? Math.max(0, Math.ceil((academy.validUntil.getTime() - now) / 86_400_000)) : 0;
+
+        // Prorate only when there's time left AND it's a genuine upgrade (higher
+        // price). Otherwise fall through to the normal full-price paid path.
+        if (daysLeft > 0 && termDays > 0 && newPrice > curPrice) {
+            const prorated = Math.max(1, Math.round(((newPrice - curPrice) / termDays) * daysLeft));
+            const orderId = "acad_" + crypto.randomUUID().replace(/-/g, "").slice(0, 24);
+            let base: string;
+            try {
+                let raw = (process.env.APP_BASE_URL || "").trim();
+                if (raw && !/^https?:\/\//i.test(raw)) raw = "https://" + raw;
+                base = new URL(raw || new URL(req.url).origin).origin;
+            } catch { base = new URL(req.url).origin; }
+            const keepAutoRenew = !!(sub && sub.autoRenew && sub.status !== "canceled");
+            try {
+                await prisma.payment.create({
+                    data: {
+                        orderId, userId: user.id, licenseKey: newLic.key, purpose: "upgrade",
+                        amount: prorated, currency: "EGP", status: "pending", academySlug: slug,
+                        payloadJson: {
+                            proratedUpgrade: true, cycle, cycleDays: termDays,
+                            keepEnd: academy.validUntil?.toISOString() ?? null,
+                            newFullPrice: newPrice, autoRenew: keepAutoRenew,
+                        },
+                    },
+                });
+            } catch (e) {
+                console.error("[kashier/create] upgrade persist failed", e);
+                return NextResponse.json({ error: "تعذّر بدء الترقية، حاول تاني." }, { status: 500 });
+            }
+            const session = await createSession({
+                orderId, amount: prorated, currency: "EGP", displayLang: locale,
+                customerReference: user.id, customerEmail: user.email,
+                webhookUrl: `${base}/api/payments/kashier/webhook`,
+                successUrl: `${base}/${locale}/payment/callback?order=${orderId}`,
+                metadata: { purpose: "upgrade", slug, prorated: "1" },
+                saveCard: keepAutoRenew,
+            });
+            if (!session.ok) {
+                await prisma.payment.update({ where: { orderId }, data: { status: "failed", failureReason: session.error?.slice(0, 900) } }).catch(() => {});
+                return NextResponse.json({ error: "تعذّر فتح صفحة الدفع، حاول تاني.", detail: session.error }, { status: 502 });
+            }
+            await prisma.payment.update({ where: { orderId }, data: { sessionId: session.sessionId } }).catch(() => {});
+            return NextResponse.json({ ok: true, url: session.sessionUrl, orderId, prorated });
+        }
+        // else: no remaining time / not higher → fall through to full-price flow below.
+    }
+
     // Validate the licence and that it's actually a PAID one.
     const lic = requestedKey
         ? await prisma.license.findFirst({ where: { key: requestedKey, active: true } })
