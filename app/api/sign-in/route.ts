@@ -5,6 +5,8 @@ import { validateEmail } from "@/utils/validateEmail";
 // Users live in MySQL (academy control plane), not the Mongo content DB.
 import prisma from "@/lib/prismaMysql";
 import { cookies } from "next/headers";
+import { mailerConfigured } from "@/lib/mailer";
+import { createAndSendOtp } from "@/lib/emailOtp";
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,6 +30,17 @@ export async function POST(req: NextRequest) {
         { message: "Invalid Password." },
         { status: 404 },
       );
+    // Optional email-verification gate. Off by default; enable with
+    // REQUIRE_EMAIL_VERIFICATION=1. Existing accounts are grandfathered (migration
+    // set emailVerified=true), so only unverified new sign-ups are blocked — and we
+    // resend a code so the client can verify right away.
+    if (process.env.REQUIRE_EMAIL_VERIFICATION === "1" && !user.emailVerified && mailerConfigured()) {
+      await createAndSendOtp(String(email).toLowerCase(), "verify", { name: user.name ?? "", locale: "ar" }).catch(() => {});
+      return NextResponse.json(
+        { message: "لازم تأكيد بريدك الإلكتروني الأول.", needsVerify: true, email: String(email).toLowerCase() },
+        { status: 403 },
+      );
+    }
     const token = jwt.sign({ id: user.id }, process.env.SECRET_JWT as string);
     cookies().set({
       name: "token",

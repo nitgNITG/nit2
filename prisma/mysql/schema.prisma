@@ -42,12 +42,30 @@ model PlatformSetting {
 // academy control plane. `role`: "admin" | "client" (a null role on legacy rows
 // is treated as admin by lib/auth). Passwords are bcrypt hashes.
 model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password      String
+  name          String?
+  role          String?  @default("client")
+  emailVerified Boolean  @default(false) // set via the email-OTP verification flow
+  createdAt     DateTime @default(now())
+}
+
+// One-time codes emailed for account verification and password reset (6-digit,
+// short-lived). The code is stored HASHED (bcrypt) — never in the clear. A row is
+// consumed on success; `attempts` caps brute-force guesses.
+model EmailOtp {
   id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String?
-  role      String?  @default("client")
+  email     String // lower-cased account email the code was sent to
+  purpose   String // "verify" | "reset"
+  codeHash  String // bcrypt hash of the 6-digit code
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  attempts  Int      @default(0)
   createdAt DateTime @default(now())
+
+  @@index([email, purpose])
+  @@index([createdAt])
 }
 
 // One record per academy created from the "Build your product" button.

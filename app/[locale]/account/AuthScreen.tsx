@@ -29,6 +29,13 @@ export default function AuthScreen({ mode: initialMode = 'login' }: { mode?: Mod
                 body: JSON.stringify(values),
             })
             const data = await res.json().catch(() => ({}))
+            // Email not verified yet (new sign-up, or the optional login gate) →
+            // send them to the verification step.
+            if (data?.needsVerify && data?.email) {
+                toast.success(isAr ? 'راجع بريدك لتأكيد الحساب.' : 'Check your email to verify your account.')
+                window.location.href = `/${locale}/verify-email?email=${encodeURIComponent(data.email)}`
+                return
+            }
             if (!res.ok) { toast.error(data?.message || t('errorGeneric')); return }
             toast.success(mode === 'login' ? t('welcomeBack') : t('accountCreated'))
             // Full reload so the navbar re-reads /api/me and shows the signed-in state.
@@ -125,6 +132,14 @@ export default function AuthScreen({ mode: initialMode = 'login' }: { mode?: Mod
                                 })}
                             />
                         </Field>
+
+                        {mode === 'login' && (
+                            <div className={isAr ? 'text-left' : 'text-right'}>
+                                <a href={`/${locale}/forgot-password`} className='text-sm font-bold text-[#1E7D67] hover:underline'>
+                                    {isAr ? 'نسيت كلمة السر؟' : 'Forgot password?'}
+                                </a>
+                            </div>
+                        )}
 
                         <button
                             type='submit'
