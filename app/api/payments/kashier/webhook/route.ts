@@ -120,13 +120,19 @@ export async function POST(req: NextRequest) {
                 });
             }
         } else {
-            // upgrade | renew — move the existing academy to the paid tier + reset term.
+            // upgrade | renew — move the existing academy to the paid tier + extend term.
             const slug = payment.academySlug || String(p.slug || "");
             if (slug) {
                 const now = new Date();
-                const validUntil = durationDays > 0 ? new Date(now.getTime() + durationDays * 86_400_000) : null;
                 // Was it suspended (e.g. expired past grace)? Resume Moodle if so.
                 const prev = await prisma.academy.findUnique({ where: { slug } }).catch(() => null);
+                // RENEW stacks on the remaining term (never lose paid time): extend
+                // from the later of now / current validUntil. UPGRADE (plan switch)
+                // starts a fresh term from now.
+                const base = payment.purpose === "renew" && prev?.validUntil && prev.validUntil.getTime() > now.getTime()
+                    ? prev.validUntil
+                    : now;
+                const validUntil = durationDays > 0 ? new Date(base.getTime() + durationDays * 86_400_000) : null;
                 await prisma.academy.update({
                     where: { slug },
                     // Clear expiry reminders so the fresh term re-arms 7/3/1/on-expiry.
