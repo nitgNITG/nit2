@@ -9,6 +9,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import LocalLink from './LocaleLink'
 import LangSwitcher from './LangSwitcher'
 import AuthMenu from './AuthMenu'
+import { useMe } from './useMe'
 
 const Navbar = () => {
     const pathname = usePathname()
@@ -149,6 +150,10 @@ const Navbar = () => {
         | { name: string; href: string }
         | { name: string; children: ServiceCategory[] }
 
+    // Hide the "Build Your Product" nav link once signed in — it points at /account
+    // (the login/sign-up CTA), which is redundant with the avatar menu's "My
+    // platforms" and just eats navbar space. `me` truthy = signed in.
+    const me = useMe()
     const items: NavItem[] = [
         { name: t('item1'), href: '/' },
         { name: t('item3'), href: '/our-projects' },
@@ -156,7 +161,7 @@ const Navbar = () => {
         { name: t('item4'), href: '/blog' },
         { name: t('item2'), href: '/who-us' },
         { name: t('item5'), href: '/contact' },
-        { name: t('buildProduct'), href: '/account' },
+        ...(me ? [] : [{ name: t('buildProduct'), href: '/account' }]),
     ]
 
     const close = () => {

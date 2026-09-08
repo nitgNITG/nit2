@@ -3,37 +3,14 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import LocalLink from './LocaleLink'
-
-type Me = { name: string | null; email: string; role: string } | null
+import { useMe } from './useMe'
 
 export default function AuthMenu({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate?: () => void }) {
     const t = useTranslations('Navbar')
     const locale = useLocale()
-    const [me, setMe] = useState<Me | undefined>(undefined) // undefined = still loading
+    const me = useMe() // undefined = still loading
     const [open, setOpen] = useState(false)
     const ref = useRef<HTMLDivElement>(null)
-
-    useEffect(() => {
-        let stop = false
-        // Optimistically restore the last-known auth state (client-only, read
-        // after mount so there's no SSR/hydration mismatch). This means a
-        // returning signed-in user shows their avatar immediately instead of
-        // popping in after the fetch resolves.
-        try {
-            const cached = localStorage.getItem('nit_me')
-            if (cached) setMe(JSON.parse(cached) as Me)
-        } catch { /* ignore */ }
-        fetch('/api/me', { cache: 'no-store' })
-            .then((r) => r.json())
-            .then((d) => {
-                if (stop) return
-                const u = (d.user ?? null) as Me
-                setMe(u)
-                try { localStorage.setItem('nit_me', JSON.stringify(u)) } catch { /* ignore */ }
-            })
-            .catch(() => { if (!stop) setMe(null) })
-        return () => { stop = true }
-    }, [])
 
     useEffect(() => {
         const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
@@ -69,6 +46,7 @@ export default function AuthMenu({ mobile = false, onNavigate }: { mobile?: bool
                     <LocalLink onClick={onNavigate} href='/dashboard' className='font-semibold text-xl text-[#00FFB2]'>{t('adminPanel')}</LocalLink>
                 )}
                 <LocalLink onClick={onNavigate} href='/account' className='font-semibold text-xl text-[#00FFB2]'>{t('myPlatforms')}</LocalLink>
+                <LocalLink onClick={onNavigate} href='/account/profile' className='font-semibold text-xl text-[#00FFB2]'>{t('profile')}</LocalLink>
                 <button onClick={logout} className='font-semibold text-lg text-red-300'>{t('logout')}</button>
             </div>
         )
@@ -101,6 +79,9 @@ export default function AuthMenu({ mobile = false, onNavigate }: { mobile?: bool
                     )}
                     <LocalLink href='/account' onClick={() => setOpen(false)} className='block rounded-lg px-3 py-2 text-sm font-semibold text-[#0B2923] hover:bg-[#1E7D67]/5'>
                         {t('myPlatforms')}
+                    </LocalLink>
+                    <LocalLink href='/account/profile' onClick={() => setOpen(false)} className='block rounded-lg px-3 py-2 text-sm font-semibold text-[#0B2923] hover:bg-[#1E7D67]/5'>
+                        {t('profile')}
                     </LocalLink>
                     <button onClick={logout} className='block w-full rounded-lg px-3 py-2 text-start text-sm font-semibold text-red-600 hover:bg-red-50'>
                         {t('logout')}
