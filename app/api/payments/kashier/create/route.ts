@@ -32,16 +32,23 @@ export async function POST(req: NextRequest) {
     const locale = body?.locale === "en" ? "en" : "ar";
     const platformLang = ["ar", "en", "both"].includes(body?.platform_lang) ? body.platform_lang : "both";
     const purpose = ["new_academy", "upgrade", "renew"].includes(body?.purpose) ? body.purpose : "new_academy";
+    const cycle = body?.cycle === "monthly" ? "monthly" : "annual"; // billing cycle
 
     // Validate the licence and that it's actually a PAID one.
     const lic = requestedKey
         ? await prisma.license.findFirst({ where: { key: requestedKey, active: true } })
         : null;
     if (!lic) return NextResponse.json({ error: "الباقة غير موجودة." }, { status: 400 });
-    const amount = lic.priceEgp ?? 0;
+    // Cycle picks the price + term: monthly = priceEgpMonthly / 30 days, annual =
+    // priceEgp / durationDays. A monthly charge requires a monthly price on the tier.
+    const MONTHLY_DAYS = 30;
+    const amount = cycle === "monthly" ? (lic.priceEgpMonthly ?? 0) : (lic.priceEgp ?? 0);
+    const cycleDays = cycle === "monthly" ? MONTHLY_DAYS : (lic.durationDays ?? 0);
     if (amount <= 0) {
-        // Free tier — this endpoint is only for paid ones.
-        return NextResponse.json({ error: "الباقة دي مجانية — أنشئها مباشرة بدون دفع." }, { status: 400 });
+        return NextResponse.json(
+            { error: cycle === "monthly" ? "لا يوجد اشتراك شهري لهذه الباقة." : "الباقة دي مجانية — أنشئها مباشرة بدون دفع." },
+            { status: 400 },
+        );
     }
 
     if (purpose === "new_academy") {
@@ -90,6 +97,7 @@ export async function POST(req: NextRequest) {
                     // Snapshot the owner so the (session-less) webhook can provision.
                     owner_email: user.email, owner_name: user.name ?? "",
                     autoRenew: saveCard, // recurring intent for the webhook
+                    cycle, cycleDays,    // billing cycle → term + renewal interval
                 },
             },
         });

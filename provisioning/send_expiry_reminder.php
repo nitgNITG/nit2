@@ -29,6 +29,9 @@ $renewurl = trim((string) getenv('RENEW_URL')) ?: $CFG->wwwroot;
 $owneruser = getenv('OWNER_USER') ?: 'owner';
 $expirydate = trim((string) getenv('EXPIRY_DATE'));   // YYYY-MM-DD (sync target)
 $sendemail  = getenv('SEND_EMAIL') !== '0';           // '0' = sync only, no email
+$mode       = getenv('MODE') ?: 'expiry';             // expiry | prerenew (auto-renew heads-up)
+$amountegp  = (int) getenv('AMOUNT_EGP');             // prerenew: charge amount
+$cardlast4  = trim((string) getenv('CARD_LAST4'));    // prerenew: saved card last 4
 
 // Keep the academy's local_license/expirydate in sync with nit2's validUntil so
 // the in-academy banner always matches. Runs every cron tick, even without email.
@@ -54,6 +57,32 @@ $locale   = ($to->lang ?? '') === 'en' ? 'en' : 'ar';
 $sitename = format_string($DB->get_field('course', 'fullname', ['id' => SITEID]));
 $name     = fullname($to);
 $expired  = $daysleft <= 0;
+
+// ── Auto-renew heads-up (mode=prerenew): the card WILL be charged automatically,
+// so the copy reassures rather than asking the owner to renew manually. ──────────
+if ($mode === 'prerenew') {
+    $cardhint = $cardlast4 !== '' ? "•••• {$cardlast4}" : ($locale === 'en' ? 'your saved card' : 'بطاقتك المحفوظة');
+    if ($locale === 'en') {
+        $subject = "Heads-up: \"{$sitename}\" auto-renews in {$daysleft} day(s)";
+        $body = "Hello {$name},\n\n"
+            . "Your academy \"{$sitename}\" will renew automatically in {$daysleft} day(s). "
+            . "We’ll charge {$amountegp} EGP to {$cardhint} — no action needed.\n\n"
+            . "Want to change or cancel auto-renew? Manage it here: {$renewurl}\n\n— NIT";
+    } else {
+        $subject = "تنبيه: تجديد تلقائي لأكاديمية \"{$sitename}\" خلال {$daysleft} يوم";
+        $body = "مرحباً {$name}،\n\n"
+            . "سيتم تجديد اشتراك أكاديميتك \"{$sitename}\" تلقائياً خلال {$daysleft} يوم. "
+            . "سنخصم {$amountegp} ج.م من {$cardhint} — لا حاجة لأي إجراء.\n\n"
+            . "لتغيير أو إلغاء التجديد التلقائي: {$renewurl}\n\n— NIT";
+    }
+    $from = \core_user::get_support_user();
+    if (email_to_user($to, $from, $subject, $body)) {
+        echo "pre-renew notice sent to {$to->email} (daysleft={$daysleft}, amount={$amountegp})\n";
+    } else {
+        fwrite(STDERR, "email_to_user failed (is outbound email/SMTP configured?)\n");
+    }
+    exit(0);
+}
 
 if ($locale === 'en') {
     if ($expired) {

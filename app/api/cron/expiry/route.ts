@@ -3,7 +3,7 @@ import prisma from "@/lib/prismaMysql";
 import { Prisma } from "prismamysql";
 import { triggerSuspend, triggerExpiryReminder, deprovisionAndDeleteAcademy } from "@/lib/provisionAcademy";
 import { notifyTelegram } from "@/lib/telegram";
-import { runBillingCycle } from "@/lib/billing";
+import { runBillingCycle, runPreRenewNotices } from "@/lib/billing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,7 +35,14 @@ export async function POST(req: NextRequest) {
     ).replace(/\/$/, "");
     const renewUrl = base ? `${base}/account` : "";
 
-    // 0) Auto-renew billing — charge due subscriptions off-session via saved card
+    // 0a) Pre-renewal heads-up emails — tell owners their card will be auto-charged
+    // soon (once per cycle), BEFORE the charge runs. No-op unless the feature is on.
+    const preRenew = await runPreRenewNotices(base).catch((e) => {
+        console.error("[cron/expiry] pre-renew notices failed", e);
+        return { notified: [] as string[] };
+    });
+
+    // 0b) Auto-renew billing — charge due subscriptions off-session via saved card
     // token BEFORE the suspend sweep, so a successful renewal prevents suspension.
     // No-op unless SUBSCRIPTIONS_ENABLED=1 (returns { skipped:true }).
     const billing = await runBillingCycle(base).catch((e) => {
@@ -154,5 +161,5 @@ export async function POST(req: NextRequest) {
         console.error("[cron/expiry] payment sweep failed", e);
     }
 
-    return NextResponse.json({ ok: true, graceDays, billing, suspended, reminded, deleted, autoDeleteDays, expiredPayments });
+    return NextResponse.json({ ok: true, graceDays, preRenew, billing, suspended, reminded, deleted, autoDeleteDays, expiredPayments });
 }

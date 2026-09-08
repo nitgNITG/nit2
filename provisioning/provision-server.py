@@ -378,10 +378,12 @@ def run_apply_suspend(slug: str, state: str) -> None:
 
 
 def run_expiry_reminder(slug: str, days_left: int, renew_url: str = "",
-                        expiry_date: str = "", send_email: bool = True) -> None:
+                        expiry_date: str = "", send_email: bool = True,
+                        mode: str = "expiry", amount_egp: int = 0, card_last4: str = "") -> None:
     """Run send-expiry-reminder.sh detached — sync the academy's expirydate to
     validUntil (so the in-academy banner matches) and, when send_email is set,
-    email the owner (via the academy's Moodle mail) about the upcoming expiry."""
+    email the owner (via the academy's Moodle mail). mode 'prerenew' sends an
+    auto-renew heads-up ("card ****last4 will be charged amount in N days")."""
     env = {**os.environ}
     env["DAYS_LEFT"] = str(int(days_left))
     if isinstance(renew_url, str) and renew_url.strip():
@@ -389,6 +391,9 @@ def run_expiry_reminder(slug: str, days_left: int, renew_url: str = "",
     if isinstance(expiry_date, str) and expiry_date.strip():
         env["EXPIRY_DATE"] = expiry_date.strip()
     env["SEND_EMAIL"] = "1" if send_email else "0"
+    env["MODE"] = "prerenew" if mode == "prerenew" else "expiry"
+    env["AMOUNT_EGP"] = str(int(amount_egp or 0))
+    env["CARD_LAST4"] = str(card_last4 or "")
     logpath = os.path.join(LOG_DIR, f"{slug}.log")
     with open(logpath, "ab", buffering=0) as log:
         log.write(f"\n===== expiry-reminder {slug} (days_left={days_left}) =====\n".encode())
@@ -579,8 +584,15 @@ class Handler(BaseHTTPRequestHandler):
             renew_url = str(data.get("renew_url", ""))
             expiry_date = str(data.get("expiry_date", ""))
             send_email = bool(data.get("send_email", True))
+            mode = str(data.get("mode", "expiry"))
+            try:
+                amount_egp = int(data.get("amount_egp", 0))
+            except Exception:
+                amount_egp = 0
+            card_last4 = str(data.get("card_last4", ""))
             threading.Thread(target=run_expiry_reminder,
-                             args=(slug, days_left, renew_url, expiry_date, send_email),
+                             args=(slug, days_left, renew_url, expiry_date, send_email,
+                                   mode, amount_egp, card_last4),
                              daemon=True).start()
             return self._send(202, {"ok": True, "status": "sending-expiry-reminder", "slug": slug})
 

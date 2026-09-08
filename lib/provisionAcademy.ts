@@ -78,7 +78,7 @@ export async function triggerProvision(
  *  needs no mail transport of its own. */
 export async function triggerExpiryReminder(
     slug: string, daysLeft: number, renewUrl: string,
-    opts?: { expiryDate?: string; sendEmail?: boolean },
+    opts?: { expiryDate?: string; sendEmail?: boolean; mode?: "expiry" | "prerenew"; amountEgp?: number; cardLast4?: string },
 ): Promise<void> {
     const base = process.env.PROVISION_URL;
     const secret = process.env.PROVISION_SECRET;
@@ -92,11 +92,16 @@ export async function triggerExpiryReminder(
             // expiry_date keeps the academy's local_license/expirydate in sync with
             // nit2's validUntil (so the in-academy banner always matches); send_email
             // gates the actual reminder email (false = sync only, no email sent).
+            // mode "prerenew" switches the email copy to an auto-renew heads-up
+            // ("your card ****last4 will be charged amount in N days").
             body: JSON.stringify({
                 days_left: daysLeft,
                 renew_url: renewUrl,
                 expiry_date: opts?.expiryDate ?? "",
                 send_email: opts?.sendEmail !== false,
+                mode: opts?.mode ?? "expiry",
+                amount_egp: opts?.amountEgp ?? 0,
+                card_last4: opts?.cardLast4 ?? "",
             }),
         });
     } catch (e) {

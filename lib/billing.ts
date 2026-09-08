@@ -12,7 +12,7 @@ import { notifyTelegram } from "@/lib/telegram";
 import { triggerSuspend, triggerExpiryReminder } from "@/lib/provisionAcademy";
 import { payWithToken } from "@/lib/kashierOrders";
 import {
-  subscriptionsEnabled, renewLeadDays, billingRetryDays, billingCycleKey,
+  subscriptionsEnabled, renewLeadDays, billingRetryDays, billingCycleKey, preRenewNoticeDays,
 } from "@/lib/subscriptions";
 
 export type BillingSummary = {
@@ -116,6 +116,7 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
           data: {
             status: "active", currentPeriodEnd: newEnd, attemptCount: 0, lastError: null,
             nextAttemptAt: new Date(newEnd.getTime() - renewLeadDays() * DAY),
+            preRenewNotifiedAt: null, // new cycle → re-arm the heads-up
           },
         });
         // Sync the in-academy banner date + resume if it had lapsed into suspension.
@@ -196,12 +197,54 @@ export async function openSubscription(opts: {
         licenseKey: opts.licenseKey, status: "active", autoRenew: true,
         intervalDays: opts.intervalDays, amountEgp: opts.amountEgp, currency: opts.currency,
         currentPeriodEnd: opts.currentPeriodEnd, nextAttemptAt, attemptCount: 0, lastError: null,
+        preRenewNotifiedAt: null,
         ...(pm?.id ? { paymentMethodId: pm.id } : {}),
       },
     });
   } catch (e) {
     console.error("[billing] openSubscription failed", opts.academySlug, e);
   }
+}
+
+/**
+ * Email owners a heads-up BEFORE the auto-charge ("card ****1234 will be charged
+ * X EGP in N days"), once per cycle. Runs before the charge pass. No-op while the
+ * feature is off or PRE_RENEW_NOTICE_DAYS=0.
+ */
+export async function runPreRenewNotices(base: string): Promise<{ notified: string[] } | { skipped: true }> {
+  if (!subscriptionsEnabled()) return { skipped: true };
+  const noticeDays = preRenewNoticeDays();
+  if (noticeDays <= 0) return { notified: [] };
+
+  const now = Date.now();
+  const windowEnd = new Date(now + noticeDays * DAY);
+  const due = await prisma.subscription
+    .findMany({
+      where: {
+        status: "active", autoRenew: true,
+        preRenewNotifiedAt: null,
+        nextAttemptAt: { not: null, gt: new Date(now), lte: windowEnd },
+      },
+    })
+    .catch((e) => { console.error("[billing] pre-renew query failed", e); return []; });
+
+  const notified: string[] = [];
+  for (const sub of due) {
+    try {
+      const pm = sub.paymentMethodId
+        ? await prisma.paymentMethod.findUnique({ where: { id: sub.paymentMethodId } })
+        : await prisma.paymentMethod.findFirst({ where: { userId: sub.userId, isDefault: true } });
+      const daysLeft = Math.max(0, Math.ceil((sub.nextAttemptAt!.getTime() - now) / DAY));
+      await triggerExpiryReminder(sub.academySlug, daysLeft, base ? `${base}/account` : "", {
+        sendEmail: true, mode: "prerenew", amountEgp: sub.amountEgp, cardLast4: pm?.last4 ?? "",
+      });
+      await prisma.subscription.update({ where: { id: sub.id }, data: { preRenewNotifiedAt: new Date() } });
+      notified.push(sub.academySlug);
+    } catch (e) {
+      console.error("[billing] pre-renew notice failed", sub.academySlug, e);
+    }
+  }
+  return { notified };
 }
 
 async function markPastDue(id: string, reason: string, attempt: number): Promise<void> {

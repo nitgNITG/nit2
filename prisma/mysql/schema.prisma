@@ -98,8 +98,9 @@ model License {
   name         String
   active       Boolean  @default(true)
   price        Int      @default(0) // USD (display only)
-  priceEgp     Int      @default(0) // actual charge in EGP via Kashier; 0 = free (no payment)
-  durationDays Int      @default(365) // 0 = never expires
+  priceEgp     Int      @default(0) // ANNUAL charge in EGP via Kashier; 0 = free (no payment)
+  priceEgpMonthly Int   @default(0) // MONTHLY charge in EGP; 0 = no monthly option for this tier
+  durationDays Int      @default(365) // annual term in days; 0 = never expires (monthly term is fixed 30d)
   maxCourses   Int      @default(-1) // -1 = unlimited
   maxTeachers  Int      @default(-1)
   storageGb    Int      @default(1) // moodledata quota (GB) for academies on this licence
@@ -165,6 +166,7 @@ model Subscription {
   lastError        String?   @db.Text
   canceledAt       DateTime?
   consentAt        DateTime? // when the owner authorized auto-renew (mandate audit)
+  preRenewNotifiedAt DateTime? // when the "you'll be charged soon" heads-up was sent (per cycle; cleared on charge)
   paymentMethodId  String? // the PaymentMethod (saved token) to charge
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt

@@ -16,6 +16,11 @@ export function renewLeadDays(): number {
   return Math.max(0, Number(process.env.RENEW_LEAD_DAYS ?? 0) || 0);
 }
 
+/** Days before the auto-charge to email the owner a heads-up. Default 3. 0 = off. */
+export function preRenewNoticeDays(): number {
+  return Math.max(0, Number(process.env.PRE_RENEW_NOTICE_DAYS ?? 3) || 0);
+}
+
 /** Retry ladder (days after a failed attempt) for dunning. Default 1,3,5. */
 export function billingRetryDays(): number[] {
   const raw = (process.env.BILLING_RETRY_DAYS || "1,3,5").trim();

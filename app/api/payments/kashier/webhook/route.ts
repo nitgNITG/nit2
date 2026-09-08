@@ -61,7 +61,12 @@ export async function POST(req: NextRequest) {
 
     // ── Confirmed paid ──────────────────────────────────────────────────────
     const lic = await prisma.license.findFirst({ where: { key: payment.licenseKey } }).catch(() => null);
-    const durationDays = lic?.durationDays ?? 0;
+    // Term comes from the billing cycle the buyer chose (payloadJson.cycleDays):
+    // monthly = 30d, annual = the licence's durationDays. Falls back to annual.
+    const pj: any = payment.payloadJson || {};
+    const durationDays = (typeof pj.cycleDays === "number" && pj.cycleDays > 0)
+        ? pj.cycleDays
+        : (lic?.durationDays ?? 0);
     const rankLics = await prisma.license.findMany({ where: { active: true }, select: { key: true, active: true, order: true, priceEgp: true } }).catch(() => []);
     const definition = lic
         ? licenseToDefinition(lic, {
@@ -76,7 +81,7 @@ export async function POST(req: NextRequest) {
         data: { status: "paid", paidAt: new Date(), providerRef: v.transactionId || v.kashierOrderId },
     }).catch(() => {});
 
-    const p: any = payment.payloadJson || {};
+    const p: any = pj;
 
     try {
         if (payment.purpose === "new_academy") {

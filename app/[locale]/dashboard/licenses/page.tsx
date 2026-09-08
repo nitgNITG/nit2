@@ -10,6 +10,7 @@ type License = {
     active: boolean
     price: number
     priceEgp: number
+    priceEgpMonthly: number
     durationDays: number
     maxCourses: number
     maxTeachers: number
@@ -27,7 +28,7 @@ const FEATURE_KEYS = ['coupons', 'offers', 'subscriptions', 'packages']
 const LIMIT_KEYS = ['quiz', 'video', 'pdf', 'default']
 
 const blank = (): License => ({
-    key: '', name: '', active: true, price: 0, priceEgp: 0, durationDays: 365,
+    key: '', name: '', active: true, price: 0, priceEgp: 0, priceEgpMonthly: 0, durationDays: 365,
     maxCourses: -1, maxTeachers: -1, storageGb: 1, supportedApp: true, kashierEnabled: false, videoSource: 'vimeo', order: 0,
     limits: { quiz: -1, video: -1, pdf: -1, default: -1 },
     features: Object.fromEntries(FEATURE_KEYS.map((f) => [f, false])),
@@ -133,9 +134,14 @@ const LicensesPage = () => {
                                 onChange={(e) => setForm((f) => f ? { ...f, name: e.target.value } : f)} placeholder='Enterprise' />
                         </div>
                         <div>
-                            <label className='block text-sm font-semibold mb-1'>Charge (EGP)</label>
+                            <label className='block text-sm font-semibold mb-1'>Annual charge (EGP)</label>
                             <input type='number' min={0} className='w-full border rounded-lg px-3 py-2' value={form.priceEgp} onChange={num('priceEgp')} />
-                            <p className='text-xs text-gray-400 mt-1'>Actual Kashier charge. <span className='font-mono'>0</span> = free (no payment).</p>
+                            <p className='text-xs text-gray-400 mt-1'>Yearly Kashier charge (term = Duration below). <span className='font-mono'>0</span> = free (no payment).</p>
+                        </div>
+                        <div>
+                            <label className='block text-sm font-semibold mb-1'>Monthly charge (EGP)</label>
+                            <input type='number' min={0} className='w-full border rounded-lg px-3 py-2' value={form.priceEgpMonthly} onChange={num('priceEgpMonthly')} />
+                            <p className='text-xs text-gray-400 mt-1'>Optional monthly option (30-day term). <span className='font-mono'>0</span> = annual only.</p>
                         </div>
                     </div>
 
@@ -237,7 +243,12 @@ const LicensesPage = () => {
                                     <p className='font-bold text-lg'>{l.name}</p>
                                     <p className='text-xs text-gray-400 font-mono'>{l.key}</p>
                                 </div>
-                                <span className='text-[#268F79] font-bold'>{(l.priceEgp ?? 0) === 0 ? 'Free' : `${l.priceEgp} EGP`}</span>
+                                <span className='text-[#268F79] font-bold text-right'>
+                                    {(l.priceEgp ?? 0) === 0 ? 'Free' : `${l.priceEgp} EGP/yr`}
+                                    {(l.priceEgpMonthly ?? 0) > 0 && (
+                                        <span className='block text-xs font-semibold text-[#268F79]/70'>{l.priceEgpMonthly} EGP/mo</span>
+                                    )}
+                                </span>
                             </div>
                             <ul className='text-xs text-gray-600 space-y-0.5'>
                                 <li>Courses: <b>{cap(l.maxCourses)}</b> · Teachers: <b>{cap(l.maxTeachers)}</b> · Storage: <b>{l.storageGb ?? 1} GB</b></li>

@@ -36,7 +36,7 @@ const PALETTE_PRESETS: { name: string; dark: boolean; p: Palette }[] = [
     // Deep blue + slate (mrfathybakrmathematics.com).
     { name: 'Navy', dark: false, p: { primary: '#003362', accent: '#1f6fb2', secondary: '#e9eef4', background: '#ffffff', surface: '#f2f6fa', text: '#10233a' } },
 ]
-type License = { key: string; name: string; price: number; priceEgp?: number; durationDays?: number; active: boolean; maxCourses: number; features: Record<string, boolean> }
+type License = { key: string; name: string; price: number; priceEgp?: number; priceEgpMonthly?: number; durationDays?: number; active: boolean; maxCourses: number; features: Record<string, boolean> }
 const FEATURE_LABELS: Record<string, string> = { drm: 'DRM video', coupons: 'coupons', offers: 'offers', subscriptions: 'subscriptions', packages: 'packages', jitsi: 'live sessions' }
 
 type FormValues = {
@@ -112,6 +112,7 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
     const [platformLang, setPlatformLang] = useState<'ar' | 'en' | 'both'>('both') // academy language
     const [autoRenewEnabled, setAutoRenewEnabled] = useState(false) // is the auto-renew feature on (server flag)
     const [autoRenew, setAutoRenew] = useState(true) // buyer's choice (paid tier, create mode)
+    const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual') // paid-tier billing cycle
     const hasAr = platformLang !== 'en'
     const hasEn = platformLang !== 'ar'
     const [palette, setPalette] = useState<Palette>(DEFAULT_PALETTE) // brand colours
@@ -274,6 +275,8 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
             if (!isEdit) {
                 const selected = licenses.find((l) => l.key === values.tier)
                 if (selected && (selected.priceEgp ?? 0) > 0) {
+                    // Use the monthly cycle only if the tier actually has a monthly price.
+                    const effCycle = billingCycle === 'monthly' && (selected.priceEgpMonthly ?? 0) > 0 ? 'monthly' : 'annual'
                     const pr = await fetch('/api/payments/kashier/create', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -281,6 +284,7 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                             name: values.name,
                             slug: values.slug.toLowerCase().trim(),
                             tier: values.tier,
+                            cycle: effCycle,
                             brand,
                             locale,
                             platform_lang: platformLang,
@@ -522,9 +526,36 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                 <label className='mb-1.5 block font-bold text-[#0B2923]'>
                     {isAr ? 'الباقة' : 'License'} <span className='text-red-500'>*</span>
                 </label>
+
+                {/* Monthly / Annual billing-cycle toggle (applies to paid tiers). */}
+                {licenses.some((l) => (l.priceEgpMonthly ?? 0) > 0) && (
+                    <div className='mb-3 inline-flex rounded-full border border-gray-200 bg-gray-50 p-1 text-sm'>
+                        {(['monthly', 'annual'] as const).map((c) => (
+                            <button
+                                type='button'
+                                key={c}
+                                onClick={() => setBillingCycle(c)}
+                                className={`rounded-full px-4 py-1.5 font-bold transition-colors ${billingCycle === c ? 'bg-[#1E7D67] text-white' : 'text-gray-600 hover:text-[#0B2923]'}`}
+                            >
+                                {c === 'monthly' ? (isAr ? 'شهري' : 'Monthly') : (isAr ? 'سنوي' : 'Annual')}
+                                {c === 'annual' && (
+                                    <span className={`ms-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${billingCycle === 'annual' ? 'bg-white/20 text-white' : 'bg-[#00c98e]/20 text-[#0b8f66]'}`}>
+                                        {isAr ? 'شهران مجانًا' : '2 months free'}
+                                    </span>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
                 <div className='grid grid-cols-2 gap-2'>
                     {licenses.map((lic) => {
                         const on = selectedTier === lic.key
+                        const paid = (lic.priceEgp ?? 0) > 0
+                        const hasMonthly = (lic.priceEgpMonthly ?? 0) > 0
+                        const useMonthly = paid && billingCycle === 'monthly' && hasMonthly
+                        const price = useMonthly ? (lic.priceEgpMonthly ?? 0) : (lic.priceEgp ?? 0)
+                        const per = useMonthly ? (isAr ? '/شهر' : '/mo') : (isAr ? '/سنة' : '/yr')
                         const summary = [
                             `${lic.maxCourses < 0 ? (isAr ? 'كورسات بلا حد' : 'unlimited courses') : `${lic.maxCourses} ${isAr ? 'كورسات' : 'courses'}`}`,
                             ...Object.keys(lic.features || {}).filter((f) => lic.features[f]).map((f) => FEATURE_LABELS[f] ?? f),
@@ -539,11 +570,17 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                                 <div className='flex items-baseline justify-between gap-2'>
                                     <span className='font-bold text-[#0B2923]'>{lic.name}</span>
                                     <span className='text-sm font-bold text-[#1E7D67]' dir='ltr'>
-                                        {(lic.priceEgp ?? 0) > 0
-                                            ? `${lic.priceEgp} ${isAr ? 'ج.م' : 'EGP'}`
-                                            : (isAr ? 'مجاني' : 'Free')}
+                                        {paid ? (
+                                            <>
+                                                {price} {isAr ? 'ج.م' : 'EGP'}
+                                                <span className='text-[10px] font-normal text-gray-400'> {per}</span>
+                                            </>
+                                        ) : (isAr ? 'مجاني' : 'Free')}
                                     </span>
                                 </div>
+                                {paid && billingCycle === 'monthly' && !hasMonthly && (
+                                    <p className='text-[10px] text-gray-400'>{isAr ? 'سنوي فقط' : 'annual only'}</p>
+                                )}
                                 <ul className='mt-1 list-disc ps-4 text-xs text-gray-500'>
                                     {summary.map((f, i) => (
                                         <li key={i}>{f}</li>
@@ -561,8 +598,9 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
             {!isEdit && autoRenewEnabled && (() => {
                 const lic = licenses.find((l) => l.key === selectedTier)
                 if (!lic || (lic.priceEgp ?? 0) <= 0) return null
-                const d = lic.durationDays ?? 0
-                const every = d === 365 ? (isAr ? 'سنويًا' : 'yearly') : d === 30 ? (isAr ? 'شهريًا' : 'monthly') : d > 0 ? (isAr ? `كل ${d} يوم` : `every ${d} days`) : ''
+                const useMonthly = billingCycle === 'monthly' && (lic.priceEgpMonthly ?? 0) > 0
+                const every = useMonthly ? (isAr ? 'شهريًا' : 'monthly') : (isAr ? 'سنويًا' : 'yearly')
+                const price = useMonthly ? (lic.priceEgpMonthly ?? 0) : (lic.priceEgp ?? 0)
                 return (
                     <label className='mb-5 flex cursor-pointer items-start gap-3 rounded-xl border border-[#1E7D67]/30 bg-[#1E7D67]/5 p-3'>
                         <input
@@ -577,8 +615,8 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                             </span>
                             <span className='block text-gray-600'>
                                 {isAr
-                                    ? `احفظ بطاقتي وجدّد الاشتراك ${every} تلقائيًا (${lic.priceEgp} ج.م) حتى ألغيه. يمكنك الإلغاء في أي وقت من "منصاتي".`
-                                    : `Save my card and renew ${every} automatically (${lic.priceEgp} EGP) until I cancel. You can cancel anytime from "My platforms".`}
+                                    ? `احفظ بطاقتي وجدّد الاشتراك ${every} تلقائيًا (${price} ج.م) حتى ألغيه. يمكنك الإلغاء في أي وقت من "منصاتي".`
+                                    : `Save my card and renew ${every} automatically (${price} EGP) until I cancel. You can cancel anytime from "My platforms".`}
                             </span>
                         </span>
                     </label>
