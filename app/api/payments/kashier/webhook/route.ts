@@ -50,6 +50,21 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ status: "already-processed" });
     }
 
+    // Auto-renew charges (created by the billing engine, subscriptionId set) are
+    // fully handled there — term extension, subscription update, receipt + notify.
+    // The webhook must NOT re-process them: on a race it would double-extend the
+    // term and send a duplicate email. Just acknowledge (mark paid so Kashier
+    // stops retrying) and stop.
+    if (payment.subscriptionId) {
+        if (isPaidStatus(v.status)) {
+            await prisma.payment.update({
+                where: { orderId },
+                data: { status: "paid", paidAt: payment.paidAt ?? new Date(), providerRef: v.transactionId || v.kashierOrderId },
+            }).catch(() => {});
+        }
+        return NextResponse.json({ status: "handled-by-billing" });
+    }
+
     // A non-success event → record the failure and stop.
     if (!isPaidStatus(v.status)) {
         await prisma.payment.update({

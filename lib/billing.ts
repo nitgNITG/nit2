@@ -123,10 +123,12 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
         },
       });
 
+      // No webhookUrl: billing handles the charge synchronously (mark paid, extend,
+      // receipt, notify). A Kashier webhook for this charge would only risk
+      // double-processing on a race, so we don't ask for one.
       const charge = await payWithToken({
         orderId, amount: sub.amountEgp, currency: sub.currency,
         customerReference: pm.customerReference, cardToken: token,
-        webhookUrl: base ? `${base}/api/payments/kashier/webhook` : undefined,
       });
 
       if (charge.ok) {
