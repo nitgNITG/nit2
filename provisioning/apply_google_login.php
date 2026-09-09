@@ -97,5 +97,37 @@ if (!$enabled) {
     }
 }
 
+// ── 4. local_googleauth (mobile app "Sign in with Google") ──────────────────
+// The mobile app posts a Google ID token to local_googleauth/token.php, which
+// verifies it against these client ids and signs in / creates the user. Enable
+// it, store the FULL client-id list (the app binds several platform ids — not
+// just the web one), and allow user creation on first Google sign-in.
+$allclientids = trim((string) getenv('GOOGLE_CLIENT_ID'));
+if ($allclientids !== '') {
+    set_config('clientids', $allclientids, 'local_googleauth');
+    set_config('enabled', 1, 'local_googleauth');
+    set_config('allowcreate', 1, 'local_googleauth'); // create the account on first Google sign-in
+}
+
+// ── 5. Email self-registration (the "Create new account" / sign-up link) ────
+// Off by default in Moodle, which hides the sign-up link on the login page.
+// Enable the email auth plugin and point self-registration at it so learners
+// can create their own accounts.
+$emailenabled = false;
+if (method_exists('\core\plugininfo\auth', 'enable_plugin')) {
+    try {
+        \core\plugininfo\auth::enable_plugin('email', 1);
+        $emailenabled = true;
+    } catch (\Throwable $e) { /* fall back below */ }
+}
+if (!$emailenabled) {
+    $auths3 = array_filter(explode(',', (string) get_config('core', 'auth')));
+    if (!in_array('email', $auths3, true)) {
+        $auths3[] = 'email';
+        set_config('auth', implode(',', $auths3));
+    }
+}
+set_config('registerauth', 'email');
+
 purge_all_caches();
-echo "Google login enabled (issuer #{$issuer->get('id')})\n";
+echo "Google login + local_googleauth + email self-registration enabled (issuer #{$issuer->get('id')})\n";
