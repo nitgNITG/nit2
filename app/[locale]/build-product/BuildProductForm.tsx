@@ -36,7 +36,7 @@ const PALETTE_PRESETS: { name: string; dark: boolean; p: Palette }[] = [
     // Deep blue + slate (mrfathybakrmathematics.com).
     { name: 'Navy', dark: false, p: { primary: '#003362', accent: '#1f6fb2', secondary: '#e9eef4', background: '#ffffff', surface: '#f2f6fa', text: '#10233a' } },
 ]
-type License = { key: string; name: string; price: number; priceEgp?: number; priceEgpMonthly?: number; durationDays?: number; active: boolean; maxCourses: number; features: Record<string, boolean> }
+type License = { key: string; name: string; price: number; priceEgp?: number; priceEgpMonthly?: number; durationDays?: number; active: boolean; maxCourses: number; maxTeachers?: number; storageGb?: number; videoSource?: string; features: Record<string, boolean> }
 const FEATURE_LABELS: Record<string, string> = { drm: 'DRM video', coupons: 'coupons', offers: 'offers', subscriptions: 'subscriptions', packages: 'packages', jitsi: 'live sessions' }
 
 type FormValues = {
@@ -556,10 +556,8 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                         const useMonthly = paid && billingCycle === 'monthly' && hasMonthly
                         const price = useMonthly ? (lic.priceEgpMonthly ?? 0) : (lic.priceEgp ?? 0)
                         const per = useMonthly ? (isAr ? '/شهر' : '/mo') : (isAr ? '/سنة' : '/yr')
-                        const summary = [
-                            `${lic.maxCourses < 0 ? (isAr ? 'كورسات بلا حد' : 'unlimited courses') : `${lic.maxCourses} ${isAr ? 'كورسات' : 'courses'}`}`,
-                            ...Object.keys(lic.features || {}).filter((f) => lic.features[f]).map((f) => FEATURE_LABELS[f] ?? f),
-                        ].slice(0, 3)
+                        const cap = (n?: number) => ((n ?? -1) < 0 ? '∞' : String(n))
+                        const feats = Object.keys(lic.features || {}).filter((f) => lic.features[f]).map((f) => FEATURE_LABELS[f] ?? f)
                         return (
                             <button
                                 type='button'
@@ -581,11 +579,20 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                                 {paid && billingCycle === 'monthly' && !hasMonthly && (
                                     <p className='text-[10px] text-gray-400'>{isAr ? 'سنوي فقط' : 'annual only'}</p>
                                 )}
-                                <ul className='mt-1 list-disc ps-4 text-xs text-gray-500'>
-                                    {summary.map((f, i) => (
-                                        <li key={i}>{f}</li>
-                                    ))}
-                                </ul>
+                                {/* Full package details. */}
+                                <div className='mt-1.5 space-y-0.5 text-[11px] leading-relaxed text-gray-500'>
+                                    <div>
+                                        {isAr ? 'الكورسات:' : 'Courses:'} <b className='text-gray-700'>{cap(lic.maxCourses)}</b>
+                                        {' · '}{isAr ? 'المدرّسون:' : 'Teachers:'} <b className='text-gray-700'>{cap(lic.maxTeachers)}</b>
+                                    </div>
+                                    <div>
+                                        {isAr ? 'التخزين:' : 'Storage:'} <b className='text-gray-700'>{lic.storageGb ?? 1} GB</b>
+                                        {lic.videoSource ? <>{' · '}{isAr ? 'الفيديو:' : 'Video:'} <b className='text-gray-700'>{lic.videoSource}</b></> : null}
+                                    </div>
+                                    {feats.length > 0 && (
+                                        <div>{isAr ? 'المزايا:' : 'Features:'} <b className='text-gray-700'>{feats.join('، ')}</b></div>
+                                    )}
+                                </div>
                             </button>
                         )
                     })}
