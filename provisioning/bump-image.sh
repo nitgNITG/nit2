@@ -82,6 +82,22 @@ if [[ "$DOALL" == "1" ]]; then
             fi
         done
         log "done: $ok updated, $fail failed"
+
+        # Reclaim disk: every rollout pulls a new saas-moodle tag, and the old tags
+        # pile up until the disk fills (errno=28 "No space left on device" takes the
+        # academies down). Remove old tags of THIS repo that no running container
+        # uses — `docker rmi` safely refuses any image still in use, and we always
+        # keep the current tag + :latest. Then drop dangling layers + build cache.
+        log "pruning old $REPO images (keeping :$TAG and :latest)"
+        docker image ls "$REPO" --format '{{.Repository}}:{{.Tag}}' 2>/dev/null \
+            | grep -v -e ":$TAG\$" -e ":latest\$" -e ":<none>\$" \
+            | while read -r _old; do
+                docker rmi "$_old" >/dev/null 2>&1 && echo "   removed $_old" || true
+              done
+        docker image prune -f >/dev/null 2>&1 || true
+        docker builder prune -f >/dev/null 2>&1 || true
+        log "disk after prune: $(df -h / | awk 'NR==2{print $4" free ("$5" used)"}')"
+
         # Completion ping — server-side truth that every container was recreated
         # (the GitHub job only knows the request was accepted). Best-effort; needs
         # TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID in the environment (provision.env).
