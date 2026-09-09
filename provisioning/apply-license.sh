@@ -41,6 +41,15 @@ if [[ -n "$EXPIRY_DATE" ]]; then
     log "expiry date -> ${EXPIRY_DATE}"
     docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=expirydate --set="$EXPIRY_DATE" >/dev/null 2>&1 || true
 fi
+# Per-academy subscription start (YYYY-MM-DD) → local_license/subscribedat, a mirror
+# of nit2's Academy.subscribedAt so the academy API can report "subscribed at". Same
+# rule as expirydate: only when present in the definition (create / renewal / plan
+# change); a plain reapply omits it and leaves the stored value as-is.
+SUBSCRIBED_AT="$(python3 -c 'import json,os; d=json.loads(os.environ.get("LICENSE_DEFINITION") or "{}"); print(d.get("subscribedat") or "")' 2>/dev/null || true)"
+if [[ -n "$SUBSCRIBED_AT" ]]; then
+    log "subscribed at -> ${SUBSCRIBED_AT}"
+    docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=subscribedat --set="$SUBSCRIBED_AT" >/dev/null 2>&1 || true
+fi
 # Renew link for the banner (global — the nit2 account page).
 RENEW_URL="$(python3 -c 'import json,os; d=json.loads(os.environ.get("LICENSE_DEFINITION") or "{}"); print(d.get("renewurl") or "")' 2>/dev/null || true)"
 if [[ -n "$RENEW_URL" ]]; then

@@ -380,7 +380,8 @@ def run_apply_suspend(slug: str, state: str) -> None:
 def run_expiry_reminder(slug: str, days_left: int, renew_url: str = "",
                         expiry_date: str = "", send_email: bool = True,
                         mode: str = "expiry", amount_egp: int = 0, card_last4: str = "",
-                        card_expiring: int = 0, autorenew: str = "") -> None:
+                        card_expiring: int = 0, autorenew: str = "",
+                        subscribed_at: str = "") -> None:
     """Run send-expiry-reminder.sh detached — sync the academy's expirydate to
     validUntil (so the in-academy banner matches) and, when send_email is set,
     email the owner (via the academy's Moodle mail). mode 'prerenew' sends an
@@ -397,6 +398,8 @@ def run_expiry_reminder(slug: str, days_left: int, renew_url: str = "",
     env["CARD_LAST4"] = str(card_last4 or "")
     env["CARD_EXPIRING"] = "1" if card_expiring else "0"
     env["AUTORENEW"] = autorenew if autorenew in ("0", "1") else ""
+    if isinstance(subscribed_at, str) and subscribed_at.strip():
+        env["SUBSCRIBED_AT"] = subscribed_at.strip()
     logpath = os.path.join(LOG_DIR, f"{slug}.log")
     with open(logpath, "ab", buffering=0) as log:
         log.write(f"\n===== expiry-reminder {slug} (days_left={days_left}) =====\n".encode())
@@ -602,9 +605,11 @@ class Handler(BaseHTTPRequestHandler):
             except Exception:
                 card_expiring = 0
             autorenew = str(data.get("autorenew", ""))
+            subscribed_at = str(data.get("subscribed_at", ""))
             threading.Thread(target=run_expiry_reminder,
                              args=(slug, days_left, renew_url, expiry_date, send_email,
-                                   mode, amount_egp, card_last4, card_expiring, autorenew),
+                                   mode, amount_egp, card_last4, card_expiring, autorenew,
+                                   subscribed_at),
                              daemon=True).start()
             return self._send(202, {"ok": True, "status": "sending-expiry-reminder", "slug": slug})
 

@@ -27,7 +27,7 @@ export function computeUpgradable(currentKey: string, licenses: RankLicense[]): 
 
 export function toLicenseDefinition(
     lic: LicenseRow,
-    opts?: { validUntil?: Date | null; upgradable?: boolean },
+    opts?: { validUntil?: Date | null; subscribedAt?: Date | null; upgradable?: boolean },
 ): string {
     const feats = (lic.features && typeof lic.features === "object") ? (lic.features as Record<string, boolean>) : {}
     const features = Object.keys(feats).filter((k) => feats[k])
@@ -51,9 +51,14 @@ export function toLicenseDefinition(
     // academy can show the renewal banner + know when its term ends. Only when a
     // concrete term is provided (create / renewal / plan change); a plain reapply
     // omits it and leaves any existing expiry untouched.
-    if (opts?.validUntil) {
-        const d = opts.validUntil
-        out.expirydate = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`
-    }
+    const ymd = (d: Date) =>
+        `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`
+    if (opts?.validUntil) out.expirydate = ymd(opts.validUntil)
+    // Per-academy subscription start (YYYY-MM-DD) → local_license/subscribedat, a
+    // mirror of nit2's Academy.subscribedAt so the academy's own API can report
+    // "subscribed at" without a nit2 round-trip. Same rule as expirydate: only
+    // pushed when a concrete term is set (create / renewal / plan change); a plain
+    // reapply omits it and leaves the stored value untouched.
+    if (opts?.subscribedAt) out.subscribedat = ymd(opts.subscribedAt)
     return JSON.stringify(out)
 }

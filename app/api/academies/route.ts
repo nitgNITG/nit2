@@ -126,6 +126,9 @@ export async function POST(req: NextRequest) {
                   validUntil: (lic.durationDays ?? 0) > 0
                       ? new Date(Date.now() + (lic.durationDays ?? 0) * 86_400_000)
                       : null,
+                  // Subscription start = creation time (mirrors Academy.subscribedAt),
+                  // so the academy's own API can report "subscribed at".
+                  subscribedAt: (lic.durationDays ?? 0) > 0 ? new Date() : null,
                   upgradable: computeUpgradable(tier, rankLics),
               })
             : "";

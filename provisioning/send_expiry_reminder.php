@@ -46,6 +46,13 @@ if ($autorenew === '0' || $autorenew === '1') {
     set_config('autorenew', $autorenew, 'local_license');
     echo "autorenew synced -> {$autorenew}\n";
 }
+// Subscription start (YYYY-MM-DD), a mirror of nit2's Academy.subscribedAt so the
+// academy API can report "subscribed at". '' = leave unchanged (renew/upgrade set it).
+$subscribedat = trim((string) getenv('SUBSCRIBED_AT'));
+if ($subscribedat !== '') {
+    set_config('subscribedat', $subscribedat, 'local_license');
+    echo "subscribedat synced -> {$subscribedat}\n";
+}
 if (!$sendemail) {
     exit(0);   // sync-only run — no reminder email this time.
 }

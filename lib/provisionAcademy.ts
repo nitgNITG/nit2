@@ -83,6 +83,7 @@ export async function triggerExpiryReminder(
         mode?: "expiry" | "prerenew" | "receipt" | "payment_failed";
         amountEgp?: number; cardLast4?: string; cardExpiring?: boolean;
         autoRenew?: boolean; // push local_license/autorenew (true=1,false=0); undefined = leave
+        subscribedAt?: string; // YYYY-MM-DD → local_license/subscribedat; "" leaves it
     },
 ): Promise<void> {
     const base = process.env.PROVISION_URL;
@@ -109,6 +110,7 @@ export async function triggerExpiryReminder(
                 card_last4: opts?.cardLast4 ?? "",
                 card_expiring: opts?.cardExpiring ? 1 : 0,
                 autorenew: opts?.autoRenew === undefined ? "" : (opts.autoRenew ? "1" : "0"),
+                subscribed_at: opts?.subscribedAt ?? "",
             }),
         });
     } catch (e) {

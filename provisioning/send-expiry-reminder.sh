@@ -32,7 +32,7 @@ docker exec \
     -e EXPIRY_DATE="${EXPIRY_DATE:-}" -e SEND_EMAIL="${SEND_EMAIL:-1}" \
     -e MODE="${MODE:-expiry}" -e AMOUNT_EGP="${AMOUNT_EGP:-0}" \
     -e CARD_LAST4="${CARD_LAST4:-}" -e CARD_EXPIRING="${CARD_EXPIRING:-0}" \
-    -e AUTORENEW="${AUTORENEW:-}" \
+    -e AUTORENEW="${AUTORENEW:-}" -e SUBSCRIBED_AT="${SUBSCRIBED_AT:-}" \
     "$CONTAINER" php /var/www/moodledata/send_expiry_reminder.php || echo "!! reminder step failed"
 docker exec "$CONTAINER" rm -f /var/www/moodledata/send_expiry_reminder.php || true
 log "done — expiry reminder for $SLUG"

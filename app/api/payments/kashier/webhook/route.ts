@@ -86,6 +86,9 @@ export async function POST(req: NextRequest) {
     const definition = lic
         ? licenseToDefinition(lic, {
               validUntil: durationDays > 0 ? new Date(Date.now() + durationDays * 86_400_000) : null,
+              // Renew/upgrade both start a fresh term now → mirror subscribedAt into
+              // the academy (matches Academy.subscribedAt set below).
+              subscribedAt: durationDays > 0 ? new Date() : null,
               upgradable: computeUpgradable(payment.licenseKey, rankLics),
           })
         : "";

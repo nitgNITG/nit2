@@ -164,9 +164,10 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
         const daysLeft = Math.ceil((newEnd.getTime() - now.getTime()) / DAY);
         // One call: syncs the academy's expirydate (banner) AND emails a receipt
         // confirming the charge + the next renewal date.
+        const subYmd = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
         await triggerExpiryReminder(sub.academySlug, daysLeft, base ? `${base}/account` : "", {
           expiryDate: ymd, sendEmail: true, mode: "receipt", amountEgp: sub.amountEgp, cardLast4: pm.last4 ?? "",
-          autoRenew: true,
+          autoRenew: true, subscribedAt: subYmd, // mirror the fresh term start into the academy
         });
         await triggerSuspend(sub.academySlug, false);
 
