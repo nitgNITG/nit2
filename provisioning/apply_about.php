@@ -16,14 +16,16 @@ $subheader = trim((string) getenv('ABOUT_SUBHEADER')); // may carry {mlang} tags
 
 if (!$bullets && $subheader === '' && ($imgPath === '' || !is_file($imgPath))) { fwrite(STDERR, "nothing to apply for about\n"); exit(0); }
 
-// Image box — fixed 4:3 aspect (consistent dimensions). Data-URI so no file serving.
+// Image box — full-height, half-width column, no frame; the photo is shown
+// `cover` so it fills the whole side (matching the text column's height). Data-URI
+// so no file serving.
 $imgStyle = 'background: var(--nit-brand-surface);';
 if ($imgPath !== '' && is_file($imgPath)) {
     $raw = file_get_contents($imgPath);
     if ($raw !== false && $raw !== '') {
         $ext = strtolower(pathinfo($imgPath, PATHINFO_EXTENSION));
         $mime = ['png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'webp' => 'image/webp', 'gif' => 'image/gif', 'svg' => 'image/svg+xml'][$ext] ?? 'image/jpeg';
-        $imgStyle = "background:#000 url('data:{$mime};base64," . base64_encode($raw) . "') center/cover no-repeat;";
+        $imgStyle = "background: var(--nit-brand-surface) url('data:{$mime};base64," . base64_encode($raw) . "') center/cover no-repeat;";
     }
 }
 
@@ -43,13 +45,13 @@ if ($items === '') {
 
 $html =
     '<div dir="auto" data-nit-section="about" style="background: var(--nit-brand-background); color: var(--nit-brand-textprimary); padding: 64px 20px;">' .
-      '<div style="max-width: 1140px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit,minmax(300px,1fr)); gap: 40px; align-items: center;">' .
+      '<div style="max-width: 1140px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit,minmax(300px,1fr)); gap: 40px; align-items: stretch;">' .
         '<div>' .
           '<h2 style="font-size: clamp(24px,4vw,34px); font-weight: 800; margin: 0 0 6px; color: var(--nit-brand-accenttext);">{mlang ar}نبذة عن{mlang}{mlang en}About{mlang}</h2>' .
           '<h3 data-nit-about-subheader="1" style="font-size: 20px; font-weight: 700; margin: 0 0 18px;">' . $subHtml . '</h3>' .
           '<ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">' . $items . '</ul>' .
         '</div>' .
-        '<div data-nit-about-image style="aspect-ratio:4/3; width:100%; border-radius: 20px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--nit-brand-textprimary) 10%, transparent); ' . $imgStyle . '"></div>' .
+        '<div data-nit-about-image style="width:100%; height:100%; min-height:360px; border-radius: 20px; overflow: hidden; ' . $imgStyle . '"></div>' .
       '</div>' .
     '</div>';
 
