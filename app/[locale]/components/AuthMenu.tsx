@@ -47,6 +47,7 @@ export default function AuthMenu({ mobile = false, onNavigate }: { mobile?: bool
                 )}
                 <LocalLink onClick={onNavigate} href='/account' className='font-semibold text-xl text-[#00FFB2]'>{t('myPlatforms')}</LocalLink>
                 <LocalLink onClick={onNavigate} href='/account/profile' className='font-semibold text-xl text-[#00FFB2]'>{t('profile')}</LocalLink>
+                <LocalLink onClick={onNavigate} href='/account/payments' className='font-semibold text-xl text-[#00FFB2]'>{t('payments')}</LocalLink>
                 <button onClick={logout} className='font-semibold text-lg text-red-300'>{t('logout')}</button>
             </div>
         )
@@ -82,6 +83,9 @@ export default function AuthMenu({ mobile = false, onNavigate }: { mobile?: bool
                     </LocalLink>
                     <LocalLink href='/account/profile' onClick={() => setOpen(false)} className='block rounded-lg px-3 py-2 text-sm font-semibold text-[#0B2923] hover:bg-[#1E7D67]/5'>
                         {t('profile')}
+                    </LocalLink>
+                    <LocalLink href='/account/payments' onClick={() => setOpen(false)} className='block rounded-lg px-3 py-2 text-sm font-semibold text-[#0B2923] hover:bg-[#1E7D67]/5'>
+                        {t('payments')}
                     </LocalLink>
                     <button onClick={logout} className='block w-full rounded-lg px-3 py-2 text-start text-sm font-semibold text-red-600 hover:bg-red-50'>
                         {t('logout')}

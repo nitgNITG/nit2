@@ -34,15 +34,23 @@ export default function Dashboard({
                         </span>
                         <h1 className='mt-1 text-2xl font-extrabold'>{t('title')}</h1>
                     </div>
-                    <LocaleLink
-                        href='/account/profile'
-                        className='inline-flex shrink-0 items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-white/90 hover:bg-white/10 transition-colors'
-                    >
-                        <span className='flex h-6 w-6 items-center justify-center rounded-full bg-[#00FFB2] text-xs font-extrabold text-[#0B2923]'>
-                            {(user.name || user.email || '?').trim().charAt(0).toUpperCase()}
-                        </span>
-                        {tn('profile')}
-                    </LocaleLink>
+                    <div className='flex shrink-0 items-center gap-2'>
+                        <LocaleLink
+                            href='/account/payments'
+                            className='inline-flex items-center gap-1.5 rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-white/90 hover:bg-white/10 transition-colors'
+                        >
+                            💳 {tn('payments')}
+                        </LocaleLink>
+                        <LocaleLink
+                            href='/account/profile'
+                            className='inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-white/90 hover:bg-white/10 transition-colors'
+                        >
+                            <span className='flex h-6 w-6 items-center justify-center rounded-full bg-[#00FFB2] text-xs font-extrabold text-[#0B2923]'>
+                                {(user.name || user.email || '?').trim().charAt(0).toUpperCase()}
+                            </span>
+                            {tn('profile')}
+                        </LocaleLink>
+                    </div>
                 </header>
 
                 {/* Action bar */}

@@ -7,7 +7,7 @@ import toast from 'react-hot-toast'
 
 export default function VerifyEmailPage() {
     return (
-        <Suspense fallback={<div className='min-h-[70vh] bg-[#0B2923]' />}>
+        <Suspense fallback={<div className='min-h-[calc(100vh-100px)] bg-[#0B2923]' />}>
             <VerifyInner />
         </Suspense>
     )
@@ -53,7 +53,7 @@ function VerifyInner() {
     }
 
     return (
-        <div dir={isAr ? 'rtl' : 'ltr'} className='min-h-[70vh] bg-[#0B2923] flex items-center justify-center px-4 py-16'>
+        <div dir={isAr ? 'rtl' : 'ltr'} className='min-h-[calc(100vh-100px)] bg-[#0B2923] flex items-center justify-center px-4 py-16'>
             <div className='w-full max-w-md rounded-3xl bg-[#F5F3EE] p-8 shadow-2xl ring-1 ring-white/10'>
                 <h1 className='text-2xl font-extrabold text-[#0B2923]'>{tr('تأكيد البريد', 'Verify your email')}</h1>
                 <p className='mt-1 text-sm text-[#0B2923]/60'>
