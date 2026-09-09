@@ -87,8 +87,9 @@ export async function POST(req: NextRequest) {
         ? licenseToDefinition(lic, {
               validUntil: durationDays > 0 ? new Date(Date.now() + durationDays * 86_400_000) : null,
               // Renew/upgrade both start a fresh term now → mirror subscribedAt into
-              // the academy (matches Academy.subscribedAt set below).
-              subscribedAt: durationDays > 0 ? new Date() : null,
+              // the academy (matches Academy.subscribedAt set below). Not gated on
+              // durationDays — the start date is always meaningful.
+              subscribedAt: new Date(),
               upgradable: computeUpgradable(payment.licenseKey, rankLics),
           })
         : "";

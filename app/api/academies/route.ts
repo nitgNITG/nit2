@@ -126,9 +126,10 @@ export async function POST(req: NextRequest) {
                   validUntil: (lic.durationDays ?? 0) > 0
                       ? new Date(Date.now() + (lic.durationDays ?? 0) * 86_400_000)
                       : null,
-                  // Subscription start = creation time (mirrors Academy.subscribedAt),
-                  // so the academy's own API can report "subscribed at".
-                  subscribedAt: (lic.durationDays ?? 0) > 0 ? new Date() : null,
+                  // Subscription start = creation time (mirrors Academy.subscribedAt,
+                  // set unconditionally below). Always known — even a free/never-expiring
+                  // tier has a start date — so it is NOT gated on durationDays.
+                  subscribedAt: new Date(),
                   upgradable: computeUpgradable(tier, rankLics),
               })
             : "";

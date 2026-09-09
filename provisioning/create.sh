@@ -458,6 +458,17 @@ docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_l
 # Storage quota (GB), parsed from the licence definition JSON → plain cfg for saas-quota.sh.
 STORAGE_GB="$(python3 -c 'import json,os; d=json.loads(os.environ.get("LICENSE_DEFINITION") or "{}"); v=d.get("storagegb"); print(int(v) if str(v).lstrip("-").isdigit() and int(v)>0 else "")' 2>/dev/null || true)"
 [[ -n "$STORAGE_GB" ]] && docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=storagegb --set="$STORAGE_GB" >/dev/null 2>&1 || true
+# Subscription term (expiry) + start (subscribedat) + renew link — parsed from the
+# definition JSON into their own cfg keys, same as apply-license.sh. license::expiry()
+# and subscribed_at() read THESE, not the JSON, so a fresh academy needs them set here
+# or its subscription block reads all-null. expirydate is present only for a timed
+# tier (durationDays > 0); subscribedat/renewurl are always present.
+EXPIRY_DATE="$(python3 -c 'import json,os; d=json.loads(os.environ.get("LICENSE_DEFINITION") or "{}"); print(d.get("expirydate") or "")' 2>/dev/null || true)"
+[[ -n "$EXPIRY_DATE" ]] && docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=expirydate --set="$EXPIRY_DATE" >/dev/null 2>&1 || true
+SUBSCRIBED_AT="$(python3 -c 'import json,os; d=json.loads(os.environ.get("LICENSE_DEFINITION") or "{}"); print(d.get("subscribedat") or "")' 2>/dev/null || true)"
+[[ -n "$SUBSCRIBED_AT" ]] && docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=subscribedat --set="$SUBSCRIBED_AT" >/dev/null 2>&1 || true
+RENEW_URL="$(python3 -c 'import json,os; d=json.loads(os.environ.get("LICENSE_DEFINITION") or "{}"); print(d.get("renewurl") or "")' 2>/dev/null || true)"
+[[ -n "$RENEW_URL" ]] && docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=renewurl --set="$RENEW_URL" >/dev/null 2>&1 || true
 
 # ── Global platform settings (local_multitopics) ────────────────────────────
 for _skey in google_client_id google_client_secret apple_client_id facebook_app_id android_version android_url ios_version ios_url watermark_color watermark_speed watermark_fontsize app_name; do

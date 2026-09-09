@@ -34,8 +34,8 @@ async function triggerApplyLicense(slug: string, tier: string): Promise<void> {
                       ? new Date(Date.now() + (lic.durationDays ?? 0) * 86_400_000)
                       : null,
                   // Mirror Academy.subscribedAt (PATCH set it to now for this same
-                  // plan change) so the academy can report "subscribed at" too.
-                  subscribedAt: (lic.durationDays ?? 0) > 0 ? new Date() : null,
+                  // plan change). Always known → not gated on durationDays.
+                  subscribedAt: new Date(),
                   upgradable: computeUpgradable(tier, rankLics),
               })
             : "";
