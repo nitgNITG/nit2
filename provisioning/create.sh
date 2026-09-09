@@ -369,7 +369,11 @@ if [[ -n "${BRAND_COLOR_PRIMARY:-}${BRAND_COLOR_SECONDARY:-}${BRAND_COLOR_BACKGR
     TXT="${BRAND_COLOR_TEXT:-#eef3f9}"; ACC="${BRAND_COLOR_ACCENT:-$P}"
     _setrole primary "$P";  _setrole secondary "$SEC"; _setrole background "$BG"
     _setrole surface "$SURF"; _setrole textprimary "$TXT"; _setrole accent "$ACC"
-    _setrole accenttext      "$(_mix "$ACC"  "$TXT" 0.30)"   # readable accent on the bg
+    # Button text must CONTRAST with the primary button (AA-safe white/ink), not
+    # tint toward the accent — a dark accent on a dark primary was unreadable.
+    _accenttext="$(docker exec "$CONTAINER" php -r 'define("CLI_SCRIPT",1); require("/var/www/html/config.php"); echo \local_nit_core\branding\contrast::safe_foreground($argv[1]);' "$P" 2>/dev/null)"
+    [[ "$_accenttext" =~ ^#[0-9A-Fa-f]{6}$ ]] || _accenttext="$(_mix "$ACC" "$TXT" 0.30)"
+    _setrole accenttext      "$_accenttext"
     _setrole textsecondary   "$(_mix "$TXT"  "$BG"  0.42)"   # dimmer text toward the bg
     _setrole borderprimary   "$(_mix "$SURF" "$TXT" 0.12)"
     _setrole bordersecondary "$(_mix "$SURF" "$TXT" 0.24)"
