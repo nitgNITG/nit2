@@ -52,6 +52,35 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
         },
     }).catch(() => []);
 
+    // Paid plans this academy could upgrade to (client picks one for `upgrade`).
+    const upgradeOptions = await prisma.license
+        .findMany({
+            where: { active: true },
+            orderBy: [{ order: "asc" }, { priceEgp: "asc" }],
+            select: { key: true, name: true, price: true, priceEgp: true, durationDays: true,
+                      storageGb: true, maxCourses: true, maxTeachers: true, videoSource: true, features: true },
+        })
+        .catch(() => []);
+
+    // What the owner can DO — all go through Kashier checkout; open the returned
+    // payment URL in a webview, then poll GET /api/payments/<orderId>. The webhook
+    // applies the change once paid (upgrade/renew move the tier + reset the term).
+    const actions = {
+        renew: {
+            method: "POST", url: "/api/payments/kashier/create",
+            body: { purpose: "renew", slug: academy.slug, tier: academy.tier, cycle: "annual" },
+        },
+        upgrade: {
+            method: "POST", url: "/api/payments/kashier/create",
+            body: { purpose: "upgrade", slug: academy.slug, tier: "<one of options[].key>", cycle: "annual" },
+            options: upgradeOptions, // the plans to choose from (with prices/resources)
+        },
+        setAutoRenew: {
+            method: "PATCH", url: `/api/subscriptions/${academy.slug}`,
+            body: { autoRenew: true }, // or false to cancel auto-renew
+        },
+    };
+
     return NextResponse.json({
         academy: {
             slug: academy.slug,
@@ -90,5 +119,6 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
             card,
         } : null,
         payments,
+        actions, // upgrade / renew / auto-renew — see below
     });
 }

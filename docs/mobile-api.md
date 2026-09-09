@@ -100,9 +100,35 @@ academy/payments; an `admin` sees everything.
 | `/api/licenses` | GET | public | The full package catalogue (all plans' resources) — for a plan picker/upgrade screen. |
 
 > "Package **resources**" = the licence fields: `maxCourses`, `maxTeachers`,
-> `storageGb`, `videoSource`, `features` (the on/off map), and per-activity
-> `limits`. `/api/academies/[slug]/plan` returns exactly the academy's own
-> package, so you don't have to cross-reference `/api/licenses` by `tier`.
+> **`storageGb`**, **`priceEgp`/`price`**, `durationDays`, `videoSource`,
+> `features` (the on/off map), and per-activity `limits`. `/api/academies/[slug]/plan`
+> returns exactly the academy's own package (all of the above), plus the
+> **subscription** (`subscribedAt` via `academy.subscribedAt`, expiry via
+> `academy.validUntil` + `subscription.currentPeriodEnd`, `autoRenew`, saved card),
+> recent `payments`, and an **`actions`** block (below) — one call for the whole
+> billing screen.
+
+### Upgrade & renewal — the "actions" (web + API)
+
+`/plan`'s `actions` tells the client exactly how to change the plan. All money
+moves through Kashier; both the **web dashboard** and the **app** use the same
+endpoints (owner or admin):
+
+| Do | Call | Notes |
+|---|---|---|
+| **Renew** (extend the term) | `POST /api/payments/kashier/create` `{purpose:"renew", slug, tier:<current>, cycle:"annual"\|"monthly"}` | Charges the plan; the webhook resets `validUntil`. |
+| **Upgrade** (change plan) | `POST /api/payments/kashier/create` `{purpose:"upgrade", slug, tier:<new key>, cycle}` | **Prorated** for the time left; pick `<new key>` from `actions.upgrade.options` (the plans + prices). Webhook moves the tier + resets the term. |
+| **Auto-renew on/off** | `PATCH /api/subscriptions/<slug>` `{autoRenew:true\|false}` | No charge; cancels/resumes the saved-card renewal. |
+
+Flow for renew/upgrade: `POST kashier/create` → open the returned Kashier URL in a
+webview → on return poll `GET /api/payments/<orderId>` → the **webhook** applies
+the change once paid (nothing changes before payment clears). Ownership is
+enforced server-side (a client can only act on their own academy).
+
+> The academy's Moodle exposes a **read-only** slice for the in-app admin view
+> (`GET /local/academy/api.php?function=get_license_status` — limits, GB, live
+> usage, expiry), but **price, purchase date, and all upgrade/renew actions live
+> here in nit2** — the academy can't take payments for its own plan.
 
 ### The `brand` object (create + branding)
 ```jsonc
