@@ -54,13 +54,16 @@ else
 fi
 log "provision.env now has: $(grep '^SAAS_IMAGE=' "$ENV_FILE")"
 
-# ── 3. Restart the provisioning service so it reads the new tag ───────────────
-log "restarting $SERVICE"
-systemctl restart "$SERVICE" || die "failed to restart $SERVICE"
-sleep 1
-systemctl is-active --quiet "$SERVICE" && log "$SERVICE is active" || die "$SERVICE is not active after restart"
-
-# ── 4. Optionally recreate every academy onto the new image ──────────────────
+# ── 3. Recreate every academy onto the new image FIRST (when --all) ──────────
+# CRITICAL ORDERING: this must happen BEFORE the service restart. bump-image.sh
+# is launched by provision-server.py inside the saas-provision systemd cgroup;
+# `systemctl restart saas-provision` tears down that whole cgroup (KillMode=
+# control-group), which kills THIS script mid-run — start_new_session does NOT
+# escape the cgroup. Previously the restart ran first, so the --all loop below
+# never got to run and no academy was ever updated (the GitHub job still saw the
+# request accepted). Each update-image.sh gets SAAS_IMAGE explicitly, so it does
+# not need the service restarted first. The restart happens LAST (step 4); if it
+# kills us at that point, the academies are already done.
 if [[ "$DOALL" == "1" ]]; then
     [[ -f "$UPDATE_IMAGE_SH" ]] || die "$UPDATE_IMAGE_SH not found — deploy provisioning scripts first"
     mapfile -t CONTAINERS < <(docker ps --format '{{.Names}}' | grep '^saas_moodle_' || true)
@@ -95,6 +98,12 @@ if [[ "$DOALL" == "1" ]]; then
         fi
     fi
 fi
+
+# ── 4. Restart the provisioning service LAST so it reads the new tag. This is
+# the step that (by design) tears down our own cgroup — so nothing important may
+# come after it. New academies then provision on the new SAAS_IMAGE.
+log "restarting $SERVICE"
+systemctl restart "$SERVICE" || die "failed to restart $SERVICE"
 
 echo "============================================================"
 echo "  SAAS_IMAGE = $IMAGE  (service restarted)"

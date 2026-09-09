@@ -409,9 +409,13 @@ def run_expiry_reminder(slug: str, days_left: int, renew_url: str = "",
 def run_bump_image(tag: str) -> None:
     """Roll every academy onto the given baked-image tag via bump-image.sh --all.
 
-    Detached (start_new_session) on purpose: bump-image.sh restarts the
-    saas-provision service, which would otherwise kill this very process
-    mid-run. Fully independent, logs to bump-image.log."""
+    bump-image.sh restarts the saas-provision service, and `systemctl restart`
+    tears down this service's whole systemd cgroup (KillMode=control-group) —
+    start_new_session does NOT escape the cgroup, so this child can be killed by
+    the restart. bump-image.sh now does the per-academy --all updates BEFORE that
+    restart (which is its final step), so every academy is recreated even if the
+    restart cuts the trailing lines short. Detached + own session; logs to
+    bump-image.log."""
     logpath = os.path.join(LOG_DIR, "bump-image.log")
     log = open(logpath, "ab", buffering=0)
     log.write(f"\n===== update-image -> {tag} (all) =====\n".encode())

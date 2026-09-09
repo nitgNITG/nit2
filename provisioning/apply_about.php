@@ -51,7 +51,7 @@ $html =
           '<h3 data-nit-about-subheader="1" style="font-size: 20px; font-weight: 700; margin: 0 0 18px;">' . $subHtml . '</h3>' .
           '<ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">' . $items . '</ul>' .
         '</div>' .
-        '<div data-nit-about-image style="width:100%; height:100%; min-height:360px; border-radius: 20px; overflow: hidden; ' . $imgStyle . '"></div>' .
+        '<div data-nit-about-image style="width:100%; height:100%; min-height:85vh; border-radius: 20px; overflow: hidden; ' . $imgStyle . '"></div>' .
       '</div>' .
     '</div>';
 
