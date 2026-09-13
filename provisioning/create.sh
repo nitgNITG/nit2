@@ -490,6 +490,7 @@ _jset jitsi_host           "${JITSI_HOST:-}"
 _jset jitsi_jwt_app_id     "${JITSI_JWT_APP_ID:-}"
 _jset jitsi_jwt_app_secret "${JITSI_JWT_APP_SECRET:-}"
 _jset jitsi_xmpp_domain    "${JITSI_XMPP_DOMAIN:-}"
+_jset jibri_notify_key     "${JIBRI_NOTIFY_KEY:-}"
 _jset excalidraw_host      "${EXCALIDRAW_HOST:-}"
 _jset excalidraw_app       "${EXCALIDRAW_APP:-}"
 
