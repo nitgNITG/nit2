@@ -19,7 +19,9 @@
     "mysql:push": "prisma db push --schema prisma/mysql/schema.prisma",
     "mysql:pull": "prisma db pull --schema prisma/mysql/schema.prisma",
     "mysql:status": "prisma migrate status --schema prisma/mysql/schema.prisma",
-    "mysql:studio": "prisma studio --schema prisma/mysql/schema.prisma"
+    "mysql:studio": "prisma studio --schema prisma/mysql/schema.prisma",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@prisma/client": "^5.18.0",
@@ -64,6 +66,7 @@
     "eslint-config-next": "14.2.5",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2.1.9"
   }
 }
