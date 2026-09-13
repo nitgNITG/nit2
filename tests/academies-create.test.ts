@@ -1,0 +1,170 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+
+const {
+    db, getCurrentUser, toLicenseDefinition, computeUpgradable, sanitizeBrand,
+    generateAdminPassword, encryptSecret, buildIntegrationEnv, notifyTelegram,
+} = vi.hoisted(() => ({
+    db: {
+        license: { findFirst: vi.fn(), findMany: vi.fn() },
+        platformSetting: { findMany: vi.fn(), findUnique: vi.fn() },
+        academy: { findUnique: vi.fn(), create: vi.fn(), count: vi.fn() },
+    },
+    getCurrentUser: vi.fn(),
+    toLicenseDefinition: vi.fn(),
+    computeUpgradable: vi.fn(),
+    sanitizeBrand: vi.fn(),
+    generateAdminPassword: vi.fn(),
+    encryptSecret: vi.fn(),
+    buildIntegrationEnv: vi.fn(),
+    notifyTelegram: vi.fn(),
+}));
+
+vi.mock("@/lib/prismaMysql", () => ({ default: db }));
+vi.mock("@/lib/auth", () => ({ getCurrentUser }));
+vi.mock("@/lib/licenseDefinition", () => ({ toLicenseDefinition, computeUpgradable }));
+vi.mock("@/lib/brand", () => ({ sanitizeBrand }));
+vi.mock("@/lib/secretBox", () => ({ generateAdminPassword, encryptSecret }));
+vi.mock("@/lib/integrations", () => ({ buildIntegrationEnv }));
+vi.mock("@/lib/telegram", () => ({ notifyTelegram }));
+
+import { POST } from "@/app/api/academies/route";
+
+const USER = { id: "user-1", role: "client", email: "o@x.com", name: "Owner" };
+const PAID = { key: "basic", price: 100, priceEgp: 5000, durationDays: 365, name: "Basic" };
+
+const GH_REF = { ok: true, status: 200, json: async () => ({ object: { sha: "basesha" } }), text: async () => "" };
+const GH_BRANCH_OK = { ok: true, status: 201, json: async () => ({}), text: async () => "" };
+
+let ipN = 0;
+function post(body: unknown) {
+    const req = new Request("http://localhost/api/academies", {
+        method: "POST",
+        body: JSON.stringify(body),
+        headers: { "Content-Type": "application/json", "x-forwarded-for": `10.0.0.${++ipN}` },
+    });
+    return POST(req as any);
+}
+
+let fetchMock: ReturnType<typeof vi.fn>;
+
+beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.GITHUB_TOKEN = "ghtok";
+    delete process.env.PROVISION_URL;   // triggerProvision no-ops → no provision fetch
+    delete process.env.PROVISION_SECRET;
+
+    getCurrentUser.mockResolvedValue(USER);
+    db.license.findFirst.mockResolvedValue(PAID);
+    db.license.findMany.mockResolvedValue([]);
+    db.platformSetting.findMany.mockResolvedValue([]);
+    db.platformSetting.findUnique.mockResolvedValue(null);
+    db.academy.findUnique.mockResolvedValue(null);
+    db.academy.count.mockResolvedValue(0);
+    db.academy.create.mockResolvedValue({ slug: "acme", branch: "client/acme" });
+    toLicenseDefinition.mockReturnValue("{\"def\":1}");
+    computeUpgradable.mockReturnValue(false);
+    sanitizeBrand.mockImplementation((b: unknown) => b ?? {});
+    generateAdminPassword.mockReturnValue("genpw");
+    encryptSecret.mockReturnValue("enc");
+    buildIntegrationEnv.mockResolvedValue({});
+    notifyTelegram.mockResolvedValue(undefined);
+
+    // GitHub API: 1st call = read base ref, 2nd = create branch.
+    fetchMock = vi.fn().mockResolvedValueOnce(GH_REF).mockResolvedValueOnce(GH_BRANCH_OK);
+    vi.stubGlobal("fetch", fetchMock);
+});
+
+afterEach(() => {
+    vi.unstubAllGlobals();
+    delete process.env.GITHUB_TOKEN;
+});
+
+describe("POST /api/academies", () => {
+    it("honeypot: returns fake success and touches nothing", async () => {
+        const res = await post({ name: "A", slug: "acme", _hp: "bot" });
+        expect(res.status).toBe(201);
+        expect(getCurrentUser).not.toHaveBeenCalled();
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("401 when not signed in", async () => {
+        getCurrentUser.mockResolvedValue(null);
+        expect((await post({ name: "A", slug: "acme" })).status).toBe(401);
+    });
+
+    it("400 when the name is empty", async () => {
+        const res = await post({ name: "  ", slug: "acme", tier: "basic" });
+        expect(res.status).toBe(400);
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("400 on an invalid slug", async () => {
+        const res = await post({ name: "Acme", slug: "Bad Slug!", tier: "basic" });
+        expect(res.status).toBe(400);
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("500 when GITHUB_TOKEN is not configured", async () => {
+        delete process.env.GITHUB_TOKEN;
+        const res = await post({ name: "Acme", slug: "acme", tier: "basic" });
+        expect(res.status).toBe(500);
+    });
+
+    it("409 when the slug already exists", async () => {
+        db.academy.findUnique.mockResolvedValue({ slug: "acme" });
+        const res = await post({ name: "Acme", slug: "acme", tier: "basic" });
+        expect(res.status).toBe(409);
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("403 when the free-academy quota is reached", async () => {
+        db.license.findFirst.mockResolvedValue({ key: "demo", price: 0, durationDays: 14, name: "Demo" });
+        db.platformSetting.findUnique.mockResolvedValue({ value: "1" }); // free_academy_limit = 1
+        db.license.findMany.mockResolvedValue([{ key: "demo" }]);
+        db.academy.count.mockResolvedValue(1); // already owns 1 free
+        const res = await post({ name: "Demo", slug: "demo1", tier: "demo" });
+        expect(res.status).toBe(403);
+        expect(db.academy.create).not.toHaveBeenCalled();
+    });
+
+    it("creates the branch + control-plane record and returns 201", async () => {
+        const res = await post({ name: "Acme", slug: "acme", tier: "basic" });
+        expect(res.status).toBe(201);
+        const body = await res.json();
+        expect(body).toMatchObject({ ok: true, slug: "acme", branch: "client/acme" });
+
+        // GitHub: read base ref, then create the client branch.
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(fetchMock.mock.calls[1][1]).toMatchObject({ method: "POST" });
+        expect(fetchMock.mock.calls[1][0]).toContain("/git/refs");
+
+        // Control-plane row: owner, tier, term, encrypted passwords.
+        const data = db.academy.create.mock.calls[0][0].data;
+        expect(data).toMatchObject({
+            name: "Acme", slug: "acme", branch: "client/acme",
+            status: "branch_created", tier: "basic", ownerId: "user-1",
+            adminPasswordEnc: "enc", nitAdminPasswordEnc: "enc",
+        });
+        expect(data.subscribedAt).toBeInstanceOf(Date);
+        // Paid tier (durationDays 365) → a concrete validUntil ~1y out.
+        const yearOut = Date.now() + 365 * 86_400_000;
+        expect(Math.abs((data.validUntil as Date).getTime() - yearOut)).toBeLessThan(60_000);
+    });
+
+    it("409 when GitHub reports the branch already exists (422)", async () => {
+        fetchMock.mockReset();
+        fetchMock
+            .mockResolvedValueOnce(GH_REF)
+            .mockResolvedValueOnce({ ok: false, status: 422, text: async () => "ref exists" });
+        const res = await post({ name: "Acme", slug: "acme", tier: "basic" });
+        expect(res.status).toBe(409);
+        expect(db.academy.create).not.toHaveBeenCalled();
+    });
+
+    it("still returns 201 (persisted:false) if the branch built but the DB write races", async () => {
+        db.academy.create.mockRejectedValue({ code: "P2002" });
+        const res = await post({ name: "Acme", slug: "acme", tier: "basic" });
+        // P2002 = unique slug race → surfaced as 409.
+        expect(res.status).toBe(409);
+    });
+});
