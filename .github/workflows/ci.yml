@@ -1,0 +1,36 @@
+name: CI
+
+# Lint + typecheck on every PR (and pushes to main), plus the test suite once one
+# exists. Per AGENT_TESTING.md this is the gate that actually holds — a change that
+# breaks lint/types/tests is caught even when nobody watched the agent.
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # postinstall runs `prisma generate` for both the Mongo and MySQL schemas;
+      # generating the client needs no DB connection, so CI needs no secrets here.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      # No-ops cleanly until a `test` script is added (AGENT_TESTING.md §6); once
+      # Vitest is wired on the first behaviour change, this starts enforcing tests.
+      - name: Test
+        run: npm test --if-present
