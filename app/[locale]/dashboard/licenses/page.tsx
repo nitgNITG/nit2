@@ -24,7 +24,10 @@ type License = {
 }
 
 const VIDEO_SOURCES = ['vimeo', 'vdocipher']
-const FEATURE_KEYS = ['coupons', 'offers', 'subscriptions', 'packages']
+// Must match local_license's feature set (drm|coupons|offers|subscriptions|packages|jitsi).
+// 'jitsi' = live sessions (Jitsi) activity; gated per tier by local_license::has_feature('jitsi').
+const FEATURE_KEYS = ['drm', 'coupons', 'offers', 'subscriptions', 'packages', 'jitsi']
+const FEATURE_LABELS: Record<string, string> = { drm: 'DRM video', coupons: 'Coupons', offers: 'Offers', subscriptions: 'Subscriptions', packages: 'Packages', jitsi: 'Live sessions (Jitsi)' }
 const LIMIT_KEYS = ['quiz', 'video', 'pdf', 'default']
 
 const blank = (): License => ({
@@ -212,10 +215,10 @@ const LicensesPage = () => {
                         <p className='text-sm font-semibold mb-2'>Features</p>
                         <div className='flex flex-wrap gap-4'>
                             {FEATURE_KEYS.map((f) => (
-                                <label key={f} className='flex items-center gap-2 text-sm capitalize'>
+                                <label key={f} className='flex items-center gap-2 text-sm'>
                                     <input type='checkbox' checked={!!form.features[f]}
                                         onChange={(e) => setForm((prev) => prev ? { ...prev, features: { ...prev.features, [f]: e.target.checked } } : prev)} />
-                                    {f}
+                                    {FEATURE_LABELS[f] ?? f}
                                 </label>
                             ))}
                         </div>
@@ -253,7 +256,7 @@ const LicensesPage = () => {
                             <ul className='text-xs text-gray-600 space-y-0.5'>
                                 <li>Courses: <b>{cap(l.maxCourses)}</b> · Teachers: <b>{cap(l.maxTeachers)}</b> · Storage: <b>{l.storageGb ?? 1} GB</b></li>
                                 <li>Video: <b>{l.videoSource}</b> · {l.durationDays === 0 ? 'no expiry' : `${l.durationDays}d`} · App: <b>{l.supportedApp === false ? 'no' : 'yes'}</b></li>
-                                <li className='truncate'>Features: <b>{FEATURE_KEYS.filter((f) => l.features?.[f]).join(', ') || 'none'}</b></li>
+                                <li className='truncate'>Features: <b>{FEATURE_KEYS.filter((f) => l.features?.[f]).map((f) => FEATURE_LABELS[f] ?? f).join(', ') || 'none'}</b></li>
                             </ul>
                             <div className='flex gap-2 pt-2 border-t'>
                                 <button onClick={() => openEdit(l)} className='flex-1 text-sm border rounded-lg py-1.5 hover:bg-gray-50'>Edit</button>
