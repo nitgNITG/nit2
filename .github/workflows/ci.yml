@@ -32,5 +32,17 @@ jobs:
 
       # No-ops cleanly until a `test` script is added (AGENT_TESTING.md §6); once
       # Vitest is wired on the first behaviour change, this starts enforcing tests.
+      # CI=true (set by Actions) makes vitest emit test-results/{junit.xml,results.json}.
       - name: Test
         run: npm test --if-present
+
+      # Keep the machine-readable reports for each run (also on failure), so a red
+      # build's exact failing tests are downloadable from the run page.
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 30

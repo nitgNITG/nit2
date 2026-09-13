@@ -32,7 +32,7 @@ vi.mock("@/lib/telegram", () => ({ notifyTelegram }));
 vi.mock("@/lib/provisionAcademy", () => ({ triggerSuspend, triggerExpiryReminder }));
 vi.mock("@/lib/kashierOrders", () => ({ payWithToken }));
 
-import { runBillingCycle } from "@/lib/billing";
+import { runBillingCycle, runPreRenewNotices, weeklyBillingSummary } from "@/lib/billing";
 
 const NEXT = new Date("2099-01-01T00:00:00Z"); // sentinel scheduleNextAttempt result
 const DAY = 86_400_000;
@@ -54,6 +54,7 @@ beforeEach(() => {
     subs.billingRetryDays.mockReturnValue([1, 3, 7]);
     subs.billingCycleKey.mockReturnValue("2027-01");
     subs.renewLeadDaysResolved.mockResolvedValue(7);
+    subs.preRenewNoticeDaysResolved.mockResolvedValue(3);
     subs.billingCooldownHours.mockReturnValue(0);
     subs.scheduleNextAttempt.mockReturnValue(NEXT);
 
@@ -155,5 +156,71 @@ describe("runBillingCycle", () => {
         const s = await runBillingCycle("https://app");
         expect(s.needsAuth).toEqual(["acme"]);
         expect(s.failed).toEqual([]);
+    });
+});
+
+describe("runPreRenewNotices", () => {
+    const soon = () => new Date(Date.now() + 2 * DAY); // inside a 3-day notice window
+
+    it("is a no-op when the feature is off", async () => {
+        subs.subscriptionsEnabled.mockReturnValue(false);
+        expect(await runPreRenewNotices("https://app")).toEqual({ skipped: true });
+        expect(db.subscription.findMany).not.toHaveBeenCalled();
+    });
+
+    it("notifies nobody when the notice window is disabled (0 days)", async () => {
+        subs.preRenewNoticeDaysResolved.mockResolvedValue(0);
+        expect(await runPreRenewNotices("https://app")).toEqual({ notified: [] });
+        expect(db.subscription.findMany).not.toHaveBeenCalled();
+    });
+
+    it("emails a heads-up, marks it sent once, and returns the slug", async () => {
+        db.subscription.findMany.mockResolvedValue([makeSub({ nextAttemptAt: soon() })]);
+        const res = await runPreRenewNotices("https://app");
+        expect(res).toEqual({ notified: ["acme"] });
+
+        const opts = triggerExpiryReminder.mock.calls[0][3];
+        expect(opts).toMatchObject({ mode: "prerenew", amountEgp: 5000, cardLast4: "4242", cardExpiring: false });
+        // "notified once" flag persisted so the next cron pass skips it.
+        expect(db.subscription.update.mock.calls[0][0].data).toHaveProperty("preRenewNotifiedAt");
+    });
+
+    it("flags cardExpiring when the saved card expires before the charge date", async () => {
+        db.subscription.findMany.mockResolvedValue([makeSub({ nextAttemptAt: soon() })]);
+        db.paymentMethod.findUnique.mockResolvedValue({ ...PM, expMonth: 1, expYear: 2020 }); // long expired
+        await runPreRenewNotices("https://app");
+        expect(triggerExpiryReminder.mock.calls[0][3].cardExpiring).toBe(true);
+    });
+});
+
+describe("weeklyBillingSummary", () => {
+    it("is a no-op when the feature is off", async () => {
+        subs.subscriptionsEnabled.mockReturnValue(false);
+        expect(await weeklyBillingSummary()).toEqual({ posted: false });
+        expect(notifyTelegram).not.toHaveBeenCalled();
+    });
+
+    it("does not post when there are no subscriptions", async () => {
+        db.subscription.findMany.mockResolvedValue([]);
+        expect(await weeklyBillingSummary()).toEqual({ posted: false });
+        expect(notifyTelegram).not.toHaveBeenCalled();
+    });
+
+    it("posts active/past-due/cancelled counts and an MRR estimate", async () => {
+        db.subscription.findMany.mockResolvedValue([
+            { status: "active", autoRenew: true, amountEgp: 1200, intervalDays: 365 },  // annual → /12 MRR
+            { status: "active", autoRenew: true, amountEgp: 500, intervalDays: 30 },    // monthly → full
+            { status: "past_due", autoRenew: true, amountEgp: 500, intervalDays: 30 },
+            { status: "canceled", autoRenew: false, amountEgp: 999, intervalDays: 30 }, // excluded from MRR
+        ]);
+        const res = await weeklyBillingSummary();
+        expect(res).toEqual({ posted: true });
+        const msg = notifyTelegram.mock.calls[0][0] as string;
+        // 2 active · 1 past-due · 1 cancelled; MRR = 1200/12 + 500 (monthly active)
+        // + 500 (past-due still counts, not cancelled) = 1100.
+        expect(msg).toContain("2 active");
+        expect(msg).toContain("1 past-due");
+        expect(msg).toContain("1 cancelled");
+        expect(msg).toContain("1100");
     });
 });

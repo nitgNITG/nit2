@@ -50,3 +50,6 @@ prisma/generated/
 # Python bytecode cache (never commit)
 __pycache__/
 *.pyc
+
+# Vitest machine-readable reports (CI artifact, not committed)
+test-results/

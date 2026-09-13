@@ -11,5 +11,12 @@ export default defineConfig({
         environment: "node",
         include: ["tests/**/*.test.ts"],
         globals: true,
+        // On CI also emit machine-readable reports (uploaded as an artifact by
+        // ci.yml); locally keep just the readable console output.
+        reporters: process.env.CI ? ["default", "junit", "json"] : ["default"],
+        outputFile: {
+            junit: "test-results/junit.xml",
+            json: "test-results/results.json",
+        },
     },
 });
