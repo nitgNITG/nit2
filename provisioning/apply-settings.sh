@@ -54,6 +54,16 @@ _setlink link_privacy "${SETTING_PRIVACY_URL:-}"
 _setlink link_about   "${SETTING_ABOUT_URL:-}"
 _setlink link_faq     "${SETTING_FAQ_URL:-}"
 
+# Jitsi live-session settings (local_academysessions) — shared server + JWT secret
+# from provision.env (JITSI_*), kept OUT of the code repo. Each set only if present.
+_jset(){ [[ -n "${2:-}" ]] && docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_academysessions --name="$1" --set="$2" >/dev/null 2>&1 && { applied=$((applied + 1)); log "set local_academysessions/$1"; } || true; }
+_jset jitsi_host           "${JITSI_HOST:-}"
+_jset jitsi_jwt_app_id     "${JITSI_JWT_APP_ID:-}"
+_jset jitsi_jwt_app_secret "${JITSI_JWT_APP_SECRET:-}"
+_jset jitsi_xmpp_domain    "${JITSI_XMPP_DOMAIN:-}"
+_jset excalidraw_host      "${EXCALIDRAW_HOST:-}"
+_jset excalidraw_app       "${EXCALIDRAW_APP:-}"
+
 # Max editable-image size (MB) → theme_nit/maximagemb (same cap as the inline editor).
 if [[ -n "${SETTING_MAX_IMAGE_MB:-}" ]]; then
     docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=theme_nit --name=maximagemb --set="${SETTING_MAX_IMAGE_MB}" >/dev/null 2>&1 \

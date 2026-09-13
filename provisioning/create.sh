@@ -480,6 +480,19 @@ for _skey in google_client_id google_client_secret apple_client_id facebook_app_
     fi
 done
 
+# ── Jitsi live-session settings (local_academysessions) ─────────────────────
+# One shared Jitsi + whiteboard server for every academy. The JWT secret and host
+# come from provision.env (JITSI_*), kept OUT of the code repo. Each is set only
+# when provided; otherwise the plugin's baked defaults apply. Rooms are namespaced
+# per-academy in mod_jitsi, so tenants safely share the one server.
+_jset(){ [[ -n "${2:-}" ]] && docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_academysessions --name="$1" --set="$2" >/dev/null 2>&1 && log "setting local_academysessions/$1" || true; }
+_jset jitsi_host           "${JITSI_HOST:-}"
+_jset jitsi_jwt_app_id     "${JITSI_JWT_APP_ID:-}"
+_jset jitsi_jwt_app_secret "${JITSI_JWT_APP_SECRET:-}"
+_jset jitsi_xmpp_domain    "${JITSI_XMPP_DOMAIN:-}"
+_jset excalidraw_host      "${EXCALIDRAW_HOST:-}"
+_jset excalidraw_app       "${EXCALIDRAW_APP:-}"
+
 # Max editable-image size (MB) → theme_nit/maximagemb, so the in-academy inline
 # editor enforces the same cap as the control plane's max_image_mb setting.
 if [[ -n "${SETTING_MAX_IMAGE_MB:-}" ]]; then
