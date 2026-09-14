@@ -31,7 +31,11 @@ fi
 
 if [[ -f "$CONF" ]]; then
     log "wwwroot -> https://$SUBDOMAIN"
-    sed -i "s|\$CFG->wwwroot .*|\$CFG->wwwroot   = 'https://$SUBDOMAIN';|" "$CONF" || true
+    # In-place edit (preserve inode) — the container bind-mounts config.php by inode,
+    # so `sed -i` (which renames a new file in) would be invisible to it.
+    _tmp="$(mktemp)"
+    sed "s|\$CFG->wwwroot .*|\$CFG->wwwroot   = 'https://$SUBDOMAIN';|" "$CONF" > "$_tmp" && cat "$_tmp" > "$CONF"
+    rm -f "$_tmp"
     docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php >/dev/null 2>&1 || true
 fi
 

@@ -76,8 +76,15 @@ systemctl reload apache2 || true
 # request, so rewriting the host + purging caches is enough; the subdomain vhost
 # stays, and Moodle now 301s it to this wwwroot.
 log "wwwroot -> https://$CUSTOM"
-sed -i "s|\$CFG->wwwroot .*|\$CFG->wwwroot   = 'https://$CUSTOM';|" "$CONF" \
+# IMPORTANT: config.php is bind-mounted into the container by inode. `sed -i`
+# writes a new file and renames it (new inode), which the running container's
+# mount never sees — so edit IN PLACE (write back through the same inode).
+_tmp="$(mktemp)"
+sed "s|\$CFG->wwwroot .*|\$CFG->wwwroot   = 'https://$CUSTOM';|" "$CONF" > "$_tmp" \
     || fail "could not update wwwroot"
+cat "$_tmp" > "$CONF"          # truncate + rewrite the SAME inode the mount points at
+rm -f "$_tmp"
+grep -q "https://$CUSTOM" "$CONF" || fail "wwwroot did not update"
 docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php >/dev/null 2>&1 || true
 
 write_status "active" ""
