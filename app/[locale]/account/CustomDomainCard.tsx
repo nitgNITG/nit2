@@ -23,7 +23,8 @@ type DomainView = {
 }
 
 // Owner self-serve custom-domain binding for one academy. Talks to
-// /api/academies/<slug>/domain (GET/POST/PUT/DELETE).
+// /api/academies/<slug>/domain (GET/POST/PUT/DELETE). Styled to match the
+// account card theme (dark-green text on a light surface, #1E7D67 accents).
 export default function CustomDomainCard({ slug }: { slug: string }) {
     const isAr = useLocale() === 'ar'
     const tr = (ar: string, en: string) => (isAr ? ar : en)
@@ -95,26 +96,39 @@ export default function CustomDomainCard({ slug }: { slug: string }) {
     const st = view.domainStatus
     const ins = view.instructions
 
+    const pill =
+        st === 'active' ? 'bg-[#1E7D67]/12 text-[#0b8f66]'
+        : st === 'verifying' ? 'bg-[#E8A13C]/15 text-[#b9791f]'
+        : st === 'failed' ? 'bg-red-500/10 text-red-600'
+        : 'bg-black/5 text-[#0B2923]/60'
+
     return (
-        <div className='rounded-xl border border-gray-200 p-4 space-y-3'>
+        <div className='rounded-xl bg-white ring-1 ring-black/5 p-4 space-y-3 text-[#0B2923]'>
             <div className='flex items-center justify-between gap-3'>
-                <h4 className='font-bold'>{tr('دومين مخصّص', 'Custom domain')}</h4>
-                {st === 'active' && <span className='text-xs font-semibold text-emerald-600'>● {tr('نشط', 'Active')}</span>}
-                {st === 'verifying' && <span className='text-xs font-semibold text-amber-600'>◐ {tr('جارٍ التفعيل', 'Activating…')}</span>}
-                {(st === 'pending_dns' || st === 'failed') && <span className='text-xs font-semibold text-gray-500'>{tr('بانتظار DNS', 'Awaiting DNS')}</span>}
+                <h4 className='font-bold'>🌐 {tr('دومين مخصّص', 'Custom domain')}</h4>
+                {st !== 'none' && (
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${pill}`}>
+                        {st === 'active' ? tr('● نشط', '● live')
+                            : st === 'verifying' ? tr('◐ جارٍ التفعيل', '◐ activating')
+                            : st === 'failed' ? tr('✗ فشل', '✗ failed')
+                            : tr('بانتظار DNS', 'awaiting DNS')}
+                    </span>
+                )}
             </div>
 
-            <p className='text-xs text-gray-500'>
+            <p className='text-xs text-[#0B2923]/60'>
                 {tr('اربط أكاديميتك بدومينك الخاص. سيصبح هو العنوان الرسمي، ويحوّل النطاق الفرعي إليه تلقائياً.',
                     'Point your own domain at your academy. It becomes the canonical address, and your subdomain redirects to it.')}
-                {' '}<span className='font-mono text-gray-400'>{view.subdomain}</span>
+                {' '}<span className='font-mono text-[#0B2923]/40'>{view.subdomain}</span>
             </p>
 
             {st === 'active' && view.customDomain ? (
                 <div className='flex items-center justify-between gap-3'>
                     <a href={`https://${view.customDomain}`} target='_blank' rel='noreferrer'
-                        className='font-mono text-sm text-blue-600 break-all'>https://{view.customDomain}</a>
-                    <button onClick={remove} disabled={busy} className='text-xs text-red-500 font-semibold disabled:opacity-50'>
+                        className='font-mono text-sm text-[#0b8f66] font-semibold break-all hover:underline'>
+                        https://{view.customDomain}
+                    </a>
+                    <button onClick={remove} disabled={busy} className='text-xs font-bold text-red-600 hover:bg-red-500/10 rounded-lg px-2 py-1 disabled:opacity-60'>
                         {tr('إزالة', 'Remove')}
                     </button>
                 </div>
@@ -122,9 +136,9 @@ export default function CustomDomainCard({ slug }: { slug: string }) {
                 <div className='flex gap-2'>
                     <input value={input} onChange={(e) => setInput(e.target.value)}
                         placeholder='academy.yourschool.com'
-                        className='flex-1 border-2 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:border-blue-500' />
+                        className='flex-1 rounded-lg border border-black/10 bg-white px-3 py-2 text-sm font-mono text-[#0B2923] placeholder:text-[#0B2923]/30 outline-none focus:border-[#1E7D67]' />
                     <button onClick={save} disabled={busy || !input.trim()}
-                        className='bg-blue-600 text-white px-4 rounded-lg text-sm font-bold disabled:opacity-50'>
+                        className='rounded-lg bg-[#1E7D67] px-4 text-sm font-bold text-white hover:bg-[#186655] disabled:opacity-50 transition-colors'>
                         {tr('حفظ', 'Save')}
                     </button>
                 </div>
@@ -132,30 +146,30 @@ export default function CustomDomainCard({ slug }: { slug: string }) {
 
             {/* DNS instructions once a domain is set but not yet active */}
             {ins && (st === 'pending_dns' || st === 'failed') && (
-                <div className='rounded-lg bg-gray-50 border border-gray-200 p-3 space-y-2 text-sm'>
+                <div className='rounded-lg bg-[#F5F3EE] border border-black/10 p-3 space-y-2 text-sm'>
                     <p className='font-semibold'>{tr('١) أضف هذا السجل عند مزوّد الدومين:', '1) Add this record at your domain provider:')}</p>
-                    <div className='font-mono text-xs bg-white border rounded p-2'>
+                    <div className='font-mono text-xs bg-white border border-black/10 rounded p-2 space-y-0.5'>
                         <div>{tr('النوع', 'Type')}: <b>{ins.record.type}</b></div>
                         <div>{tr('الاسم', 'Host')}: <b>{ins.record.host}</b></div>
                         <div>{tr('القيمة', 'Value')}: <b className='break-all'>{ins.record.value}</b></div>
                     </div>
-                    <p className='text-xs text-gray-500'>{ins.note}
+                    <p className='text-xs text-[#0B2923]/60'>{ins.note}
                         {!ins.apex && ins.aRecordValue &&
                             <> {' '}{tr('أو سجل A إلى', 'or an A record to')} <b className='font-mono'>{ins.aRecordValue}</b>.</>}
                     </p>
                     <p className='font-semibold'>{tr('٢) ثم فعِّل:', '2) Then activate:')}</p>
                     <button onClick={verify} disabled={busy}
-                        className='bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50'>
+                        className='rounded-lg bg-[#1E7D67] px-4 py-2 text-sm font-bold text-white hover:bg-[#186655] disabled:opacity-60 transition-colors'>
                         {tr('أضفتُ السجل — تحقّق وفعِّل', 'I’ve added it — verify & activate')}
                     </button>
                     {st === 'failed' && view.domainError && (
-                        <p className='text-xs text-red-500'>{view.domainError}</p>
+                        <p className='text-xs text-red-600'>{view.domainError}</p>
                     )}
                 </div>
             )}
 
             {st === 'verifying' && (
-                <p className='text-xs text-amber-600'>
+                <p className='text-xs text-[#b9791f]'>
                     {tr('جارٍ التحقّق من DNS وإصدار شهادة SSL… قد يستغرق دقيقة.',
                         'Verifying DNS and issuing the SSL certificate… this can take a minute.')}
                 </p>
