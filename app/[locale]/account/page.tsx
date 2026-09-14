@@ -18,12 +18,12 @@ export const metadata: Metadata = {
 // Uses cookies() → always rendered per-request.
 export const dynamic = 'force-dynamic'
 
-export default async function AccountPage() {
+export default async function AccountPage({ searchParams }: { searchParams?: { next?: string } }) {
     const user = await getCurrentUser()
 
     let content: React.ReactNode
     if (!user) {
-        content = <AuthScreen mode='login' />
+        content = <AuthScreen mode='login' next={searchParams?.next} />
     } else if (user.role === 'admin') {
         // Admin view: every academy + every client. Both live in MySQL now; we still
         // join them in memory by ownerId (ownerId is a plain string, not a relation).

@@ -18,10 +18,17 @@ export async function generateMetadata({
     return { title: t('heroTitle'), description: t('heroSubtitle') }
 }
 
-const page = async () => {
+const page = async ({ searchParams }: { searchParams?: Record<string, string | string[]> }) => {
     // Building an academy requires an account (each academy is tied to its owner).
+    // Carry the pre-selected plan through login via ?next= so the user returns here.
     const user = await getCurrentUser()
-    if (!user) redirect('/account')
+    if (!user) {
+        const qs = new URLSearchParams(
+            Object.entries(searchParams ?? {}).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]),
+        ).toString()
+        const next = '/build-product' + (qs ? `?${qs}` : '')
+        redirect(`/account?next=${encodeURIComponent(next)}`)
+    }
 
     return (
         <div>

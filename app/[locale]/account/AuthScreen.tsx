@@ -8,10 +8,13 @@ import { useTranslations, useLocale } from 'next-intl'
 type Mode = 'login' | 'register'
 type FormValues = { name?: string; email: string; password: string }
 
-export default function AuthScreen({ mode: initialMode = 'login' }: { mode?: Mode }) {
+export default function AuthScreen({ mode: initialMode = 'login', next }: { mode?: Mode; next?: string }) {
     const t = useTranslations('Auth')
     const locale = useLocale()
     const isAr = locale === 'ar'
+    // Where to land after a successful login. Only accept a safe in-app path
+    // (starts with a single "/") to avoid an open-redirect; defaults to /account.
+    const safeNext = next && /^\/(?!\/)/.test(next) ? next : '/account'
     const [mode, setMode] = useState<Mode>(initialMode)
     const {
         register, handleSubmit, reset,
@@ -39,7 +42,8 @@ export default function AuthScreen({ mode: initialMode = 'login' }: { mode?: Mod
             if (!res.ok) { toast.error(data?.message || t('errorGeneric')); return }
             toast.success(mode === 'login' ? t('welcomeBack') : t('accountCreated'))
             // Full reload so the navbar re-reads /api/me and shows the signed-in state.
-            window.location.href = `/${locale}/account`
+            // Return to the page that sent them here (e.g. /build-product?tier=…).
+            window.location.href = `/${locale}${safeNext}`
         } catch {
             toast.error(t('errorNetwork'))
         }

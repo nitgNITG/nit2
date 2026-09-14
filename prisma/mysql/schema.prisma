@@ -138,6 +138,9 @@ model License {
   // with a Contact-us CTA instead of a price, and NOT directly purchasable — the
   // checkout is refused server-side. For custom/quote-based tiers.
   contactSales Boolean @default(false)
+  // Highlight this plan as "Most popular" on the pricing page (one intended, but
+  // not enforced — the page highlights the first popular buyable plan).
+  popular      Boolean @default(false)
   order        Int      @default(0)
   createdAt    DateTime @default(now())
 }

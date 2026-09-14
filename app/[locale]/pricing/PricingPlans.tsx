@@ -6,10 +6,16 @@ import { useLocale } from 'next-intl'
 import LocaleLink from '../components/LocaleLink'
 
 type License = {
-    key: string; name: string; active: boolean; contactSales?: boolean
+    key: string; name: string; active: boolean; contactSales?: boolean; popular?: boolean
     priceEgp?: number; priceEgpMonthly?: number; durationDays?: number
     maxCourses?: number; maxTeachers?: number; storageGb?: number; videoSource?: string
     features?: Record<string, boolean>; order?: number
+}
+
+// Remember the plan the visitor picked so it survives the sign-in redirect
+// (BuildProductForm reads this on mount). URL params alone are lost after login.
+function rememberPlan(tier: string, cycle: string) {
+    try { localStorage.setItem('nit_selected_plan', JSON.stringify({ tier, cycle })) } catch { /* ignore */ }
 }
 
 const FEATURE_LABELS: Record<string, { ar: string; en: string }> = {
@@ -41,9 +47,10 @@ export default function PricingPlans() {
         () => [...licenses].sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.priceEgp ?? 0) - (b.priceEgp ?? 0)),
         [licenses],
     )
-    // Highlight the middle BUYABLE plan as "most popular" (Hostinger pattern).
-    const buyableKeys = plans.filter((p) => !p.contactSales).map((p) => p.key)
-    const popularKey = buyableKeys[Math.floor((buyableKeys.length - 1) / 2)] ?? ''
+    // Highlight the admin-flagged plan; fall back to the middle buyable plan.
+    const buyable = plans.filter((p) => !p.contactSales)
+    const flagged = buyable.find((p) => p.popular)?.key
+    const popularKey = flagged ?? buyable.map((p) => p.key)[Math.floor((buyable.length - 1) / 2)] ?? ''
 
     const anyMonthly = plans.some((p) => (p.priceEgpMonthly ?? 0) > 0)
 
@@ -119,7 +126,9 @@ export default function PricingPlans() {
                                     <div className='text-3xl font-extrabold text-[#1E7D67]'>{tr('مجاني', 'Free')}</div>
                                 )}
                                 {savePct > 0 && cycle === 'annual' && (
-                                    <p className='text-xs font-semibold text-[#0b8f66]'>{tr(`وفّر ${savePct}٪ سنوياً`, `Save ${savePct}% yearly`)}</p>
+                                    <span className='mt-1 inline-block rounded-full bg-[#E8A13C] px-2 py-0.5 text-[11px] font-bold text-white'>
+                                        {tr(`وفّر ${savePct}٪ سنوياً`, `Save ${savePct}% yearly`)}
+                                    </span>
                                 )}
                                 {cycle === 'monthly' && paid && !hasMonthly && (
                                     <p className='text-xs text-gray-400'>{tr('سنوي فقط', 'annual only')}</p>
@@ -134,6 +143,7 @@ export default function PricingPlans() {
                                 </LocaleLink>
                             ) : (
                                 <LocaleLink href={`/build-product?tier=${p.key}&cycle=${cycle}`}
+                                    onClick={() => rememberPlan(p.key, cycle)}
                                     className={`mt-4 block rounded-xl py-2.5 text-center text-sm font-bold transition-colors ${popular ? 'bg-[#1E7D67] text-white hover:bg-[#186655]' : 'border-2 border-[#1E7D67] text-[#1E7D67] hover:bg-[#1E7D67] hover:text-white'}`}>
                                     {paid ? tr('اختر الباقة', 'Choose plan') : tr('ابدأ مجاناً', 'Start free')}
                                 </LocaleLink>

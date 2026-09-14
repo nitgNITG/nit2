@@ -23,6 +23,7 @@ export function parseLicense(body: any) {
         supportedApp: body?.supportedApp !== false, // default true; false = no app access (Demo)
         kashierEnabled: body?.kashierEnabled === true, // push shared Kashier gateway to this package
         contactSales: body?.contactSales === true, // "Contact us" plan — not directly purchasable
+        popular: body?.popular === true, // highlight as "Most popular" on the pricing page
         videoSource: VIDEO_SOURCES.includes(body?.videoSource) ? body.videoSource : "vimeo",
         limits: typeof body?.limits === "object" && body.limits ? body.limits : { quiz: -1, video: -1, pdf: -1, default: -1 },
         features: typeof body?.features === "object" && body.features ? body.features : {},

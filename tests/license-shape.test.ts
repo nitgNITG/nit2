@@ -11,3 +11,11 @@ describe("parseLicense — contactSales", () => {
         expect(parseLicense({ name: "Pro", contactSales: 1 }).contactSales).toBe(false);
     });
 });
+
+describe("parseLicense — popular", () => {
+    it("defaults to false and is true only for boolean true", () => {
+        expect(parseLicense({ name: "X" }).popular).toBe(false);
+        expect(parseLicense({ name: "X", popular: true }).popular).toBe(true);
+        expect(parseLicense({ name: "X", popular: "true" }).popular).toBe(false);
+    });
+});

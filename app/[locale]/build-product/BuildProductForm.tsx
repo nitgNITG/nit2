@@ -183,13 +183,20 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                 if (buyable.length && !buyable.some((l) => l.key === watch('tier'))) {
                     setValue('tier', buyable[0].key)
                 }
-                // Honor a plan pre-selected from the pricing page (?tier=&cycle=).
+                // Honor a plan pre-selected from the pricing page. Query params win;
+                // otherwise fall back to localStorage (survives the sign-in redirect,
+                // which drops the query). Consumed once.
                 try {
                     const q = new URLSearchParams(window.location.search)
-                    const qt = q.get('tier'); const qc = q.get('cycle')
+                    let qt = q.get('tier'); let qc = q.get('cycle')
+                    if (!qt) {
+                        const saved = JSON.parse(localStorage.getItem('nit_selected_plan') || 'null')
+                        if (saved) { qt = saved.tier; qc = saved.cycle }
+                    }
+                    localStorage.removeItem('nit_selected_plan')
                     if (qt && buyable.some((l) => l.key === qt)) setValue('tier', qt)
                     if (qc === 'monthly' || qc === 'annual') setBillingCycle(qc)
-                } catch { /* no query */ }
+                } catch { /* no selection */ }
             })
             .catch(() => { })
         // eslint-disable-next-line react-hooks/exhaustive-deps
