@@ -158,6 +158,7 @@ const Navbar = () => {
         { name: t('item1'), href: '/' },
         { name: t('item3'), href: '/our-projects' },
         { name: t('services'), children: services },
+        { name: isAr ? 'الأسعار' : 'Pricing', href: '/pricing' },
         { name: t('item4'), href: '/blog' },
         { name: t('item2'), href: '/who-us' },
         { name: t('item5'), href: '/contact' },
