@@ -13,6 +13,6 @@ export async function GET() {
 
     const usage = await fetchAcademyUsage();
     return NextResponse.json(
-        usage ?? { academies: {}, host_disk_pct: 0, host_free_bytes: 0 },
+        usage ?? { academies: {}, host_disk_pct: 0, host_free_bytes: 0, host_total_bytes: 0 },
     );
 }

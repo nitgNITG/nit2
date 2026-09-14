@@ -446,6 +446,22 @@ def _dir_bytes(path: str) -> int:
         return 0
 
 
+# One disk measurement for the academies volume, shared by /usage and /health so
+# both surfaces report the SAME number (used = total - free, via one syscall).
+def _disk_snapshot() -> dict:
+    try:
+        du = shutil.disk_usage(SAAS_ROOT)
+        return {
+            "path": SAAS_ROOT, "total_bytes": du.total, "used_bytes": du.used,
+            "free_bytes": du.free,
+            "used_pct": round(du.used * 100 / du.total) if du.total else 0,
+            "free_pct": round(du.free * 100 / du.total) if du.total else 0,
+        }
+    except Exception:
+        return {"path": SAAS_ROOT, "total_bytes": 0, "used_bytes": 0,
+                "free_bytes": 0, "used_pct": 0, "free_pct": 0}
+
+
 def collect_usage() -> dict:
     now = time.time()
     if _USAGE_CACHE["data"] is not None and (now - _USAGE_CACHE["at"]) < _USAGE_TTL:
@@ -456,14 +472,10 @@ def collect_usage() -> dict:
         if not SLUG_RE.match(slug):
             continue
         academies[slug] = _dir_bytes(md)
-    try:
-        du = shutil.disk_usage(SAAS_ROOT)
-        host_disk_pct = round(du.used * 100 / du.total) if du.total else 0
-        host_free_bytes = du.free
-    except Exception:
-        host_disk_pct, host_free_bytes = 0, 0
-    data = {"academies": academies, "host_disk_pct": host_disk_pct,
-            "host_free_bytes": host_free_bytes, "generated_at": int(now)}
+    snap = _disk_snapshot()
+    data = {"academies": academies, "host_disk_pct": snap["used_pct"],
+            "host_free_bytes": snap["free_bytes"], "host_total_bytes": snap["total_bytes"],
+            "generated_at": int(now)}
     _USAGE_CACHE["at"] = now
     _USAGE_CACHE["data"] = data
     return data
@@ -491,18 +503,9 @@ def collect_health() -> dict:
     if _HEALTH_CACHE["data"] is not None and (now - _HEALTH_CACHE["at"]) < _HEALTH_TTL:
         return _HEALTH_CACHE["data"]
 
-    # Disk — the academies volume is what fills up as tenants are added.
-    try:
-        du = shutil.disk_usage(SAAS_ROOT)
-        disk = {
-            "path": SAAS_ROOT, "total_bytes": du.total, "used_bytes": du.used,
-            "free_bytes": du.free,
-            "used_pct": round(du.used * 100 / du.total) if du.total else 0,
-            "free_pct": round(du.free * 100 / du.total) if du.total else 0,
-        }
-    except Exception:
-        disk = {"path": SAAS_ROOT, "total_bytes": 0, "used_bytes": 0, "free_bytes": 0,
-                "used_pct": 0, "free_pct": 0}
+    # Disk — the academies volume is what fills up as tenants are added. Shared
+    # with /usage via _disk_snapshot() so both surfaces report the same number.
+    disk = _disk_snapshot()
 
     # Memory — from /proc/meminfo (kB).
     mem = {}

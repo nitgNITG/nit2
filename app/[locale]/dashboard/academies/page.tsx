@@ -141,6 +141,8 @@ const AcademiesPage = () => {
   const [brandingSlug, setBrandingSlug] = useState<string | null>(null);
   const [usage, setUsage] = useState<Record<string, number>>({});
   const [hostDiskPct, setHostDiskPct] = useState<number | null>(null);
+  const [hostFreeBytes, setHostFreeBytes] = useState<number | null>(null);
+  const [hostTotalBytes, setHostTotalBytes] = useState<number | null>(null);
   const [usageLoading, setUsageLoading] = useState(true);
   const [credSlug, setCredSlug] = useState<string | null>(null);
   const [cred, setCred] = useState<{
@@ -257,6 +259,8 @@ const AcademiesPage = () => {
       setHostDiskPct(
         typeof data.host_disk_pct === "number" ? data.host_disk_pct : null,
       );
+      setHostFreeBytes(typeof data.host_free_bytes === "number" ? data.host_free_bytes : null);
+      setHostTotalBytes(typeof data.host_total_bytes === "number" ? data.host_total_bytes : null);
     } catch {
       // leave usage empty — the column shows "—"
     } finally {
@@ -491,7 +495,10 @@ const AcademiesPage = () => {
               title="Disk used on the academies server (server B). Above ~85% means it is time to free space or add disk."
               className={`rounded-md border px-3 py-2 text-xs font-semibold ${hostDiskPct >= 85 ? "border-red-300 bg-red-50 text-red-600" : hostDiskPct >= 70 ? "border-amber-300 bg-amber-50 text-amber-700" : "border-gray-200 bg-gray-50 text-gray-600"}`}
             >
-              🖥 Server disk {hostDiskPct}%
+              🖥 Server disk {hostDiskPct}% used
+              {hostFreeBytes !== null && hostTotalBytes !== null && hostTotalBytes > 0
+                ? ` · ${(hostFreeBytes / 1_073_741_824).toFixed(1)} GB free of ${(hostTotalBytes / 1_073_741_824).toFixed(1)} GB`
+                : ""}
             </span>
           )}
           <button

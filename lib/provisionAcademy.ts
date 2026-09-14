@@ -203,7 +203,7 @@ export async function triggerSuspend(slug: string, suspended: boolean): Promise<
 /** Per-academy moodledata usage from server B (bytes) + host disk headroom.
  * Best-effort: returns null if the provisioning service is unreachable. */
 export async function fetchAcademyUsage(): Promise<
-    { academies: Record<string, number>; host_disk_pct: number; host_free_bytes: number } | null
+    { academies: Record<string, number>; host_disk_pct: number; host_free_bytes: number; host_total_bytes: number } | null
 > {
     const base = process.env.PROVISION_URL;
     const secret = process.env.PROVISION_SECRET;

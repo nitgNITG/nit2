@@ -175,7 +175,7 @@ export default function SetupPage() {
                                 <div className={`text-center py-3 mb-2 rounded-lg font-bold ${banner.c}`}>{banner.t}</div>
                                 {h && (
                                     <>
-                                        <Row label='Disk (academies volume)' value={`${h.disk.free_pct}% free — ${gb(h.disk.free_bytes)} of ${gb(h.disk.total_bytes)}`} />
+                                        <Row label='Disk (academies volume)' value={`${h.disk.used_pct}% used · ${gb(h.disk.free_bytes)} free of ${gb(h.disk.total_bytes)}`} />
                                         <Row label='Memory' value={`${h.memory.used_pct}% used — ${gb(h.memory.available_bytes)} free`} />
                                         <Row label='CPU load (1m)' value={`${h.cpu.load1} on ${h.cpu.count} cores (${h.cpu.load1_per_core}/core)`} />
                                         <Row label='Docker' value={`${h.docker.running} running · MariaDB ${h.docker.mariadb_up ? '✅ up' : '❌ down'}`} />
