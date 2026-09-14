@@ -15,6 +15,8 @@ type Academy = {
   subscribedAt?: string | null;
   createdAt?: string | null;
   googleOauthAdded?: boolean;
+  customDomain?: string | null;
+  domainStatus?: string | null;
   owner?: { id: string; name: string | null; email: string } | null;
 };
 type License = {
@@ -599,6 +601,7 @@ const AcademiesPage = () => {
               <th className="px-4 py-3 font-semibold">Academy</th>
               <th className="px-4 py-3 font-semibold">Owner</th>
               <th className="px-4 py-3 font-semibold">Status</th>
+              <th className="px-4 py-3 font-semibold">Domain</th>
               <th className="px-4 py-3 font-semibold">Storage</th>
               <th className="px-4 py-3 font-semibold">Licence</th>
               <th className="px-4 py-3 font-semibold">Valid until</th>
@@ -611,7 +614,7 @@ const AcademiesPage = () => {
             {loading ? (
               <tr>
                 <td
-                  colSpan={9}
+                  colSpan={10}
                   className="px-4 py-10 text-center text-gray-400"
                 >
                   Loading…
@@ -620,7 +623,7 @@ const AcademiesPage = () => {
             ) : academies.length === 0 ? (
               <tr>
                 <td
-                  colSpan={9}
+                  colSpan={10}
                   className="px-4 py-10 text-center text-gray-400"
                 >
                   No academies yet.
@@ -697,6 +700,49 @@ const AcademiesPage = () => {
                     >
                       {a.status}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {a.customDomain ? (
+                      <div className="min-w-[150px]">
+                        {a.domainStatus === "active" ? (
+                          <a
+                            href={`https://${a.customDomain}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs font-mono text-blue-600 break-all hover:underline"
+                          >
+                            {a.customDomain}
+                          </a>
+                        ) : (
+                          <span className="text-xs font-mono text-gray-600 break-all">{a.customDomain}</span>
+                        )}
+                        <span
+                          title={a.domainStatus === "active" ? "Custom domain is live (canonical)" : `Custom domain: ${a.domainStatus}`}
+                          className={
+                            "mt-1 block w-fit rounded-full px-2 py-0.5 text-[11px] font-semibold " +
+                            (a.domainStatus === "active"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : a.domainStatus === "verifying"
+                                ? "bg-amber-100 text-amber-800"
+                                : a.domainStatus === "failed"
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-gray-100 text-gray-500")
+                          }
+                        >
+                          {a.domainStatus === "active"
+                            ? "● live"
+                            : a.domainStatus === "verifying"
+                              ? "◐ activating"
+                              : a.domainStatus === "failed"
+                                ? "✗ failed"
+                                : "awaiting DNS"}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-300" title="No custom domain — uses the subdomain">
+                        subdomain
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <StorageBar
