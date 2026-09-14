@@ -47,28 +47,49 @@ export function isApex(domain: string): boolean {
     return domain.split(".").length <= 2;
 }
 
+export type DnsOption = {
+    type: "A" | "CNAME";
+    host: string;
+    value: string;        // "" when the server IP isn't configured for an A record
+    recommended: boolean;
+    note: string;
+};
 export type DnsInstruction = {
     apex: boolean;
-    // Preferred record to add at the owner's DNS provider.
-    record: { type: "A" | "CNAME"; host: string; value: string };
-    // The always-valid A-record fallback (also the only option for an apex).
+    // Both records the owner MAY add — either one works; add just one. CNAME is
+    // recommended for subdomains; the A record is the alternative (and the only
+    // standard option for an apex).
+    options: DnsOption[];
     aRecordValue: string; // server B IP, or "" if not configured
     cnameValue: string;    // <slug>.<base>
     note: string;
 };
 
-/** What to tell the owner to add at their registrar. */
+/** What to tell the owner to add at their registrar — both a CNAME and an A
+ *  record where possible, so they can use whichever their DNS provider supports. */
 export function dnsInstructions(domain: string, slug: string): DnsInstruction {
     const apex = isApex(domain);
     const cnameValue = `${slug}.${baseDomain()}`;
     const aRecordValue = serverPublicIp();
-    const record: DnsInstruction["record"] = apex
-        ? { type: "A", host: "@", value: aRecordValue || "(server IP — ask support)" }
-        : { type: "CNAME", host: domain, value: cnameValue };
+    const options: DnsOption[] = [];
+
+    if (!apex) {
+        options.push({
+            type: "CNAME", host: domain, value: cnameValue, recommended: true,
+            note: "Recommended — keeps working even if our server IP ever changes.",
+        });
+    }
+    options.push({
+        type: "A", host: apex ? "@" : domain, value: aRecordValue, recommended: apex,
+        note: aRecordValue
+            ? (apex ? "Root domains use an A record." : "Alternative — points straight at the server IP.")
+            : "Ask support for the server IP.",
+    });
+
     const note = apex
-        ? "Root domains can’t use CNAME, so add an A record to the server IP."
-        : "Add a CNAME so it always follows the server, even if its IP changes.";
-    return { apex, record, aRecordValue, cnameValue, note };
+        ? "Root domains can’t use CNAME. If your DNS provider supports ALIAS / ANAME (e.g. Cloudflare, Route 53) you can point that at the CNAME value below; otherwise use the A record. A subdomain like academy.yourschool.com is simpler."
+        : "Add EITHER record — you only need one. CNAME is recommended; the A record is the alternative if your provider needs it.";
+    return { apex, options, aRecordValue, cnameValue, note };
 }
 
 /** Resolve a host to its A records (following CNAMEs); [] on any failure. */

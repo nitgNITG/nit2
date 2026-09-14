@@ -42,16 +42,25 @@ describe("isApex", () => {
 });
 
 describe("dnsInstructions", () => {
-    it("subdomain → CNAME to <slug>.<base>", () => {
+    it("subdomain → both CNAME (recommended) and A options", () => {
+        process.env.SERVER_PUBLIC_IP = "203.0.113.9";
         const i = dnsInstructions("academy.school.com", "acme");
         expect(i.apex).toBe(false);
-        expect(i.record).toEqual({ type: "CNAME", host: "academy.school.com", value: "acme.academy2026.nitg-eg.com" });
+        const cname = i.options.find((o) => o.type === "CNAME");
+        const a = i.options.find((o) => o.type === "A");
+        expect(cname).toMatchObject({ host: "academy.school.com", value: "acme.academy2026.nitg-eg.com", recommended: true });
+        expect(a).toMatchObject({ host: "academy.school.com", value: "203.0.113.9", recommended: false });
     });
-    it("apex → A record to the server IP", () => {
+    it("apex → only an A record, recommended", () => {
         process.env.SERVER_PUBLIC_IP = "203.0.113.9";
         const i = dnsInstructions("school.com", "acme");
         expect(i.apex).toBe(true);
-        expect(i.record).toEqual({ type: "A", host: "@", value: "203.0.113.9" });
+        expect(i.options.some((o) => o.type === "CNAME")).toBe(false);
+        expect(i.options.find((o) => o.type === "A")).toMatchObject({ host: "@", value: "203.0.113.9", recommended: true });
+    });
+    it("A option value is blank (→ 'ask support') when SERVER_PUBLIC_IP is unset", () => {
+        const i = dnsInstructions("academy.school.com", "acme");
+        expect(i.options.find((o) => o.type === "A")?.value).toBe("");
     });
 });
 

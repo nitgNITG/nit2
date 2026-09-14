@@ -5,9 +5,10 @@ import { useLocale } from 'next-intl'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 
+type DnsOption = { type: 'A' | 'CNAME'; host: string; value: string; recommended: boolean; note: string }
 type Instruction = {
     apex: boolean
-    record: { type: 'A' | 'CNAME'; host: string; value: string }
+    options: DnsOption[]
     aRecordValue: string
     cnameValue: string
     note: string
@@ -147,16 +148,22 @@ export default function CustomDomainCard({ slug }: { slug: string }) {
             {/* DNS instructions once a domain is set but not yet active */}
             {ins && (st === 'pending_dns' || st === 'failed') && (
                 <div className='rounded-lg bg-[#F5F3EE] border border-black/10 p-3 space-y-2 text-sm'>
-                    <p className='font-semibold'>{tr('١) أضف هذا السجل عند مزوّد الدومين:', '1) Add this record at your domain provider:')}</p>
-                    <div className='font-mono text-xs bg-white border border-black/10 rounded p-2 space-y-0.5'>
-                        <div>{tr('النوع', 'Type')}: <b>{ins.record.type}</b></div>
-                        <div>{tr('الاسم', 'Host')}: <b>{ins.record.host}</b></div>
-                        <div>{tr('القيمة', 'Value')}: <b className='break-all'>{ins.record.value}</b></div>
-                    </div>
-                    <p className='text-xs text-[#0B2923]/60'>{ins.note}
-                        {!ins.apex && ins.aRecordValue &&
-                            <> {' '}{tr('أو سجل A إلى', 'or an A record to')} <b className='font-mono'>{ins.aRecordValue}</b>.</>}
-                    </p>
+                    <p className='font-semibold'>{tr('١) أضف أحد هذين السجلين (واحد يكفي):', '1) Add ONE of these records (either works):')}</p>
+                    {ins.options.map((opt, i) => (
+                        <div key={opt.type} className='space-y-1'>
+                            {i > 0 && <div className='text-center text-[11px] font-bold text-[#0B2923]/40'>{tr('— أو —', '— OR —')}</div>}
+                            <div className={`font-mono text-xs bg-white rounded p-2 space-y-0.5 border ${opt.recommended ? 'border-[#1E7D67]/50' : 'border-black/10'}`}>
+                                <div className='flex items-center justify-between'>
+                                    <span>{tr('النوع', 'Type')}: <b>{opt.type}</b></span>
+                                    {opt.recommended && <span className='rounded-full bg-[#1E7D67]/12 px-2 py-0.5 text-[10px] font-sans font-bold text-[#0b8f66]'>{tr('مُوصى به', 'recommended')}</span>}
+                                </div>
+                                <div>{tr('الاسم', 'Host')}: <b>{opt.host}</b></div>
+                                <div>{tr('القيمة', 'Value')}: <b className='break-all'>{opt.value || tr('(اسأل الدعم)', '(ask support)')}</b></div>
+                            </div>
+                            <p className='text-[11px] text-[#0B2923]/50 font-sans'>{opt.note}</p>
+                        </div>
+                    ))}
+                    <p className='text-xs text-[#0B2923]/60'>{ins.note}</p>
                     <p className='font-semibold'>{tr('٢) ثم فعِّل:', '2) Then activate:')}</p>
                     <button onClick={verify} disabled={busy}
                         className='rounded-lg bg-[#1E7D67] px-4 py-2 text-sm font-bold text-white hover:bg-[#186655] disabled:opacity-60 transition-colors'>

@@ -68,7 +68,7 @@ describe("POST set domain", () => {
         const body = await res.json();
         expect(body.customDomain).toBe("academy.school.com");
         expect(body.domainStatus).toBe("pending_dns");
-        expect(body.instructions.record).toMatchObject({ type: "CNAME", value: "acme.academy2026.nitg-eg.com" });
+        expect(body.instructions.options.find((o: any) => o.type === "CNAME")).toMatchObject({ value: "acme.academy2026.nitg-eg.com", recommended: true });
     });
     it("rejects an invalid domain (400)", async () => {
         expect((await POST(req("POST", { domain: "nope" }), P)).status).toBe(400);
