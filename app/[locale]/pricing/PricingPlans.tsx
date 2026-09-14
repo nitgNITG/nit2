@@ -43,6 +43,7 @@ export default function PricingPlans() {
     const [licenses, setLicenses] = useState<License[]>([])
     const [loading, setLoading] = useState(true)
     const [cycle, setCycle] = useState<'monthly' | 'annual'>('annual')
+    const [openFeats, setOpenFeats] = useState<Record<string, boolean>>({}) // per-card feature list toggle
 
     useEffect(() => {
         axios.get('/api/licenses')
@@ -192,16 +193,32 @@ export default function PricingPlans() {
                                     </li>
                                 ))}
                             </ul>
-                            {/* Full feature set — ✓ included / ✗ not */}
-                            <p className='mt-4 mb-1 text-[11px] font-bold uppercase tracking-wider text-gray-400'>{tr('المزايا', 'Features')}</p>
-                            <ul className='space-y-2 text-sm'>
-                                {featureRows.map((f) => (
-                                    <li key={f.label} className={`flex items-start gap-2 ${f.on ? 'text-gray-600' : 'text-gray-300'}`}>
-                                        <span className={`mt-0.5 ${f.on ? 'text-[#1E7D67]' : 'text-gray-300'}`}>{f.on ? '✓' : '✗'}</span>
-                                        <span className={f.on ? '' : 'line-through'}>{f.label}</span>
-                                    </li>
-                                ))}
-                            </ul>
+                            {/* Full feature set — collapsed behind a toggle. */}
+                            {(() => {
+                                const open = !!openFeats[p.key]
+                                const included = featureRows.filter((f) => f.on).length
+                                return (
+                                    <>
+                                        <button type='button'
+                                            onClick={() => setOpenFeats((s) => ({ ...s, [p.key]: !open }))}
+                                            aria-expanded={open}
+                                            className='mt-4 flex w-full items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[#1E7D67]'>
+                                            <span>{open ? tr('إخفاء المزايا', 'Hide features') : tr(`عرض كل المزايا (${included})`, `See all features (${included})`)}</span>
+                                            <span className={`transition-transform ${open ? 'rotate-180' : ''}`}>⌄</span>
+                                        </button>
+                                        {open && (
+                                            <ul className='mt-2 space-y-2 text-sm'>
+                                                {featureRows.map((f) => (
+                                                    <li key={f.label} className={`flex items-start gap-2 ${f.on ? 'text-gray-600' : 'text-gray-300'}`}>
+                                                        <span className={`mt-0.5 ${f.on ? 'text-[#1E7D67]' : 'text-gray-300'}`}>{f.on ? '✓' : '✗'}</span>
+                                                        <span className={f.on ? '' : 'line-through'}>{f.label}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </>
+                                )
+                            })()}
                         </div>
                     )
                 })}
