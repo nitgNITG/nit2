@@ -38,7 +38,7 @@ const page = async ({ searchParams }: { searchParams?: Record<string, string | s
                 {/* Soft brand glow behind the card */}
                 <div className='pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-[#1E7D67]/5 to-transparent' />
                 <div className='p-container relative'>
-                    <BuildProductForm />
+                    <BuildProductForm editSlug={typeof searchParams?.edit === 'string' ? searchParams.edit : undefined} />
                 </div>
             </section>
 

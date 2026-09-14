@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { connectLinks } from '@/lib/connectLinks'
 import DeletePlatformButton from './DeletePlatformButton'
-import BuildProductForm from '../build-product/BuildProductForm'
 import CustomDomainCard from './CustomDomainCard'
 
 const MONO = "'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace"
@@ -35,7 +34,6 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
     const [tiers, setTiers] = useState<Tier[]>([])
     const [upgradeTo, setUpgradeTo] = useState('')
     const [upgrading, setUpgrading] = useState(false)
-    const [editing, setEditing] = useState(false)
     const [highlight, setHighlight] = useState(false)
     const [sub, setSub] = useState<Sub | null>(null)
     const [subEnabled, setSubEnabled] = useState(false) // auto-renew feature on (server flag)
@@ -533,12 +531,12 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
             {/* Owner actions: edit branding (live/suspended only) + delete. */}
             <div className='mt-auto flex items-center justify-between border-t border-black/5 pt-3'>
                 {(live || suspended) ? (
-                    <button
-                        onClick={() => setEditing(true)}
+                    <a
+                        href={`/${locale}/build-product?edit=${academy.slug}`}
                         className='inline-flex w-fit items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-bold text-[#0B2923] hover:bg-black/5 transition-colors'
                     >
                         🎨 {tr('تعديل الأكاديمية', 'Edit academy')}
-                    </button>
+                    </a>
                 ) : <span />}
                 <DeletePlatformButton
                     slug={academy.slug}
@@ -549,25 +547,6 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
 
             {/* Custom domain (owner self-serve) — only meaningful once the site is live. */}
             {live && <div className='mt-4'><CustomDomainCard slug={academy.slug} /></div>}
-
-            {/* Edit-branding modal — reuses the build form in edit mode (owner-scoped
-                via /api/academies/<slug>/branding). */}
-            {editing && (
-                <div className='fixed inset-0 z-[1000] flex items-start justify-center overflow-y-auto bg-black/50 p-4'>
-                    <div className='relative my-8 w-full max-w-xl'>
-                        <div className='mb-2 flex items-center justify-between text-white'>
-                            <span className='font-bold'>🎨 {tr('تعديل', 'Edit')} — <span style={{ fontFamily: MONO }}>{academy.slug}</span></span>
-                            <button
-                                onClick={() => setEditing(false)}
-                                className='rounded-full bg-white/10 px-3 py-1 text-sm font-bold hover:bg-white/20'
-                            >
-                                ✕ {tr('إغلاق', 'Close')}
-                            </button>
-                        </div>
-                        <BuildProductForm editSlug={academy.slug} onSuccess={() => setEditing(false)} />
-                    </div>
-                </div>
-            )}
         </div>
     )
 }

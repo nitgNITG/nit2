@@ -36,8 +36,14 @@ const PALETTE_PRESETS: { name: string; dark: boolean; p: Palette }[] = [
     // Deep blue + slate (mrfathybakrmathematics.com).
     { name: 'Navy', dark: false, p: { primary: '#003362', accent: '#1f6fb2', secondary: '#e9eef4', background: '#ffffff', surface: '#f2f6fa', text: '#10233a' } },
 ]
-type License = { key: string; name: string; price: number; priceEgp?: number; priceEgpMonthly?: number; durationDays?: number; active: boolean; contactSales?: boolean; maxCourses: number; maxTeachers?: number; storageGb?: number; videoSource?: string; features: Record<string, boolean> }
+type License = { key: string; name: string; price: number; priceEgp?: number; priceEgpMonthly?: number; durationDays?: number; active: boolean; contactSales?: boolean; maxCourses: number; maxTeachers?: number; storageGb?: number; videoSource?: string; supportedApp?: boolean; features: Record<string, boolean>; limits?: Record<string, number> }
 const FEATURE_LABELS: Record<string, string> = { drm: 'DRM video', coupons: 'coupons', offers: 'offers', subscriptions: 'subscriptions', packages: 'packages', jitsi: 'live sessions' }
+const ALL_FEATURES = ['drm', 'coupons', 'offers', 'subscriptions', 'packages', 'jitsi'] as const
+const BUCKET_KEYS: { key: string; ar: string; en: string }[] = [
+    { key: 'quiz', ar: 'اختبارات/كورس', en: 'Quizzes/course' },
+    { key: 'video', ar: 'فيديوهات/كورس', en: 'Videos/course' },
+    { key: 'pdf', ar: 'ملفات PDF/كورس', en: 'PDFs/course' },
+]
 
 type FormValues = {
     name: string // full name (Arabic) — the primary name
@@ -113,6 +119,7 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
     const [autoRenewEnabled, setAutoRenewEnabled] = useState(false) // is the auto-renew feature on (server flag)
     const [autoRenew, setAutoRenew] = useState(true) // buyer's choice (paid tier, create mode)
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual') // paid-tier billing cycle
+    const [changingPlan, setChangingPlan] = useState(false) // show all plans vs just the picked one
     const hasAr = platformLang !== 'en'
     const hasEn = platformLang !== 'ar'
     const [palette, setPalette] = useState<Palette>(DEFAULT_PALETTE) // brand colours
@@ -346,7 +353,13 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                 return
             }
             toast.success(isEdit ? (isAr ? 'يتم تحديث الهوية…' : 'Applying branding…') : t('successToast'))
-            if (isEdit) { onSuccess?.(); return }
+            // Edit mode: the modal (if any) handles closing; on the standalone edit
+            // page there's no callback, so return the owner to their account.
+            if (isEdit) {
+                if (onSuccess) onSuccess()
+                else setTimeout(() => { window.location.href = `/${locale}/account` }, 800)
+                return
+            }
             reset()
             setLogo(null)
             setLogocompact(null)
@@ -405,9 +418,11 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
     return (
         <form
             onSubmit={handleSubmit(onSubmit)}
-            className='w-full max-w-xl mx-auto rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 p-6 sm:p-8'
+            className='grid w-full items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,400px)]'
             noValidate
         >
+            {/* Left column — the form fields (the card). */}
+            <div className='min-w-0 rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/5 sm:p-8'>
             {/* ══ 1. Identity — language, name, slug (the essentials) ══ */}
             <p className='mb-4 text-xs font-bold uppercase tracking-wide text-[#1E7D67]'>
                 {isAr ? '١ · هوية المنصة' : '1 · Platform identity'}
@@ -564,65 +579,82 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                     </div>
                 )}
 
-                <div className='grid grid-cols-2 gap-2'>
-                    {licenses.map((lic) => {
-                        const on = selectedTier === lic.key
-                        const paid = (lic.priceEgp ?? 0) > 0
-                        const hasMonthly = (lic.priceEgpMonthly ?? 0) > 0
-                        const useMonthly = paid && billingCycle === 'monthly' && hasMonthly
-                        const price = useMonthly ? (lic.priceEgpMonthly ?? 0) : (lic.priceEgp ?? 0)
-                        const per = useMonthly ? (isAr ? '/شهر' : '/mo') : (isAr ? '/سنة' : '/yr')
-                        const cap = (n?: number) => ((n ?? -1) < 0 ? '∞' : String(n))
-                        const feats = Object.keys(lic.features || {}).filter((f) => lic.features[f]).map((f) => FEATURE_LABELS[f] ?? f)
-                        const contact = !!lic.contactSales
-                        return (
-                            <button
-                                type='button'
-                                key={lic.key}
-                                onClick={() => contact
-                                    ? window.open(`/${locale}/contact?plan=${lic.key}`, '_blank')
-                                    : setValue('tier', lic.key)}
-                                className={`text-start rounded-xl border p-3 transition-colors ${contact ? 'border-[#0B2923]/20 bg-[#0B2923]/[0.03] hover:border-[#0B2923]/40' : on ? 'border-[#1E7D67] bg-[#1E7D67]/5 ring-1 ring-[#1E7D67]' : 'border-gray-200 bg-gray-50 hover:border-gray-300'}`}
-                            >
-                                <div className='flex items-baseline justify-between gap-2'>
-                                    <span className='font-bold text-[#0B2923]'>{lic.name}</span>
-                                    <span className='text-sm font-bold text-[#1E7D67]' dir='ltr'>
-                                        {contact ? (
-                                            <span className='rounded-full bg-[#0B2923]/10 px-2 py-0.5 text-[11px] font-bold text-[#0B2923]'>
-                                                {isAr ? 'تواصل معنا' : 'Contact us'}
+                {(() => {
+                    // Once a plan is picked, collapse to just that plan (full details) with a
+                    // "Change plan" button; expanded = compare all plans.
+                    const showAll = !selectedTier || changingPlan
+                    const visible = showAll ? licenses : licenses.filter((l) => l.key === selectedTier)
+                    const cap = (n?: number) => ((n ?? -1) < 0 ? (isAr ? '∞' : '∞') : String(n))
+                    const capB = (lic: License, k: string) => cap(lic.limits?.[k])
+                    return (
+                        <div className={`grid gap-2 ${showAll ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+                            {visible.map((lic) => {
+                                const on = selectedTier === lic.key
+                                const paid = (lic.priceEgp ?? 0) > 0
+                                const hasMonthly = (lic.priceEgpMonthly ?? 0) > 0
+                                const useMonthly = paid && billingCycle === 'monthly' && hasMonthly
+                                const price = useMonthly ? (lic.priceEgpMonthly ?? 0) : (lic.priceEgp ?? 0)
+                                const per = useMonthly ? (isAr ? '/شهر' : '/mo') : (isAr ? '/سنة' : '/yr')
+                                const contact = !!lic.contactSales
+                                const detailed = !showAll // the collapsed single card gets the full spec
+                                return (
+                                    <button
+                                        type='button'
+                                        key={lic.key}
+                                        onClick={() => contact
+                                            ? window.open(`/${locale}/contact?plan=${lic.key}`, '_blank')
+                                            : (setValue('tier', lic.key), setChangingPlan(false))}
+                                        className={`text-start rounded-xl border p-3 transition-colors ${contact ? 'border-[#0B2923]/20 bg-[#0B2923]/[0.03] hover:border-[#0B2923]/40' : on ? 'border-[#1E7D67] bg-[#1E7D67]/5 ring-1 ring-[#1E7D67]' : 'border-gray-200 bg-gray-50 hover:border-gray-300'}`}
+                                    >
+                                        <div className='flex items-baseline justify-between gap-2'>
+                                            <span className='font-bold text-[#0B2923]'>{lic.name}</span>
+                                            <span className='text-sm font-bold text-[#1E7D67]' dir='ltr'>
+                                                {contact ? (
+                                                    <span className='rounded-full bg-[#0B2923]/10 px-2 py-0.5 text-[11px] font-bold text-[#0B2923]'>
+                                                        {isAr ? 'تواصل معنا' : 'Contact us'}
+                                                    </span>
+                                                ) : paid ? (
+                                                    <>{price} {isAr ? 'ج.م' : 'EGP'}<span className='text-[10px] font-normal text-gray-400'> {per}</span></>
+                                                ) : (isAr ? 'مجاني' : 'Free')}
                                             </span>
-                                        ) : paid ? (
-                                            <>
-                                                {price} {isAr ? 'ج.م' : 'EGP'}
-                                                <span className='text-[10px] font-normal text-gray-400'> {per}</span>
-                                            </>
-                                        ) : (isAr ? 'مجاني' : 'Free')}
-                                    </span>
-                                </div>
-                                {!contact && paid && billingCycle === 'monthly' && !hasMonthly && (
-                                    <p className='text-[10px] text-gray-400'>{isAr ? 'سنوي فقط' : 'annual only'}</p>
-                                )}
-                                {contact && (
-                                    <p className='text-[10px] font-semibold text-[#0B2923]/50'>{isAr ? 'باقة مخصّصة — تواصل مع المبيعات' : 'Custom plan — talk to sales'}</p>
-                                )}
-                                {/* Full package details. */}
-                                <div className='mt-1.5 space-y-0.5 text-[11px] leading-relaxed text-gray-500'>
-                                    <div>
-                                        {isAr ? 'الكورسات:' : 'Courses:'} <b className='text-gray-700'>{cap(lic.maxCourses)}</b>
-                                        {' · '}{isAr ? 'المدرّسون:' : 'Teachers:'} <b className='text-gray-700'>{cap(lic.maxTeachers)}</b>
-                                    </div>
-                                    <div>
-                                        {isAr ? 'التخزين:' : 'Storage:'} <b className='text-gray-700'>{lic.storageGb ?? 1} GB</b>
-                                        {lic.videoSource ? <>{' · '}{isAr ? 'الفيديو:' : 'Video:'} <b className='text-gray-700'>{lic.videoSource}</b></> : null}
-                                    </div>
-                                    {feats.length > 0 && (
-                                        <div>{isAr ? 'المزايا:' : 'Features:'} <b className='text-gray-700'>{feats.join('، ')}</b></div>
-                                    )}
-                                </div>
-                            </button>
-                        )
-                    })}
-                </div>
+                                        </div>
+                                        {!contact && paid && billingCycle === 'monthly' && !hasMonthly && (
+                                            <p className='text-[10px] text-gray-400'>{isAr ? 'سنوي فقط' : 'annual only'}</p>
+                                        )}
+                                        {contact && (
+                                            <p className='text-[10px] font-semibold text-[#0B2923]/50'>{isAr ? 'باقة مخصّصة — تواصل مع المبيعات' : 'Custom plan — talk to sales'}</p>
+                                        )}
+                                        {/* Resources */}
+                                        <div className='mt-1.5 space-y-0.5 text-[11px] leading-relaxed text-gray-500'>
+                                            <div>{isAr ? 'الكورسات:' : 'Courses:'} <b className='text-gray-700'>{cap(lic.maxCourses)}</b>{' · '}{isAr ? 'المدرّسون:' : 'Teachers:'} <b className='text-gray-700'>{cap(lic.maxTeachers)}</b></div>
+                                            <div>{isAr ? 'التخزين:' : 'Storage:'} <b className='text-gray-700'>{lic.storageGb ?? 1} GB</b>{lic.videoSource ? <>{' · '}{isAr ? 'الفيديو:' : 'Video:'} <b className='text-gray-700'>{lic.videoSource}</b></> : null}</div>
+                                            {detailed && (
+                                                <>
+                                                    <div>{BUCKET_KEYS.map((b) => `${isAr ? b.ar : b.en}: ${capB(lic, b.key)}`).join('  ·  ')}</div>
+                                                    <div>{isAr ? 'تطبيق الموبايل:' : 'Mobile app:'} <b className='text-gray-700'>{lic.supportedApp === false ? (isAr ? 'لا' : 'No') : (isAr ? 'نعم' : 'Yes')}</b></div>
+                                                    <div className='pt-1'>
+                                                        {ALL_FEATURES.map((f) => (
+                                                            <span key={f} className={`me-2 inline-block ${lic.features?.[f] ? 'text-[#1E7D67]' : 'text-gray-300 line-through'}`}>
+                                                                {lic.features?.[f] ? '✓' : '✗'} {FEATURE_LABELS[f] ?? f}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    )
+                })()}
+
+                {selectedTier && !changingPlan && (
+                    <button type='button' onClick={() => setChangingPlan(true)}
+                        className='mt-2 text-sm font-bold text-[#1E7D67] hover:underline'>
+                        {isAr ? '↻ تغيير الباقة' : '↻ Change plan'}
+                    </button>
+                )}
             </div>
             <input type='hidden' {...register('tier')} />
 
@@ -916,12 +948,6 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                         <img src={loginUrl} alt='' className='mt-2 h-28 w-full rounded-lg object-cover' />
                     )}
                 </div>
-
-                {/* Live preview — updates as you type name / pick colours / upload images */}
-                <p className='mb-2 mt-4 text-sm text-gray-500'>
-                    {isAr ? 'معاينة مباشرة لمنصتك:' : 'Live preview of your platform:'}
-                </p>
-                <HomePreview name={nameWatch} palette={palette} logoUrl={logoUrl} heroUrl={heroUrl} aboutUrl={aboutUrl} faviconUrl={faviconUrl} galleryUrls={galleryUrls} aboutBullets={aboutBullets.map(bulletPreview)} isAr={isAr} />
             </div>
 
             {/* ══ 4. Contact — phone, WhatsApp, social (optional) ══ */}
@@ -1021,6 +1047,15 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                     ? t('submitting')
                     : isEdit ? (isAr ? 'حفظ وتحديث الهوية' : 'Save & apply branding') : t('submit')}
             </button>
+            </div>{/* end left column */}
+
+            {/* Right column — sticky live preview beside the form. */}
+            <aside className='lg:sticky lg:top-6 h-fit rounded-2xl bg-white p-4 shadow-xl ring-1 ring-black/5'>
+                <p className='mb-2 text-sm font-bold text-[#0B2923]'>
+                    {isAr ? 'معاينة مباشرة لمنصتك' : 'Live preview of your platform'}
+                </p>
+                <HomePreview name={nameWatch} palette={palette} logoUrl={logoUrl} heroUrl={heroUrl} aboutUrl={aboutUrl} faviconUrl={faviconUrl} galleryUrls={galleryUrls} aboutBullets={aboutBullets.map(bulletPreview)} isAr={isAr} />
+            </aside>
         </form>
     )
 }

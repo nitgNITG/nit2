@@ -8,9 +8,17 @@ import LocaleLink from '../components/LocaleLink'
 type License = {
     key: string; name: string; active: boolean; contactSales?: boolean; popular?: boolean
     priceEgp?: number; priceEgpMonthly?: number; listPriceEgp?: number; listPriceEgpMonthly?: number; durationDays?: number
-    maxCourses?: number; maxTeachers?: number; storageGb?: number; videoSource?: string
-    features?: Record<string, boolean>; order?: number
+    maxCourses?: number; maxTeachers?: number; storageGb?: number; videoSource?: string; supportedApp?: boolean
+    features?: Record<string, boolean>; limits?: Record<string, number>; order?: number
 }
+
+// Every feature we sell — shown with ✓ / ✗ on each plan so buyers see the full set.
+const ALL_FEATURES = ['drm', 'coupons', 'offers', 'subscriptions', 'packages', 'jitsi'] as const
+const BUCKETS: { key: string; ar: string; en: string }[] = [
+    { key: 'quiz', ar: 'اختبارات لكل كورس', en: 'Quizzes / course' },
+    { key: 'video', ar: 'فيديوهات لكل كورس', en: 'Videos / course' },
+    { key: 'pdf', ar: 'ملفات PDF لكل كورس', en: 'PDFs / course' },
+]
 
 // Remember the plan the visitor picked so it survives the sign-in redirect
 // (BuildProductForm reads this on mount). URL params alone are lost after login.
@@ -95,15 +103,21 @@ export default function PricingPlans() {
                     const savePct = paid && hasMonthly && (p.priceEgpMonthly ?? 0) > 0
                         ? Math.max(0, Math.round((1 - (p.priceEgp ?? 0) / ((p.priceEgpMonthly ?? 0) * 12)) * 100))
                         : 0
-                    const feats = Object.keys(p.features || {}).filter((f) => p.features?.[f])
-
-                    const specs: string[] = [
+                    const capB = (k: string) => cap(p.limits?.[k], tr('غير محدود', 'Unlimited'))
+                    // Resources with a value (always ✓).
+                    const resourceRows = [
                         `${tr('الكورسات', 'Courses')}: ${cap(p.maxCourses, tr('غير محدود', 'Unlimited'))}`,
                         `${tr('المدرّسون', 'Teachers')}: ${cap(p.maxTeachers, tr('غير محدود', 'Unlimited'))}`,
                         `${tr('التخزين', 'Storage')}: ${p.storageGb ?? 1} GB`,
-                        ...(p.videoSource ? [`${tr('الفيديو', 'Video')}: ${p.videoSource}`] : []),
-                        ...feats.map((f) => (isAr ? FEATURE_LABELS[f]?.ar : FEATURE_LABELS[f]?.en) ?? f),
+                        `${tr('مصدر الفيديو', 'Video source')}: ${p.videoSource ?? '—'}`,
+                        ...BUCKETS.map((b) => `${isAr ? b.ar : b.en}: ${capB(b.key)}`),
+                        `${tr('تطبيق الموبايل', 'Mobile app')}: ${p.supportedApp === false ? tr('لا', 'No') : tr('نعم', 'Yes')}`,
                     ]
+                    // Every feature with ✓ (included) / ✗ (not).
+                    const featureRows = ALL_FEATURES.map((f) => ({
+                        label: (isAr ? FEATURE_LABELS[f]?.ar : FEATURE_LABELS[f]?.en) ?? f,
+                        on: !!p.features?.[f],
+                    }))
 
                     return (
                         <div key={p.key}
@@ -169,12 +183,22 @@ export default function PricingPlans() {
                                 </LocaleLink>
                             )}
 
-                            {/* Feature / spec list */}
+                            {/* Resources (with values) */}
                             <ul className='mt-5 space-y-2 text-sm text-gray-600'>
-                                {specs.map((s, i) => (
+                                {resourceRows.map((s, i) => (
                                     <li key={i} className='flex items-start gap-2'>
                                         <span className='mt-0.5 text-[#1E7D67]'>✓</span>
                                         <span>{s}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                            {/* Full feature set — ✓ included / ✗ not */}
+                            <p className='mt-4 mb-1 text-[11px] font-bold uppercase tracking-wider text-gray-400'>{tr('المزايا', 'Features')}</p>
+                            <ul className='space-y-2 text-sm'>
+                                {featureRows.map((f) => (
+                                    <li key={f.label} className={`flex items-start gap-2 ${f.on ? 'text-gray-600' : 'text-gray-300'}`}>
+                                        <span className={`mt-0.5 ${f.on ? 'text-[#1E7D67]' : 'text-gray-300'}`}>{f.on ? '✓' : '✗'}</span>
+                                        <span className={f.on ? '' : 'line-through'}>{f.label}</span>
                                     </li>
                                 ))}
                             </ul>
@@ -187,6 +211,18 @@ export default function PricingPlans() {
                 {tr('كل الأسعار بالجنيه المصري وتشمل الاستضافة والتحديثات. يمكنك الترقية في أي وقت.',
                     'All prices in EGP and include hosting & updates. Upgrade anytime.')}
             </p>
+
+            {/* Floating WhatsApp — ask about a plan directly. */}
+            <a
+                href={`https://wa.me/201091568240?text=${encodeURIComponent(isAr ? 'مرحباً، عندي استفسار عن باقات الأكاديمية' : 'Hi, I have a question about the academy plans')}`}
+                target='_blank' rel='noreferrer'
+                aria-label='WhatsApp'
+                className='fixed bottom-6 end-6 z-50 flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-3 font-bold text-white shadow-lg transition-transform hover:scale-105'>
+                <svg width='22' height='22' viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'>
+                    <path d='M.06 24l1.68-6.13A11.87 11.87 0 010 5.96 11.9 11.9 0 0111.9 0a11.9 11.9 0 018.42 20.32 11.9 11.9 0 01-14.3 1.9L.06 24zM6.6 20.13c1.61.96 3.15 1.53 5.29 1.53a9.87 9.87 0 100-19.74 9.87 9.87 0 00-8.4 15.1l.24.38-.99 3.63 3.74-.98.12.08zM17.9 14.3c-.11-.18-.4-.29-.85-.51-.44-.22-2.62-1.29-3.03-1.44-.4-.15-.7-.22-1 .22-.29.44-1.14 1.44-1.4 1.73-.26.29-.51.33-.95.11-.44-.22-1.87-.69-3.56-2.2-1.32-1.17-2.2-2.62-2.46-3.06-.26-.44-.03-.68.19-.9.2-.2.44-.51.66-.77.22-.26.29-.44.44-.73.15-.29.07-.55-.04-.77-.11-.22-1-2.4-1.36-3.29-.36-.86-.72-.74-1-.76l-.85-.01c-.29 0-.77.11-1.17.55-.4.44-1.54 1.5-1.54 3.67s1.58 4.26 1.8 4.55c.22.29 3.1 4.74 7.52 6.64 1.05.45 1.87.72 2.51.93 1.05.33 2.01.28 2.77.17.85-.13 2.62-1.07 2.99-2.1.37-1.03.37-1.92.26-2.1z' />
+                </svg>
+                <span>{tr('واتساب', 'WhatsApp')}</span>
+            </a>
         </div>
     )
 }
