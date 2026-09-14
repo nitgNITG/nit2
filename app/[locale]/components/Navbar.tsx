@@ -162,7 +162,11 @@ const Navbar = () => {
         { name: t('item4'), href: '/blog' },
         { name: t('item2'), href: '/who-us' },
         { name: t('item5'), href: '/contact' },
-        ...(me ? [] : [{ name: t('buildProduct'), href: '/account' }]),
+        // Guests: the primary CTA shows the plans first, plus a plain Log in link.
+        ...(me ? [] : [
+            { name: t('buildProduct'), href: '/pricing' },
+            { name: isAr ? 'تسجيل الدخول' : 'Log in', href: '/account' },
+        ]),
     ]
 
     const close = () => {

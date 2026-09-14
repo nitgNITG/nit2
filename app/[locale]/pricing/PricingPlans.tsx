@@ -67,7 +67,7 @@ export default function PricingPlans() {
                             <button key={c} type='button' onClick={() => setCycle(c)}
                                 className={`rounded-full px-5 py-1.5 font-bold transition-colors ${cycle === c ? 'bg-[#1E7D67] text-white' : 'text-gray-600 hover:text-[#0B2923]'}`}>
                                 {c === 'monthly' ? tr('شهري', 'Monthly') : tr('سنوي', 'Annual')}
-                                {c === 'annual' && <span className='ms-1.5 rounded-full bg-[#00c98e]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#0b8f66]'>{tr('وفّر', 'save')}</span>}
+                                {c === 'annual' && <span className={`ms-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${cycle === 'annual' ? 'bg-white/25 text-white' : 'bg-[#00c98e]/20 text-[#0b8f66]'}`}>{tr('وفّر', 'save')}</span>}
                             </button>
                         ))}
                     </div>

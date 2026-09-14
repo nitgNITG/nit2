@@ -1,6 +1,7 @@
 import React from 'react'
 import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
+import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import ScrollReveal from '../components/ScrollReveal'
 import BreadcrumbsJsonLd from '../components/BreadcrumbsJsonLd'
@@ -31,9 +32,15 @@ const PricingPage = async ({ params: { locale } }: { params: { locale: string } 
         <div>
             <BreadcrumbsJsonLd items={[{ path: 'pricing', ar: 'الأسعار', en: 'Pricing' }]} />
 
-            <section className='relative overflow-hidden bg-[#0B2923] py-20 text-center text-white md:py-28'>
+            <section className='relative overflow-hidden bg-[#0B2923] pb-16 text-center text-white md:pb-24'>
                 <div className='pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(30,125,103,0.35),transparent_60%)]' />
-                <div className='p-container relative space-y-4'>
+                {/* Top accent line + Navbar (each page renders its own). */}
+                <div className='absolute left-0 right-0 top-0 h-[2px] z-10'
+                    style={{ background: 'linear-gradient(90deg, transparent, #1E7D67, #00FFCD, #1E7D67, transparent)' }} />
+                <div className='p-container relative z-[99] py-8 text-start'>
+                    <Navbar />
+                </div>
+                <div className='p-container relative space-y-4 pt-8'>
                     <span className='inline-block rounded-full border border-white/20 bg-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-[#7fe9c8]'>
                         {ar ? 'الأسعار' : 'Pricing'}
                     </span>
