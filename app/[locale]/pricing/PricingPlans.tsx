@@ -74,7 +74,12 @@ export default function PricingPlans() {
                 </div>
             )}
 
-            <div className='grid grid-cols-1 gap-6 md:grid-cols-3'>
+            <div className={`mx-auto grid max-w-6xl grid-cols-1 gap-6 sm:grid-cols-2 ${
+                plans.length >= 4 ? 'lg:grid-cols-4'
+                : plans.length === 3 ? 'lg:grid-cols-3'
+                : plans.length === 2 ? 'lg:grid-cols-2 max-w-3xl'
+                : 'lg:grid-cols-1 max-w-sm'
+            }`}>
                 {plans.map((p) => {
                     const contact = !!p.contactSales
                     const popular = p.key === popularKey
@@ -140,7 +145,7 @@ export default function PricingPlans() {
                                 ) : (
                                     <div className='text-3xl font-extrabold text-[#1E7D67]'>{tr('مجاني', 'Free')}</div>
                                 )}
-                                {savePct > 0 && cycle === 'annual' && (
+                                {savePct > 0 && offPct === 0 && cycle === 'annual' && (
                                     <span className='mt-1 inline-block rounded-full bg-[#E8A13C] px-2 py-0.5 text-[11px] font-bold text-white'>
                                         {tr(`وفّر ${savePct}٪ سنوياً`, `Save ${savePct}% yearly`)}
                                     </span>
