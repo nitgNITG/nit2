@@ -12,6 +12,15 @@ describe("parseLicense — contactSales", () => {
     });
 });
 
+describe("parseLicense — list prices", () => {
+    it("parses list prices, clamped to >= 0, default 0", () => {
+        expect(parseLicense({ name: "X" }).listPriceEgp).toBe(0);
+        expect(parseLicense({ name: "X", listPriceEgp: 12000, listPriceEgpMonthly: 1200 }))
+            .toMatchObject({ listPriceEgp: 12000, listPriceEgpMonthly: 1200 });
+        expect(parseLicense({ name: "X", listPriceEgp: -5 }).listPriceEgp).toBe(0);
+    });
+});
+
 describe("parseLicense — popular", () => {
     it("defaults to false and is true only for boolean true", () => {
         expect(parseLicense({ name: "X" }).popular).toBe(false);

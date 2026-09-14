@@ -7,7 +7,7 @@ import LocaleLink from '../components/LocaleLink'
 
 type License = {
     key: string; name: string; active: boolean; contactSales?: boolean; popular?: boolean
-    priceEgp?: number; priceEgpMonthly?: number; durationDays?: number
+    priceEgp?: number; priceEgpMonthly?: number; listPriceEgp?: number; listPriceEgpMonthly?: number; durationDays?: number
     maxCourses?: number; maxTeachers?: number; storageGb?: number; videoSource?: string
     features?: Record<string, boolean>; order?: number
 }
@@ -83,6 +83,9 @@ export default function PricingPlans() {
                     const useMonthly = cycle === 'monthly' && hasMonthly
                     const price = useMonthly ? (p.priceEgpMonthly ?? 0) : (p.priceEgp ?? 0)
                     const per = useMonthly ? tr('/شهر', '/mo') : tr('/سنة', '/yr')
+                    // Regular (list) price for this cycle → strikethrough + "% off" when higher.
+                    const list = useMonthly ? (p.listPriceEgpMonthly ?? 0) : (p.listPriceEgp ?? 0)
+                    const offPct = paid && list > price ? Math.round((1 - price / list) * 100) : 0
                     // Annual savings vs 12× the monthly price.
                     const savePct = paid && hasMonthly && (p.priceEgpMonthly ?? 0) > 0
                         ? Math.max(0, Math.round((1 - (p.priceEgp ?? 0) / ((p.priceEgpMonthly ?? 0) * 12)) * 100))
@@ -110,6 +113,11 @@ export default function PricingPlans() {
                                     {tr('مخصّص', 'Custom')}
                                 </span>
                             )}
+                            {offPct > 0 && (
+                                <span className='absolute -top-3 end-6 rounded-full bg-[#E8A13C] px-2.5 py-1 text-[11px] font-extrabold text-white shadow'>
+                                    {offPct}% {tr('خصم', 'OFF')}
+                                </span>
+                            )}
 
                             <h3 className='text-lg font-bold text-[#0B2923]'>{p.name}</h3>
 
@@ -118,10 +126,17 @@ export default function PricingPlans() {
                                 {contact ? (
                                     <div className='text-2xl font-extrabold text-[#0B2923]'>{tr('حسب الطلب', 'Let’s talk')}</div>
                                 ) : paid ? (
-                                    <div className='flex items-end gap-1'>
-                                        <span className='text-3xl font-extrabold text-[#0B2923]'>{price.toLocaleString()}</span>
-                                        <span className='text-sm font-semibold text-gray-500'>{isAr ? 'ج.م' : 'EGP'}{per}</span>
-                                    </div>
+                                    <>
+                                        {offPct > 0 && (
+                                            <div className='text-sm font-semibold text-gray-400 line-through'>
+                                                {list.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
+                                            </div>
+                                        )}
+                                        <div className='flex items-end gap-1'>
+                                            <span className='text-3xl font-extrabold text-[#0B2923]'>{price.toLocaleString()}</span>
+                                            <span className='text-sm font-semibold text-gray-500'>{isAr ? 'ج.م' : 'EGP'}{per}</span>
+                                        </div>
+                                    </>
                                 ) : (
                                     <div className='text-3xl font-extrabold text-[#1E7D67]'>{tr('مجاني', 'Free')}</div>
                                 )}

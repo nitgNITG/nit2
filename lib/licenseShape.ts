@@ -16,6 +16,8 @@ export function parseLicense(body: any) {
         price: Math.max(0, int(body?.price, 0)),
         priceEgp: Math.max(0, int(body?.priceEgp, 0)),
         priceEgpMonthly: Math.max(0, int(body?.priceEgpMonthly, 0)),
+        listPriceEgp: Math.max(0, int(body?.listPriceEgp, 0)),
+        listPriceEgpMonthly: Math.max(0, int(body?.listPriceEgpMonthly, 0)),
         durationDays: Math.max(0, int(body?.durationDays, 365)),
         maxCourses: int(body?.maxCourses, -1),
         maxTeachers: int(body?.maxTeachers, -1),

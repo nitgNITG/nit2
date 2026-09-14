@@ -11,6 +11,8 @@ type License = {
     price: number
     priceEgp: number
     priceEgpMonthly: number
+    listPriceEgp: number
+    listPriceEgpMonthly: number
     durationDays: number
     maxCourses: number
     maxTeachers: number
@@ -33,7 +35,7 @@ const FEATURE_LABELS: Record<string, string> = { drm: 'DRM video', coupons: 'Cou
 const LIMIT_KEYS = ['quiz', 'video', 'pdf', 'default']
 
 const blank = (): License => ({
-    key: '', name: '', active: true, price: 0, priceEgp: 0, priceEgpMonthly: 0, durationDays: 365,
+    key: '', name: '', active: true, price: 0, priceEgp: 0, priceEgpMonthly: 0, listPriceEgp: 0, listPriceEgpMonthly: 0, durationDays: 365,
     maxCourses: -1, maxTeachers: -1, storageGb: 1, supportedApp: true, kashierEnabled: false, contactSales: false, popular: false, videoSource: 'vimeo', order: 0,
     limits: { quiz: -1, video: -1, pdf: -1, default: -1 },
     features: Object.fromEntries(FEATURE_KEYS.map((f) => [f, false])),
@@ -147,6 +149,16 @@ const LicensesPage = () => {
                             <label className='block text-sm font-semibold mb-1'>Monthly charge (EGP)</label>
                             <input type='number' min={0} className='w-full border rounded-lg px-3 py-2' value={form.priceEgpMonthly} onChange={num('priceEgpMonthly')} />
                             <p className='text-xs text-gray-400 mt-1'>Optional monthly option (30-day term). <span className='font-mono'>0</span> = annual only.</p>
+                        </div>
+                        <div>
+                            <label className='block text-sm font-semibold mb-1'>Regular annual price (EGP)</label>
+                            <input type='number' min={0} className='w-full border rounded-lg px-3 py-2' value={form.listPriceEgp} onChange={num('listPriceEgp')} />
+                            <p className='text-xs text-gray-400 mt-1'>Shown struck-through with a “% off” badge when higher than the annual charge. <span className='font-mono'>0</span> = no discount shown.</p>
+                        </div>
+                        <div>
+                            <label className='block text-sm font-semibold mb-1'>Regular monthly price (EGP)</label>
+                            <input type='number' min={0} className='w-full border rounded-lg px-3 py-2' value={form.listPriceEgpMonthly} onChange={num('listPriceEgpMonthly')} />
+                            <p className='text-xs text-gray-400 mt-1'>Strikethrough for the monthly price. <span className='font-mono'>0</span> = none.</p>
                         </div>
                     </div>
 

@@ -125,6 +125,10 @@ model License {
   price        Int      @default(0) // USD (display only)
   priceEgp     Int      @default(0) // ANNUAL charge in EGP via Kashier; 0 = free (no payment)
   priceEgpMonthly Int   @default(0) // MONTHLY charge in EGP; 0 = no monthly option for this tier
+  // Optional "regular" (list) prices shown struck-through on the pricing page when
+  // higher than the actual charge above, with a "% off" badge. 0 = no strikethrough.
+  listPriceEgp        Int @default(0)
+  listPriceEgpMonthly Int @default(0)
   durationDays Int      @default(365) // annual term in days; 0 = never expires (monthly term is fixed 30d)
   maxCourses   Int      @default(-1) // -1 = unlimited
   maxTeachers  Int      @default(-1)
