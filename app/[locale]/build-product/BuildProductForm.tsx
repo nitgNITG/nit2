@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
+import { FiRefreshCw } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/navigation'
@@ -651,8 +652,8 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
 
                 {selectedTier && !changingPlan && (
                     <button type='button' onClick={() => setChangingPlan(true)}
-                        className='mt-2 text-sm font-bold text-[#1E7D67] hover:underline'>
-                        {isAr ? '↻ تغيير الباقة' : '↻ Change plan'}
+                        className='mt-2 inline-flex items-center gap-1 text-sm font-bold text-[#1E7D67] hover:underline'>
+                        <FiRefreshCw /> {isAr ? 'تغيير الباقة' : 'Change plan'}
                     </button>
                 )}
             </div>

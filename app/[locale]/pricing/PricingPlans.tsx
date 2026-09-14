@@ -4,6 +4,8 @@ import React, { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
 import { useLocale } from 'next-intl'
 import LocaleLink from '../components/LocaleLink'
+import { FaWhatsapp } from 'react-icons/fa'
+import { FiCheck, FiX, FiChevronDown } from 'react-icons/fi'
 
 type License = {
     key: string; name: string; active: boolean; contactSales?: boolean; popular?: boolean
@@ -188,7 +190,7 @@ export default function PricingPlans() {
                             <ul className='mt-5 space-y-2 text-sm text-gray-600'>
                                 {resourceRows.map((s, i) => (
                                     <li key={i} className='flex items-start gap-2'>
-                                        <span className='mt-0.5 text-[#1E7D67]'>✓</span>
+                                        <FiCheck className='mt-0.5 shrink-0 text-[#1E7D67]' />
                                         <span>{s}</span>
                                     </li>
                                 ))}
@@ -204,13 +206,13 @@ export default function PricingPlans() {
                                             aria-expanded={open}
                                             className='mt-4 flex w-full items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[#1E7D67]'>
                                             <span>{open ? tr('إخفاء المزايا', 'Hide features') : tr(`عرض كل المزايا (${included})`, `See all features (${included})`)}</span>
-                                            <span className={`transition-transform ${open ? 'rotate-180' : ''}`}>⌄</span>
+                                            <FiChevronDown className={`transition-transform ${open ? 'rotate-180' : ''}`} />
                                         </button>
                                         {open && (
                                             <ul className='mt-2 space-y-2 text-sm'>
                                                 {featureRows.map((f) => (
                                                     <li key={f.label} className={`flex items-start gap-2 ${f.on ? 'text-gray-600' : 'text-gray-300'}`}>
-                                                        <span className={`mt-0.5 ${f.on ? 'text-[#1E7D67]' : 'text-gray-300'}`}>{f.on ? '✓' : '✗'}</span>
+                                                        {f.on ? <FiCheck className='mt-0.5 shrink-0 text-[#1E7D67]' /> : <FiX className='mt-0.5 shrink-0 text-gray-300' />}
                                                         <span className={f.on ? '' : 'line-through'}>{f.label}</span>
                                                     </li>
                                                 ))}
@@ -234,10 +236,8 @@ export default function PricingPlans() {
                 href={`https://wa.me/201091568240?text=${encodeURIComponent(isAr ? 'مرحباً، عندي استفسار عن باقات الأكاديمية' : 'Hi, I have a question about the academy plans')}`}
                 target='_blank' rel='noreferrer'
                 aria-label='WhatsApp'
-                className='fixed bottom-6 end-6 z-50 flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-3 font-bold text-white shadow-lg transition-transform hover:scale-105'>
-                <svg width='22' height='22' viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'>
-                    <path d='M.06 24l1.68-6.13A11.87 11.87 0 010 5.96 11.9 11.9 0 0111.9 0a11.9 11.9 0 018.42 20.32 11.9 11.9 0 01-14.3 1.9L.06 24zM6.6 20.13c1.61.96 3.15 1.53 5.29 1.53a9.87 9.87 0 100-19.74 9.87 9.87 0 00-8.4 15.1l.24.38-.99 3.63 3.74-.98.12.08zM17.9 14.3c-.11-.18-.4-.29-.85-.51-.44-.22-2.62-1.29-3.03-1.44-.4-.15-.7-.22-1 .22-.29.44-1.14 1.44-1.4 1.73-.26.29-.51.33-.95.11-.44-.22-1.87-.69-3.56-2.2-1.32-1.17-2.2-2.62-2.46-3.06-.26-.44-.03-.68.19-.9.2-.2.44-.51.66-.77.22-.26.29-.44.44-.73.15-.29.07-.55-.04-.77-.11-.22-1-2.4-1.36-3.29-.36-.86-.72-.74-1-.76l-.85-.01c-.29 0-.77.11-1.17.55-.4.44-1.54 1.5-1.54 3.67s1.58 4.26 1.8 4.55c.22.29 3.1 4.74 7.52 6.64 1.05.45 1.87.72 2.51.93 1.05.33 2.01.28 2.77.17.85-.13 2.62-1.07 2.99-2.1.37-1.03.37-1.92.26-2.1z' />
-                </svg>
+                className='fixed bottom-6 start-6 z-[60] flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-3 font-bold text-white shadow-lg transition-transform hover:scale-105'>
+                <FaWhatsapp className='text-xl' />
                 <span>{tr('واتساب', 'WhatsApp')}</span>
             </a>
         </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import { FiEdit2 } from 'react-icons/fi'
 import { useLocale, useTranslations } from 'next-intl'
 import { connectLinks } from '@/lib/connectLinks'
 import DeletePlatformButton from './DeletePlatformButton'
@@ -535,7 +536,7 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
                         href={`/${locale}/build-product?edit=${academy.slug}`}
                         className='inline-flex w-fit items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-bold text-[#0B2923] hover:bg-black/5 transition-colors'
                     >
-                        🎨 {tr('تعديل الأكاديمية', 'Edit academy')}
+                        <FiEdit2 /> {tr('تعديل الأكاديمية', 'Edit academy')}
                     </a>
                 ) : <span />}
                 <DeletePlatformButton
