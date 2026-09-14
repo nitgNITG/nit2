@@ -59,6 +59,10 @@ SAAS_ROOT   = os.environ.get("SAAS_ROOT", "/var/www/html/saas")
 SLUG_RE     = re.compile(r"^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])$")
 # Licence keys are now dynamic (any slug), not a fixed set — validate by pattern.
 TIER_RE     = re.compile(r"^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])$")
+# A custom domain (Phase 2): a normal hostname, not one of our managed subdomains.
+DOMAIN_RE   = re.compile(r"^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
+BIND_DOMAIN_SH   = os.environ.get("BIND_DOMAIN_SH", "/root/bind-domain.sh")
+UNBIND_DOMAIN_SH = os.environ.get("UNBIND_DOMAIN_SH", "/root/unbind-domain.sh")
 # Global platform-settings keys we accept and forward to create.sh (as SETTING_<KEY>).
 # Whitelisted so a caller can't inject arbitrary Moodle config names.
 SETTING_KEYS = {
@@ -285,6 +289,29 @@ def run_apply_license(slug: str, tier: str, definition: str = "") -> None:
             ["bash", APPLY_LICENSE_SH, slug, tier],
             stdout=log, stderr=subprocess.STDOUT,
             env=env,
+        )
+
+
+def run_bind_domain(slug: str, domain: str) -> None:
+    """Run bind-domain.sh detached — add vhost + cert + canonical wwwroot. The
+    script writes clients/<slug>/domain-status.json for /domain-status polling."""
+    logpath = os.path.join(LOG_DIR, f"{slug}.log")
+    with open(logpath, "ab", buffering=0) as log:
+        log.write(f"\n===== bind-domain {slug} -> {domain} =====\n".encode())
+        subprocess.run(
+            ["bash", BIND_DOMAIN_SH, slug, domain],
+            stdout=log, stderr=subprocess.STDOUT, env={**os.environ},
+        )
+
+
+def run_unbind_domain(slug: str) -> None:
+    """Run unbind-domain.sh detached — revert wwwroot to the subdomain + drop vhost."""
+    logpath = os.path.join(LOG_DIR, f"{slug}.log")
+    with open(logpath, "ab", buffering=0) as log:
+        log.write(f"\n===== unbind-domain {slug} =====\n".encode())
+        subprocess.run(
+            ["bash", UNBIND_DOMAIN_SH, slug],
+            stdout=log, stderr=subprocess.STDOUT, env={**os.environ},
         )
 
 
@@ -601,6 +628,30 @@ class Handler(BaseHTTPRequestHandler):
             threading.Thread(target=run_apply_license, args=(slug, tier, definition), daemon=True).start()
             return self._send(202, {"ok": True, "status": "applying-license", "slug": slug, "tier": tier})
 
+        # POST /bind-domain/<slug>  {"domain": "..."} — bind a custom domain + SSL.
+        if self.path.startswith("/bind-domain/"):
+            slug = self.path[len("/bind-domain/"):]
+            if not SLUG_RE.match(slug):
+                return self._send(400, {"error": "invalid slug"})
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                data = json.loads(self.rfile.read(length) or b"{}")
+            except Exception:
+                return self._send(400, {"error": "bad json"})
+            domain = str(data.get("domain", "")).strip().lower()
+            if not DOMAIN_RE.match(domain):
+                return self._send(400, {"error": "invalid domain"})
+            threading.Thread(target=run_bind_domain, args=(slug, domain), daemon=True).start()
+            return self._send(202, {"ok": True, "status": "binding", "slug": slug, "domain": domain})
+
+        # POST /unbind-domain/<slug> — revert to the subdomain, drop the custom vhost.
+        if self.path.startswith("/unbind-domain/"):
+            slug = self.path[len("/unbind-domain/"):]
+            if not SLUG_RE.match(slug):
+                return self._send(400, {"error": "invalid slug"})
+            threading.Thread(target=run_unbind_domain, args=(slug,), daemon=True).start()
+            return self._send(202, {"ok": True, "status": "unbinding", "slug": slug})
+
         # POST /apply-settings/<slug>  {"settings": {...}} — re-push global settings.
         if self.path.startswith("/apply-settings/"):
             slug = self.path[len("/apply-settings/"):]
@@ -807,6 +858,20 @@ class Handler(BaseHTTPRequestHandler):
             if not self._authed():
                 return self._send(401, {"error": "unauthorized"})
             return self._send(200, collect_health())
+
+        # GET /domain-status/<slug> — last custom-domain bind result for an academy.
+        if self.path.startswith("/domain-status/"):
+            if not self._authed():
+                return self._send(401, {"error": "unauthorized"})
+            slug = self.path[len("/domain-status/"):]
+            if not SLUG_RE.match(slug):
+                return self._send(400, {"error": "invalid slug"})
+            path = os.path.join(SAAS_ROOT, "clients", slug, "domain-status.json")
+            try:
+                with open(path) as f:
+                    return self._send(200, json.load(f))
+            except Exception:
+                return self._send(200, {"state": "none"})
 
         if not self.path.startswith("/status/"):
             return self._send(404, {"error": "not found"})

@@ -227,6 +227,67 @@ export async function fetchAcademyUsage(): Promise<
     }
 }
 
+/** Ask server B to bind a custom domain to a live academy: add the vhost, issue
+ *  the cert (certbot), and make it the canonical wwwroot. Fire-and-forget — the UI
+ *  polls fetchDomainStatus() for the outcome. Returns whether the trigger was sent. */
+export async function triggerBindDomain(slug: string, domain: string): Promise<boolean> {
+    const base = process.env.PROVISION_URL;
+    const secret = process.env.PROVISION_SECRET;
+    if (!base || !secret) return false;
+    try {
+        const url = new URL(base);
+        url.pathname = `/bind-domain/${slug}`;
+        await fetch(url.toString(), {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Provision-Secret": secret },
+            body: JSON.stringify({ domain, canonical: true }),
+        });
+        return true;
+    } catch (e) {
+        console.error("[provision] bind-domain trigger failed", slug, e);
+        return false;
+    }
+}
+
+/** Ask server B to unbind the custom domain: revert wwwroot to the subdomain and
+ *  drop the custom vhost. Best-effort, fire-and-forget. */
+export async function triggerUnbindDomain(slug: string): Promise<void> {
+    const base = process.env.PROVISION_URL;
+    const secret = process.env.PROVISION_SECRET;
+    if (!base || !secret) return;
+    try {
+        const url = new URL(base);
+        url.pathname = `/unbind-domain/${slug}`;
+        await fetch(url.toString(), { method: "POST", headers: { "X-Provision-Secret": secret } });
+    } catch (e) {
+        console.error("[provision] unbind-domain trigger failed", slug, e);
+    }
+}
+
+/** Read the last custom-domain bind result server B recorded for an academy.
+ *  null when unreachable/unknown. state: verifying | active | failed. */
+export async function fetchDomainStatus(
+    slug: string,
+): Promise<{ state: string; domain?: string; error?: string } | null> {
+    const base = process.env.PROVISION_URL;
+    const secret = process.env.PROVISION_SECRET;
+    if (!base || !secret) return null;
+    try {
+        const url = new URL(base);
+        url.pathname = `/domain-status/${slug}`;
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 8000);
+        const res = await fetch(url.toString(), {
+            headers: { "X-Provision-Secret": secret }, cache: "no-store", signal: ctrl.signal,
+        });
+        clearTimeout(timer);
+        if (!res.ok) return null;
+        return await res.json();
+    } catch {
+        return null;
+    }
+}
+
 /** Tell server B to tear the live site down (container + db + files + vhost + cert).
  * Best-effort, fire-and-forget. */
 export async function triggerDeprovision(slug: string): Promise<void> {

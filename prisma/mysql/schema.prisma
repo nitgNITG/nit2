@@ -103,6 +103,13 @@ model Academy {
   // console yet? Google offers no API/wildcard, so it's a manual step per academy;
   // the admin ticks this once done. Purely a bookkeeping flag for the dashboard.
   googleOauthAdded Boolean @default(false)
+  // Custom domain (Phase 2, owner self-serve). When bound and active it becomes
+  // the academy's canonical wwwroot; the <slug>.<base> subdomain 301-redirects to
+  // it. null = subdomain only. domainStatus: none | pending_dns | verifying |
+  // active | failed. domainError holds the last failure reason for the owner.
+  customDomain String? @unique
+  domainStatus String  @default("none")
+  domainError  String? @db.Text
   createdAt DateTime @default(now())
 }
 

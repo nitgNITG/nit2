@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { connectLinks } from '@/lib/connectLinks'
 import DeletePlatformButton from './DeletePlatformButton'
 import BuildProductForm from '../build-product/BuildProductForm'
+import CustomDomainCard from './CustomDomainCard'
 
 const MONO = "'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace"
 
@@ -545,6 +546,9 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
                     triggerClassName='inline-flex w-fit items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-bold text-red-600 hover:bg-red-500/10 transition-colors'
                 />
             </div>
+
+            {/* Custom domain (owner self-serve) — only meaningful once the site is live. */}
+            {live && <div className='mt-4'><CustomDomainCard slug={academy.slug} /></div>}
 
             {/* Edit-branding modal — reuses the build form in edit mode (owner-scoped
                 via /api/academies/<slug>/branding). */}
