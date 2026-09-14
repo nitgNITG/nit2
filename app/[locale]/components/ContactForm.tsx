@@ -55,7 +55,20 @@ const ContactForm = () => {
     const [dialCode, setDialCode] = useState('+20');
     const [customDial, setCustomDial] = useState('');
     const tracking = useTrackingData();
-    const { register, handleSubmit, formState: { errors }, reset } = useForm();
+    const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm();
+
+    // Prefill subject + message when arrived from a "Contact us" plan card
+    // (/contact?plan=<key>), so sales sees which plan the lead wanted. Read from
+    // the URL in an effect (client-only) to avoid a useSearchParams Suspense wrap.
+    useEffect(() => {
+        const plan = new URLSearchParams(window.location.search).get('plan');
+        if (!plan) return;
+        const nice = plan.replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim();
+        setValue('subject', isAr ? `استفسار عن باقة ${nice}` : `${nice} plan — enquiry`);
+        setValue('message', isAr
+            ? `مرحباً، أنا مهتم بباقة ${nice} لأكاديميتي. برجاء التواصل معي.`
+            : `Hi, I'm interested in the ${nice} plan for my academy. Please get in touch.`);
+    }, [setValue, isAr]);
 
     const onSubmit = async (formData: any) => {
         try {
