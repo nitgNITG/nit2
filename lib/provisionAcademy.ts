@@ -9,6 +9,8 @@ import type { Brand } from "@/lib/brand";
 import { generateAdminPassword, encryptSecret } from "@/lib/secretBox";
 import { buildIntegrationEnv, hasIntegrationPayload } from "@/lib/integrations";
 import { notifyTelegram } from "@/lib/telegram";
+import { alertAdmins } from "@/lib/adminAlert";
+import { fetchServerHealth, formatHealth } from "@/lib/serverHealth";
 
 const OWNER = process.env.SAAS_REPO_OWNER ?? "NITGg";
 const REPO = process.env.SAAS_REPO_NAME ?? "saas-demo";
@@ -376,9 +378,11 @@ export async function provisionAcademy(input: ProvisionInput): Promise<Provision
                 nitAdminPasswordEnc: encryptSecret(nitAdminPassword), // NIT super-admin pw (support)
             },
         });
-        await notifyTelegram(
+        // Announce to admins WITH the server-B health snapshot (Telegram + email).
+        await alertAdmins(
             `🆕 New academy: ${academy.slug} ("${input.name}") — tier ${input.tier}` +
             (input.owner.email ? ` · ${input.owner.email}` : ""),
+            formatHealth(await fetchServerHealth()),
         );
         return { ok: true, slug: academy.slug, branch: academy.branch, persisted: true };
     } catch (e: any) {

@@ -7,6 +7,8 @@ import { type Brand, sanitizeBrand } from "@/lib/brand";
 import { generateAdminPassword, encryptSecret } from "@/lib/secretBox";
 import { buildIntegrationEnv } from "@/lib/integrations";
 import { notifyTelegram } from "@/lib/telegram";
+import { evaluateServerHealth, formatHealth, creationBlockedMessage, healthBlockAlertBody } from "@/lib/serverHealth";
+import { alertAdmins, supportWhatsapp } from "@/lib/adminAlert";
 
 // ── SaaS repo that holds the base ("main") every academy branches from ────────
 const OWNER = process.env.SAAS_REPO_OWNER ?? "NITGg";
@@ -168,6 +170,26 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "الخدمة غير مهيأة حالياً، جرّب لاحقاً." }, { status: 500 });
         }
 
+        // Server-B health gate: never provision onto a host that's out of disk or
+        // unreachable. Alert the admins (Telegram + email) and refuse with a
+        // support message. The health snapshot is reused in the success alert below.
+        const verdict = await evaluateServerHealth();
+        if (!verdict.ok) {
+            await alertAdmins(
+                `🚫 Academy creation blocked — ${cleanSlug}`,
+                `${healthBlockAlertBody(verdict)}\n\nRequested by: ${user.email ?? user.id} · tier ${tier}`,
+            );
+            return NextResponse.json(
+                {
+                    error: creationBlockedMessage(),
+                    errorcode: "server_unhealthy",
+                    reason: verdict.reason,
+                    support_whatsapp: await supportWhatsapp(),
+                },
+                { status: 503 },
+            );
+        }
+
         const branch = `client/${cleanSlug}`;
 
         // Already taken in our records? Best-effort — if the control-plane DB is
@@ -252,9 +274,12 @@ export async function POST(req: NextRequest) {
                     nitAdminPasswordEnc: encryptSecret(nitAdminPassword), // NIT super-admin pw (support)
                 },
             });
-            await notifyTelegram(
+            // Announce the new academy to admins WITH the server-B health snapshot
+            // (Telegram + email), per the manager's request.
+            await alertAdmins(
                 `🆕 New academy: ${academy.slug} ("${cleanName}") — tier ${tier}` +
                 (user.email ? ` · ${user.email}` : ""),
+                formatHealth(verdict.health),
             );
             return NextResponse.json(
                 { ok: true, slug: academy.slug, branch: academy.branch },

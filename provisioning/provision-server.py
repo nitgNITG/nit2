@@ -469,6 +469,101 @@ def collect_usage() -> dict:
     return data
 
 
+# ── Host health snapshot (for the pre-create gate + Telegram/email/dashboard) ──
+# The machine-readable version of the ops health script: disk headroom on the
+# academies volume, memory, load/CPU, docker + shared MariaDB, failed systemd
+# services, uptime. Fast (no du/moodledata walk — that's /usage), cached briefly.
+_HEALTH_CACHE = {"at": 0.0, "data": None}
+_HEALTH_TTL = 15  # seconds
+DB_CONTAINER = os.environ.get("SAAS_DB_CONTAINER", "saas_mariadb")
+
+
+def _read_file(path: str) -> str:
+    try:
+        with open(path) as f:
+            return f.read()
+    except Exception:
+        return ""
+
+
+def collect_health() -> dict:
+    now = time.time()
+    if _HEALTH_CACHE["data"] is not None and (now - _HEALTH_CACHE["at"]) < _HEALTH_TTL:
+        return _HEALTH_CACHE["data"]
+
+    # Disk — the academies volume is what fills up as tenants are added.
+    try:
+        du = shutil.disk_usage(SAAS_ROOT)
+        disk = {
+            "path": SAAS_ROOT, "total_bytes": du.total, "used_bytes": du.used,
+            "free_bytes": du.free,
+            "used_pct": round(du.used * 100 / du.total) if du.total else 0,
+            "free_pct": round(du.free * 100 / du.total) if du.total else 0,
+        }
+    except Exception:
+        disk = {"path": SAAS_ROOT, "total_bytes": 0, "used_bytes": 0, "free_bytes": 0,
+                "used_pct": 0, "free_pct": 0}
+
+    # Memory — from /proc/meminfo (kB).
+    mem = {}
+    for line in _read_file("/proc/meminfo").splitlines():
+        k, _, v = line.partition(":")
+        mem[k.strip()] = v.strip()
+
+    def _kb(x: str) -> int:
+        try:
+            return int(x.split()[0]) * 1024
+        except Exception:
+            return 0
+
+    mem_total = _kb(mem.get("MemTotal", "0"))
+    mem_avail = _kb(mem.get("MemAvailable", "0"))
+    memory = {
+        "total_bytes": mem_total, "available_bytes": mem_avail,
+        "used_pct": round((mem_total - mem_avail) * 100 / mem_total) if mem_total else 0,
+    }
+
+    # Load + CPU.
+    la = _read_file("/proc/loadavg").split()
+    ncpu = os.cpu_count() or 1
+    load1 = float(la[0]) if la else 0.0
+    cpu = {
+        "count": ncpu, "load1": load1,
+        "load5": float(la[1]) if len(la) > 1 else 0.0,
+        "load15": float(la[2]) if len(la) > 2 else 0.0,
+        "load1_per_core": round(load1 / ncpu, 2) if ncpu else 0.0,
+    }
+
+    # Uptime (seconds).
+    up = _read_file("/proc/uptime").split()
+    uptime = int(float(up[0])) if up else 0
+
+    # Docker: running container count + is the shared MariaDB up.
+    try:
+        out = subprocess.run(["docker", "ps", "--format", "{{.Names}}"],
+                             capture_output=True, text=True, timeout=15)
+        names = [n for n in out.stdout.splitlines() if n.strip()]
+        docker = {"running": len(names), "mariadb_up": DB_CONTAINER in names}
+    except Exception:
+        docker = {"running": 0, "mariadb_up": False}
+
+    # Failed systemd services.
+    try:
+        out = subprocess.run(["systemctl", "--failed", "--no-legend", "--plain", "--no-pager"],
+                             capture_output=True, text=True, timeout=15)
+        failed = [l.split()[0] for l in out.stdout.splitlines() if l.strip()]
+    except Exception:
+        failed = []
+
+    data = {
+        "disk": disk, "memory": memory, "cpu": cpu, "uptime_seconds": uptime,
+        "docker": docker, "failed_services": failed, "generated_at": int(now),
+    }
+    _HEALTH_CACHE["at"] = now
+    _HEALTH_CACHE["data"] = data
+    return data
+
+
 class Handler(BaseHTTPRequestHandler):
     def _send(self, code, obj):
         body = json.dumps(obj, ensure_ascii=False).encode()
@@ -703,6 +798,12 @@ class Handler(BaseHTTPRequestHandler):
             if not self._authed():
                 return self._send(401, {"error": "unauthorized"})
             return self._send(200, collect_usage())
+
+        # GET /health — host health snapshot (disk/memory/cpu/docker/services).
+        if self.path == "/health":
+            if not self._authed():
+                return self._send(401, {"error": "unauthorized"})
+            return self._send(200, collect_health())
 
         if not self.path.startswith("/status/"):
             return self._send(404, {"error": "not found"})

@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 const {
     db, getCurrentUser, toLicenseDefinition, computeUpgradable, sanitizeBrand,
     generateAdminPassword, encryptSecret, buildIntegrationEnv, notifyTelegram,
+    evaluateServerHealth, alertAdmins,
 } = vi.hoisted(() => ({
     db: {
         license: { findFirst: vi.fn(), findMany: vi.fn() },
@@ -17,6 +18,8 @@ const {
     encryptSecret: vi.fn(),
     buildIntegrationEnv: vi.fn(),
     notifyTelegram: vi.fn(),
+    evaluateServerHealth: vi.fn(),
+    alertAdmins: vi.fn(),
 }));
 
 vi.mock("@/lib/prismaMysql", () => ({ default: db }));
@@ -26,6 +29,13 @@ vi.mock("@/lib/brand", () => ({ sanitizeBrand }));
 vi.mock("@/lib/secretBox", () => ({ generateAdminPassword, encryptSecret }));
 vi.mock("@/lib/integrations", () => ({ buildIntegrationEnv }));
 vi.mock("@/lib/telegram", () => ({ notifyTelegram }));
+vi.mock("@/lib/serverHealth", () => ({
+    evaluateServerHealth,
+    formatHealth: () => "HEALTH",
+    creationBlockedMessage: () => "blocked-please-contact-support",
+    healthBlockAlertBody: () => "block-body",
+}));
+vi.mock("@/lib/adminAlert", () => ({ alertAdmins, supportWhatsapp: async () => "+20100000000" }));
 
 import { POST } from "@/app/api/academies/route";
 
@@ -68,6 +78,9 @@ beforeEach(() => {
     encryptSecret.mockReturnValue("enc");
     buildIntegrationEnv.mockResolvedValue({});
     notifyTelegram.mockResolvedValue(undefined);
+    // Health gate passes by default; individual tests override.
+    evaluateServerHealth.mockResolvedValue({ ok: true, reachable: true, reason: null, thresholdPct: 20, freePct: 55, health: {} });
+    alertAdmins.mockResolvedValue(undefined);
 
     // GitHub API: 1st call = read base ref, 2nd = create branch.
     fetchMock = vi.fn().mockResolvedValueOnce(GH_REF).mockResolvedValueOnce(GH_BRANCH_OK);
@@ -108,6 +121,22 @@ describe("POST /api/academies", () => {
         delete process.env.GITHUB_TOKEN;
         const res = await post({ name: "Acme", slug: "acme", tier: "basic" });
         expect(res.status).toBe(500);
+    });
+
+    it("503 + support message when server B fails the health gate (no branch, admins alerted)", async () => {
+        evaluateServerHealth.mockResolvedValue({ ok: false, reachable: false, reason: "unreachable", thresholdPct: 20, freePct: null, health: null });
+        const res = await post({ name: "Acme", slug: "acme", tier: "basic" });
+        expect(res.status).toBe(503);
+        const body = await res.json();
+        expect(body).toMatchObject({ errorcode: "server_unhealthy", reason: "unreachable", support_whatsapp: "+20100000000" });
+        expect(fetchMock).not.toHaveBeenCalled();      // never touched GitHub
+        expect(db.academy.create).not.toHaveBeenCalled(); // nothing recorded
+        expect(alertAdmins).toHaveBeenCalled();          // admins notified of the block
+    });
+
+    it("announces the new academy to admins (with health) on success", async () => {
+        await post({ name: "Acme", slug: "acme", tier: "basic" });
+        expect(alertAdmins).toHaveBeenCalledWith(expect.stringContaining("acme"), "HEALTH");
     });
 
     it("409 when the slug already exists", async () => {

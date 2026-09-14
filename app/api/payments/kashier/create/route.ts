@@ -4,6 +4,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { sanitizeBrand } from "@/lib/brand";
 import { createSession, kashierConfigured } from "@/lib/kashier";
 import { subscriptionsEnabled } from "@/lib/subscriptions";
+import { evaluateServerHealth, creationBlockedMessage, healthBlockAlertBody } from "@/lib/serverHealth";
+import { alertAdmins, supportWhatsapp } from "@/lib/adminAlert";
 import crypto from "crypto";
 
 export const runtime = "nodejs";
@@ -176,6 +178,25 @@ export async function POST(req: NextRequest) {
         // Slug must be free before we take money for it.
         const existing = await prisma.academy.findUnique({ where: { slug } }).catch(() => null);
         if (existing) return NextResponse.json({ error: "المعرّف ده مستخدم بالفعل، اختار غيره." }, { status: 409 });
+
+        // Don't take payment if we can't provision: server-B health gate (same as
+        // the free path). Alert admins and refuse with a support message.
+        const verdict = await evaluateServerHealth();
+        if (!verdict.ok) {
+            await alertAdmins(
+                `🚫 Paid academy creation blocked — ${slug}`,
+                `${healthBlockAlertBody(verdict)}\n\nRequested by: ${user.email ?? user.id} · tier ${requestedKey}`,
+            );
+            return NextResponse.json(
+                {
+                    error: creationBlockedMessage(),
+                    errorcode: "server_unhealthy",
+                    reason: verdict.reason,
+                    support_whatsapp: await supportWhatsapp(),
+                },
+                { status: 503 },
+            );
+        }
     }
 
     const orderId = "acad_" + crypto.randomUUID().replace(/-/g, "").slice(0, 24);

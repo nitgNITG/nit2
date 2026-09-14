@@ -19,6 +19,12 @@ export default function SetupPage() {
     const [health, setHealth] = useState<any>(null)
     const [healthLoading, setHealthLoading] = useState(false)
 
+    // Server B (academies host) health + the create-gate settings.
+    const [server, setServer] = useState<any>(null)
+    const [serverLoading, setServerLoading] = useState(false)
+    const [gate, setGate] = useState({ server_min_free_pct: '20', admin_alert_emails: '', support_whatsapp: '' })
+    const [savingGate, setSavingGate] = useState(false)
+
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [setupMsg, setSetupMsg] = useState<any>(null)
@@ -52,7 +58,41 @@ export default function SetupPage() {
         setSetupLoading(false)
     }
 
-    useEffect(() => { checkHealth() }, [])
+    const checkServer = async () => {
+        setServerLoading(true)
+        try {
+            const { data } = await axios.get('/api/server-health')
+            setServer(data)
+        } catch (e: any) {
+            setServer({ ok: false, reachable: false, reason: 'error', error: e.message })
+        }
+        setServerLoading(false)
+    }
+
+    const loadGate = async () => {
+        try {
+            const { data } = await axios.get('/api/server-settings')
+            setGate({
+                server_min_free_pct: String(data.server_min_free_pct ?? '20'),
+                admin_alert_emails: data.admin_alert_emails ?? '',
+                support_whatsapp: data.support_whatsapp ?? '',
+            })
+        } catch { /* leave defaults */ }
+    }
+
+    const saveGate = async () => {
+        setSavingGate(true)
+        try {
+            await axios.put('/api/server-settings', gate)
+            setSetupMsg({ message: '✅ Provisioning settings saved.' })
+            checkServer()
+        } catch (e: any) {
+            setSetupMsg({ message: '❌ ' + (e?.response?.data?.error || 'Save failed') })
+        }
+        setSavingGate(false)
+    }
+
+    useEffect(() => { checkHealth(); checkServer(); loadGate() }, [])
 
     return (
         <div className='dashboard-container py-5 lg:py-10 space-y-8 max-w-3xl'>
@@ -107,6 +147,78 @@ export default function SetupPage() {
                 ) : (
                     <div className='px-6 py-8 text-center text-gray-400'>Checking…</div>
                 )}
+            </div>
+
+            {/* Server B (academies host) health + create gate */}
+            <div className='bg-white rounded-xl border shadow-sm overflow-hidden'>
+                <div className='flex justify-between items-center px-6 py-4 border-b bg-gray-50'>
+                    <div>
+                        <h2 className='font-bold text-lg'>🖥️ Server B — academies host</h2>
+                        <p className='text-xs text-gray-500 mt-0.5'>Live health of the server that runs the academies, and the gate that stops new academies when it’s low on space or unreachable.</p>
+                    </div>
+                    <button onClick={checkServer} disabled={serverLoading}
+                        className='bg-blue-500 text-white px-4 py-1.5 rounded-md text-sm font-semibold disabled:opacity-50'>
+                        {serverLoading ? 'Checking…' : 'Re-check'}
+                    </button>
+                </div>
+                <div className='px-6 py-2'>
+                    {server ? (() => {
+                        const gb = (b: number) => (Number(b || 0) / 1073741824).toFixed(1) + ' GB'
+                        const h = server.health
+                        const banner = server.ok
+                            ? { t: `✅ Healthy — new academies allowed (${server.freePct}% free ≥ ${server.thresholdPct}% required)`, c: 'text-green-600 bg-green-50' }
+                            : server.reason === 'unreachable'
+                                ? { t: '❌ Server B unreachable — new academies are blocked', c: 'text-red-500 bg-red-50' }
+                                : { t: `⛔ Low disk — new academies blocked (${server.freePct}% free < ${server.thresholdPct}% required)`, c: 'text-red-500 bg-red-50' }
+                        return (
+                            <>
+                                <div className={`text-center py-3 mb-2 rounded-lg font-bold ${banner.c}`}>{banner.t}</div>
+                                {h && (
+                                    <>
+                                        <Row label='Disk (academies volume)' value={`${h.disk.free_pct}% free — ${gb(h.disk.free_bytes)} of ${gb(h.disk.total_bytes)}`} />
+                                        <Row label='Memory' value={`${h.memory.used_pct}% used — ${gb(h.memory.available_bytes)} free`} />
+                                        <Row label='CPU load (1m)' value={`${h.cpu.load1} on ${h.cpu.count} cores (${h.cpu.load1_per_core}/core)`} />
+                                        <Row label='Docker' value={`${h.docker.running} running · MariaDB ${h.docker.mariadb_up ? '✅ up' : '❌ down'}`} />
+                                        <Row label='Failed services' value={h.failed_services?.length ? `⚠️ ${h.failed_services.join(', ')}` : '✅ none'} />
+                                        <Row label='Uptime' value={`${Math.floor(h.uptime_seconds / 86400)}d ${Math.floor((h.uptime_seconds % 86400) / 3600)}h`} />
+                                    </>
+                                )}
+                            </>
+                        )
+                    })() : (
+                        <div className='py-8 text-center text-gray-400'>Checking…</div>
+                    )}
+
+                    <p className='text-xs font-bold text-gray-400 uppercase tracking-wider mt-5 mb-2'>Gate & alert settings</p>
+                    <div className='space-y-3 pb-4'>
+                        <div>
+                            <label className='block text-sm font-semibold text-gray-600 mb-1'>Minimum free disk % to allow a new academy</label>
+                            <input type='number' min={0} max={99} value={gate.server_min_free_pct}
+                                onChange={e => setGate(g => ({ ...g, server_min_free_pct: e.target.value }))}
+                                className='w-32 border-2 rounded-lg px-3 py-2 outline-none focus:border-blue-500 text-sm' />
+                            <span className='text-xs text-gray-400 ml-2'>Below this, creation is refused with a support message.</span>
+                        </div>
+                        <div>
+                            <label className='block text-sm font-semibold text-gray-600 mb-1'>Admin alert emails</label>
+                            <input type='text' value={gate.admin_alert_emails}
+                                onChange={e => setGate(g => ({ ...g, admin_alert_emails: e.target.value }))}
+                                placeholder='ops@nitg-eg.com, admin@nitg-eg.com'
+                                className='w-full border-2 rounded-lg px-3 py-2 outline-none focus:border-blue-500 text-sm' />
+                            <span className='text-xs text-gray-400'>Comma-separated. Emailed the health snapshot on every new academy, and any blocked attempt. (Telegram is always sent when configured.)</span>
+                        </div>
+                        <div>
+                            <label className='block text-sm font-semibold text-gray-600 mb-1'>Support WhatsApp (shown to blocked users)</label>
+                            <input type='text' value={gate.support_whatsapp}
+                                onChange={e => setGate(g => ({ ...g, support_whatsapp: e.target.value }))}
+                                placeholder='+20 10 xxxx xxxx  or  https://wa.me/2010xxxxxxxx'
+                                className='w-full border-2 rounded-lg px-3 py-2 outline-none focus:border-blue-500 text-sm' />
+                        </div>
+                        <button onClick={saveGate} disabled={savingGate}
+                            className='bg-green-600 text-white px-5 py-2 rounded-lg font-bold text-sm disabled:opacity-50'>
+                            {savingGate ? 'Saving…' : 'Save settings'}
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {/* Create Admin */}
