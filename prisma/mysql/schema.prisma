@@ -134,6 +134,10 @@ model License {
   kashierEnabled Boolean @default(false) // push the shared Kashier gateway config to academies on this licence
   limits       Json // per-activity caps e.g. {"quiz":-1,"video":-1,"pdf":-1,"default":-1}
   features     Json // toggles e.g. {"drm":false,"coupons":true,"subscriptions":false,"packages":false,"jitsi":false,"offers":false}
+  // "Contact sales" plan (e.g. Professional/Enterprise): shown on the pricing page
+  // with a Contact-us CTA instead of a price, and NOT directly purchasable — the
+  // checkout is refused server-side. For custom/quote-based tiers.
+  contactSales Boolean @default(false)
   order        Int      @default(0)
   createdAt    DateTime @default(now())
 }

@@ -55,7 +55,7 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     // Paid plans this academy could upgrade to (client picks one for `upgrade`).
     const upgradeOptions = await prisma.license
         .findMany({
-            where: { active: true },
+            where: { active: true, contactSales: false },
             orderBy: [{ order: "asc" }, { priceEgp: "asc" }],
             select: { key: true, name: true, price: true, priceEgp: true, durationDays: true,
                       storageGb: true, maxCourses: true, maxTeachers: true, videoSource: true, features: true },

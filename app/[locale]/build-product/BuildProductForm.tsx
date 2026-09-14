@@ -36,7 +36,7 @@ const PALETTE_PRESETS: { name: string; dark: boolean; p: Palette }[] = [
     // Deep blue + slate (mrfathybakrmathematics.com).
     { name: 'Navy', dark: false, p: { primary: '#003362', accent: '#1f6fb2', secondary: '#e9eef4', background: '#ffffff', surface: '#f2f6fa', text: '#10233a' } },
 ]
-type License = { key: string; name: string; price: number; priceEgp?: number; priceEgpMonthly?: number; durationDays?: number; active: boolean; maxCourses: number; maxTeachers?: number; storageGb?: number; videoSource?: string; features: Record<string, boolean> }
+type License = { key: string; name: string; price: number; priceEgp?: number; priceEgpMonthly?: number; durationDays?: number; active: boolean; contactSales?: boolean; maxCourses: number; maxTeachers?: number; storageGb?: number; videoSource?: string; features: Record<string, boolean> }
 const FEATURE_LABELS: Record<string, string> = { drm: 'DRM video', coupons: 'coupons', offers: 'offers', subscriptions: 'subscriptions', packages: 'packages', jitsi: 'live sessions' }
 
 type FormValues = {
@@ -178,8 +178,10 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
             .then((d) => {
                 const active: License[] = (d.licenses ?? []).filter((l: License) => l.active)
                 setLicenses(active)
-                if (active.length && !active.some((l) => l.key === watch('tier'))) {
-                    setValue('tier', active[0].key)
+                // Default to a BUYABLE plan — never a "contact sales" one.
+                const buyable = active.filter((l) => !l.contactSales)
+                if (buyable.length && !buyable.some((l) => l.key === watch('tier'))) {
+                    setValue('tier', buyable[0].key)
                 }
             })
             .catch(() => { })
@@ -558,17 +560,24 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                         const per = useMonthly ? (isAr ? '/شهر' : '/mo') : (isAr ? '/سنة' : '/yr')
                         const cap = (n?: number) => ((n ?? -1) < 0 ? '∞' : String(n))
                         const feats = Object.keys(lic.features || {}).filter((f) => lic.features[f]).map((f) => FEATURE_LABELS[f] ?? f)
+                        const contact = !!lic.contactSales
                         return (
                             <button
                                 type='button'
                                 key={lic.key}
-                                onClick={() => setValue('tier', lic.key)}
-                                className={`text-start rounded-xl border p-3 transition-colors ${on ? 'border-[#1E7D67] bg-[#1E7D67]/5 ring-1 ring-[#1E7D67]' : 'border-gray-200 bg-gray-50 hover:border-gray-300'}`}
+                                onClick={() => contact
+                                    ? window.open(`/${locale}/contact?plan=${lic.key}`, '_blank')
+                                    : setValue('tier', lic.key)}
+                                className={`text-start rounded-xl border p-3 transition-colors ${contact ? 'border-[#0B2923]/20 bg-[#0B2923]/[0.03] hover:border-[#0B2923]/40' : on ? 'border-[#1E7D67] bg-[#1E7D67]/5 ring-1 ring-[#1E7D67]' : 'border-gray-200 bg-gray-50 hover:border-gray-300'}`}
                             >
                                 <div className='flex items-baseline justify-between gap-2'>
                                     <span className='font-bold text-[#0B2923]'>{lic.name}</span>
                                     <span className='text-sm font-bold text-[#1E7D67]' dir='ltr'>
-                                        {paid ? (
+                                        {contact ? (
+                                            <span className='rounded-full bg-[#0B2923]/10 px-2 py-0.5 text-[11px] font-bold text-[#0B2923]'>
+                                                {isAr ? 'تواصل معنا' : 'Contact us'}
+                                            </span>
+                                        ) : paid ? (
                                             <>
                                                 {price} {isAr ? 'ج.م' : 'EGP'}
                                                 <span className='text-[10px] font-normal text-gray-400'> {per}</span>
@@ -576,8 +585,11 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                                         ) : (isAr ? 'مجاني' : 'Free')}
                                     </span>
                                 </div>
-                                {paid && billingCycle === 'monthly' && !hasMonthly && (
+                                {!contact && paid && billingCycle === 'monthly' && !hasMonthly && (
                                     <p className='text-[10px] text-gray-400'>{isAr ? 'سنوي فقط' : 'annual only'}</p>
+                                )}
+                                {contact && (
+                                    <p className='text-[10px] font-semibold text-[#0B2923]/50'>{isAr ? 'باقة مخصّصة — تواصل مع المبيعات' : 'Custom plan — talk to sales'}</p>
                                 )}
                                 {/* Full package details. */}
                                 <div className='mt-1.5 space-y-0.5 text-[11px] leading-relaxed text-gray-500'>

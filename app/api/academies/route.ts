@@ -119,7 +119,15 @@ export async function POST(req: NextRequest) {
             ? await prisma.license.findFirst({ where: { key: requestedKey, active: true } })
             : null;
         if (!lic) {
-            lic = await prisma.license.findFirst({ where: { active: true }, orderBy: [{ price: "asc" }, { order: "asc" }] });
+            lic = await prisma.license.findFirst({ where: { active: true, contactSales: false }, orderBy: [{ price: "asc" }, { order: "asc" }] });
+        }
+        // "Contact sales" plans are provisioned only after a sales conversation —
+        // never through the self-serve create flow.
+        if (lic?.contactSales) {
+            return NextResponse.json(
+                { error: "هذه الباقة بالطلب — تواصل مع المبيعات. / This plan is available by request — please contact sales." },
+                { status: 400 },
+            );
         }
         const tier = lic?.key ?? "demo";
         const rankLics = await prisma.license.findMany({ where: { active: true }, select: { key: true, active: true, order: true, priceEgp: true } });

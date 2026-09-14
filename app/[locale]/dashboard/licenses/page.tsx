@@ -17,6 +17,7 @@ type License = {
     storageGb: number
     supportedApp: boolean
     kashierEnabled: boolean
+    contactSales: boolean
     videoSource: string
     limits: Record<string, number>
     features: Record<string, boolean>
@@ -32,7 +33,7 @@ const LIMIT_KEYS = ['quiz', 'video', 'pdf', 'default']
 
 const blank = (): License => ({
     key: '', name: '', active: true, price: 0, priceEgp: 0, priceEgpMonthly: 0, durationDays: 365,
-    maxCourses: -1, maxTeachers: -1, storageGb: 1, supportedApp: true, kashierEnabled: false, videoSource: 'vimeo', order: 0,
+    maxCourses: -1, maxTeachers: -1, storageGb: 1, supportedApp: true, kashierEnabled: false, contactSales: false, videoSource: 'vimeo', order: 0,
     limits: { quiz: -1, video: -1, pdf: -1, default: -1 },
     features: Object.fromEntries(FEATURE_KEYS.map((f) => [f, false])),
 })
@@ -191,6 +192,10 @@ const LicensesPage = () => {
                             <label className='flex items-center gap-2 text-sm font-semibold' title='Push the shared Kashier payment gateway to academies on this licence (credentials set in Platform Settings → Integrations).'>
                                 <input type='checkbox' checked={form.kashierEnabled} onChange={(e) => setForm((f) => f ? { ...f, kashierEnabled: e.target.checked } : f)} />
                                 Kashier payments
+                            </label>
+                            <label className='flex items-center gap-2 text-sm font-semibold' title='Show this plan with a “Contact us” button instead of a price, and refuse any direct purchase. For custom / quote-based tiers (e.g. Professional / Enterprise).'>
+                                <input type='checkbox' checked={form.contactSales} onChange={(e) => setForm((f) => f ? { ...f, contactSales: e.target.checked } : f)} />
+                                Contact sales (not buyable)
                             </label>
                         </div>
                     </div>

@@ -156,6 +156,14 @@ describe("POST /api/academies", () => {
         expect(db.academy.create).not.toHaveBeenCalled();
     });
 
+    it("400 for a contact-sales plan (no branch, no record)", async () => {
+        db.license.findFirst.mockResolvedValue({ key: "pro", price: 0, durationDays: 365, name: "Pro", contactSales: true });
+        const res = await post({ name: "Acme", slug: "acme", tier: "pro" });
+        expect(res.status).toBe(400);
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(db.academy.create).not.toHaveBeenCalled();
+    });
+
     it("creates the branch + control-plane record and returns 201", async () => {
         const res = await post({ name: "Acme", slug: "acme", tier: "basic" });
         expect(res.status).toBe(201);

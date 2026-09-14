@@ -15,7 +15,7 @@ export type ClientAcademy = {
     validUntil?: string | null
 }
 
-type Tier = { key: string; name: string; price: number; priceEgp?: number; priceEgpMonthly?: number; durationDays?: number; active: boolean; order?: number }
+type Tier = { key: string; name: string; price: number; priceEgp?: number; priceEgpMonthly?: number; durationDays?: number; active: boolean; contactSales?: boolean; order?: number }
 type SubPayment = { amount: number; currency: string; status: string; purpose: string; date: string | null }
 type Sub = {
     academySlug: string; status: string; autoRenew: boolean; amountEgp: number; currency: string
@@ -166,7 +166,7 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
         let cancelled = false
         fetch('/api/licenses', { cache: 'no-store' })
             .then((r) => r.json())
-            .then((d) => { if (!cancelled) setTiers((d.licenses ?? []).filter((l: Tier) => l.active)) })
+            .then((d) => { if (!cancelled) setTiers((d.licenses ?? []).filter((l: Tier) => l.active && !l.contactSales)) })
             .catch(() => { /* upgrade is optional */ })
         return () => { cancelled = true }
     }, [live, academy.tier])

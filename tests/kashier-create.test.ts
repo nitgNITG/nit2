@@ -100,6 +100,14 @@ describe("POST /api/payments/kashier/create", () => {
             expect(res.status).toBe(400);
         });
 
+        it("400 (contact_sales) for a contact-sales plan — no payment taken", async () => {
+            db.license.findFirst.mockResolvedValue({ key: "pro", priceEgp: 9000, durationDays: 365, contactSales: true });
+            const res = await post({ purpose: "new_academy", tier: "pro", name: "A", slug: "acme" });
+            expect(res.status).toBe(400);
+            expect((await res.json()).errorcode).toBe("contact_sales");
+            expect(db.payment.create).not.toHaveBeenCalled();
+        });
+
         it("409 when the slug is already taken", async () => {
             db.license.findFirst.mockResolvedValue(PAID);
             db.academy.findUnique.mockResolvedValue({ slug: "acme" });
@@ -152,6 +160,13 @@ describe("POST /api/payments/kashier/create", () => {
         it("400 when the target licence doesn't exist", async () => {
             db.license.findFirst.mockResolvedValue(null);
             expect((await post({ purpose: "upgrade", tier: "ghost", slug: "acme" })).status).toBe(400);
+        });
+
+        it("400 (contact_sales) when upgrading TO a contact-sales plan", async () => {
+            db.license.findFirst.mockResolvedValue({ key: "pro", priceEgp: 9000, durationDays: 365, active: true, contactSales: true });
+            const res = await post({ purpose: "upgrade", tier: "pro", slug: "acme" });
+            expect(res.status).toBe(400);
+            expect((await res.json()).errorcode).toBe("contact_sales");
         });
     });
 

@@ -96,6 +96,12 @@ export async function POST(req: NextRequest) {
         }
         const newLic = await prisma.license.findFirst({ where: { key: requestedKey, active: true } });
         if (!newLic) return NextResponse.json({ error: "الباقة غير موجودة." }, { status: 400 });
+        if (newLic.contactSales) {
+            return NextResponse.json(
+                { error: "هذه الباقة بالطلب — تواصل مع المبيعات. / This plan is available by request — please contact sales.", errorcode: "contact_sales" },
+                { status: 400 },
+            );
+        }
         const curLic = await prisma.license.findUnique({ where: { key: academy.tier } });
         const sub = await prisma.subscription.findUnique({ where: { academySlug: slug } }).catch(() => null);
         const cycle: "monthly" | "annual" = sub?.intervalDays === 30 ? "monthly" : "annual";
@@ -158,6 +164,14 @@ export async function POST(req: NextRequest) {
         ? await prisma.license.findFirst({ where: { key: requestedKey, active: true } })
         : null;
     if (!lic) return NextResponse.json({ error: "الباقة غير موجودة." }, { status: 400 });
+    // "Contact sales" plans are never bought directly — the pricing page shows a
+    // Contact-us CTA; refuse any checkout that targets one.
+    if (lic.contactSales) {
+        return NextResponse.json(
+            { error: "هذه الباقة بالطلب — تواصل مع المبيعات. / This plan is available by request — please contact sales.", errorcode: "contact_sales" },
+            { status: 400 },
+        );
+    }
     // Cycle picks the price + term: monthly = priceEgpMonthly / 30 days, annual =
     // priceEgp / durationDays. A monthly charge requires a monthly price on the tier.
     const MONTHLY_DAYS = 30;
