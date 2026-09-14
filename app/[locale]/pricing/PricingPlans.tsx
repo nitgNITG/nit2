@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
 import { useLocale } from 'next-intl'
 import LocaleLink from '../components/LocaleLink'
-import { FaWhatsapp } from 'react-icons/fa'
 import { FiCheck, FiX, FiChevronDown } from 'react-icons/fi'
 
 type License = {
@@ -230,16 +229,6 @@ export default function PricingPlans() {
                 {tr('كل الأسعار بالجنيه المصري وتشمل الاستضافة والتحديثات. يمكنك الترقية في أي وقت.',
                     'All prices in EGP and include hosting & updates. Upgrade anytime.')}
             </p>
-
-            {/* Floating WhatsApp — ask about a plan directly. */}
-            <a
-                href={`https://wa.me/201091568240?text=${encodeURIComponent(isAr ? 'مرحباً، عندي استفسار عن باقات الأكاديمية' : 'Hi, I have a question about the academy plans')}`}
-                target='_blank' rel='noreferrer'
-                aria-label='WhatsApp'
-                className='fixed bottom-6 start-6 z-[60] flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-3 font-bold text-white shadow-lg transition-transform hover:scale-105'>
-                <FaWhatsapp className='text-xl' />
-                <span>{tr('واتساب', 'WhatsApp')}</span>
-            </a>
         </div>
     )
 }
