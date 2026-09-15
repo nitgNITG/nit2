@@ -251,10 +251,19 @@ model AcademyRevenue {
   paidAt      DateTime // when the payment completed (from the academy)
   createdAt   DateTime @default(now()) // when we ingested it
 
-  // Idempotent ingest: one row per (academy, order). A resend just updates status.
+  // Settlement: NIT collects centrally then pays each owner out-of-band. These track
+  // which rows have been paid out to the owner (settled) vs still owed (outstanding).
+  // A settlement is a manual admin action, so this is just bookkeeping — no money moves.
+  settled      Boolean   @default(false)
+  settledAt    DateTime?
+  settlementRef String? // free-text note/reference (e.g. bank transfer id, batch date)
+
+  // Idempotent ingest: one row per (academy, order). A resend just updates status
+  // (never the settlement flags — a webhook re-delivery must not un-settle a row).
   @@unique([academySlug, orderId])
   @@index([academySlug])
   @@index([paidAt])
   @@index([provider])
   @@index([status])
+  @@index([settled])
 }
