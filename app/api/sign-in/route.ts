@@ -7,6 +7,7 @@ import prisma from "@/lib/prismaMysql";
 import { cookies } from "next/headers";
 import { mailerConfigured } from "@/lib/mailer";
 import { createAndSendOtp } from "@/lib/emailOtp";
+import { settingOn } from "@/lib/platformSettings";
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,11 +31,12 @@ export async function POST(req: NextRequest) {
         { message: "Invalid Password." },
         { status: 404 },
       );
-    // Optional email-verification gate. Off by default; enable with
-    // REQUIRE_EMAIL_VERIFICATION=1. Existing accounts are grandfathered (migration
-    // set emailVerified=true), so only unverified new sign-ups are blocked — and we
+    // Optional email-verification gate. Off by default; toggled from the admin
+    // panel (require_email_verification; REQUIRE_EMAIL_VERIFICATION env as legacy
+    // fallback). Existing accounts are grandfathered (migration set
+    // emailVerified=true), so only unverified new sign-ups are blocked — and we
     // resend a code so the client can verify right away.
-    if (process.env.REQUIRE_EMAIL_VERIFICATION === "1" && !user.emailVerified && mailerConfigured()) {
+    if ((await settingOn("require_email_verification", "REQUIRE_EMAIL_VERIFICATION")) && !user.emailVerified && mailerConfigured()) {
       await createAndSendOtp(String(email).toLowerCase(), "verify", { name: user.name ?? "", locale: "ar" }).catch(() => {});
       return NextResponse.json(
         { message: "لازم تأكيد بريدك الإلكتروني الأول.", needsVerify: true, email: String(email).toLowerCase() },

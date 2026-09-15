@@ -11,6 +11,7 @@ import { evaluateServerHealth, formatHealth, creationBlockedMessage, healthBlock
 import { alertAdmins, supportWhatsapp } from "@/lib/adminAlert";
 import { mailerConfigured } from "@/lib/mailer";
 import { createAndSendOtp } from "@/lib/emailOtp";
+import { settingOn, settingInt } from "@/lib/platformSettings";
 
 // ── SaaS repo that holds the base ("main") every academy branches from ────────
 const OWNER = process.env.SAAS_REPO_OWNER ?? "NITGg";
@@ -44,14 +45,14 @@ function checkRateLimit(ip: string): boolean {
 // typos and duplicate-slug retries don't burn the quota. In-memory per instance —
 // same caveat as the hourly limiter; resets on restart and isn't shared across
 // replicas, which is fine for a soft abuse brake.
+// The cap itself is a control-plane setting (academies_daily_ip_limit, admin
+// panel; ACADEMIES_DAILY_IP_LIMIT env as legacy fallback), read per request and
+// passed in — so it can be changed without a rebuild. In-memory per instance:
+// resets on restart and isn't shared across replicas (fine for a soft brake; see
+// the MySQL-counter note if durability is ever needed).
 const dailyIpCache = new Map<string, { count: number; resetAt: number }>();
 const DAILY_WINDOW_MS = 24 * 60 * 60 * 1000;
-// Read the cap at call time (env, default 5) so it can be tuned without a rebuild.
-function dailyIpLimit(): number {
-    return Number(process.env.ACADEMIES_DAILY_IP_LIMIT ?? 5);
-}
-function checkDailyIpLimit(ip: string): boolean {
-    const limit = dailyIpLimit();
+function checkDailyIpLimit(ip: string, limit: number): boolean {
     const now = Date.now();
     const entry = dailyIpCache.get(ip);
     if (!entry || now > entry.resetAt) {
@@ -135,11 +136,12 @@ export async function POST(req: NextRequest) {
         }
 
         // Verified-email gate — a confirmed inbox is required before provisioning a
-        // real container, so a throwaway account can't demo-farm. Gated on the same
-        // REQUIRE_EMAIL_VERIFICATION switch as sign-in; existing accounts were
-        // grandfathered (emailVerified=true) by the verification migration. We
+        // real container, so a throwaway account can't demo-farm. Toggled from the
+        // admin panel (require_email_verification; REQUIRE_EMAIL_VERIFICATION env as
+        // legacy fallback) — the same switch that gates sign-in. Existing accounts
+        // were grandfathered (emailVerified=true) by the verification migration. We
         // resend a code so the client can verify right away.
-        if (process.env.REQUIRE_EMAIL_VERIFICATION === "1" && mailerConfigured()) {
+        if ((await settingOn("require_email_verification", "REQUIRE_EMAIL_VERIFICATION")) && mailerConfigured()) {
             const dbUser = await prisma.user.findUnique({
                 where: { id: user.id },
                 select: { emailVerified: true, name: true },
@@ -257,10 +259,11 @@ export async function POST(req: NextRequest) {
 
         // Daily per-IP creation cap — counted here (after validation + health gate,
         // before we actually provision) so failed/duplicate attempts don't burn it.
-        if (dailyIpLimit() > 0 && !checkDailyIpLimit(ip)) {
+        const dailyLimit = await settingInt("academies_daily_ip_limit", 5, "ACADEMIES_DAILY_IP_LIMIT");
+        if (dailyLimit > 0 && !checkDailyIpLimit(ip, dailyLimit)) {
             return NextResponse.json(
                 {
-                    error: `وصلت للحد الأقصى لإنشاء الأكاديميات اليوم (${dailyIpLimit()}). حاول بكرة أو تواصل مع الدعم. / Daily academy-creation limit reached (${dailyIpLimit()}). Try again tomorrow or contact support.`,
+                    error: `وصلت للحد الأقصى لإنشاء الأكاديميات اليوم (${dailyLimit}). حاول بكرة أو تواصل مع الدعم. / Daily academy-creation limit reached (${dailyLimit}). Try again tomorrow or contact support.`,
                     errorcode: "daily_ip_limit",
                 },
                 { status: 429 },

@@ -61,6 +61,9 @@ function post(body: unknown) {
 }
 
 let fetchMock: ReturnType<typeof vi.fn>;
+// Key-aware PlatformSetting store — tests set rows they care about; everything else
+// reads as unset (null), so the route falls back to defaults / env.
+let settingRows: Record<string, string>;
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -68,11 +71,13 @@ beforeEach(() => {
     delete process.env.PROVISION_URL;   // triggerProvision no-ops → no provision fetch
     delete process.env.PROVISION_SECRET;
 
+    settingRows = {};
     getCurrentUser.mockResolvedValue(USER);
     db.license.findFirst.mockResolvedValue(PAID);
     db.license.findMany.mockResolvedValue([]);
     db.platformSetting.findMany.mockResolvedValue([]);
-    db.platformSetting.findUnique.mockResolvedValue(null);
+    db.platformSetting.findUnique.mockImplementation(async ({ where }: any) =>
+        where.key in settingRows ? { key: where.key, value: settingRows[where.key] } : null);
     db.academy.findUnique.mockResolvedValue(null);
     db.academy.count.mockResolvedValue(0);
     db.academy.create.mockResolvedValue({ slug: "acme", branch: "client/acme" });
@@ -159,7 +164,7 @@ describe("POST /api/academies", () => {
 
     it("403 when the free-academy quota is reached", async () => {
         db.license.findFirst.mockResolvedValue({ key: "demo", price: 0, durationDays: 14, name: "Demo" });
-        db.platformSetting.findUnique.mockResolvedValue({ value: "1" }); // free_academy_limit = 1
+        settingRows.free_academy_limit = "1"; // free_academy_limit = 1
         db.license.findMany.mockResolvedValue([{ key: "demo" }]);
         db.academy.count.mockResolvedValue(1); // already owns 1 free
         const res = await post({ name: "Demo", slug: "demo1", tier: "demo" });
@@ -179,6 +184,22 @@ describe("POST /api/academies", () => {
         expect(db.academy.create).not.toHaveBeenCalled();
     });
 
+    it("403 (email_unverified) driven by the app-setting alone (no env)", async () => {
+        settingRows.require_email_verification = "1"; // panel toggle, env unset
+        db.user.findUnique.mockResolvedValue({ emailVerified: false, name: "Owner" });
+        const res = await post({ name: "Acme", slug: "acme", tier: "basic" });
+        expect(res.status).toBe(403);
+        expect((await res.json()).errorcode).toBe("email_unverified");
+    });
+
+    it("app-setting off overrides a truthy env fallback", async () => {
+        process.env.REQUIRE_EMAIL_VERIFICATION = "1"; // legacy env on
+        settingRows.require_email_verification = "0"; // but the panel turned it off → wins
+        db.user.findUnique.mockResolvedValue({ emailVerified: false, name: "Owner" });
+        const res = await post({ name: "Acme", slug: "acme", tier: "basic" });
+        expect(res.status).toBe(201);
+    });
+
     it("proceeds when verification is required but the owner IS verified", async () => {
         process.env.REQUIRE_EMAIL_VERIFICATION = "1";
         db.user.findUnique.mockResolvedValue({ emailVerified: true, name: "Owner" });
@@ -194,7 +215,24 @@ describe("POST /api/academies", () => {
         expect(db.user.findUnique).not.toHaveBeenCalled(); // never even looked it up
     });
 
-    it("429 (daily_ip_limit) on the 2nd create from the same IP when the cap is 1", async () => {
+    it("429 (daily_ip_limit) driven by the app-setting on the 2nd create from the same IP", async () => {
+        settingRows.academies_daily_ip_limit = "1"; // panel value, env unset
+        const ip = "198.51.100.9";
+        const call = () => POST(new Request("http://localhost/api/academies", {
+            method: "POST",
+            body: JSON.stringify({ name: "Acme", slug: "day2", tier: "basic" }),
+            headers: { "Content-Type": "application/json", "x-forwarded-for": ip },
+        }) as any);
+
+        expect((await call()).status).toBe(201);
+        fetchMock.mockReset();
+        fetchMock.mockResolvedValueOnce(GH_REF).mockResolvedValueOnce(GH_BRANCH_OK);
+        const second = await call();
+        expect(second.status).toBe(429);
+        expect((await second.json()).errorcode).toBe("daily_ip_limit");
+    });
+
+    it("429 (daily_ip_limit) on the 2nd create from the same IP when the cap is 1 (env fallback)", async () => {
         process.env.ACADEMIES_DAILY_IP_LIMIT = "1";
         const ip = "203.0.113.7";
         const call = () => POST(new Request("http://localhost/api/academies", {

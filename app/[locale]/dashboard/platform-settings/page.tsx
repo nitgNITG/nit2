@@ -76,13 +76,23 @@ const PlatformSettingsPage = () => {
     const [applyingGoogle, setApplyingGoogle] = useState(false)
     const [freeLimit, setFreeLimit] = useState('1')
     const [savingLimit, setSavingLimit] = useState(false)
+    // Anti-abuse knobs (control-plane only) — moved off env into the panel.
+    const [requireVerify, setRequireVerify] = useState(false)
+    const [dailyIpLimit, setDailyIpLimit] = useState('5')
+    const [savingAbuse, setSavingAbuse] = useState(false)
 
     const load = useCallback(async () => {
         setLoading(true)
         try {
-            const [s, fl] = await Promise.all([axios.get('/api/platform-settings'), axios.get('/api/free-academy-limit')])
+            const [s, fl, ab] = await Promise.all([
+                axios.get('/api/platform-settings'),
+                axios.get('/api/free-academy-limit'),
+                axios.get('/api/abuse-settings'),
+            ])
             setForm({ ...emptyForm(), ...(s.data.settings ?? {}) })
             setFreeLimit(String(fl.data.limit ?? 1))
+            setRequireVerify(!!ab.data.requireEmailVerification)
+            setDailyIpLimit(String(ab.data.dailyIpLimit ?? 5))
         } catch {
             toast.error('Could not load settings')
         } finally {
@@ -99,6 +109,21 @@ const PlatformSettingsPage = () => {
             toast.error(err?.response?.data?.error || 'Save failed')
         } finally {
             setSavingLimit(false)
+        }
+    }
+
+    const saveAbuse = async () => {
+        setSavingAbuse(true)
+        try {
+            await axios.put('/api/abuse-settings', {
+                requireEmailVerification: requireVerify,
+                dailyIpLimit: Number(dailyIpLimit),
+            })
+            toast.success('Abuse protection saved')
+        } catch (err: any) {
+            toast.error(err?.response?.data?.error || 'Save failed')
+        } finally {
+            setSavingAbuse(false)
         }
     }
 
@@ -184,6 +209,57 @@ const PlatformSettingsPage = () => {
                         {savingLimit ? 'Saving…' : 'Save limit'}
                     </button>
                 </div>
+            </div>
+
+            {/* Anti-abuse — control-plane only (not pushed to academies). */}
+            <div className='bg-white rounded-xl border border-gray-200 shadow-sm p-6 max-w-3xl space-y-5'>
+                <div>
+                    <h5 className='font-bold text-lg'>Abuse protection</h5>
+                    <p className='text-xs text-gray-400 mt-1'>
+                        Guards on the self-serve <strong>create academy</strong> flow. These override the old
+                        <span className='font-mono'> REQUIRE_EMAIL_VERIFICATION</span> /
+                        <span className='font-mono'> ACADEMIES_DAILY_IP_LIMIT</span> env vars once saved.
+                    </p>
+                </div>
+
+                <label className='flex items-start gap-3 cursor-pointer'>
+                    <input
+                        type='checkbox'
+                        className='mt-1 h-4 w-4 disabled:opacity-50'
+                        checked={requireVerify}
+                        disabled={loading}
+                        onChange={(e) => setRequireVerify(e.target.checked)}
+                    />
+                    <span>
+                        <span className='block text-sm font-semibold'>Require a verified email</span>
+                        <span className='block text-xs text-gray-400 mt-0.5'>
+                            When on, a user must confirm their email (OTP) before signing in <em>and</em> before creating an
+                            academy — so throwaway accounts can’t demo-farm. Needs SMTP configured; existing accounts are
+                            grandfathered. Off = anyone signed in can create.
+                        </span>
+                    </span>
+                </label>
+
+                <div>
+                    <label className='block text-sm font-semibold mb-1'>Max academies per IP per day</label>
+                    <input
+                        type='number'
+                        min={0}
+                        className='w-28 border rounded-lg px-3 py-2 disabled:opacity-50'
+                        value={dailyIpLimit}
+                        disabled={loading}
+                        onChange={(e) => setDailyIpLimit(e.target.value)}
+                    />
+                    <p className='text-xs text-gray-400 mt-1'>
+                        Caps how many academies one IP can create in 24h (counted only on real provision attempts).
+                        <span className='font-mono'> 0</span> = no cap. Default 5. A soft brake — resets on app restart.
+                    </p>
+                </div>
+
+                <button type='button' onClick={saveAbuse} disabled={savingAbuse || loading}
+                    className='bg-gradient-to-r from-[#268F79] to-[#0B2923] text-[#00FFB2] font-bold px-5 py-2 rounded-md disabled:opacity-60'>
+                    {savingAbuse ? 'Saving…' : 'Save abuse protection'}
+                </button>
             </div>
 
             <form onSubmit={save} className='space-y-6 max-w-3xl'>
