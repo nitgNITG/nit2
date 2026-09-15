@@ -1,9 +1,20 @@
 # Kashier per-academy payouts via sub-accounts — design & analysis
 
 **Status:** analysis only (not built). Settlement decided as a **manual admin action**.
-**Context:** all academies share ONE Kashier merchant account; NIT collects all student
-money and must settle each academy owner. See `docs/kashier-and-lifecycle-plan.md`
-and the memory note `kashier-shared-account-model`.
+
+**Money model — CONFIRMED (owner decision):** NIT collects ALL student payments into its
+single Kashier merchant account, then pays each academy owner their share. Owners do NOT
+collect into their own accounts (owner-collects and Kashier *connected accounts* were
+considered and rejected). Payouts are triggered manually by a NIT admin.
+
+**Context:** all academies share ONE Kashier merchant account. See
+`docs/kashier-and-lifecycle-plan.md` and the memory note `kashier-shared-account-model`.
+
+**Open sub-decision:** do owner payouts go THROUGH Kashier (sub-accounts, this doc) or
+via NIT's own bank transfer out-of-band (then Kashier is only collection + reporting,
+which the tagging already provides and nothing more needs building)? The Kashier route
+is only worth it if it saves NIT from doing manual bank transfers — and it depends on the
+create-payout endpoint below.
 
 ## Goal
 
