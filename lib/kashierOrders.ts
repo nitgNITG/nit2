@@ -59,7 +59,7 @@ function orderHash(
 
 /** Charge a saved card token off-session (merchant-initiated / recurring). */
 export async function payWithToken(input: TokenChargeInput): Promise<TokenChargeResult> {
-  const { merchantId, apiKey, secretKey } = kashierCreds();
+  const { merchantId, apiKey, secretKey } = await kashierCreds();
   if (!merchantId || !apiKey || !secretKey) {
     return { ok: false, error: "Kashier is not configured" };
   }
@@ -169,7 +169,7 @@ export type SavedCard = {
  *  store is keyed by customerReference, so this is how we capture a token after a
  *  first checkout that saved the card. Returns [] on any error. */
 export async function retrieveTokens(customerReference: string): Promise<SavedCard[]> {
-  const { merchantId, secretKey } = kashierCreds();
+  const { merchantId, secretKey } = await kashierCreds();
   if (!merchantId || !secretKey) return [];
   try {
     const url = new URL(`${fepBase()}/v3/cards/customer`);
@@ -200,7 +200,7 @@ export async function retrieveTokens(customerReference: string): Promise<SavedCa
 /** Delete a saved card token (used when the owner removes/replaces a card).
  *  DELETE /v3/token/:cardToken?customerReference= — Authorization: secretKey. */
 export async function deleteToken(cardToken: string, customerReference: string): Promise<boolean> {
-  const { secretKey } = kashierCreds();
+  const { secretKey } = await kashierCreds();
   if (!secretKey) return false;
   try {
     const url = new URL(`${fepBase()}/v3/token/${encodeURIComponent(cardToken)}`);

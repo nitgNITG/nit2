@@ -3,7 +3,7 @@ import crypto from "crypto";
 import prisma from "@/lib/prismaMysql";
 import { getCurrentUser } from "@/lib/auth";
 import { encryptSecret } from "@/lib/secretBox";
-import { kashierCreds } from "@/lib/kashier";
+import { candidateApiKeys } from "@/lib/kashier";
 import { subscriptionsEnabled } from "@/lib/subscriptions";
 
 export const runtime = "nodejs";
@@ -16,19 +16,26 @@ export const dynamic = "force-dynamic";
 function verifyRedirectSignature(search: string): { ok: boolean; params: URLSearchParams } {
     const params = new URLSearchParams(search);
     const sig = (params.get("signature") || "").trim().toLowerCase();
-    const { apiKey } = kashierCreds();
-    if (!sig || !apiKey) return { ok: false, params };
+    const keys = candidateApiKeys();
+    if (!sig || keys.length === 0) return { ok: false, params };
     const parts: string[] = [];
     params.forEach((v, k) => {
         if (k === "order" || k === "mode" || k === "signature") return;
         parts.push(`${k}=${v}`);
     });
-    const calc = crypto.createHmac("sha256", apiKey).update(parts.join("&")).digest("hex");
+    const message = parts.join("&");
+    // Try both modes' keys — the redirect could be from live or test.
     let ok = false;
-    try {
-        ok = calc.length === sig.length &&
-            crypto.timingSafeEqual(Buffer.from(calc, "hex"), Buffer.from(sig, "hex"));
-    } catch { ok = false; }
+    for (const apiKey of keys) {
+        const calc = crypto.createHmac("sha256", apiKey).update(message).digest("hex");
+        try {
+            if (calc.length === sig.length &&
+                crypto.timingSafeEqual(Buffer.from(calc, "hex"), Buffer.from(sig, "hex"))) {
+                ok = true;
+                break;
+            }
+        } catch { /* not this key */ }
+    }
     return { ok, params };
 }
 

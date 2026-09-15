@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
         // ── NIT's own revenue (licence sales, per purpose, per currency) ──────────
         const ownGroups = await prisma.payment.groupBy({
             by: ["purpose", "currency"],
-            where: { status: "paid", ...(range ? { paidAt: range } : {}) },
+            where: { status: "paid", ...modeFilter, ...(range ? { paidAt: range } : {}) },
             _sum: { amount: true },
             _count: { _all: true },
         });

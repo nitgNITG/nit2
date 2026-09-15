@@ -19,7 +19,7 @@ const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
 // the full create payload and returns a Kashier hosted-checkout URL. Nothing is
 // provisioned until the webhook confirms the money (see ../webhook/route.ts).
 export async function POST(req: NextRequest) {
-    if (!kashierConfigured()) {
+    if (!(await kashierConfigured())) {
         return NextResponse.json({ error: "الدفع غير مهيأ حالياً." }, { status: 503 });
     }
     const user = await getCurrentUser();
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
             await prisma.payment.update({ where: { orderId }, data: { status: "failed", failureReason: session.error?.slice(0, 900) } }).catch(() => {});
             return NextResponse.json({ error: "تعذّر فتح صفحة الدفع، حاول تاني.", detail: session.error }, { status: 502 });
         }
-        await prisma.payment.update({ where: { orderId }, data: { sessionId: session.sessionId } }).catch(() => {});
+        await prisma.payment.update({ where: { orderId }, data: { sessionId: session.sessionId, mode: session.mode } }).catch(() => {});
         return NextResponse.json({ ok: true, url: session.sessionUrl, orderId });
     }
 
@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
                 await prisma.payment.update({ where: { orderId }, data: { status: "failed", failureReason: session.error?.slice(0, 900) } }).catch(() => {});
                 return NextResponse.json({ error: "تعذّر فتح صفحة الدفع، حاول تاني.", detail: session.error }, { status: 502 });
             }
-            await prisma.payment.update({ where: { orderId }, data: { sessionId: session.sessionId } }).catch(() => {});
+            await prisma.payment.update({ where: { orderId }, data: { sessionId: session.sessionId, mode: session.mode } }).catch(() => {});
             return NextResponse.json({ ok: true, url: session.sessionUrl, orderId, prorated });
         }
         // else: no remaining time / not higher → fall through to full-price flow below.
@@ -281,6 +281,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "تعذّر فتح صفحة الدفع، حاول تاني.", detail, kashier: raw }, { status: 502 });
     }
 
-    await prisma.payment.update({ where: { orderId }, data: { sessionId: session.sessionId } }).catch(() => {});
+    await prisma.payment.update({ where: { orderId }, data: { sessionId: session.sessionId, mode: session.mode } }).catch(() => {});
     return NextResponse.json({ ok: true, url: session.sessionUrl, orderId });
 }

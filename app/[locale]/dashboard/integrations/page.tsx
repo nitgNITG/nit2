@@ -38,16 +38,26 @@ const IntegrationsPage = () => {
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
 
+    // NIT's OWN licence checkout (control plane) live/test toggle — separate from
+    // the academy credentials below.
+    const [checkoutMode, setCheckoutMode] = useState<'live' | 'test'>('test')
+    const [checkoutCfg, setCheckoutCfg] = useState<{ live: boolean; test: boolean }>({ live: false, test: false })
+    const [savingMode, setSavingMode] = useState(false)
+
     const load = useCallback(async () => {
         setLoading(true)
         try {
-            const { data } = await axios.get('/api/platform-settings/integrations')
+            const [{ data }, cm] = await Promise.all([
+                axios.get('/api/platform-settings/integrations'),
+                axios.get('/api/checkout-mode').catch(() => null),
+            ])
             setFields(data.fields ?? [])
             setValues(data.values ?? {})
             setEdits({})
             setShow({})
             setRevealed({})
             setRevealLoaded(false)
+            if (cm?.data) { setCheckoutMode(cm.data.mode); setCheckoutCfg(cm.data.configured ?? { live: false, test: false }) }
         } catch {
             toast.error('Could not load integrations')
         } finally {
@@ -56,6 +66,19 @@ const IntegrationsPage = () => {
     }, [])
 
     useEffect(() => { load() }, [load])
+
+    const saveCheckoutMode = async (mode: 'live' | 'test') => {
+        setSavingMode(true)
+        try {
+            await axios.put('/api/checkout-mode', { mode })
+            setCheckoutMode(mode)
+            toast.success(`Licence checkout set to ${mode.toUpperCase()}`)
+        } catch (err: any) {
+            toast.error(err?.response?.data?.error || 'Save failed')
+        } finally {
+            setSavingMode(false)
+        }
+    }
 
     const save = async () => {
         setSaving(true)
@@ -107,6 +130,39 @@ const IntegrationsPage = () => {
                     (<strong>Licenses</strong> page: Video source + Kashier payments).
                     Leave a secret blank to keep the current value.
                 </p>
+            </div>
+
+            {/* NIT's own licence checkout (control plane) — live/test toggle */}
+            <div className='bg-white rounded-xl border border-gray-200 shadow-sm p-6'>
+                <div className='flex items-center gap-2'>
+                    <h5 className='font-bold'>NIT licence checkout (control plane)</h5>
+                    {checkoutMode === 'live'
+                        ? <span className='rounded-full bg-green-100 px-2.5 py-0.5 text-[11px] font-bold text-green-700'>🟢 LIVE</span>
+                        : <span className='rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-700'>🧪 TEST / Sandbox</span>}
+                </div>
+                <p className='text-xs text-gray-400 mt-0.5'>
+                    Mode for payments where <strong>owners pay NIT</strong> for licences (upgrade / renew / new academy).
+                    Separate from the academy credentials below. Credentials come from the server env
+                    (<span className='font-mono'>KASHIER_LIVE_*</span> / <span className='font-mono'>KASHIER_TEST_*</span>).
+                </p>
+                <div className='mt-3 flex items-center gap-3'>
+                    <div className='inline-flex overflow-hidden rounded-lg border border-gray-200'>
+                        {(['test', 'live'] as const).map((m) => (
+                            <button key={m} type='button' onClick={() => saveCheckoutMode(m)} disabled={savingMode || checkoutMode === m}
+                                className={`px-4 py-2 text-sm font-semibold ${checkoutMode === m ? 'bg-[#0B2923] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                                {m === 'live' ? '🟢 Live' : '🧪 Test'}
+                            </button>
+                        ))}
+                    </div>
+                    <span className='text-xs text-gray-400'>
+                        Creds configured: {checkoutCfg.live ? '✅' : '❌'} live · {checkoutCfg.test ? '✅' : '❌'} test
+                    </span>
+                </div>
+                {!checkoutCfg[checkoutMode] && (
+                    <p className='mt-2 text-[11px] text-red-500'>
+                        ⚠️ The {checkoutMode.toUpperCase()} credentials are not set in the env — licence checkout will fail in this mode.
+                    </p>
+                )}
             </div>
 
             {loading ? (

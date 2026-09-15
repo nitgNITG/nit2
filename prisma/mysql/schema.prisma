@@ -165,6 +165,7 @@ model Payment {
   currency       String    @default("EGP")
   status         String    @default("pending") // pending | paid | failed | expired
   academySlug    String? // set for upgrade/renew, and for new_academy once provisioned
+  mode           String    @default("live") // live | test — the checkout mode this charge used
   payloadJson    Json? // the pending academy-create payload (name, slug, brand, …)
   sessionId      String? // Kashier session _id
   providerRef    String? // Kashier transactionId / kashierOrderId once paid

@@ -14,15 +14,14 @@
 //   KASHIER_MODE          test | live (informational; base URL drives behaviour)
 
 import crypto from "crypto";
+import prisma from "@/lib/prismaMysql";
 
-const BASE_URL = (
-  process.env.KASHIER_BASE_URL || "https://api.kashier.io"
-).replace(/\/+$/, "");
+export type CheckoutMode = "live" | "test";
 
 // Next loads .env through dotenv-expand, which TRUNCATES a value at any
 // unescaped `$` (it reads it as a variable reference). Kashier secrets often
 // contain `$`, so we support a base64 fallback that can never be truncated: set
-// KASHIER_SECRET_KEY_B64 / KASHIER_API_KEY_B64 to base64(value) and it wins.
+// <VAR>_B64 to base64(value) and it wins.
 function fromB64(v: string): string {
   try {
     return Buffer.from(v, "base64").toString("utf8");
@@ -30,30 +29,80 @@ function fromB64(v: string): string {
     return "";
   }
 }
-function cfg() {
-  const merchantId = process.env.KASHIER_MERCHANT_ID || "";
-  const apiKey =
-    (process.env.KASHIER_API_KEY_B64
-      ? fromB64(process.env.KASHIER_API_KEY_B64)
-      : process.env.KASHIER_API_KEY) || "";
-  const secretKey =
-    (process.env.KASHIER_SECRET_KEY_B64
-      ? fromB64(process.env.KASHIER_SECRET_KEY_B64)
-      : process.env.KASHIER_SECRET_KEY) || "";
-  return { merchantId, apiKey, secretKey };
+function env(name: string): string {
+  const b64 = process.env[`${name}_B64`];
+  return (b64 ? fromB64(b64) : process.env[name]) || "";
 }
 
-/** True only when all three Kashier credentials are configured. */
-export function kashierConfigured(): boolean {
-  const { merchantId, apiKey, secretKey } = cfg();
+// The mode the legacy single KASHIER_* env set belongs to (so existing deployments
+// keep working). KASHIER_MODE=live|test; defaults to test.
+function legacyMode(): CheckoutMode {
+  return (process.env.KASHIER_MODE || "").toLowerCase() === "live" ? "live" : "test";
+}
+
+// Credentials for one mode: the mode-specific env set (KASHIER_LIVE_* / KASHIER_TEST_*),
+// falling back to the legacy KASHIER_* set for whichever mode it belongs to.
+function cfgFor(mode: CheckoutMode): { merchantId: string; apiKey: string; secretKey: string; baseUrl: string } {
+  const P = mode === "live" ? "KASHIER_LIVE_" : "KASHIER_TEST_";
+  let merchantId = env(`${P}MERCHANT_ID`);
+  let apiKey = env(`${P}API_KEY`);
+  let secretKey = env(`${P}SECRET_KEY`);
+  let baseUrl = env(`${P}BASE_URL`);
+  if (mode === legacyMode()) {
+    merchantId ||= env("KASHIER_MERCHANT_ID");
+    apiKey ||= env("KASHIER_API_KEY");
+    secretKey ||= env("KASHIER_SECRET_KEY");
+    baseUrl ||= env("KASHIER_BASE_URL");
+  }
+  if (!baseUrl) baseUrl = mode === "test" ? "https://test-api.kashier.io" : "https://api.kashier.io";
+  return { merchantId, apiKey, secretKey, baseUrl: baseUrl.replace(/\/+$/, "") };
+}
+
+// The active checkout mode for NIT's OWN licence payments. The DB toggle
+// (PlatformSetting "checkout_mode") wins; env KASHIER_MODE is the fallback default.
+export async function checkoutMode(): Promise<CheckoutMode> {
+  try {
+    const row = await prisma.platformSetting.findUnique({ where: { key: "checkout_mode" } });
+    const v = (row?.value || "").toLowerCase();
+    if (v === "live" || v === "test") return v;
+  } catch {
+    /* DB unavailable → fall back to env */
+  }
+  return legacyMode();
+}
+
+/** Resolved creds + base URL + mode for the active checkout mode. */
+export async function resolveCheckout(): Promise<{ mode: CheckoutMode; merchantId: string; apiKey: string; secretKey: string; baseUrl: string }> {
+  const mode = await checkoutMode();
+  return { mode, ...cfgFor(mode) };
+}
+
+/** Which modes have all three credentials configured (for the settings UI). */
+export function checkoutConfigured(): { live: boolean; test: boolean } {
+  const ok = (m: CheckoutMode) => {
+    const c = cfgFor(m);
+    return !!c.merchantId && !!c.apiKey && !!c.secretKey;
+  };
+  return { live: ok("live"), test: ok("test") };
+}
+
+/** True when the ACTIVE mode's credentials are all configured. */
+export async function kashierConfigured(): Promise<boolean> {
+  const { merchantId, apiKey, secretKey } = await resolveCheckout();
   return !!merchantId && !!apiKey && !!secretKey;
 }
 
-/** The resolved Kashier credentials (with the base64 fallback applied). Exposed so
- *  the direct-order module (lib/kashierOrders.ts) can build the order hash without
- *  duplicating the env/b64 logic. */
-export function kashierCreds(): { merchantId: string; apiKey: string; secretKey: string } {
-  return cfg();
+/** The resolved Kashier credentials for the active mode. Async now (mode is a DB
+ *  toggle). Used by the direct-order module (lib/kashierOrders.ts). */
+export async function kashierCreds(): Promise<{ merchantId: string; apiKey: string; secretKey: string }> {
+  const { merchantId, apiKey, secretKey } = await resolveCheckout();
+  return { merchantId, apiKey, secretKey };
+}
+
+/** Both modes' API keys (for signature checks that can't read the DB toggle — a
+ *  callback/webhook must verify against whichever mode created it). */
+export function candidateApiKeys(): string[] {
+  return Array.from(new Set([cfgFor("live").apiKey, cfgFor("test").apiKey].filter(Boolean)));
 }
 
 // PHP rawurlencode (RFC 3986): encodeURIComponent PLUS !*'() — Kashier's signature
@@ -85,14 +134,14 @@ export type CreateSessionInput = {
 };
 
 export type CreateSessionResult =
-  | { ok: true; sessionId: string; sessionUrl: string; raw: any }
+  | { ok: true; sessionId: string; sessionUrl: string; mode: CheckoutMode; raw: any }
   | { ok: false; error: string; raw?: any };
 
-/** POST /v3/payment/sessions — create a hosted checkout session. */
+/** POST /v3/payment/sessions — create a hosted checkout session in the active mode. */
 export async function createSession(
   input: CreateSessionInput,
 ): Promise<CreateSessionResult> {
-  const { merchantId, apiKey, secretKey } = cfg();
+  const { mode, merchantId, apiKey, secretKey, baseUrl: BASE_URL } = await resolveCheckout();
   if (!merchantId || !apiKey || !secretKey) {
     return {
       ok: false,
@@ -132,7 +181,6 @@ export async function createSession(
   }
 
   try {
-    console.log("BASE_URL", BASE_URL);
     const res = await fetch(`${BASE_URL}/v3/payment/sessions`, {
       method: "POST",
       headers: {
@@ -155,7 +203,7 @@ export async function createSession(
     if (!sessionUrl) {
       return { ok: false, error: "Kashier response missing sessionUrl", raw };
     }
-    return { ok: true, sessionId, sessionUrl, raw };
+    return { ok: true, sessionId, sessionUrl, mode, raw };
   } catch (e: any) {
     return { ok: false, error: `Kashier request error: ${e?.message || e}` };
   }
@@ -217,16 +265,26 @@ export function verifyWebhook(
     const message = keys
       .map((k) => `${k}=${rawurlencode(String(data[k] ?? ""))}`)
       .join("&");
-    const calculated = crypto
-      .createHmac("sha256", cfg().apiKey)
-      .update(message)
-      .digest("hex");
-    try {
-      signatureValid =
-        calculated.length === signature.length &&
-        crypto.timingSafeEqual(Buffer.from(calculated), Buffer.from(signature));
-    } catch {
-      signatureValid = false;
+    // Try BOTH modes' API keys — a webhook for a live payment must verify against
+    // the live key even if the toggle later flips to test (and vice-versa). This is
+    // sync (no DB), so we can't read the toggle here; matching either key is correct
+    // because only the mode that created the session could have produced the digest.
+    const candidateKeys = Array.from(
+      new Set([cfgFor("live").apiKey, cfgFor("test").apiKey].filter(Boolean)),
+    );
+    for (const key of candidateKeys) {
+      const calculated = crypto.createHmac("sha256", key).update(message).digest("hex");
+      try {
+        if (
+          calculated.length === signature.length &&
+          crypto.timingSafeEqual(Buffer.from(calculated), Buffer.from(signature))
+        ) {
+          signatureValid = true;
+          break;
+        }
+      } catch {
+        /* length mismatch → not this key */
+      }
     }
   }
 
