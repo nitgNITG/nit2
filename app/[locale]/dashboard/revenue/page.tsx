@@ -32,6 +32,8 @@ export default function RevenueDashboardPage() {
     const [data, setData] = useState<Summary | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+    const [syncing, setSyncing] = useState(false)
+    const [syncMsg, setSyncMsg] = useState('')
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -50,6 +52,23 @@ export default function RevenueDashboardPage() {
     }, [from, to])
 
     useEffect(() => { load() }, [load])
+
+    // Re-push integration config (incl. the revenue-ingest URL/secret) to every
+    // academy — needed once after enabling the ledger so existing academies start
+    // mirroring. New academies get it automatically at provision/tier change.
+    const syncAcademies = async () => {
+        setSyncing(true)
+        setSyncMsg('')
+        try {
+            const { data } = await axios.post('/api/academies/apply-integrations-all')
+            const skipped = data.skipped?.length ? ` · ${data.skipped.length} ${tr('تخطّي', 'skipped')}` : ''
+            setSyncMsg(`${tr('تم الإرسال إلى', 'Pushed to')} ${data.applied}/${data.total} ${tr('أكاديمية', 'academies')}${skipped}`)
+        } catch (e: any) {
+            setSyncMsg(e?.response?.data?.error || tr('فشل المزامنة', 'Sync failed'))
+        } finally {
+            setSyncing(false)
+        }
+    }
 
     const Card = ({ title, rows, tone }: { title: string; rows: Money[]; tone: string }) => (
         <div className='rounded-xl border border-gray-200 bg-white p-5 shadow-sm'>
@@ -71,14 +90,24 @@ export default function RevenueDashboardPage() {
 
     return (
         <div className='dashboard-container space-y-6 py-5 lg:py-10'>
-            <div>
-                <h1 className='text-2xl font-extrabold text-[#0B2923]'>{tr('الإيرادات', 'Revenue')}</h1>
-                <p className='mt-1 text-sm text-gray-500'>
-                    {tr(
-                        'إيرادات كل أكاديمية (مدفوعات الطلاب) مقابل إيرادات المنصة (بيع الباقات) — مصنّفة.',
-                        'Per-academy revenue (student payments) vs the platform’s own revenue (licence sales) — categorised.',
-                    )}
-                </p>
+            <div className='flex flex-wrap items-start justify-between gap-3'>
+                <div>
+                    <h1 className='text-2xl font-extrabold text-[#0B2923]'>{tr('الإيرادات', 'Revenue')}</h1>
+                    <p className='mt-1 text-sm text-gray-500'>
+                        {tr(
+                            'إيرادات كل أكاديمية (مدفوعات الطلاب) مقابل إيرادات المنصة (بيع الباقات) — مصنّفة.',
+                            'Per-academy revenue (student payments) vs the platform’s own revenue (licence sales) — categorised.',
+                        )}
+                    </p>
+                </div>
+                <div className='text-end'>
+                    <button onClick={syncAcademies} disabled={syncing}
+                        className='rounded-md border border-[#268F79] px-4 py-2 text-sm font-semibold text-[#268F79] hover:bg-[#268F79]/5 disabled:opacity-60'
+                        title={tr('إرسال إعدادات الإيرادات لكل الأكاديميات', 'Push revenue config to all academies')}>
+                        {syncing ? tr('جارٍ المزامنة…', 'Syncing…') : tr('🔄 مزامنة الأكاديميات', '🔄 Sync academies')}
+                    </button>
+                    {syncMsg && <p className='mt-1 text-xs text-gray-500'>{syncMsg}</p>}
+                </div>
             </div>
 
             {/* Date range */}
