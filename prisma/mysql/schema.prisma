@@ -229,3 +229,32 @@ model PaymentMethod {
 
   @@index([userId])
 }
+
+// ── Central revenue ledger ────────────────────────────────────────────────────
+// A mirror of STUDENT payments that happen inside each academy's Moodle (they are
+// not otherwise visible to the control plane). Each academy's Moodle POSTs every
+// completed payment to /api/revenue/ingest, which upserts a row here. This is a
+// REPORTING ledger only (categorise revenue per academy / provider / period in the
+// dashboard) — it is NOT the source of truth for money, and it never moves funds.
+// NIT's OWN revenue (licence sales) is the separate Payment model above.
+model AcademyRevenue {
+  id          String   @id @default(uuid())
+  academySlug String // which academy earned this (== Academy.slug)
+  provider    String   @default("kashier") // kashier | fawaterk | …
+  orderId     String // the academy's own order id (e.g. PAY-<TAG>-YYYY-…)
+  amount      Int // charged amount in whole currency units
+  currency    String   @default("EGP")
+  status      String   @default("paid") // paid | refunded
+  kind        String   @default("course") // course | subscription
+  courseId    Int? // Moodle course id (null for subscriptions)
+  userRef     String? // Moodle user id (string), display/debug only
+  paidAt      DateTime // when the payment completed (from the academy)
+  createdAt   DateTime @default(now()) // when we ingested it
+
+  // Idempotent ingest: one row per (academy, order). A resend just updates status.
+  @@unique([academySlug, orderId])
+  @@index([academySlug])
+  @@index([paidAt])
+  @@index([provider])
+  @@index([status])
+}
