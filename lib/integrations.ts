@@ -15,12 +15,20 @@ type Field = { key: string; secret: boolean; label: string };
 
 // short key (also the storage suffix: PlatformSetting.key = "int_" + key)
 export const INTEGRATION_FIELDS: Field[] = [
-    // Kashier (payment gateway)
-    { key: "kashier_merchant_id", secret: true, label: "Kashier merchant id" },
-    { key: "kashier_api_key", secret: true, label: "Kashier API key" },
-    { key: "kashier_secret_key", secret: true, label: "Kashier secret key" },
-    { key: "kashier_sandbox", secret: false, label: "Kashier sandbox mode (1=test, 0=live)" },
-    { key: "kashier_base_url", secret: false, label: "Kashier base URL" },
+    // Kashier (payment gateway) — TWO credential sets (live + test) plus a default
+    // mode. Both sets are pushed to every academy; the active mode is chosen per
+    // academy (owner-toggleable in their Moodle), defaulting to this platform mode.
+    { key: "kashier_mode", secret: false, label: "Kashier default mode (live / test)" },
+    // LIVE set (the existing kashier_* keys keep their stored values).
+    { key: "kashier_merchant_id", secret: true, label: "LIVE — Kashier merchant id" },
+    { key: "kashier_api_key", secret: true, label: "LIVE — Kashier API key" },
+    { key: "kashier_secret_key", secret: true, label: "LIVE — Kashier secret key" },
+    { key: "kashier_base_url", secret: false, label: "LIVE — Kashier base URL" },
+    // TEST / sandbox set.
+    { key: "kashier_test_merchant_id", secret: true, label: "TEST — Kashier merchant id" },
+    { key: "kashier_test_api_key", secret: true, label: "TEST — Kashier API key" },
+    { key: "kashier_test_secret_key", secret: true, label: "TEST — Kashier secret key" },
+    { key: "kashier_test_base_url", secret: false, label: "TEST — Kashier base URL" },
     // VDOCipher (video DRM)
     { key: "vdocipher_apisecret", secret: true, label: "VDOCipher API secret" },
     { key: "vdocipher_apibase", secret: false, label: "VDOCipher API base" },
@@ -137,11 +145,17 @@ export async function buildIntegrationEnv(license: IntegrationLicense): Promise<
     }
     if (license.kashierEnabled) {
         env.KASHIER_ENABLED = "1";
-        if (s.kashier_merchant_id) env.KASHIER_MERCHANT_ID = s.kashier_merchant_id;
-        if (s.kashier_api_key) env.KASHIER_API_KEY = s.kashier_api_key;
-        if (s.kashier_secret_key) env.KASHIER_SECRET_KEY = s.kashier_secret_key;
-        env.KASHIER_SANDBOX = s.kashier_sandbox || "1";
-        if (s.kashier_base_url) env.KASHIER_BASE_URL = s.kashier_base_url;
+        // Default mode pushed as the academy's default_payment_mode (the owner can
+        // still override it). Both credential sets go so the toggle works locally.
+        env.KASHIER_MODE = s.kashier_mode === "live" ? "live" : "test";
+        if (s.kashier_merchant_id) env.KASHIER_LIVE_MERCHANT_ID = s.kashier_merchant_id;
+        if (s.kashier_api_key) env.KASHIER_LIVE_API_KEY = s.kashier_api_key;
+        if (s.kashier_secret_key) env.KASHIER_LIVE_SECRET_KEY = s.kashier_secret_key;
+        if (s.kashier_base_url) env.KASHIER_LIVE_BASE_URL = s.kashier_base_url;
+        if (s.kashier_test_merchant_id) env.KASHIER_TEST_MERCHANT_ID = s.kashier_test_merchant_id;
+        if (s.kashier_test_api_key) env.KASHIER_TEST_API_KEY = s.kashier_test_api_key;
+        if (s.kashier_test_secret_key) env.KASHIER_TEST_SECRET_KEY = s.kashier_test_secret_key;
+        if (s.kashier_test_base_url) env.KASHIER_TEST_BASE_URL = s.kashier_test_base_url;
     }
 
     // Central revenue ledger: tell each academy where to mirror completed payments

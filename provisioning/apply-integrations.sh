@@ -60,11 +60,23 @@ _set local_payments revenue_ingest_url    "${REVENUE_INGEST_URL:-}"
 _set local_payments revenue_ingest_secret "${REVENUE_INGEST_SECRET:-}"
 
 # ── Kashier (payments) ───────────────────────────────────────────────────────
+# Push BOTH credential sets (live + test) plus the platform DEFAULT mode. The
+# academy owner can override the active mode in their Moodle (payment_mode); we set
+# only default_payment_mode here so a re-apply never clobbers the owner's choice.
 if [[ "${KASHIER_ENABLED:-0}" == "1" ]]; then
+    _set paymentprovider_kashier live_merchant_id "${KASHIER_LIVE_MERCHANT_ID:-}"
+    _set paymentprovider_kashier live_api_key     "${KASHIER_LIVE_API_KEY:-}"
+    _set paymentprovider_kashier live_secret_key  "${KASHIER_LIVE_SECRET_KEY:-}"
+    _set paymentprovider_kashier live_base_url    "${KASHIER_LIVE_BASE_URL:-}"
+    _set paymentprovider_kashier test_merchant_id "${KASHIER_TEST_MERCHANT_ID:-}"
+    _set paymentprovider_kashier test_api_key     "${KASHIER_TEST_API_KEY:-}"
+    _set paymentprovider_kashier test_secret_key  "${KASHIER_TEST_SECRET_KEY:-}"
+    _set paymentprovider_kashier test_base_url    "${KASHIER_TEST_BASE_URL:-}"
+    _set paymentprovider_kashier default_payment_mode "${KASHIER_MODE:-test}"
+    # Legacy single-set keys (older callers) — still forwarded when present.
     _set paymentprovider_kashier merchant_id  "${KASHIER_MERCHANT_ID:-}"
     _set paymentprovider_kashier api_key      "${KASHIER_API_KEY:-}"
     _set paymentprovider_kashier secret_key   "${KASHIER_SECRET_KEY:-}"
-    _set paymentprovider_kashier sandbox_mode "${KASHIER_SANDBOX:-}"
     _set paymentprovider_kashier base_url     "${KASHIER_BASE_URL:-}"
 fi
 # Track the Kashier PROVIDER's enabled state to the licence, independent of the

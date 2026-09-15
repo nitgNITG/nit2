@@ -119,20 +119,20 @@ const IntegrationsPage = () => {
                                 <div className='flex items-center gap-2'>
                                     <h5 className='font-bold'>{g.title}</h5>
                                     {g.prefix === 'kashier_' && (() => {
-                                        // Default is sandbox ("1") when unset, matching what's pushed to academies.
-                                        const sandbox = (edits['kashier_sandbox'] ?? values['kashier_sandbox']?.value ?? '1') !== '0'
-                                        return sandbox ? (
-                                            <span className='rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-700'>🧪 TEST / Sandbox</span>
+                                        // Default mode when unset is "test", matching what's pushed to academies.
+                                        const live = (edits['kashier_mode'] ?? values['kashier_mode']?.value ?? 'test') === 'live'
+                                        return live ? (
+                                            <span className='rounded-full bg-green-100 px-2.5 py-0.5 text-[11px] font-bold text-green-700'>🟢 LIVE (default)</span>
                                         ) : (
-                                            <span className='rounded-full bg-green-100 px-2.5 py-0.5 text-[11px] font-bold text-green-700'>🟢 LIVE</span>
+                                            <span className='rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-700'>🧪 TEST / Sandbox (default)</span>
                                         )
                                     })()}
                                 </div>
                                 <p className='text-xs text-gray-400 mt-0.5'>{g.note}</p>
                                 {g.prefix === 'kashier_' && (
                                     <p className='mt-1 text-[11px] text-gray-400'>
-                                        This mode is pushed to <strong>every academy</strong> (their students pay in the same mode).
-                                        Set <span className='font-mono'>Kashier sandbox mode</span> to <span className='font-mono'>0</span> for LIVE, <span className='font-mono'>1</span> for TEST, then re-sync academies.
+                                        Enter <strong>both</strong> credential sets. This mode is the <strong>default</strong> pushed to every academy;
+                                        each academy owner can switch their own mode in their Moodle. After changing creds or the default, re-sync academies (Revenue → Sync).
                                     </p>
                                 )}
                             </div>
@@ -152,6 +152,16 @@ const IntegrationsPage = () => {
                                                 {f.secret && cur?.set && <span className='ml-2 text-[11px] font-normal text-emerald-600'>• set</span>}
                                             </label>
                                             <div className='relative'>
+                                                {f.key === 'kashier_mode' ? (
+                                                    <select
+                                                        className='w-full border rounded-lg px-3 py-2 text-sm'
+                                                        value={display === 'live' ? 'live' : 'test'}
+                                                        onChange={(e) => setEdits((p) => ({ ...p, [f.key]: e.target.value }))}
+                                                    >
+                                                        <option value='test'>🧪 Test / Sandbox</option>
+                                                        <option value='live'>🟢 Live</option>
+                                                    </select>
+                                                ) : (
                                                 <input
                                                     type={f.secret && !isShown ? 'password' : 'text'}
                                                     autoComplete='off'
@@ -160,6 +170,7 @@ const IntegrationsPage = () => {
                                                     value={display}
                                                     onChange={(e) => setEdits((p) => ({ ...p, [f.key]: e.target.value }))}
                                                 />
+                                                )}
                                                 {f.secret && (
                                                     <button
                                                         type='button'
