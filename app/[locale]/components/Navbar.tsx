@@ -43,18 +43,23 @@ const Navbar = () => {
         return () => window.removeEventListener('scroll', handleScroll)
     }, [])
 
-    // Desktop "Services" dropdown. Rendered through a portal to <body> so it
-    // escapes the hero header's stacking context (z-10 + overflow-hidden) — a
-    // plain absolute panel paints *under* the next section otherwise.
-    const [servicesOpen, setServicesOpen] = useState(false)
-    // Which categories are expanded inside the dropdown. Each toggles
+    // Desktop dropdown menus (Services, Pricing …). Any nav item with `children`
+    // (accordion of categories) or `links` (flat list) opens one. The open menu is
+    // tracked by the item's name; only one is open at a time. Rendered through a
+    // portal to <body> so it escapes the hero header's stacking context
+    // (z-10 + overflow-hidden) — a plain absolute panel paints *under* the next
+    // section otherwise.
+    const [openMenu, setOpenMenu] = useState<string | null>(null)
+    // Which categories are expanded inside an accordion dropdown. Each toggles
     // independently so opening one never collapses (and shifts) the others —
     // that shift would otherwise slide content out from under the cursor and
     // trigger the panel's mouse-leave/close. The first category (index 0) is
-    // expanded by default each time the panel is shown.
+    // expanded by default each time a panel is shown.
     const [openCats, setOpenCats] = useState<number[]>([0])
     const [ddPos, setDdPos] = useState<{ top: number; left?: number; right?: number }>({ top: 0 })
-    const ddBtnRef = useRef<HTMLButtonElement>(null)
+    // One trigger button per menu, keyed by the item name, so the panel can be
+    // positioned under whichever trigger opened it.
+    const menuBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({})
     const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     const toggleCat = (i: number) =>
@@ -62,25 +67,28 @@ const Navbar = () => {
 
     // Reopen → always start with just the first category expanded.
     useEffect(() => {
-        if (servicesOpen) setOpenCats([0])
-    }, [servicesOpen])
+        if (openMenu) setOpenCats([0])
+    }, [openMenu])
 
-    const openServices = () => {
+    const openMenuNow = (name: string) => {
         if (closeTimer.current) clearTimeout(closeTimer.current)
-        setServicesOpen(true)
+        setOpenMenu(name)
     }
-    const closeServices = () => {
+    const keepMenuOpen = () => {
         if (closeTimer.current) clearTimeout(closeTimer.current)
-        closeTimer.current = setTimeout(() => setServicesOpen(false), 140)
+    }
+    const scheduleClose = () => {
+        if (closeTimer.current) clearTimeout(closeTimer.current)
+        closeTimer.current = setTimeout(() => setOpenMenu(null), 140)
     }
 
-    // Position the portaled panel from the trigger's live rect — measured after
-    // commit (layout settled) and kept in sync while open, so it always sits
+    // Position the portaled panel from the open trigger's live rect — measured
+    // after commit (layout settled) and kept in sync while open, so it always sits
     // directly under the button regardless of scroll/resize.
     useEffect(() => {
-        if (!servicesOpen) return
+        if (!openMenu) return
         const update = () => {
-            const r = ddBtnRef.current?.getBoundingClientRect()
+            const r = menuBtnRefs.current[openMenu]?.getBoundingClientRect()
             if (r) {
                 setDdPos(isAr
                     ? { top: r.bottom, right: Math.max(8, window.innerWidth - r.right) }
@@ -94,7 +102,7 @@ const Navbar = () => {
             window.removeEventListener('scroll', update, true)
             window.removeEventListener('resize', update)
         }
-    }, [servicesOpen, isAr])
+    }, [openMenu, isAr])
 
     // Replay the attention-grabbing logo flourish every time the visitor lands
     // on the home page (الرئيسية). Toggling off→on across two frames restarts
@@ -140,27 +148,41 @@ const Navbar = () => {
         }
     ]
 
-    // Flat list for isActive checks
-    const allServiceItems = services.flatMap(g => g.items)
-
     type ServiceCategory = { category: string; items: { name: string; href: string }[] }
+    // A flat dropdown link. `soon` marks a not-yet-launched product line — shown
+    // but not clickable, with a "Coming soon" badge.
+    type NavLink = { name: string; href: string; soon?: boolean }
 
     type NavItem =
         | { name: string; href: string }
         | { name: string; children: ServiceCategory[] }
+        | { name: string; links: NavLink[] }
 
-    // Hide the "Build Your Product" nav link once signed in — it points at /account
+    // Pricing dropdown — like Services, but a flat list of product lines. Academies
+    // is live (→ /pricing); e-commerce and loyalty are coming soon.
+    const pricingLinks: NavLink[] = [
+        { name: isAr ? 'الأكاديميات (منصات تعليمية)' : 'Academies (LMS)', href: '/pricing' },
+        { name: isAr ? 'التجارة الإلكترونية' : 'E-commerce apps', href: '/pricing', soon: true },
+        { name: isAr ? 'أنظمة الولاء' : 'Loyalty apps', href: '/pricing', soon: true },
+    ]
+
     const items: NavItem[] = [
         { name: t('item1'), href: '/' },
         { name: t('item3'), href: '/our-projects' },
         { name: t('services'), children: services },
-        { name: isAr ? 'الأسعار' : 'Pricing', href: '/pricing' },
+        { name: isAr ? 'الأسعار' : 'Pricing', links: pricingLinks },
         { name: t('item4'), href: '/blog' },
         { name: t('item2'), href: '/who-us' },
         { name: t('item5'), href: '/contact' },
         // No guest "Log in"/"Build Your Product" item — Pricing is the entry point;
         // any protected action (build) redirects a signed-out user to /account.
     ]
+
+    // Is a dropdown item's trigger "active" (a descendant route is current)?
+    const isMenuActive = (item: NavItem): boolean =>
+        'children' in item ? item.children.some((g) => g.items.some((c) => isActive(c.href) && c.href !== '#'))
+        : 'links' in item ? item.links.some((l) => !l.soon && isActive(l.href))
+        : false
 
     const close = () => {
         setOpen(false)
@@ -213,26 +235,26 @@ const Navbar = () => {
                         </Link>
                         <ul className='hidden lg:flex gap-1 items-center'>
                             {items.map((item) => (
-                                'children' in item ? (
+                                ('children' in item || 'links' in item) ? (
                                     <li
                                         key={item.name}
                                         className='relative'
-                                        onMouseEnter={openServices}
-                                        onMouseLeave={closeServices}
+                                        onMouseEnter={() => openMenuNow(item.name)}
+                                        onMouseLeave={scheduleClose}
                                     >
                                         <button
                                             type='button'
-                                            ref={ddBtnRef}
+                                            ref={(el) => { menuBtnRefs.current[item.name] = el }}
                                             aria-haspopup='true'
-                                            aria-expanded={servicesOpen}
+                                            aria-expanded={openMenu === item.name}
                                             className={clsx(
                                                 NAV_LINK_BASE,
                                                 'inline-flex items-center gap-1',
-                                                { [ACTIVE_LINK_CLASS]: allServiceItems.some((c) => isActive(c.href) && c.href !== '#') }
+                                                { [ACTIVE_LINK_CLASS]: isMenuActive(item) }
                                             )}
                                         >
                                             {item.name}
-                                            <span className={clsx('text-[10px] transition-transform duration-200', { 'rotate-180': servicesOpen })}>▾</span>
+                                            <span className={clsx('text-[10px] transition-transform duration-200', { 'rotate-180': openMenu === item.name })}>▾</span>
                                         </button>
                                     </li>
                                 ) : (
@@ -300,7 +322,38 @@ const Navbar = () => {
                             <div className='pt-20'>
                                 <ul className='text-white text-center space-y-8'>
                                     {items.map((item) => (
-                                        'children' in item ? (
+                                        'links' in item ? (
+                                            <li key={item.name} className='space-y-4'>
+                                                <span className='block text-[#00FFB2]/60 text-sm font-bold uppercase tracking-widest'>
+                                                    {item.name}
+                                                </span>
+                                                <ul className='space-y-3 mt-2'>
+                                                    {item.links.map((l) => (
+                                                        <li key={l.name}>
+                                                            {l.soon ? (
+                                                                <span className='inline-flex items-center gap-2 text-lg font-semibold text-white/40'>
+                                                                    {l.name}
+                                                                    <span className='text-[10px] font-bold uppercase tracking-wide rounded-full bg-white/10 px-2 py-0.5'>
+                                                                        {isAr ? 'قريباً' : 'Soon'}
+                                                                    </span>
+                                                                </span>
+                                                            ) : (
+                                                                <LocalLink
+                                                                    onClick={close}
+                                                                    className={clsx(
+                                                                        MOBILE_LINK_BASE, 'text-lg',
+                                                                        { [MOBILE_ACTIVE_CLASS]: isActive(l.href) }
+                                                                    )}
+                                                                    href={l.href}
+                                                                >
+                                                                    {l.name}
+                                                                </LocalLink>
+                                                            )}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </li>
+                                        ) : 'children' in item ? (
                                             <li key={item.name} className='space-y-4'>
                                                 <span className='block text-[#00FFB2]/60 text-sm font-bold uppercase tracking-widest'>
                                                     {item.name}
@@ -368,76 +421,112 @@ const Navbar = () => {
                 document.body
             )}
 
-            {/* Desktop "Services" dropdown panel — portaled to <body> so it sits
-                above all page sections regardless of header stacking context */}
-            {mounted && servicesOpen && createPortal(
-                <div
-                    style={{ position: 'fixed', top: ddPos.top, left: ddPos.left, right: ddPos.right }}
-                    className='z-[999999] pt-2'
-                    onMouseEnter={openServices}
-                    onMouseLeave={closeServices}
-                >
-                    {/* Accordion panel: each main title is a button that expands its
-                        sub-items below it. One category open at a time; the first is
-                        expanded by default whenever the panel is shown. */}
-                    <div className='min-w-72 bg-white rounded-xl shadow-2xl ring-1 ring-black/5 p-2'>
-                        {services.map((group, gi) => {
-                            const hasActive = group.items.some((c) => isActive(c.href) && c.href !== '#')
-                            const isExpanded = openCats.includes(gi)
-                            return (
-                                <div key={group.category} className={clsx(gi > 0 && 'mt-1 border-t border-gray-100 pt-1')}>
-                                    <button
-                                        type='button'
-                                        onClick={() => toggleCat(gi)}
-                                        aria-expanded={isExpanded}
-                                        className={clsx(
-                                            'w-full flex items-center justify-between gap-4 px-3 py-2.5 rounded-lg text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#1E7D67]/5',
-                                            isExpanded ? 'text-[#1E7D67]' : hasActive ? 'text-[#1E7D67]' : 'text-[#0B2923]',
-                                            isAr ? 'text-right' : 'text-left'
-                                        )}
-                                    >
-                                        <span>{group.category}</span>
-                                        <span
-                                            className={clsx('text-[10px] text-[#1E7D67] transition-transform duration-200', isExpanded && 'rotate-180')}
-                                            aria-hidden='true'
-                                        >
-                                            ▾
-                                        </span>
-                                    </button>
+            {/* Desktop dropdown panel — portaled to <body> so it sits above all page
+                sections regardless of header stacking context. Services renders an
+                accordion of categories; Pricing renders a flat list of product lines. */}
+            {mounted && openMenu && (() => {
+                const active = items.find((i) => i.name === openMenu && ('children' in i || 'links' in i)) as
+                    | { name: string; children: ServiceCategory[] }
+                    | { name: string; links: NavLink[] }
+                    | undefined
+                if (!active) return null
+                return createPortal(
+                    <div
+                        style={{ position: 'fixed', top: ddPos.top, left: ddPos.left, right: ddPos.right }}
+                        className='z-[999999] pt-2'
+                        onMouseEnter={keepMenuOpen}
+                        onMouseLeave={scheduleClose}
+                    >
+                        <div className='min-w-72 bg-white rounded-xl shadow-2xl ring-1 ring-black/5 p-2'>
+                            {'children' in active ? (
+                                /* Accordion panel: each main title expands its sub-items. */
+                                active.children.map((group, gi) => {
+                                    const hasActive = group.items.some((c) => isActive(c.href) && c.href !== '#')
+                                    const isExpanded = openCats.includes(gi)
+                                    return (
+                                        <div key={group.category} className={clsx(gi > 0 && 'mt-1 border-t border-gray-100 pt-1')}>
+                                            <button
+                                                type='button'
+                                                onClick={() => toggleCat(gi)}
+                                                aria-expanded={isExpanded}
+                                                className={clsx(
+                                                    'w-full flex items-center justify-between gap-4 px-3 py-2.5 rounded-lg text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#1E7D67]/5',
+                                                    isExpanded ? 'text-[#1E7D67]' : hasActive ? 'text-[#1E7D67]' : 'text-[#0B2923]',
+                                                    isAr ? 'text-right' : 'text-left'
+                                                )}
+                                            >
+                                                <span>{group.category}</span>
+                                                <span
+                                                    className={clsx('text-[10px] text-[#1E7D67] transition-transform duration-200', isExpanded && 'rotate-180')}
+                                                    aria-hidden='true'
+                                                >
+                                                    ▾
+                                                </span>
+                                            </button>
 
-                                    {/* Sub-items — height-animated accordion body */}
-                                    <div
-                                        className={clsx(
-                                            'overflow-hidden transition-all duration-300 ease-in-out',
-                                            isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
-                                        )}
-                                    >
-                                        <div className='overflow-hidden'>
-                                            <div className={clsx('py-1', isAr ? 'pr-3' : 'pl-3')}>
-                                                {group.items.map((c) => (
-                                                    <LocalLink
-                                                        key={c.href + c.name}
-                                                        href={c.href}
-                                                        onClick={() => setServicesOpen(false)}
-                                                        className={clsx(
-                                                            'block px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors hover:bg-[#1E7D67]/5',
-                                                            isActive(c.href) && c.href !== '#' ? 'bg-[#1E7D67]/10 text-[#1E7D67]' : 'text-gray-600',
-                                                            isAr ? 'text-right' : 'text-left'
-                                                        )}
-                                                    >
-                                                        {c.name}
-                                                    </LocalLink>
-                                                ))}
+                                            {/* Sub-items — height-animated accordion body */}
+                                            <div
+                                                className={clsx(
+                                                    'overflow-hidden transition-all duration-300 ease-in-out',
+                                                    isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                                                )}
+                                            >
+                                                <div className='overflow-hidden'>
+                                                    <div className={clsx('py-1', isAr ? 'pr-3' : 'pl-3')}>
+                                                        {group.items.map((c) => (
+                                                            <LocalLink
+                                                                key={c.href + c.name}
+                                                                href={c.href}
+                                                                onClick={() => setOpenMenu(null)}
+                                                                className={clsx(
+                                                                    'block px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors hover:bg-[#1E7D67]/5',
+                                                                    isActive(c.href) && c.href !== '#' ? 'bg-[#1E7D67]/10 text-[#1E7D67]' : 'text-gray-600',
+                                                                    isAr ? 'text-right' : 'text-left'
+                                                                )}
+                                                            >
+                                                                {c.name}
+                                                            </LocalLink>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
-                            )
-                        })}
-                    </div>
-                </div>,
-                document.body
-            )}
+                                    )
+                                })
+                            ) : (
+                                /* Flat product-line list (Pricing). Live lines link; "soon" ones are disabled. */
+                                active.links.map((l) => (
+                                    l.soon ? (
+                                        <div
+                                            key={l.name}
+                                            className={clsx('flex items-center justify-between gap-4 px-3 py-2.5 rounded-lg text-sm font-semibold text-gray-400 cursor-default select-none', isAr ? 'text-right' : 'text-left')}
+                                        >
+                                            <span>{l.name}</span>
+                                            <span className='text-[10px] font-bold uppercase tracking-wide rounded-full bg-gray-100 text-gray-400 px-2 py-0.5 whitespace-nowrap'>
+                                                {isAr ? 'قريباً' : 'Soon'}
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <LocalLink
+                                            key={l.name}
+                                            href={l.href}
+                                            onClick={() => setOpenMenu(null)}
+                                            className={clsx(
+                                                'flex items-center justify-between gap-4 px-3 py-2.5 rounded-lg text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#1E7D67]/5',
+                                                isActive(l.href) ? 'bg-[#1E7D67]/10 text-[#1E7D67]' : 'text-[#0B2923]',
+                                                isAr ? 'text-right' : 'text-left'
+                                            )}
+                                        >
+                                            {l.name}
+                                        </LocalLink>
+                                    )
+                                ))
+                            )}
+                        </div>
+                    </div>,
+                    document.body
+                )
+            })()}
         </>
     )
 }
