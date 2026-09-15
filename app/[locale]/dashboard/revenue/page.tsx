@@ -3,25 +3,19 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import axios from 'axios'
 import { useLocale } from 'next-intl'
+import LocalLink from '../../components/LocaleLink'
 
 type Money = { currency: string; total: number; count: number }
 type AcademyRow = { slug: string; name: string; currency: string; count: number; total: number; settled: number; outstanding: number }
 type PurposeRow = { purpose: string; currency: string; count: number; total: number }
 type Summary = {
-    range: { from: string | null; to: string | null }
     student: { byAcademy: AcademyRow[]; totals: (Money & { settled: number; outstanding: number })[] }
     own: { byPurpose: PurposeRow[]; totals: Money[] }
     grandTotals: Money[]
     outstandingTotals: Money[]
 }
-type Txn = {
-    id: string; orderId: string; amount: number; currency: string; provider: string
-    kind: string; courseId: number | null; userRef: string | null; paidAt: string
-    settled: boolean; settledAt: string | null; settlementRef: string | null
-}
 
 const fmt = (n: number, ccy: string) => `${n.toLocaleString()} ${ccy}`
-const rowKey = (slug: string, ccy: string) => `${slug}|${ccy}`
 
 const PURPOSE_LABEL: Record<string, { ar: string; en: string }> = {
     new_academy: { ar: 'أكاديمية جديدة', en: 'New academy' },
@@ -36,21 +30,18 @@ export default function RevenueDashboardPage() {
 
     const [from, setFrom] = useState('')
     const [to, setTo] = useState('')
+    const [mode, setMode] = useState<'live' | 'test' | 'all'>('live')
     const [data, setData] = useState<Summary | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     const [syncing, setSyncing] = useState(false)
     const [syncMsg, setSyncMsg] = useState('')
-    // Per-academy-row drill-down + settlement.
-    const [expanded, setExpanded] = useState<string | null>(null)
-    const [txns, setTxns] = useState<Record<string, Txn[]>>({})
-    const [busyKey, setBusyKey] = useState('')
 
     const load = useCallback(async () => {
         setLoading(true)
         setError('')
         try {
-            const params: Record<string, string> = {}
+            const params: Record<string, string> = { mode }
             if (from) params.from = new Date(from).toISOString()
             if (to) params.to = new Date(to + 'T23:59:59').toISOString()
             const { data } = await axios.get('/api/revenue/summary', { params })
@@ -60,13 +51,12 @@ export default function RevenueDashboardPage() {
         } finally {
             setLoading(false)
         }
-    }, [from, to])
+    }, [from, to, mode])
 
     useEffect(() => { load() }, [load])
 
     const syncAcademies = async () => {
-        setSyncing(true)
-        setSyncMsg('')
+        setSyncing(true); setSyncMsg('')
         try {
             const { data } = await axios.post('/api/academies/apply-integrations-all')
             const skipped = data.skipped?.length ? ` · ${data.skipped.length} ${tr('تخطّي', 'skipped')}` : ''
@@ -75,61 +65,6 @@ export default function RevenueDashboardPage() {
             setSyncMsg(e?.response?.data?.error || tr('فشل المزامنة', 'Sync failed'))
         } finally {
             setSyncing(false)
-        }
-    }
-
-    const loadTxns = useCallback(async (slug: string, currency: string) => {
-        const key = rowKey(slug, currency)
-        try {
-            const { data } = await axios.get('/api/revenue/transactions', { params: { academySlug: slug, currency, settled: 'all', limit: 500 } })
-            setTxns((t) => ({ ...t, [key]: data.transactions ?? [] }))
-        } catch {
-            setTxns((t) => ({ ...t, [key]: [] }))
-        }
-    }, [])
-
-    const toggleExpand = (slug: string, currency: string) => {
-        const key = rowKey(slug, currency)
-        if (expanded === key) { setExpanded(null); return }
-        setExpanded(key)
-        if (!txns[key]) loadTxns(slug, currency)
-    }
-
-    // Settle (or unsettle) all outstanding for one academy+currency.
-    const settleRow = async (row: AcademyRow) => {
-        const amount = fmt(row.outstanding, row.currency)
-        const reference = window.prompt(
-            tr(`تسوية ${amount} لـ ${row.name}؟ أدخل مرجع الدفع (اختياري):`, `Settle ${amount} for ${row.name}? Enter a payout reference (optional):`),
-            '',
-        )
-        if (reference === null) return // cancelled
-        const key = rowKey(row.slug, row.currency)
-        setBusyKey(key)
-        try {
-            await axios.post('/api/revenue/settle', { academySlug: row.slug, currency: row.currency, reference: reference || undefined })
-            await load()
-            if (expanded === key) await loadTxns(row.slug, row.currency)
-        } catch (e: any) {
-            setError(e?.response?.data?.error || tr('فشلت التسوية', 'Settle failed'))
-        } finally {
-            setBusyKey('')
-        }
-    }
-
-    // Settle / unsettle a single transaction.
-    const settleTxn = async (slug: string, currency: string, t: Txn) => {
-        const key = rowKey(slug, currency)
-        setBusyKey(key + t.orderId)
-        try {
-            await axios.post('/api/revenue/settle', {
-                action: t.settled ? 'unsettle' : 'settle',
-                academySlug: slug, currency, orderIds: [t.orderId],
-            })
-            await Promise.all([load(), loadTxns(slug, currency)])
-        } catch (e: any) {
-            setError(e?.response?.data?.error || tr('فشلت العملية', 'Action failed'))
-        } finally {
-            setBusyKey('')
         }
     }
 
@@ -151,6 +86,12 @@ export default function RevenueDashboardPage() {
         </div>
     )
 
+    const modeTabs: { key: 'live' | 'test' | 'all'; ar: string; en: string }[] = [
+        { key: 'live', ar: 'مباشر', en: 'Live' },
+        { key: 'test', ar: 'تجريبي', en: 'Test' },
+        { key: 'all', ar: 'الكل', en: 'All' },
+    ]
+
     return (
         <div className='dashboard-container space-y-6 py-5 lg:py-10'>
             <div className='flex flex-wrap items-start justify-between gap-3'>
@@ -171,6 +112,23 @@ export default function RevenueDashboardPage() {
                     </button>
                     {syncMsg && <p className='mt-1 text-xs text-gray-500'>{syncMsg}</p>}
                 </div>
+            </div>
+
+            {/* Live / test selector */}
+            <div className='flex flex-wrap items-center gap-4'>
+                <div className='inline-flex overflow-hidden rounded-lg border border-gray-200'>
+                    {modeTabs.map((t) => (
+                        <button key={t.key} onClick={() => setMode(t.key)}
+                            className={`px-4 py-2 text-sm font-semibold ${mode === t.key ? 'bg-[#0B2923] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                            {tr(t.ar, t.en)}
+                        </button>
+                    ))}
+                </div>
+                {mode === 'test' && (
+                    <span className='rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700'>
+                        {tr('تعرض مدفوعات تجريبية (Sandbox) — ليست إيرادات حقيقية', 'Showing TEST (sandbox) payments — not real revenue')}
+                    </span>
+                )}
             </div>
 
             {/* Date range */}
@@ -205,11 +163,11 @@ export default function RevenueDashboardPage() {
                 <Card title={tr('إيرادات المنصة (الباقات)', 'Platform (licences)')} rows={data?.own.totals ?? []} tone='text-[#268F79]' />
             </div>
 
-            {/* Per academy + settlement */}
+            {/* Per academy */}
             <div className='rounded-xl border border-gray-200 bg-white shadow-sm'>
                 <div className='border-b border-gray-100 px-5 py-4'>
                     <h2 className='font-bold text-[#0B2923]'>{tr('حسب الأكاديمية (مدفوعات الطلاب)', 'By academy (student payments)')}</h2>
-                    <p className='mt-0.5 text-xs text-gray-400'>{tr('اضغط على صف لعرض العمليات. «تسوية» تُعلّم المبلغ المستحق كمدفوع للمالك.', 'Click a row to see its transactions. “Settle” marks the outstanding amount as paid to the owner.')}</p>
+                    <p className='mt-0.5 text-xs text-gray-400'>{tr('افتح تفاصيل الأكاديمية للاطّلاع على العمليات وتسجيل الدفعات للمالك.', 'Open an academy’s details to see its transactions and record payouts to the owner.')}</p>
                 </div>
                 <div className='overflow-x-auto'>
                     <table className='w-full text-sm'>
@@ -225,88 +183,25 @@ export default function RevenueDashboardPage() {
                             </tr>
                         </thead>
                         <tbody className='divide-y divide-gray-100'>
-                            {(data?.student.byAcademy ?? []).map((r) => {
-                                const key = rowKey(r.slug, r.currency)
-                                const isOpen = expanded === key
-                                const list = txns[key]
-                                return (
-                                    <React.Fragment key={key}>
-                                        <tr className='cursor-pointer hover:bg-gray-50' onClick={() => toggleExpand(r.slug, r.currency)}>
-                                            <td className='px-4 py-3'>
-                                                <span className='me-1 text-gray-400'>{isOpen ? '▾' : '▸'}</span>
-                                                <span className='font-semibold text-[#0B2923]'>{r.name}</span>
-                                                <span className='ms-2 text-xs text-gray-400'>{r.slug}</span>
-                                            </td>
-                                            <td className='px-4 py-3 text-gray-500'>{r.currency}</td>
-                                            <td className='px-4 py-3 text-end text-gray-500'>{r.count}</td>
-                                            <td className='px-4 py-3 text-end font-semibold text-[#1E7D67]'>{fmt(r.total, r.currency)}</td>
-                                            <td className='px-4 py-3 text-end text-gray-500'>{fmt(r.settled, r.currency)}</td>
-                                            <td className={`px-4 py-3 text-end font-bold ${r.outstanding > 0 ? 'text-amber-600' : 'text-gray-300'}`}>{fmt(r.outstanding, r.currency)}</td>
-                                            <td className='px-4 py-3 text-end'>
-                                                {r.outstanding > 0 && (
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); settleRow(r) }}
-                                                        disabled={busyKey === key}
-                                                        className='rounded-md bg-amber-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-600 disabled:opacity-60'>
-                                                        {busyKey === key ? tr('جارٍ…', '…') : tr('تسوية', 'Settle')}
-                                                    </button>
-                                                )}
-                                            </td>
-                                        </tr>
-                                        {isOpen && (
-                                            <tr className='bg-gray-50/60'>
-                                                <td colSpan={7} className='px-4 py-3'>
-                                                    {!list ? (
-                                                        <div className='py-3 text-center text-xs text-gray-400'>{tr('جارٍ التحميل…', 'Loading…')}</div>
-                                                    ) : list.length === 0 ? (
-                                                        <div className='py-3 text-center text-xs text-gray-400'>{tr('لا توجد عمليات.', 'No transactions.')}</div>
-                                                    ) : (
-                                                        <table className='w-full text-xs'>
-                                                            <thead className='text-gray-400'>
-                                                                <tr>
-                                                                    <th className='px-2 py-1 text-start'>{tr('رقم الطلب', 'Order')}</th>
-                                                                    <th className='px-2 py-1 text-start'>{tr('النوع', 'Kind')}</th>
-                                                                    <th className='px-2 py-1 text-start'>{tr('التاريخ', 'Date')}</th>
-                                                                    <th className='px-2 py-1 text-end'>{tr('المبلغ', 'Amount')}</th>
-                                                                    <th className='px-2 py-1 text-start'>{tr('الحالة', 'Status')}</th>
-                                                                    <th className='px-2 py-1 text-end'></th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                {list.map((t) => (
-                                                                    <tr key={t.id} className='border-t border-gray-100'>
-                                                                        <td className='px-2 py-1.5 font-mono text-[11px] text-gray-600'>{t.orderId}</td>
-                                                                        <td className='px-2 py-1.5 text-gray-500'>{t.kind === 'subscription' ? tr('اشتراك', 'Subscription') : tr('دورة', 'Course')}{t.courseId ? ` #${t.courseId}` : ''}</td>
-                                                                        <td className='px-2 py-1.5 text-gray-500'>{new Date(t.paidAt).toLocaleDateString()}</td>
-                                                                        <td className='px-2 py-1.5 text-end font-semibold'>{fmt(t.amount, t.currency)}</td>
-                                                                        <td className='px-2 py-1.5'>
-                                                                            {t.settled ? (
-                                                                                <span className='rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700'>
-                                                                                    {tr('مُسوّى', 'Settled')}{t.settlementRef ? ` · ${t.settlementRef}` : ''}
-                                                                                </span>
-                                                                            ) : (
-                                                                                <span className='rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700'>{tr('مستحق', 'Outstanding')}</span>
-                                                                            )}
-                                                                        </td>
-                                                                        <td className='px-2 py-1.5 text-end'>
-                                                                            <button
-                                                                                onClick={() => settleTxn(r.slug, r.currency, t)}
-                                                                                disabled={busyKey === key + t.orderId}
-                                                                                className='rounded border border-gray-300 px-2 py-1 text-[11px] font-semibold text-gray-600 hover:bg-white disabled:opacity-50'>
-                                                                                {t.settled ? tr('إلغاء التسوية', 'Unsettle') : tr('تسوية', 'Settle')}
-                                                                            </button>
-                                                                        </td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </React.Fragment>
-                                )
-                            })}
+                            {(data?.student.byAcademy ?? []).map((r) => (
+                                <tr key={r.slug + r.currency} className='hover:bg-gray-50'>
+                                    <td className='px-4 py-3'>
+                                        <span className='font-semibold text-[#0B2923]'>{r.name}</span>
+                                        <span className='ms-2 text-xs text-gray-400'>{r.slug}</span>
+                                    </td>
+                                    <td className='px-4 py-3 text-gray-500'>{r.currency}</td>
+                                    <td className='px-4 py-3 text-end text-gray-500'>{r.count}</td>
+                                    <td className='px-4 py-3 text-end font-semibold text-[#1E7D67]'>{fmt(r.total, r.currency)}</td>
+                                    <td className='px-4 py-3 text-end text-gray-500'>{fmt(r.settled, r.currency)}</td>
+                                    <td className={`px-4 py-3 text-end font-bold ${r.outstanding > 0 ? 'text-amber-600' : 'text-gray-300'}`}>{fmt(r.outstanding, r.currency)}</td>
+                                    <td className='px-4 py-3 text-end'>
+                                        <LocalLink href={`/dashboard/revenue/${r.slug}`}
+                                            className='rounded-md border border-[#268F79] px-3 py-1.5 text-xs font-semibold text-[#268F79] hover:bg-[#268F79]/5'>
+                                            {tr('تفاصيل', 'Details')} →
+                                        </LocalLink>
+                                    </td>
+                                </tr>
+                            ))}
                             {!loading && (data?.student.byAcademy.length ?? 0) === 0 && (
                                 <tr><td colSpan={7} className='px-5 py-8 text-center text-gray-400'>{tr('لا توجد مدفوعات طلاب بعد.', 'No student payments yet.')}</td></tr>
                             )}

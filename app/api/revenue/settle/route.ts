@@ -5,17 +5,24 @@ import { authAdmin } from "@/lib/predict";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// POST /api/revenue/settle — mark mirrored payments as settled (paid out to the
-// academy owner) or reverse it. Bookkeeping only; no money moves. Admin only.
+// POST /api/revenue/settle — record a payout to an academy owner: create a formal
+// Settlement batch (per currency) and mark the matched outstanding rows settled and
+// linked to it. Bookkeeping only; no money moves. Admin only.
+//
+// Only LIVE revenue is settled (test payments are never paid to owners) unless
+// mode is overridden.
 //
 // Body:
-//   action?:   "settle" (default) | "unsettle"
-//   academySlug: required — the academy to (un)settle
-//   currency?:  restrict to one currency (matches a dashboard row)
-//   orderIds?:  restrict to specific orders; otherwise all matching rows
-//   upToPaidAt?: only rows paid on/before this ISO date (e.g. settle up to month end)
-//   reference?: free-text note stored on settled rows (bank ref, batch date)
+//   academySlug: required
+//   currency?:   restrict to one currency
+//   orderIds?:   restrict to specific orders (settle a selection); else all matching
+//   upToPaidAt?: only rows paid on/before this ISO date
+//   mode?:       "live" (default) | "test"
+//   method?:     bank (default) | instapay | cash | wallet | other
+//   reference?:  payout reference (bank tx id, cheque no, …)
+//   note?:       free text
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
+const METHODS = new Set(["bank", "instapay", "cash", "wallet", "other"]);
 
 export async function POST(req: NextRequest) {
     if (!(await authAdmin(req))) {
@@ -29,13 +36,17 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "invalid json" }, { status: 400 });
     }
 
-    const action = body?.action === "unsettle" ? "unsettle" : "settle";
     const academySlug = String(body?.academySlug ?? "").trim().toLowerCase();
     if (!SLUG_RE.test(academySlug)) {
         return NextResponse.json({ error: "invalid academySlug" }, { status: 400 });
     }
 
-    const where: any = { academySlug, status: "paid", settled: action === "settle" ? false : true };
+    const where: any = {
+        academySlug,
+        status: "paid",
+        settled: false,
+        mode: body?.mode === "test" ? "test" : "live",
+    };
     if (typeof body?.currency === "string" && body.currency.trim()) {
         where.currency = body.currency.trim().toUpperCase().slice(0, 8);
     }
@@ -47,26 +58,41 @@ export async function POST(req: NextRequest) {
         if (!Number.isNaN(d.getTime())) where.paidAt = { lte: d };
     }
 
+    const method = METHODS.has(String(body?.method)) ? String(body.method) : "bank";
+    const reference = body?.reference ? String(body.reference).slice(0, 191) : null;
+    const note = body?.note ? String(body.note).slice(0, 4000) : null;
+
     try {
-        // Report the amount affected (per currency) before flipping the flag.
+        // Amount + count per currency (a settlement batch is per currency).
         const affected = await prisma.academyRevenue.groupBy({
             by: ["currency"],
             where,
             _sum: { amount: true },
             _count: { _all: true },
         });
+        if (affected.length === 0) {
+            return NextResponse.json({ ok: true, settlements: [], count: 0 });
+        }
 
-        const data = action === "settle"
-            ? { settled: true, settledAt: new Date(), settlementRef: body?.reference ? String(body.reference).slice(0, 191) : null }
-            : { settled: false, settledAt: null, settlementRef: null };
-
-        const res = await prisma.academyRevenue.updateMany({ where, data });
+        const now = new Date();
+        const settlements = [];
+        for (const grp of affected) {
+            const amount = grp._sum.amount ?? 0;
+            const txnCount = grp._count._all;
+            const settlement = await prisma.settlement.create({
+                data: { academySlug, currency: grp.currency, amount, txnCount, method, reference, note },
+            });
+            await prisma.academyRevenue.updateMany({
+                where: { ...where, currency: grp.currency },
+                data: { settled: true, settledAt: now, settlementRef: reference, settlementId: settlement.id },
+            });
+            settlements.push({ id: settlement.id, currency: grp.currency, amount, txnCount });
+        }
 
         return NextResponse.json({
             ok: true,
-            action,
-            count: res.count,
-            amounts: affected.map((a) => ({ currency: a.currency, total: a._sum.amount ?? 0, count: a._count._all })),
+            settlements,
+            count: settlements.reduce((n, s) => n + s.txnCount, 0),
         });
     } catch (e) {
         console.error("[revenue/settle] failed", e);

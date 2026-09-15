@@ -251,12 +251,17 @@ model AcademyRevenue {
   paidAt      DateTime // when the payment completed (from the academy)
   createdAt   DateTime @default(now()) // when we ingested it
 
+  // Live vs test/sandbox — mirrored from the academy's payment-provider mode so test
+  // payments never get counted as real revenue. Default "live" for pre-mode rows.
+  mode String @default("live") // live | test
+
   // Settlement: NIT collects centrally then pays each owner out-of-band. These track
   // which rows have been paid out to the owner (settled) vs still owed (outstanding).
   // A settlement is a manual admin action, so this is just bookkeeping — no money moves.
   settled      Boolean   @default(false)
   settledAt    DateTime?
-  settlementRef String? // free-text note/reference (e.g. bank transfer id, batch date)
+  settlementRef String? // denormalised reference (also on the linked Settlement)
+  settlementId  String? // the Settlement (payout batch) this row was paid out in
 
   // Idempotent ingest: one row per (academy, order). A resend just updates status
   // (never the settlement flags — a webhook re-delivery must not un-settle a row).
@@ -266,4 +271,25 @@ model AcademyRevenue {
   @@index([provider])
   @@index([status])
   @@index([settled])
+  @@index([mode])
+  @@index([settlementId])
+}
+
+// A formal payout batch: "NIT paid academy X <amount> <currency> on <date> via
+// <method>, ref <reference>". Created when an admin settles outstanding revenue;
+// the settled AcademyRevenue rows point back to it via settlementId. Voiding a
+// settlement unlinks its rows (back to outstanding) and deletes this record.
+model Settlement {
+  id          String   @id @default(uuid())
+  academySlug String
+  currency    String
+  amount      Int // total paid out in this batch (whole currency units)
+  txnCount    Int      @default(0) // how many revenue rows this batch covered
+  method      String   @default("bank") // bank | instapay | cash | wallet | other
+  reference   String? // bank transfer id / cheque no / etc.
+  note        String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([academySlug])
+  @@index([createdAt])
 }

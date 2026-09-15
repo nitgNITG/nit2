@@ -116,8 +116,25 @@ const IntegrationsPage = () => {
                     {GROUPS.map((g) => (
                         <div key={g.prefix} className='bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4'>
                             <div>
-                                <h5 className='font-bold'>{g.title}</h5>
+                                <div className='flex items-center gap-2'>
+                                    <h5 className='font-bold'>{g.title}</h5>
+                                    {g.prefix === 'kashier_' && (() => {
+                                        // Default is sandbox ("1") when unset, matching what's pushed to academies.
+                                        const sandbox = (edits['kashier_sandbox'] ?? values['kashier_sandbox']?.value ?? '1') !== '0'
+                                        return sandbox ? (
+                                            <span className='rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-700'>🧪 TEST / Sandbox</span>
+                                        ) : (
+                                            <span className='rounded-full bg-green-100 px-2.5 py-0.5 text-[11px] font-bold text-green-700'>🟢 LIVE</span>
+                                        )
+                                    })()}
+                                </div>
                                 <p className='text-xs text-gray-400 mt-0.5'>{g.note}</p>
+                                {g.prefix === 'kashier_' && (
+                                    <p className='mt-1 text-[11px] text-gray-400'>
+                                        This mode is pushed to <strong>every academy</strong> (their students pay in the same mode).
+                                        Set <span className='font-mono'>Kashier sandbox mode</span> to <span className='font-mono'>0</span> for LIVE, <span className='font-mono'>1</span> for TEST, then re-sync academies.
+                                    </p>
+                                )}
                             </div>
                             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                                 {fieldsFor(g.prefix).map((f) => {

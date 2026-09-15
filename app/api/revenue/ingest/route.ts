@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
     const kind = KINDS.has(String(body?.kind)) ? String(body.kind) : "course";
     const courseId = body?.courseId != null && Number.isFinite(Number(body.courseId)) ? Math.trunc(Number(body.courseId)) : null;
     const userRef = body?.userRef != null ? String(body.userRef).slice(0, 64) : null;
+    const mode = String(body?.mode) === "test" ? "test" : "live";
 
     if (!SLUG_RE.test(academySlug)) {
         return NextResponse.json({ error: "invalid academySlug" }, { status: 400 });
@@ -59,8 +60,8 @@ export async function POST(req: NextRequest) {
     try {
         await prisma.academyRevenue.upsert({
             where: { academySlug_orderId: { academySlug, orderId } },
-            update: { amount, currency, status, kind, courseId, userRef, paidAt, provider },
-            create: { academySlug, orderId, amount, currency, status, kind, courseId, userRef, paidAt, provider },
+            update: { amount, currency, status, kind, courseId, userRef, paidAt, provider, mode },
+            create: { academySlug, orderId, amount, currency, status, kind, courseId, userRef, paidAt, provider, mode },
         });
         return NextResponse.json({ ok: true }, { status: 200 });
     } catch (e) {

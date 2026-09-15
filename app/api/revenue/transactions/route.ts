@@ -26,6 +26,8 @@ export async function GET(req: NextRequest) {
     const settled = url.searchParams.get("settled");
     if (settled === "true") where.settled = true;
     else if (settled === "false") where.settled = false;
+    const mode = url.searchParams.get("mode");
+    if (mode === "live" || mode === "test") where.mode = mode;
 
     const parseDate = (s: string | null) => {
         if (!s) return undefined;
@@ -39,17 +41,20 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(500, Math.max(1, parseInt(url.searchParams.get("limit") ?? "200", 10) || 200));
 
     try {
-        const rows = await prisma.academyRevenue.findMany({
-            where,
-            orderBy: { paidAt: "desc" },
-            take: limit,
-            select: {
-                id: true, orderId: true, amount: true, currency: true, provider: true,
-                kind: true, courseId: true, userRef: true, paidAt: true,
-                settled: true, settledAt: true, settlementRef: true,
-            },
-        });
-        return NextResponse.json({ transactions: rows });
+        const [rows, academy] = await Promise.all([
+            prisma.academyRevenue.findMany({
+                where,
+                orderBy: { paidAt: "desc" },
+                take: limit,
+                select: {
+                    id: true, orderId: true, amount: true, currency: true, provider: true,
+                    kind: true, courseId: true, userRef: true, paidAt: true, mode: true,
+                    settled: true, settledAt: true, settlementRef: true, settlementId: true,
+                },
+            }),
+            prisma.academy.findUnique({ where: { slug: academySlug }, select: { name: true } }),
+        ]);
+        return NextResponse.json({ academyName: academy?.name ?? academySlug, transactions: rows });
     } catch (e) {
         console.error("[revenue/transactions] failed", e);
         return NextResponse.json({ error: "list failed" }, { status: 500 });

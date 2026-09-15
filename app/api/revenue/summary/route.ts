@@ -23,12 +23,15 @@ export async function GET(req: NextRequest) {
     const from = parseDate(url.searchParams.get("from"));
     const to = parseDate(url.searchParams.get("to"));
     const range = from || to ? { gte: from, lte: to } : undefined;
+    // Live vs test/sandbox. Default "live" so test payments don't inflate real revenue.
+    const modeParam = url.searchParams.get("mode");
+    const modeFilter = modeParam === "test" ? { mode: "test" } : modeParam === "all" ? {} : { mode: "live" };
 
     try {
         // ── Student revenue (per academy, per currency, split by settled) ─────────
         const studentGroups = await prisma.academyRevenue.groupBy({
             by: ["academySlug", "currency", "settled"],
-            where: { status: "paid", ...(range ? { paidAt: range } : {}) },
+            where: { status: "paid", ...modeFilter, ...(range ? { paidAt: range } : {}) },
             _sum: { amount: true },
             _count: { _all: true },
         });
