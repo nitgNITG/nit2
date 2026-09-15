@@ -12,6 +12,15 @@ set -uo pipefail
 log(){ echo "==> $*"; }
 die(){ echo "ERROR: $*" >&2; exit 1; }
 
+# Load platform settings/secrets so a manual run (or the for-loop over academies)
+# gets the same SETTING_*/JITSI_* env the provisioning service injects from
+# provision.env. No-op if the vars are already exported. Override the path with
+# PROVISION_ENV=… if it lives elsewhere.
+PROVISION_ENV="${PROVISION_ENV:-/var/www/html/saas/provision.env}"
+if [[ -f "$PROVISION_ENV" ]]; then
+    set -a; . "$PROVISION_ENV"; set +a
+fi
+
 SLUG="${1:-}"
 [[ -n "$SLUG" ]] || die "Usage: bash apply-settings.sh <slug>"
 [[ "$SLUG" =~ ^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])$ ]] || die "invalid slug"
