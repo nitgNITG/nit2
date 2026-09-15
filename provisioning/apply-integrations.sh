@@ -54,6 +54,11 @@ _set_provider(){ # $1=provider name $2=1|0
 # isn't installed. Falls back to a site-URL-derived tag in the plugin if unset.
 _set local_payments academy_slug "$SLUG"
 
+# Central revenue ledger: where this academy mirrors each completed payment (any
+# provider) for per-academy revenue reporting in nit2. Both empty = disabled.
+_set local_payments revenue_ingest_url    "${REVENUE_INGEST_URL:-}"
+_set local_payments revenue_ingest_secret "${REVENUE_INGEST_SECRET:-}"
+
 # ── Kashier (payments) ───────────────────────────────────────────────────────
 if [[ "${KASHIER_ENABLED:-0}" == "1" ]]; then
     _set paymentprovider_kashier merchant_id  "${KASHIER_MERCHANT_ID:-}"

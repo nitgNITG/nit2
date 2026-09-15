@@ -143,6 +143,17 @@ export async function buildIntegrationEnv(license: IntegrationLicense): Promise<
         env.KASHIER_SANDBOX = s.kashier_sandbox || "1";
         if (s.kashier_base_url) env.KASHIER_BASE_URL = s.kashier_base_url;
     }
+
+    // Central revenue ledger: tell each academy where to mirror completed payments
+    // (any provider). Independent of the licence's payment provider. No-op unless the
+    // ingest secret is configured on the control plane.
+    if (process.env.REVENUE_INGEST_SECRET) {
+        env.REVENUE_INGEST_SECRET = process.env.REVENUE_INGEST_SECRET;
+        const url =
+            process.env.REVENUE_INGEST_URL ||
+            `${(process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || "").replace(/\/$/, "")}/api/revenue/ingest`;
+        if (url && !url.startsWith("/")) env.REVENUE_INGEST_URL = url;
+    }
     return env;
 }
 
