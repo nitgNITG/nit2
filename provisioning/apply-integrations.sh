@@ -47,6 +47,13 @@ _set_provider(){ # $1=provider name $2=1|0
     docker exec "$CONTAINER" rm -f /var/www/moodledata/enable_payment_provider.php >/dev/null 2>&1 || true
 }
 
+# ── Academy identity ─────────────────────────────────────────────────────────
+# Stamp this academy's slug into local_payments so payments on the SHARED Kashier
+# merchant account are tagged per academy (order-id prefix + metaData). Always set
+# (independent of the licence's payment provider); soft-fails if local_payments
+# isn't installed. Falls back to a site-URL-derived tag in the plugin if unset.
+_set local_payments academy_slug "$SLUG"
+
 # ── Kashier (payments) ───────────────────────────────────────────────────────
 if [[ "${KASHIER_ENABLED:-0}" == "1" ]]; then
     _set paymentprovider_kashier merchant_id  "${KASHIER_MERCHANT_ID:-}"
