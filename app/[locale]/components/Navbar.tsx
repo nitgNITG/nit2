@@ -9,7 +9,6 @@ import { useLocale, useTranslations } from 'next-intl'
 import LocalLink from './LocaleLink'
 import LangSwitcher from './LangSwitcher'
 import AuthMenu from './AuthMenu'
-import { useMe } from './useMe'
 
 const Navbar = () => {
     const pathname = usePathname()
@@ -151,9 +150,6 @@ const Navbar = () => {
         | { name: string; children: ServiceCategory[] }
 
     // Hide the "Build Your Product" nav link once signed in — it points at /account
-    // (the login/sign-up CTA), which is redundant with the avatar menu's "My
-    // platforms" and just eats navbar space. `me` truthy = signed in.
-    const me = useMe()
     const items: NavItem[] = [
         { name: t('item1'), href: '/' },
         { name: t('item3'), href: '/our-projects' },
@@ -162,11 +158,8 @@ const Navbar = () => {
         { name: t('item4'), href: '/blog' },
         { name: t('item2'), href: '/who-us' },
         { name: t('item5'), href: '/contact' },
-        // Guests: the primary CTA shows the plans first, plus a plain Log in link.
-        ...(me ? [] : [
-            { name: t('buildProduct'), href: '/pricing' },
-            { name: isAr ? 'تسجيل الدخول' : 'Log in', href: '/account' },
-        ]),
+        // No guest "Log in"/"Build Your Product" item — Pricing is the entry point;
+        // any protected action (build) redirects a signed-out user to /account.
     ]
 
     const close = () => {

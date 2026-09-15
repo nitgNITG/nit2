@@ -5,7 +5,6 @@ import FAQSection from "./components/FAQSection";
 import Header from "./components/Header";
 import OurServices from "./components/OurServices";
 import Footer from "./components/Footer";
-import SocialMedia from "./components/SocialMedia";
 import DownSide from "./components/DownSide";
 import ServiceCards from "./components/ServiceCards";
 import HomepageServices from "./components/HomepageServices";
@@ -65,7 +64,6 @@ export default function Home() {
       <ScrollReveal><Contact key="home-contact" /></ScrollReveal>
       <ScrollReveal><Location /></ScrollReveal>
       <Footer />
-      <SocialMedia />
       <DownSide />
     </div>
   );

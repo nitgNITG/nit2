@@ -6,6 +6,7 @@ import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import clsx from "clsx";
 import Script from "next/script";
+import SocialMedia from "./components/SocialMedia";
 
 const cairo = Cairo({ subsets: ["latin", "arabic"], display: "swap" });
 
@@ -71,6 +72,8 @@ export default async function LocaleLayout({
       >
         <NextIntlClientProvider messages={messages}>
           {children}
+          {/* Global floating share widget (was only on the home page). */}
+          <SocialMedia />
           <Toaster
             toastOptions={{ position: "top-right" }}
             containerStyle={{ zIndex: 9999999 }}

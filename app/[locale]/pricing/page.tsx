@@ -1,7 +1,6 @@
 import React from 'react'
 import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
-import { FaWhatsapp } from 'react-icons/fa'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import ScrollReveal from '../components/ScrollReveal'
@@ -68,16 +67,6 @@ const PricingPage = async ({ params: { locale } }: { params: { locale: string } 
             </section>
 
             <Footer />
-
-            {/* Floating WhatsApp — kept at the page root (outside ScrollReveal's
-                transform, which would otherwise re-base position:fixed). */}
-            <a
-                href={`https://wa.me/201091568240?text=${encodeURIComponent(ar ? 'مرحباً، عندي استفسار عن باقات الأكاديمية' : 'Hi, I have a question about the academy plans')}`}
-                target='_blank' rel='noreferrer' aria-label='WhatsApp'
-                className='fixed bottom-6 start-6 z-[60] flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-3 font-bold text-white shadow-lg transition-transform hover:scale-105'>
-                <FaWhatsapp className='text-xl' />
-                <span>{ar ? 'واتساب' : 'WhatsApp'}</span>
-            </a>
         </div>
     )
 }
