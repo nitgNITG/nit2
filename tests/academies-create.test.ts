@@ -3,12 +3,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 const {
     db, getCurrentUser, toLicenseDefinition, computeUpgradable, sanitizeBrand,
     generateAdminPassword, encryptSecret, buildIntegrationEnv, notifyTelegram,
-    evaluateServerHealth, alertAdmins,
+    evaluateServerHealth, alertAdmins, mailerConfigured, createAndSendOtp,
 } = vi.hoisted(() => ({
     db: {
         license: { findFirst: vi.fn(), findMany: vi.fn() },
         platformSetting: { findMany: vi.fn(), findUnique: vi.fn() },
         academy: { findUnique: vi.fn(), create: vi.fn(), count: vi.fn() },
+        user: { findUnique: vi.fn() },
     },
     getCurrentUser: vi.fn(),
     toLicenseDefinition: vi.fn(),
@@ -20,6 +21,8 @@ const {
     notifyTelegram: vi.fn(),
     evaluateServerHealth: vi.fn(),
     alertAdmins: vi.fn(),
+    mailerConfigured: vi.fn(),
+    createAndSendOtp: vi.fn(),
 }));
 
 vi.mock("@/lib/prismaMysql", () => ({ default: db }));
@@ -36,6 +39,8 @@ vi.mock("@/lib/serverHealth", () => ({
     healthBlockAlertBody: () => "block-body",
 }));
 vi.mock("@/lib/adminAlert", () => ({ alertAdmins, supportWhatsapp: async () => "+20100000000" }));
+vi.mock("@/lib/mailer", () => ({ mailerConfigured }));
+vi.mock("@/lib/emailOtp", () => ({ createAndSendOtp }));
 
 import { POST } from "@/app/api/academies/route";
 
@@ -71,6 +76,10 @@ beforeEach(() => {
     db.academy.findUnique.mockResolvedValue(null);
     db.academy.count.mockResolvedValue(0);
     db.academy.create.mockResolvedValue({ slug: "acme", branch: "client/acme" });
+    db.user.findUnique.mockResolvedValue({ emailVerified: true, name: "Owner" });
+    mailerConfigured.mockReturnValue(true);
+    createAndSendOtp.mockResolvedValue({ ok: true });
+    delete process.env.REQUIRE_EMAIL_VERIFICATION; // verified-email gate off by default
     toLicenseDefinition.mockReturnValue("{\"def\":1}");
     computeUpgradable.mockReturnValue(false);
     sanitizeBrand.mockImplementation((b: unknown) => b ?? {});
@@ -90,6 +99,8 @@ beforeEach(() => {
 afterEach(() => {
     vi.unstubAllGlobals();
     delete process.env.GITHUB_TOKEN;
+    delete process.env.REQUIRE_EMAIL_VERIFICATION;
+    delete process.env.ACADEMIES_DAILY_IP_LIMIT;
 });
 
 describe("POST /api/academies", () => {
@@ -154,6 +165,54 @@ describe("POST /api/academies", () => {
         const res = await post({ name: "Demo", slug: "demo1", tier: "demo" });
         expect(res.status).toBe(403);
         expect(db.academy.create).not.toHaveBeenCalled();
+    });
+
+    it("403 (email_unverified) when verification is required and the owner isn't verified", async () => {
+        process.env.REQUIRE_EMAIL_VERIFICATION = "1";
+        db.user.findUnique.mockResolvedValue({ emailVerified: false, name: "Owner" });
+        const res = await post({ name: "Acme", slug: "acme", tier: "basic" });
+        expect(res.status).toBe(403);
+        const body = await res.json();
+        expect(body).toMatchObject({ errorcode: "email_unverified", needsVerify: true, email: "o@x.com" });
+        expect(createAndSendOtp).toHaveBeenCalledWith("o@x.com", "verify", expect.any(Object));
+        expect(fetchMock).not.toHaveBeenCalled();      // never touched GitHub
+        expect(db.academy.create).not.toHaveBeenCalled();
+    });
+
+    it("proceeds when verification is required but the owner IS verified", async () => {
+        process.env.REQUIRE_EMAIL_VERIFICATION = "1";
+        db.user.findUnique.mockResolvedValue({ emailVerified: true, name: "Owner" });
+        const res = await post({ name: "Acme", slug: "acme", tier: "basic" });
+        expect(res.status).toBe(201);
+        expect(createAndSendOtp).not.toHaveBeenCalled();
+    });
+
+    it("gate is skipped when REQUIRE_EMAIL_VERIFICATION is off (unverified owner still creates)", async () => {
+        db.user.findUnique.mockResolvedValue({ emailVerified: false, name: "Owner" });
+        const res = await post({ name: "Acme", slug: "acme", tier: "basic" });
+        expect(res.status).toBe(201);
+        expect(db.user.findUnique).not.toHaveBeenCalled(); // never even looked it up
+    });
+
+    it("429 (daily_ip_limit) on the 2nd create from the same IP when the cap is 1", async () => {
+        process.env.ACADEMIES_DAILY_IP_LIMIT = "1";
+        const ip = "203.0.113.7";
+        const call = () => POST(new Request("http://localhost/api/academies", {
+            method: "POST",
+            body: JSON.stringify({ name: "Acme", slug: "day1", tier: "basic" }),
+            headers: { "Content-Type": "application/json", "x-forwarded-for": ip },
+        }) as any);
+
+        const first = await call();
+        expect(first.status).toBe(201);         // under the cap
+
+        // Second attempt from the same IP: blocked before provisioning.
+        fetchMock.mockReset();
+        fetchMock.mockResolvedValueOnce(GH_REF).mockResolvedValueOnce(GH_BRANCH_OK);
+        const second = await call();
+        expect(second.status).toBe(429);
+        expect((await second.json()).errorcode).toBe("daily_ip_limit");
+        expect(fetchMock).not.toHaveBeenCalled(); // never provisioned
     });
 
     it("400 for a contact-sales plan (no branch, no record)", async () => {

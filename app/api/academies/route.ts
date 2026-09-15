@@ -9,6 +9,8 @@ import { buildIntegrationEnv } from "@/lib/integrations";
 import { notifyTelegram } from "@/lib/telegram";
 import { evaluateServerHealth, formatHealth, creationBlockedMessage, healthBlockAlertBody } from "@/lib/serverHealth";
 import { alertAdmins, supportWhatsapp } from "@/lib/adminAlert";
+import { mailerConfigured } from "@/lib/mailer";
+import { createAndSendOtp } from "@/lib/emailOtp";
 
 // ── SaaS repo that holds the base ("main") every academy branches from ────────
 const OWNER = process.env.SAAS_REPO_OWNER ?? "NITGg";
@@ -29,6 +31,34 @@ function checkRateLimit(ip: string): boolean {
         return true;
     }
     if (entry.count >= RATE_LIMIT) return false;
+    entry.count++;
+    return true;
+}
+
+// ── Daily per-IP creation cap (anti-abuse) ────────────────────────────────────
+// Separate from the hourly burst limit above: this counts ACTUAL provision
+// attempts (one machine can only spin up N academies per 24h), so someone can't
+// register many throwaway accounts from the same IP and demo-farm from each.
+// Controlled by env ACADEMIES_DAILY_IP_LIMIT: a number sets the cap; 0 disables.
+// Counted only once we're about to provision (after validation + health gate), so
+// typos and duplicate-slug retries don't burn the quota. In-memory per instance —
+// same caveat as the hourly limiter; resets on restart and isn't shared across
+// replicas, which is fine for a soft abuse brake.
+const dailyIpCache = new Map<string, { count: number; resetAt: number }>();
+const DAILY_WINDOW_MS = 24 * 60 * 60 * 1000;
+// Read the cap at call time (env, default 5) so it can be tuned without a rebuild.
+function dailyIpLimit(): number {
+    return Number(process.env.ACADEMIES_DAILY_IP_LIMIT ?? 5);
+}
+function checkDailyIpLimit(ip: string): boolean {
+    const limit = dailyIpLimit();
+    const now = Date.now();
+    const entry = dailyIpCache.get(ip);
+    if (!entry || now > entry.resetAt) {
+        dailyIpCache.set(ip, { count: 1, resetAt: now + DAILY_WINDOW_MS });
+        return true;
+    }
+    if (entry.count >= limit) return false;
     entry.count++;
     return true;
 }
@@ -102,6 +132,33 @@ export async function POST(req: NextRequest) {
         const user = await getCurrentUser();
         if (!user) {
             return NextResponse.json({ error: "لازم تسجّل الدخول الأول." }, { status: 401 });
+        }
+
+        // Verified-email gate — a confirmed inbox is required before provisioning a
+        // real container, so a throwaway account can't demo-farm. Gated on the same
+        // REQUIRE_EMAIL_VERIFICATION switch as sign-in; existing accounts were
+        // grandfathered (emailVerified=true) by the verification migration. We
+        // resend a code so the client can verify right away.
+        if (process.env.REQUIRE_EMAIL_VERIFICATION === "1" && mailerConfigured()) {
+            const dbUser = await prisma.user.findUnique({
+                where: { id: user.id },
+                select: { emailVerified: true, name: true },
+            });
+            if (dbUser && !dbUser.emailVerified) {
+                await createAndSendOtp(user.email.toLowerCase(), "verify", {
+                    name: dbUser.name ?? user.name ?? "",
+                    locale: body?.locale === "en" ? "en" : "ar",
+                }).catch(() => {});
+                return NextResponse.json(
+                    {
+                        error: "لازم تأكيد بريدك الإلكتروني الأول قبل إنشاء أكاديمية. / Please verify your email before creating an academy.",
+                        errorcode: "email_unverified",
+                        needsVerify: true,
+                        email: user.email.toLowerCase(),
+                    },
+                    { status: 403 },
+                );
+            }
         }
 
         // Rate limit by IP
@@ -195,6 +252,18 @@ export async function POST(req: NextRequest) {
                     support_whatsapp: await supportWhatsapp(),
                 },
                 { status: 503 },
+            );
+        }
+
+        // Daily per-IP creation cap — counted here (after validation + health gate,
+        // before we actually provision) so failed/duplicate attempts don't burn it.
+        if (dailyIpLimit() > 0 && !checkDailyIpLimit(ip)) {
+            return NextResponse.json(
+                {
+                    error: `وصلت للحد الأقصى لإنشاء الأكاديميات اليوم (${dailyIpLimit()}). حاول بكرة أو تواصل مع الدعم. / Daily academy-creation limit reached (${dailyIpLimit()}). Try again tomorrow or contact support.`,
+                    errorcode: "daily_ip_limit",
+                },
+                { status: 429 },
             );
         }
 
