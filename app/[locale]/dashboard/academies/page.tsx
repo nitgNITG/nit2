@@ -135,6 +135,30 @@ const StorageBar = ({
 const AcademiesPage = () => {
   const [academies, setAcademies] = useState<Academy[]>([]);
   const [licenses, setLicenses] = useState<License[]>([]);
+  // Admin: create an academy FOR a user on any tier (incl. Professional), no payment.
+  const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const emptyCreate = { ownerEmail: "", ownerName: "", ownerPassword: "", name: "", slug: "", tier: "", locale: "ar", platform_lang: "both" };
+  const [createForm, setCreateForm] = useState({ ...emptyCreate });
+  const [createResult, setCreateResult] = useState<{ ownerPassword?: string; ownerEmail?: string } | null>(null);
+  const cf = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setCreateForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const adminCreate = async () => {
+    setCreating(true);
+    setCreateResult(null);
+    try {
+      const { data } = await axios.post("/api/academies/admin-create", createForm);
+      toast.success(`Academy "${data.slug}" is provisioning`);
+      setCreateResult(data.ownerPassword ? { ownerPassword: data.ownerPassword, ownerEmail: data.ownerEmail } : {});
+      setCreateForm({ ...emptyCreate });
+      load();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || "Create failed");
+    } finally {
+      setCreating(false);
+    }
+  };
   const [googleConfigured, setGoogleConfigured] = useState<boolean | null>(null);
   const [subs, setSubs] = useState<Record<string, { autoRenew: boolean; status: string; amountEgp?: number; intervalDays?: number }>>({});
   const [loading, setLoading] = useState(true);
@@ -506,6 +530,14 @@ const AcademiesPage = () => {
           )}
           <button
             type="button"
+            onClick={() => { setCreateResult(null); setShowCreate(true); }}
+            title="Provision an academy for a user on any tier (incl. Professional), no payment."
+            className="rounded-md bg-gradient-to-r from-[#268F79] to-[#0B2923] px-4 py-2 text-sm font-bold text-[#00FFB2]"
+          >
+            ＋ Create for a user
+          </button>
+          <button
+            type="button"
             onClick={updateAll}
             disabled={updatingAll}
             title="Recreate every live academy onto the latest baked image (after a new image is built + SAAS_IMAGE bumped). Data is preserved."
@@ -515,6 +547,63 @@ const AcademiesPage = () => {
           </button>
         </div>
       </div>
+
+      {/* Admin: create an academy for a user on any tier, no payment */}
+      {showCreate && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4" onClick={() => !creating && setShowCreate(false)}>
+          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-[#0B2923]">Create academy for a user</h3>
+              <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">Provisions on any tier (incl. Professional) with no payment. If the owner email is new, a user is created and its password is shown once.</p>
+
+            {createResult?.ownerPassword ? (
+              <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm">
+                <p className="font-semibold text-emerald-800">New user created — share these credentials (shown once):</p>
+                <p className="mt-2 font-mono text-xs">Email: {createResult.ownerEmail}</p>
+                <p className="font-mono text-xs">Password: {createResult.ownerPassword}</p>
+                <button onClick={() => setShowCreate(false)} className="mt-3 rounded-md bg-[#0B2923] px-4 py-2 text-sm font-bold text-white">Done</button>
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="text-sm"><span className="mb-1 block font-semibold text-gray-600">Owner email *</span>
+                    <input className="w-full rounded-lg border px-3 py-2" value={createForm.ownerEmail} onChange={cf("ownerEmail")} placeholder="owner@example.com" /></label>
+                  <label className="text-sm"><span className="mb-1 block font-semibold text-gray-600">Owner name (if new)</span>
+                    <input className="w-full rounded-lg border px-3 py-2" value={createForm.ownerName} onChange={cf("ownerName")} /></label>
+                </div>
+                <label className="text-sm block"><span className="mb-1 block font-semibold text-gray-600">Owner password (new user; blank = auto-generate)</span>
+                  <input className="w-full rounded-lg border px-3 py-2" value={createForm.ownerPassword} onChange={cf("ownerPassword")} placeholder="min 8 chars, or leave blank" /></label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="text-sm"><span className="mb-1 block font-semibold text-gray-600">Academy name *</span>
+                    <input className="w-full rounded-lg border px-3 py-2" value={createForm.name} onChange={cf("name")} /></label>
+                  <label className="text-sm"><span className="mb-1 block font-semibold text-gray-600">Slug *</span>
+                    <input className="w-full rounded-lg border px-3 py-2 font-mono" value={createForm.slug} onChange={(e) => setCreateForm((f) => ({ ...f, slug: e.target.value.toLowerCase() }))} placeholder="my-academy" /></label>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <label className="text-sm col-span-1"><span className="mb-1 block font-semibold text-gray-600">Tier *</span>
+                    <select className="w-full rounded-lg border px-3 py-2" value={createForm.tier} onChange={cf("tier")}>
+                      <option value="">—</option>
+                      {licenses.filter((l) => l.active).map((l) => (<option key={l.key} value={l.key}>{l.name}</option>))}
+                    </select></label>
+                  <label className="text-sm"><span className="mb-1 block font-semibold text-gray-600">Locale</span>
+                    <select className="w-full rounded-lg border px-3 py-2" value={createForm.locale} onChange={cf("locale")}><option value="ar">ar</option><option value="en">en</option></select></label>
+                  <label className="text-sm"><span className="mb-1 block font-semibold text-gray-600">App lang</span>
+                    <select className="w-full rounded-lg border px-3 py-2" value={createForm.platform_lang} onChange={cf("platform_lang")}><option value="both">both</option><option value="ar">ar</option><option value="en">en</option></select></label>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button onClick={() => setShowCreate(false)} disabled={creating} className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-600">Cancel</button>
+                  <button onClick={adminCreate} disabled={creating || !createForm.ownerEmail || !createForm.name || !createForm.slug || !createForm.tier}
+                    className="rounded-md bg-gradient-to-r from-[#268F79] to-[#0B2923] px-5 py-2 text-sm font-bold text-[#00FFB2] disabled:opacity-60">
+                    {creating ? "Creating…" : "Create academy"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Google login redirect-URI helper — Google has no API/wildcard for this. */}
       <div
