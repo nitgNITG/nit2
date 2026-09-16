@@ -41,24 +41,25 @@ function legacyMode(): CheckoutMode {
   return (process.env.KASHIER_MODE || "").toLowerCase() === "live" ? "live" : "test";
 }
 
-type Creds = { merchantId: string; apiKey: string; secretKey: string; baseUrl: string };
+type Creds = { merchantId: string; apiKey: string; secretKey: string; baseUrl: string; fepBaseUrl: string };
 
 // Credentials for one mode from ENV (KASHIER_LIVE_* / KASHIER_TEST_*, with the legacy
 // KASHIER_* set as a fallback for whichever mode it belongs to). The env is the
 // fallback source — the DB (below) is primary.
-function envCfgFor(mode: CheckoutMode): Creds {
+function envCfgFor(mode: CheckoutMode): Omit<Creds, "fepBaseUrl"> & { fepBaseUrl: string } {
   const P = mode === "live" ? "KASHIER_LIVE_" : "KASHIER_TEST_";
   let merchantId = env(`${P}MERCHANT_ID`);
   let apiKey = env(`${P}API_KEY`);
   let secretKey = env(`${P}SECRET_KEY`);
   let baseUrl = env(`${P}BASE_URL`);
+  let fepBaseUrl = env(`${P}FEP_URL`) || env("KASHIER_FEP_BASE");
   if (mode === legacyMode()) {
     merchantId ||= env("KASHIER_MERCHANT_ID");
     apiKey ||= env("KASHIER_API_KEY");
     secretKey ||= env("KASHIER_SECRET_KEY");
     baseUrl ||= env("KASHIER_BASE_URL");
   }
-  return { merchantId, apiKey, secretKey, baseUrl };
+  return { merchantId, apiKey, secretKey, baseUrl, fepBaseUrl };
 }
 
 // Credentials for one mode from the DB — the SAME shared Kashier settings entered on
@@ -70,11 +71,13 @@ function dbCfgFrom(secrets: Record<string, string>, mode: CheckoutMode): Creds {
     apiKey: secrets[`${P}api_key`] || "",
     secretKey: secrets[`${P}secret_key`] || "",
     baseUrl: secrets[`${P}base_url`] || "",
+    fepBaseUrl: secrets[`${P}fep_url`] || "",
   };
 }
 
-// Resolved credentials for one mode: DB (Integrations page) first, env as fallback,
-// then Kashier's default host if no base URL is set anywhere.
+// Resolved credentials + hosts for one mode: DB (Integrations page) first, env as a
+// fallback, then Kashier's default hosts. The FEP host (refunds/tokens) is a separate
+// host family from the sessions API and also mode-specific.
 async function cfgFor(mode: CheckoutMode): Promise<Creds> {
   let db: Record<string, string> = {};
   try {
@@ -89,7 +92,13 @@ async function cfgFor(mode: CheckoutMode): Promise<Creds> {
   const secretKey = d.secretKey || e.secretKey;
   let baseUrl = d.baseUrl || e.baseUrl;
   if (!baseUrl) baseUrl = mode === "test" ? "https://test-api.kashier.io" : "https://api.kashier.io";
-  return { merchantId, apiKey, secretKey, baseUrl: baseUrl.replace(/\/+$/, "") };
+  let fepBaseUrl = d.fepBaseUrl || e.fepBaseUrl;
+  if (!fepBaseUrl) fepBaseUrl = mode === "test" ? "https://test-fep.kashier.io" : "https://fep.kashier.io";
+  return {
+    merchantId, apiKey, secretKey,
+    baseUrl: baseUrl.replace(/\/+$/, ""),
+    fepBaseUrl: fepBaseUrl.replace(/\/+$/, ""),
+  };
 }
 
 // The active checkout mode for NIT's OWN licence payments. The DB toggle
@@ -129,16 +138,6 @@ export async function kashierConfigured(): Promise<boolean> {
 export async function kashierCreds(): Promise<{ merchantId: string; apiKey: string; secretKey: string }> {
   const { merchantId, apiKey, secretKey } = await resolveCheckout();
   return { merchantId, apiKey, secretKey };
-}
-
-/** FEP origin for a mode — the host family used by pay/capture/void/refund/tokens/
- *  transfers (the v3/orders + v3/cards + v3/token endpoints). LIVE: fep.kashier.io,
- *  TEST: test-fep.kashier.io (a DIFFERENT host from the sessions/management API).
- *  KASHIER_FEP_BASE overrides. */
-export function fepBaseFor(mode: CheckoutMode): string {
-  const override = (process.env.KASHIER_FEP_BASE || "").trim().replace(/\/+$/, "");
-  if (override) return override;
-  return mode === "test" ? "https://test-fep.kashier.io" : "https://fep.kashier.io";
 }
 
 /** Both modes' API keys (for signature checks — a callback/webhook must verify

@@ -68,10 +68,12 @@ if [[ "${KASHIER_ENABLED:-0}" == "1" ]]; then
     _set paymentprovider_kashier live_api_key     "${KASHIER_LIVE_API_KEY:-}"
     _set paymentprovider_kashier live_secret_key  "${KASHIER_LIVE_SECRET_KEY:-}"
     _set paymentprovider_kashier live_base_url    "${KASHIER_LIVE_BASE_URL:-}"
+    _set paymentprovider_kashier live_fep_url     "${KASHIER_LIVE_FEP_URL:-}"
     _set paymentprovider_kashier test_merchant_id "${KASHIER_TEST_MERCHANT_ID:-}"
     _set paymentprovider_kashier test_api_key     "${KASHIER_TEST_API_KEY:-}"
     _set paymentprovider_kashier test_secret_key  "${KASHIER_TEST_SECRET_KEY:-}"
     _set paymentprovider_kashier test_base_url    "${KASHIER_TEST_BASE_URL:-}"
+    _set paymentprovider_kashier test_fep_url     "${KASHIER_TEST_FEP_URL:-}"
     # Single payment_mode field. Seed it from the platform default ONLY when it isn't
     # already live/test — so a re-apply never clobbers a mode NIT or the owner chose.
     cur_mode=$(docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=paymentprovider_kashier --name=payment_mode 2>/dev/null | tr -d '[:space:]')

@@ -23,12 +23,14 @@ export const INTEGRATION_FIELDS: Field[] = [
     { key: "kashier_merchant_id", secret: true, label: "LIVE — Kashier merchant id" },
     { key: "kashier_api_key", secret: true, label: "LIVE — Kashier API key" },
     { key: "kashier_secret_key", secret: true, label: "LIVE — Kashier secret key" },
-    { key: "kashier_base_url", secret: false, label: "LIVE — Kashier base URL" },
+    { key: "kashier_base_url", secret: false, label: "LIVE — Kashier API base URL" },
+    { key: "kashier_fep_url", secret: false, label: "LIVE — Kashier FEP base URL (refunds/tokens)" },
     // TEST / sandbox set.
     { key: "kashier_test_merchant_id", secret: true, label: "TEST — Kashier merchant id" },
     { key: "kashier_test_api_key", secret: true, label: "TEST — Kashier API key" },
     { key: "kashier_test_secret_key", secret: true, label: "TEST — Kashier secret key" },
-    { key: "kashier_test_base_url", secret: false, label: "TEST — Kashier base URL" },
+    { key: "kashier_test_base_url", secret: false, label: "TEST — Kashier API base URL" },
+    { key: "kashier_test_fep_url", secret: false, label: "TEST — Kashier FEP base URL (refunds/tokens)" },
     // VDOCipher (video DRM)
     { key: "vdocipher_apisecret", secret: true, label: "VDOCipher API secret" },
     { key: "vdocipher_apibase", secret: false, label: "VDOCipher API base" },
@@ -152,10 +154,12 @@ export async function buildIntegrationEnv(license: IntegrationLicense): Promise<
         if (s.kashier_api_key) env.KASHIER_LIVE_API_KEY = s.kashier_api_key;
         if (s.kashier_secret_key) env.KASHIER_LIVE_SECRET_KEY = s.kashier_secret_key;
         if (s.kashier_base_url) env.KASHIER_LIVE_BASE_URL = s.kashier_base_url;
+        if (s.kashier_fep_url) env.KASHIER_LIVE_FEP_URL = s.kashier_fep_url;
         if (s.kashier_test_merchant_id) env.KASHIER_TEST_MERCHANT_ID = s.kashier_test_merchant_id;
         if (s.kashier_test_api_key) env.KASHIER_TEST_API_KEY = s.kashier_test_api_key;
         if (s.kashier_test_secret_key) env.KASHIER_TEST_SECRET_KEY = s.kashier_test_secret_key;
         if (s.kashier_test_base_url) env.KASHIER_TEST_BASE_URL = s.kashier_test_base_url;
+        if (s.kashier_test_fep_url) env.KASHIER_TEST_FEP_URL = s.kashier_test_fep_url;
     }
 
     // Central revenue ledger: tell each academy where to mirror completed payments

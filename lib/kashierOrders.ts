@@ -14,7 +14,7 @@
 // env as fallback — via resolveCheckout().
 
 import crypto from "crypto";
-import { resolveCheckout, fepBaseFor } from "@/lib/kashier";
+import { resolveCheckout } from "@/lib/kashier";
 
 export type TokenChargeInput = {
   orderId: string; // our merchant order id (Payment.orderId)
@@ -46,11 +46,11 @@ function orderHash(
 
 /** Charge a saved card token off-session (merchant-initiated / recurring). */
 export async function payWithToken(input: TokenChargeInput): Promise<TokenChargeResult> {
-  const { mode, merchantId, apiKey, secretKey } = await resolveCheckout();
+  const { merchantId, apiKey, secretKey, fepBaseUrl } = await resolveCheckout();
   if (!merchantId || !apiKey || !secretKey) {
     return { ok: false, error: "Kashier is not configured" };
   }
-  const ordersUrl = `${fepBaseFor(mode)}/v3/orders/`;
+  const ordersUrl = `${fepBaseUrl}/v3/orders/`;
   const amount = String(input.amount);
   const hash = orderHash(
     merchantId, input.orderId, amount, input.currency, input.customerReference, apiKey,
@@ -157,10 +157,10 @@ export type SavedCard = {
  *  store is keyed by customerReference, so this is how we capture a token after a
  *  first checkout that saved the card. Returns [] on any error. */
 export async function retrieveTokens(customerReference: string): Promise<SavedCard[]> {
-  const { mode, merchantId, secretKey } = await resolveCheckout();
+  const { merchantId, secretKey, fepBaseUrl } = await resolveCheckout();
   if (!merchantId || !secretKey) return [];
   try {
-    const url = new URL(`${fepBaseFor(mode)}/v3/cards/customer`);
+    const url = new URL(`${fepBaseUrl}/v3/cards/customer`);
     url.searchParams.set("customerReference", customerReference);
     url.searchParams.set("merchantId", merchantId);
     const res = await fetch(url.toString(), {
@@ -188,10 +188,10 @@ export async function retrieveTokens(customerReference: string): Promise<SavedCa
 /** Delete a saved card token (used when the owner removes/replaces a card).
  *  DELETE /v3/token/:cardToken?customerReference= — Authorization: secretKey. */
 export async function deleteToken(cardToken: string, customerReference: string): Promise<boolean> {
-  const { mode, secretKey } = await resolveCheckout();
+  const { secretKey, fepBaseUrl } = await resolveCheckout();
   if (!secretKey) return false;
   try {
-    const url = new URL(`${fepBaseFor(mode)}/v3/token/${encodeURIComponent(cardToken)}`);
+    const url = new URL(`${fepBaseUrl}/v3/token/${encodeURIComponent(cardToken)}`);
     url.searchParams.set("customerReference", customerReference);
     const res = await fetch(url.toString(), {
       method: "DELETE",

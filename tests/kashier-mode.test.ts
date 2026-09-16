@@ -89,9 +89,16 @@ describe("kashier checkout mode", () => {
         process.env.KASHIER_LIVE_MERCHANT_ID = "MID-ENV";
         loadIntegrationSecrets.mockResolvedValue({
             kashier_merchant_id: "MID-DB", kashier_api_key: "db-api", kashier_secret_key: "db-secret",
-            kashier_base_url: "https://db.kashier.io",
+            kashier_base_url: "https://db.kashier.io", kashier_fep_url: "https://db-fep.kashier.io",
         });
         const r = await resolveCheckout();
-        expect(r).toMatchObject({ mode: "live", merchantId: "MID-DB", apiKey: "db-api", secretKey: "db-secret", baseUrl: "https://db.kashier.io" });
+        expect(r).toMatchObject({ mode: "live", merchantId: "MID-DB", apiKey: "db-api", secretKey: "db-secret", baseUrl: "https://db.kashier.io", fepBaseUrl: "https://db-fep.kashier.io" });
+    });
+
+    it("FEP base defaults per mode when unset (live=fep, test=test-fep)", async () => {
+        db.platformSetting.findUnique.mockResolvedValue({ value: "test" });
+        expect((await resolveCheckout()).fepBaseUrl).toBe("https://test-fep.kashier.io");
+        db.platformSetting.findUnique.mockResolvedValue({ value: "live" });
+        expect((await resolveCheckout()).fepBaseUrl).toBe("https://fep.kashier.io");
     });
 });
