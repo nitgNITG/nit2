@@ -180,8 +180,8 @@ const LicensesPage = () => {
                         </div>
                         <div>
                             <label className='block text-sm font-semibold mb-1'>Storage (GB)</label>
-                            <input type='number' min={1} className='w-full border rounded-lg px-3 py-2' value={form.storageGb} onChange={num('storageGb')} />
-                            <p className='text-[11px] text-gray-400 mt-0.5'>moodledata quota per academy</p>
+                            <input type='number' min={-1} className='w-full border rounded-lg px-3 py-2' value={form.storageGb} onChange={num('storageGb')} />
+                            <p className='text-[11px] text-gray-400 mt-0.5'>moodledata quota per academy · -1 = unlimited (off-server hosting)</p>
                         </div>
                     </div>
 
@@ -217,9 +217,9 @@ const LicensesPage = () => {
                         </div>
                     </div>
 
-                    {/* Per-activity limits */}
+                    {/* Activity limits */}
                     <div>
-                        <p className='text-sm font-semibold mb-2'>Per-course activity caps <span className='font-normal text-gray-400 text-xs'>(-1 = unlimited)</span></p>
+                        <p className='text-sm font-semibold mb-2'>Activity caps <span className='font-normal text-gray-400 text-xs'>(-1 = unlimited)</span></p>
                         <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
                             {LIMIT_KEYS.map((k) => (
                                 <div key={k}>
@@ -227,9 +227,11 @@ const LicensesPage = () => {
                                     <input type='number' className='w-full border rounded-lg px-3 py-1.5 text-sm'
                                         value={form.limits[k] ?? -1}
                                         onChange={(e) => setForm((f) => f ? { ...f, limits: { ...f.limits, [k]: Number(e.target.value) } } : f)} />
+                                    {k === 'video' && <p className='text-[10px] text-gray-400 mt-0.5'>total videos per academy (uploaded to our providers)</p>}
                                 </div>
                             ))}
                         </div>
+                        <p className='text-[11px] text-gray-400 mt-1'>quiz / pdf / default are per-course; <strong>video</strong> is a per-academy total (blocks new provider uploads at the limit).</p>
                     </div>
 
                     {/* Features */}

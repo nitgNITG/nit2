@@ -12,6 +12,18 @@ describe("parseLicense — contactSales", () => {
     });
 });
 
+describe("parseLicense — storageGb", () => {
+    it("defaults to 1 and floors positive values at 1", () => {
+        expect(parseLicense({ name: "Basic" }).storageGb).toBe(1);
+        expect(parseLicense({ name: "Basic", storageGb: 0 }).storageGb).toBe(1);
+        expect(parseLicense({ name: "Basic", storageGb: 50 }).storageGb).toBe(50);
+    });
+    it("allows -1 = unlimited (off-server hosting)", () => {
+        expect(parseLicense({ name: "Pro", storageGb: -1 }).storageGb).toBe(-1);
+        expect(parseLicense({ name: "Pro", storageGb: -5 }).storageGb).toBe(-1);
+    });
+});
+
 describe("parseLicense — list prices", () => {
     it("parses list prices, clamped to >= 0, default 0", () => {
         expect(parseLicense({ name: "X" }).listPriceEgp).toBe(0);

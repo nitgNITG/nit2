@@ -456,7 +456,7 @@ docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_l
 docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=enabled --set=1       || echo "!! could not enable licence enforcement"
 docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=definition --set="${LICENSE_DEFINITION:-}" || echo "!! could not set licence definition"
 # Storage quota (GB), parsed from the licence definition JSON → plain cfg for saas-quota.sh.
-STORAGE_GB="$(python3 -c 'import json,os; d=json.loads(os.environ.get("LICENSE_DEFINITION") or "{}"); v=d.get("storagegb"); print(int(v) if str(v).lstrip("-").isdigit() and int(v)>0 else "")' 2>/dev/null || true)"
+STORAGE_GB="$(python3 -c 'import json,os; d=json.loads(os.environ.get("LICENSE_DEFINITION") or "{}"); v=d.get("storagegb"); print(int(v) if str(v).lstrip("-").isdigit() and int(v)!=0 else "")' 2>/dev/null || true)"
 [[ -n "$STORAGE_GB" ]] && docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=local_license --name=storagegb --set="$STORAGE_GB" >/dev/null 2>&1 || true
 # Subscription term (expiry) + start (subscribedat) + renew link — parsed from the
 # definition JSON into their own cfg keys, same as apply-license.sh. license::expiry()

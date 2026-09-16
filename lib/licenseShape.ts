@@ -21,7 +21,9 @@ export function parseLicense(body: any) {
         durationDays: Math.max(0, int(body?.durationDays, 365)),
         maxCourses: int(body?.maxCourses, -1),
         maxTeachers: int(body?.maxTeachers, -1),
-        storageGb: Math.max(1, int(body?.storageGb, 1)), // GB; min 1
+        // GB moodledata quota. -1 = unlimited (e.g. Professional hosting video
+        // off-server); otherwise a real quota with a floor of 1 GB.
+        storageGb: (() => { const g = int(body?.storageGb, 1); return g < 0 ? -1 : Math.max(1, g); })(),
         supportedApp: body?.supportedApp !== false, // default true; false = no app access (Demo)
         kashierEnabled: body?.kashierEnabled === true, // push shared Kashier gateway to this package
         contactSales: body?.contactSales === true, // "Contact us" plan — not directly purchasable
