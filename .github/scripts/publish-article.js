@@ -81,7 +81,7 @@ function httpsRequest(options, body) {
 // ── Call Claude API ──────────────────────────────────────────────────────────
 async function callClaude(prompt) {
   const body = JSON.stringify({
-    model: 'claude-opus-4-5',
+    model: 'claude-opus-4-8',
     max_tokens: 8000,
     messages: [{ role: 'user', content: prompt }],
   });
