@@ -72,16 +72,15 @@ if [[ "${KASHIER_ENABLED:-0}" == "1" ]]; then
     _set paymentprovider_kashier test_api_key     "${KASHIER_TEST_API_KEY:-}"
     _set paymentprovider_kashier test_secret_key  "${KASHIER_TEST_SECRET_KEY:-}"
     _set paymentprovider_kashier test_base_url    "${KASHIER_TEST_BASE_URL:-}"
-    _set paymentprovider_kashier default_payment_mode "${KASHIER_MODE:-test}"
-    # Per-academy NIT-controlled override. "default" clears it (inherit the default);
-    # "live"/"test" force it. Absent = leave the academy's current payment_mode as-is.
-    if [[ -n "${KASHIER_PAYMENT_MODE:-}" ]]; then
-        if [[ "$KASHIER_PAYMENT_MODE" == "default" ]]; then
-            docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=paymentprovider_kashier --name=payment_mode --set="" >/dev/null 2>&1 \
-                && log "cleared paymentprovider_kashier/payment_mode (inherit default)" || echo "!! could not clear payment_mode"
-        else
-            _set paymentprovider_kashier payment_mode "$KASHIER_PAYMENT_MODE"
-        fi
+    # Single payment_mode field. Seed it from the platform default ONLY when it isn't
+    # already live/test — so a re-apply never clobbers a mode NIT or the owner chose.
+    cur_mode=$(docker exec "$CONTAINER" php /var/www/html/admin/cli/cfg.php --component=paymentprovider_kashier --name=payment_mode 2>/dev/null | tr -d '[:space:]')
+    if [[ "$cur_mode" != "live" && "$cur_mode" != "test" ]]; then
+        _set paymentprovider_kashier payment_mode "${KASHIER_MODE:-test}"
+    fi
+    # NIT dashboard override always wins — writes the same payment_mode field.
+    if [[ "${KASHIER_PAYMENT_MODE:-}" == "live" || "${KASHIER_PAYMENT_MODE:-}" == "test" ]]; then
+        _set paymentprovider_kashier payment_mode "$KASHIER_PAYMENT_MODE"
     fi
     # Legacy single-set keys (older callers) — still forwarded when present.
     _set paymentprovider_kashier merchant_id  "${KASHIER_MERCHANT_ID:-}"

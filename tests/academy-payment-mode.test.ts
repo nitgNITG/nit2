@@ -33,10 +33,10 @@ beforeEach(() => {
 });
 
 describe("academy payment-mode", () => {
-    it("GET returns the stored mode (default when null)", async () => {
+    it("GET returns the stored mode (null when NIT hasn't set it)", async () => {
         expect((await (await get("acme")).json()).mode).toBe("test");
         db.academy.findUnique.mockResolvedValue({ paymentMode: null });
-        expect((await (await get("acme")).json()).mode).toBe("default");
+        expect((await (await get("acme")).json()).mode).toBeNull();
     });
 
     it("GET 401 for non-admin", async () => {
@@ -44,8 +44,9 @@ describe("academy payment-mode", () => {
         expect((await get("acme")).status).toBe(401);
     });
 
-    it("PUT 400 on an invalid mode", async () => {
+    it("PUT 400 on an invalid mode (incl. the removed 'default')", async () => {
         expect((await put("acme", { mode: "nope" })).status).toBe(400);
+        expect((await put("acme", { mode: "default" })).status).toBe(400);
         expect(db.academy.update).not.toHaveBeenCalled();
     });
 
@@ -54,12 +55,6 @@ describe("academy payment-mode", () => {
         expect(res.status).toBe(200);
         expect(db.academy.update.mock.calls[0][0]).toMatchObject({ where: { slug: "acme" }, data: { paymentMode: "live" } });
         expect(triggerApplyIntegrations).toHaveBeenCalledWith("acme", { videoSource: "all", kashierEnabled: true }, { paymentMode: "live" });
-    });
-
-    it("PUT default: stores null (inherit) and pushes the clear", async () => {
-        await put("acme", { mode: "default" });
-        expect(db.academy.update.mock.calls[0][0].data).toMatchObject({ paymentMode: null });
-        expect(triggerApplyIntegrations.mock.calls[0][2]).toEqual({ paymentMode: "default" });
     });
 
     it("PUT 404 when the academy is missing", async () => {

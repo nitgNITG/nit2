@@ -125,7 +125,7 @@ export async function triggerExpiryReminder(
  *  a separate call rather than riding the create payload). Best-effort. */
 export async function triggerApplyIntegrations(
     slug: string, license: { videoSource: string; kashierEnabled: boolean },
-    opts?: { paymentMode?: "live" | "test" | "default" },
+    opts?: { paymentMode?: "live" | "test" },
 ): Promise<void> {
     const base = process.env.PROVISION_URL;
     const secret = process.env.PROVISION_SECRET;

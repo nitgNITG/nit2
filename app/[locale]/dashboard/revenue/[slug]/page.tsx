@@ -38,18 +38,18 @@ export default function AcademyRevenueDetailPage() {
     const [reference, setReference] = useState('')
     const [note, setNote] = useState('')
 
-    // NIT-controlled payment mode for this academy (live/test/default).
-    const [acctMode, setAcctMode] = useState<'live' | 'test' | 'default'>('default')
+    // NIT-controlled payment mode for this academy (live/test; null = not set by NIT).
+    const [acctMode, setAcctMode] = useState<'live' | 'test' | null>(null)
     const [savingAcctMode, setSavingAcctMode] = useState(false)
     const [acctModeMsg, setAcctModeMsg] = useState('')
 
     useEffect(() => {
         axios.get(`/api/academies/${slug}/payment-mode`)
-            .then((r) => setAcctMode(r.data.mode ?? 'default'))
+            .then((r) => setAcctMode(r.data.mode ?? null))
             .catch(() => {})
     }, [slug])
 
-    const setAcademyMode = async (m: 'live' | 'test' | 'default') => {
+    const setAcademyMode = async (m: 'live' | 'test') => {
         setSavingAcctMode(true); setAcctModeMsg('')
         try {
             await axios.put(`/api/academies/${slug}/payment-mode`, { mode: m })
@@ -177,19 +177,20 @@ export default function AcademyRevenueDetailPage() {
                     <div>
                         <h2 className='font-bold text-[#0B2923]'>{tr('وضع الدفع للأكاديمية (تحكّم NIT)', 'Academy payment mode (NIT-controlled)')}</h2>
                         <p className='mt-0.5 text-xs text-gray-400'>
-                            {tr('يتحكّم في وضع مدفوعات طلاب هذه الأكاديمية. «افتراضي» = وضع المنصة. يُرسَل فوراً إلى منصّة الأكاديمية.',
-                                'Controls this academy’s student-payment mode. “Default” = the platform mode. Pushed to the academy immediately.')}
+                            {tr('يتحكّم في وضع مدفوعات طلاب هذه الأكاديمية (مباشر/تجريبي). يُرسَل فوراً إلى منصّة الأكاديمية.',
+                                'Controls this academy’s student-payment mode (live/test). Pushed to the academy immediately.')}
                         </p>
                     </div>
                     <div className='text-end'>
                         <div className='inline-flex overflow-hidden rounded-lg border border-gray-200'>
-                            {(['default', 'test', 'live'] as const).map((m) => (
+                            {(['test', 'live'] as const).map((m) => (
                                 <button key={m} type='button' onClick={() => setAcademyMode(m)} disabled={savingAcctMode || acctMode === m}
-                                    className={`px-4 py-2 text-sm font-semibold ${acctMode === m ? (m === 'live' ? 'bg-green-600 text-white' : m === 'test' ? 'bg-amber-500 text-white' : 'bg-[#0B2923] text-white') : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
-                                    {m === 'default' ? tr('افتراضي', 'Default') : m === 'live' ? tr('🟢 مباشر', '🟢 Live') : tr('🧪 تجريبي', '🧪 Test')}
+                                    className={`px-4 py-2 text-sm font-semibold ${acctMode === m ? (m === 'live' ? 'bg-green-600 text-white' : 'bg-amber-500 text-white') : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                                    {m === 'live' ? tr('🟢 مباشر', '🟢 Live') : tr('🧪 تجريبي', '🧪 Test')}
                                 </button>
                             ))}
                         </div>
+                        {acctMode === null && <p className='mt-1 text-[11px] text-gray-400'>{tr('لم تُضبط بعد من NIT', 'Not set by NIT yet')}</p>}
                         {acctModeMsg && <p className='mt-1 text-xs text-gray-500'>{acctModeMsg}</p>}
                     </div>
                 </div>
