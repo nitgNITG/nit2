@@ -38,7 +38,7 @@ const BASE_URL = (process.env.KASHIER_BASE_URL || "https://api.kashier.io").repl
 const merchantId = process.env.KASHIER_MERCHANT_ID || "";
 const apiKey = process.env.KASHIER_API_KEY || "";
 const secretKey = process.env.KASHIER_SECRET_KEY || "";
-const appBase = (process.env.APP_BASE_URL || "https://dev.nitg-eg.com").replace(/\/+$/, "");
+const appBase = (process.env.BASE_URL || "https://dev.nitg-eg.com").replace(/\/+$/, "");
 
 const mask = (s) => (s ? `${s.slice(0, 6)}…${s.slice(-4)} (len ${s.length})` : "(empty)");
 console.log("── Kashier config ──");
@@ -46,7 +46,7 @@ console.log("  BASE_URL        :", BASE_URL);
 console.log("  MERCHANT_ID     :", merchantId || "(empty)");
 console.log("  API_KEY         :", mask(apiKey));
 console.log("  SECRET_KEY      :", mask(secretKey));
-console.log("  APP_BASE_URL    :", appBase);
+console.log("  BASE_URL    :", appBase);
 // Trailing-whitespace / newline traps that break auth silently.
 for (const [k, v] of [["MERCHANT_ID", merchantId], ["API_KEY", apiKey], ["SECRET_KEY", secretKey]]) {
     if (v && v !== v.trim()) console.log(`  ⚠ ${k} has surrounding whitespace!`);

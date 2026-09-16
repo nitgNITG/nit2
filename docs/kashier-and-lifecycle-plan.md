@@ -20,7 +20,7 @@ Today paid tiers are **not** gated — a client can pick one free. Add a payment
 4. Redirect back to `/account` with a success/failure state.
 
 **New code:** `lib/kashier.ts` (build signed URL + verify webhook), 2 API routes above, a callback page.
-**Env:** `KASHIER_MERCHANT_ID`, `KASHIER_API_KEY`, `KASHIER_MODE(test|live)`, `APP_BASE_URL`.
+**Env:** `KASHIER_MERCHANT_ID`, `KASHIER_API_KEY`, `KASHIER_MODE(test|live)`, `BASE_URL`.
 
 ## 🗓 Subscription dates (per academy) — required
 Each paid academy is a **term subscription** (e.g. 1 year), tracked and enforced.
