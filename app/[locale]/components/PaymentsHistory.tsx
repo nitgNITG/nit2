@@ -49,7 +49,26 @@ export default function PaymentsHistory() {
     const [purpose, setPurpose] = useState('')
     const [loading, setLoading] = useState(true)
     const [isAdmin, setIsAdmin] = useState(false)
+    const [retryingId, setRetryingId] = useState('')
     const limit = 20
+
+    // Admin recovery: re-run provisioning for a PAID new_academy whose provision
+    // failed (e.g. a bad GITHUB_TOKEN at webhook time), without charging again.
+    const retryProvision = async (orderId: string) => {
+        setRetryingId(orderId)
+        try {
+            const { data } = await axios.post(`/api/payments/${orderId}/retry-provision`)
+            window.alert(data.alreadyProvisioned
+                ? tr('الأكاديمية موجودة بالفعل.', 'Academy already exists.')
+                : tr(`تم إنشاء الأكاديمية: ${data.slug}`, `Academy provisioned: ${data.slug}`))
+            load()
+        } catch (e: any) {
+            window.alert((e?.response?.data?.error || tr('فشلت إعادة المحاولة', 'Retry failed')) +
+                (e?.response?.data?.detail ? `\n${e.response.data.detail}` : ''))
+        } finally {
+            setRetryingId('')
+        }
+    }
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -140,6 +159,14 @@ export default function PaymentsHistory() {
                                     <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_CLS[p.status] || 'bg-gray-100 text-gray-500'}`} title={p.failureReason || ''}>
                                         {statusLabel(p.status)}
                                     </span>
+                                    {/* Admin recovery: paid but the academy was never provisioned. */}
+                                    {isAdmin && p.status === 'paid' && p.purpose === 'new_academy' && p.failureReason && (
+                                        <button onClick={() => retryProvision(p.orderId)} disabled={retryingId === p.orderId}
+                                            title={p.failureReason}
+                                            className='ms-2 rounded-md bg-amber-500 px-2 py-0.5 text-[11px] font-bold text-white hover:bg-amber-600 disabled:opacity-60'>
+                                            {retryingId === p.orderId ? tr('جارٍ…', '…') : tr('إعادة الإنشاء', 'Retry')}
+                                        </button>
+                                    )}
                                 </td>
                                 <td className='px-4 py-3 font-mono text-xs text-gray-400' dir='ltr'>{p.providerRef || '—'}</td>
                             </tr>
