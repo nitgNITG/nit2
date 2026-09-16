@@ -131,6 +131,16 @@ export async function kashierCreds(): Promise<{ merchantId: string; apiKey: stri
   return { merchantId, apiKey, secretKey };
 }
 
+/** FEP origin for a mode — the host family used by pay/capture/void/refund/tokens/
+ *  transfers (the v3/orders + v3/cards + v3/token endpoints). LIVE: fep.kashier.io,
+ *  TEST: test-fep.kashier.io (a DIFFERENT host from the sessions/management API).
+ *  KASHIER_FEP_BASE overrides. */
+export function fepBaseFor(mode: CheckoutMode): string {
+  const override = (process.env.KASHIER_FEP_BASE || "").trim().replace(/\/+$/, "");
+  if (override) return override;
+  return mode === "test" ? "https://test-fep.kashier.io" : "https://fep.kashier.io";
+}
+
 /** Both modes' API keys (for signature checks — a callback/webhook must verify
  *  against whichever mode created it). */
 export async function candidateApiKeys(): Promise<string[]> {

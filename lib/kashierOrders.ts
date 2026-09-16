@@ -8,26 +8,13 @@
 // SUBSCRIPTIONS_ENABLED=1, so it stays inert until those are confirmed on a live
 // test order. Treat the hash/body below as the documented best-guess to validate.
 //
-// Env (server-only):
-//   KASHIER_ORDERS_URL   e.g. https://fep.kashier.io/v3/orders/  (test:
-//                        https://test-fep.kashier.io/v3/orders/)
-//   + reuses KASHIER_MERCHANT_ID / KASHIER_API_KEY(_B64) / KASHIER_SECRET_KEY(_B64)
+// Host: the FEP origin is chosen by the active checkout MODE — fep.kashier.io (live)
+// vs test-fep.kashier.io (test) — a different host family from the sessions API.
+// Override with KASHIER_FEP_BASE. Credentials come from the DB (Integrations page),
+// env as fallback — via resolveCheckout().
 
 import crypto from "crypto";
-import { kashierCreds } from "@/lib/kashier";
-
-const ORDERS_URL = (
-  process.env.KASHIER_ORDERS_URL || "https://test-fep.kashier.io/v3/orders/"
-).replace(/\s+/g, "");
-
-/** FEP origin (test vs live) shared by the orders / cards / token endpoints.
- *  Derived from KASHIER_ORDERS_URL so all three stay on the same environment;
- *  override with KASHIER_FEP_BASE if needed. */
-function fepBase(): string {
-  const override = (process.env.KASHIER_FEP_BASE || "").trim().replace(/\/+$/, "");
-  if (override) return override;
-  try { return new URL(ORDERS_URL).origin; } catch { return "https://test-fep.kashier.io"; }
-}
+import { resolveCheckout, fepBaseFor } from "@/lib/kashier";
 
 export type TokenChargeInput = {
   orderId: string; // our merchant order id (Payment.orderId)
@@ -59,10 +46,11 @@ function orderHash(
 
 /** Charge a saved card token off-session (merchant-initiated / recurring). */
 export async function payWithToken(input: TokenChargeInput): Promise<TokenChargeResult> {
-  const { merchantId, apiKey, secretKey } = await kashierCreds();
+  const { mode, merchantId, apiKey, secretKey } = await resolveCheckout();
   if (!merchantId || !apiKey || !secretKey) {
     return { ok: false, error: "Kashier is not configured" };
   }
+  const ordersUrl = `${fepBaseFor(mode)}/v3/orders/`;
   const amount = String(input.amount);
   const hash = orderHash(
     merchantId, input.orderId, amount, input.currency, input.customerReference, apiKey,
@@ -90,7 +78,7 @@ export async function payWithToken(input: TokenChargeInput): Promise<TokenCharge
     // Confirmed (2026-09): /v3/orders authenticates on the Kashier-Hash header
     // ALONE (no Authorization/api-key) — a token charge got past auth to a card
     // error with just this. See docs/subscriptions-auto-renew-plan.md §9.3.
-    const res = await fetch(ORDERS_URL, {
+    const res = await fetch(ordersUrl, {
       method: "POST",
       headers: {
         accept: "application/json",
@@ -169,10 +157,10 @@ export type SavedCard = {
  *  store is keyed by customerReference, so this is how we capture a token after a
  *  first checkout that saved the card. Returns [] on any error. */
 export async function retrieveTokens(customerReference: string): Promise<SavedCard[]> {
-  const { merchantId, secretKey } = await kashierCreds();
+  const { mode, merchantId, secretKey } = await resolveCheckout();
   if (!merchantId || !secretKey) return [];
   try {
-    const url = new URL(`${fepBase()}/v3/cards/customer`);
+    const url = new URL(`${fepBaseFor(mode)}/v3/cards/customer`);
     url.searchParams.set("customerReference", customerReference);
     url.searchParams.set("merchantId", merchantId);
     const res = await fetch(url.toString(), {
@@ -200,10 +188,10 @@ export async function retrieveTokens(customerReference: string): Promise<SavedCa
 /** Delete a saved card token (used when the owner removes/replaces a card).
  *  DELETE /v3/token/:cardToken?customerReference= — Authorization: secretKey. */
 export async function deleteToken(cardToken: string, customerReference: string): Promise<boolean> {
-  const { secretKey } = await kashierCreds();
+  const { mode, secretKey } = await resolveCheckout();
   if (!secretKey) return false;
   try {
-    const url = new URL(`${fepBase()}/v3/token/${encodeURIComponent(cardToken)}`);
+    const url = new URL(`${fepBaseFor(mode)}/v3/token/${encodeURIComponent(cardToken)}`);
     url.searchParams.set("customerReference", customerReference);
     const res = await fetch(url.toString(), {
       method: "DELETE",
