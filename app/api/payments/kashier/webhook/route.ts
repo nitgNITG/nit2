@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     const signature =
         req.headers.get("x-kashier-signature") || req.headers.get("X-Kashier-Signature") || "";
 
-    const v = verifyWebhook(payload, signature);
+    const v = await verifyWebhook(payload, signature);
     if (!v.signatureValid) {
         console.warn("[kashier/webhook] invalid signature", { order: v.merchantOrderId, event: v.eventType });
         return NextResponse.json({ error: "invalid signature" }, { status: 401 });

@@ -142,8 +142,7 @@ const IntegrationsPage = () => {
                 </div>
                 <p className='text-xs text-gray-400 mt-0.5'>
                     Mode for payments where <strong>owners pay NIT</strong> for licences (upgrade / renew / new academy).
-                    Separate from the academy credentials below. Credentials come from the server env
-                    (<span className='font-mono'>KASHIER_LIVE_*</span> / <span className='font-mono'>KASHIER_TEST_*</span>).
+                    It uses the <strong>same Kashier credentials entered below</strong> (live / test) — no server env needed.
                 </p>
                 <div className='mt-3 flex items-center gap-3'>
                     <div className='inline-flex overflow-hidden rounded-lg border border-gray-200'>

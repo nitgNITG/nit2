@@ -1,9 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 const { db } = vi.hoisted(() => ({
-    db: { platformSetting: { findUnique: vi.fn() } },
+    db: { platformSetting: { findUnique: vi.fn(), findMany: vi.fn() } },
 }));
 vi.mock("@/lib/prismaMysql", () => ({ default: db }));
+// The credential source: mock the DB integrations loader so these tests exercise the
+// ENV fallback path (DB empty). A separate case overrides it to test DB creds.
+const { loadIntegrationSecrets } = vi.hoisted(() => ({ loadIntegrationSecrets: vi.fn() }));
+vi.mock("@/lib/integrations", () => ({ loadIntegrationSecrets }));
 
 import { resolveCheckout, checkoutConfigured, candidateApiKeys, checkoutMode } from "@/lib/kashier";
 
@@ -18,6 +22,8 @@ beforeEach(() => {
     vi.clearAllMocks();
     for (const k of ENV_KEYS) delete process.env[k];
     db.platformSetting.findUnique.mockResolvedValue(null); // no DB toggle → env fallback
+    db.platformSetting.findMany.mockResolvedValue([]);
+    loadIntegrationSecrets.mockResolvedValue({}); // no DB creds → env fallback
 });
 afterEach(() => {
     for (const k of ENV_KEYS) delete process.env[k];
@@ -67,14 +73,25 @@ describe("kashier checkout mode", () => {
         expect(l.merchantId).toBe("");
     });
 
-    it("checkoutConfigured reflects which modes have full creds", () => {
+    it("checkoutConfigured reflects which modes have full creds", async () => {
         process.env.KASHIER_LIVE_MERCHANT_ID = "m"; process.env.KASHIER_LIVE_API_KEY = "a"; process.env.KASHIER_LIVE_SECRET_KEY = "s";
-        expect(checkoutConfigured()).toEqual({ live: true, test: false });
+        expect(await checkoutConfigured()).toEqual({ live: true, test: false });
     });
 
-    it("candidateApiKeys returns both modes' api keys (deduped, non-empty)", () => {
+    it("candidateApiKeys returns both modes' api keys (deduped, non-empty)", async () => {
         process.env.KASHIER_LIVE_API_KEY = "live-api";
         process.env.KASHIER_TEST_API_KEY = "test-api";
-        expect(candidateApiKeys().sort()).toEqual(["live-api", "test-api"]);
+        expect((await candidateApiKeys()).sort()).toEqual(["live-api", "test-api"]);
+    });
+
+    it("DB integration creds win over env", async () => {
+        db.platformSetting.findUnique.mockResolvedValue({ value: "live" });
+        process.env.KASHIER_LIVE_MERCHANT_ID = "MID-ENV";
+        loadIntegrationSecrets.mockResolvedValue({
+            kashier_merchant_id: "MID-DB", kashier_api_key: "db-api", kashier_secret_key: "db-secret",
+            kashier_base_url: "https://db.kashier.io",
+        });
+        const r = await resolveCheckout();
+        expect(r).toMatchObject({ mode: "live", merchantId: "MID-DB", apiKey: "db-api", secretKey: "db-secret", baseUrl: "https://db.kashier.io" });
     });
 });

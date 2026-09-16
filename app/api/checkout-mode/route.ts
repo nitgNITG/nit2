@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     if (!(await authAdmin(req))) {
         return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
-    return NextResponse.json({ mode: await checkoutMode(), configured: checkoutConfigured() });
+    return NextResponse.json({ mode: await checkoutMode(), configured: await checkoutConfigured() });
 }
 
 // PUT /api/checkout-mode { mode: "live" | "test" }

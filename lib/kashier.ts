@@ -15,6 +15,7 @@
 
 import crypto from "crypto";
 import prisma from "@/lib/prismaMysql";
+import { loadIntegrationSecrets } from "@/lib/integrations";
 
 export type CheckoutMode = "live" | "test";
 
@@ -40,9 +41,12 @@ function legacyMode(): CheckoutMode {
   return (process.env.KASHIER_MODE || "").toLowerCase() === "live" ? "live" : "test";
 }
 
-// Credentials for one mode: the mode-specific env set (KASHIER_LIVE_* / KASHIER_TEST_*),
-// falling back to the legacy KASHIER_* set for whichever mode it belongs to.
-function cfgFor(mode: CheckoutMode): { merchantId: string; apiKey: string; secretKey: string; baseUrl: string } {
+type Creds = { merchantId: string; apiKey: string; secretKey: string; baseUrl: string };
+
+// Credentials for one mode from ENV (KASHIER_LIVE_* / KASHIER_TEST_*, with the legacy
+// KASHIER_* set as a fallback for whichever mode it belongs to). The env is the
+// fallback source — the DB (below) is primary.
+function envCfgFor(mode: CheckoutMode): Creds {
   const P = mode === "live" ? "KASHIER_LIVE_" : "KASHIER_TEST_";
   let merchantId = env(`${P}MERCHANT_ID`);
   let apiKey = env(`${P}API_KEY`);
@@ -54,6 +58,36 @@ function cfgFor(mode: CheckoutMode): { merchantId: string; apiKey: string; secre
     secretKey ||= env("KASHIER_SECRET_KEY");
     baseUrl ||= env("KASHIER_BASE_URL");
   }
+  return { merchantId, apiKey, secretKey, baseUrl };
+}
+
+// Credentials for one mode from the DB — the SAME shared Kashier settings entered on
+// the Integrations page (int_kashier_* = live, int_kashier_test_* = test), decrypted.
+function dbCfgFrom(secrets: Record<string, string>, mode: CheckoutMode): Creds {
+  const P = mode === "live" ? "kashier_" : "kashier_test_";
+  return {
+    merchantId: secrets[`${P}merchant_id`] || "",
+    apiKey: secrets[`${P}api_key`] || "",
+    secretKey: secrets[`${P}secret_key`] || "",
+    baseUrl: secrets[`${P}base_url`] || "",
+  };
+}
+
+// Resolved credentials for one mode: DB (Integrations page) first, env as fallback,
+// then Kashier's default host if no base URL is set anywhere.
+async function cfgFor(mode: CheckoutMode): Promise<Creds> {
+  let db: Record<string, string> = {};
+  try {
+    db = await loadIntegrationSecrets();
+  } catch {
+    /* DB unavailable → env fallback */
+  }
+  const d = dbCfgFrom(db, mode);
+  const e = envCfgFor(mode);
+  const merchantId = d.merchantId || e.merchantId;
+  const apiKey = d.apiKey || e.apiKey;
+  const secretKey = d.secretKey || e.secretKey;
+  let baseUrl = d.baseUrl || e.baseUrl;
   if (!baseUrl) baseUrl = mode === "test" ? "https://test-api.kashier.io" : "https://api.kashier.io";
   return { merchantId, apiKey, secretKey, baseUrl: baseUrl.replace(/\/+$/, "") };
 }
@@ -72,18 +106,16 @@ export async function checkoutMode(): Promise<CheckoutMode> {
 }
 
 /** Resolved creds + base URL + mode for the active checkout mode. */
-export async function resolveCheckout(): Promise<{ mode: CheckoutMode; merchantId: string; apiKey: string; secretKey: string; baseUrl: string }> {
+export async function resolveCheckout(): Promise<{ mode: CheckoutMode } & Creds> {
   const mode = await checkoutMode();
-  return { mode, ...cfgFor(mode) };
+  return { mode, ...(await cfgFor(mode)) };
 }
 
 /** Which modes have all three credentials configured (for the settings UI). */
-export function checkoutConfigured(): { live: boolean; test: boolean } {
-  const ok = (m: CheckoutMode) => {
-    const c = cfgFor(m);
-    return !!c.merchantId && !!c.apiKey && !!c.secretKey;
-  };
-  return { live: ok("live"), test: ok("test") };
+export async function checkoutConfigured(): Promise<{ live: boolean; test: boolean }> {
+  const [live, test] = await Promise.all([cfgFor("live"), cfgFor("test")]);
+  const ok = (c: Creds) => !!c.merchantId && !!c.apiKey && !!c.secretKey;
+  return { live: ok(live), test: ok(test) };
 }
 
 /** True when the ACTIVE mode's credentials are all configured. */
@@ -99,10 +131,11 @@ export async function kashierCreds(): Promise<{ merchantId: string; apiKey: stri
   return { merchantId, apiKey, secretKey };
 }
 
-/** Both modes' API keys (for signature checks that can't read the DB toggle — a
- *  callback/webhook must verify against whichever mode created it). */
-export function candidateApiKeys(): string[] {
-  return Array.from(new Set([cfgFor("live").apiKey, cfgFor("test").apiKey].filter(Boolean)));
+/** Both modes' API keys (for signature checks — a callback/webhook must verify
+ *  against whichever mode created it). */
+export async function candidateApiKeys(): Promise<string[]> {
+  const [live, test] = await Promise.all([cfgFor("live"), cfgFor("test")]);
+  return Array.from(new Set([live.apiKey, test.apiKey].filter(Boolean)));
 }
 
 // PHP rawurlencode (RFC 3986): encodeURIComponent PLUS !*'() — Kashier's signature
@@ -230,10 +263,10 @@ export type WebhookVerdict = {
  *   3. HMAC-SHA256 with the API key
  *   4. constant-time compare the hex digest to the x-kashier-signature header
  */
-export function verifyWebhook(
+export async function verifyWebhook(
   payload: string,
   signatureHeader: string,
-): WebhookVerdict {
+): Promise<WebhookVerdict> {
   const empty: WebhookVerdict = {
     signatureValid: false,
     eventType: "",
@@ -266,12 +299,10 @@ export function verifyWebhook(
       .map((k) => `${k}=${rawurlencode(String(data[k] ?? ""))}`)
       .join("&");
     // Try BOTH modes' API keys — a webhook for a live payment must verify against
-    // the live key even if the toggle later flips to test (and vice-versa). This is
-    // sync (no DB), so we can't read the toggle here; matching either key is correct
-    // because only the mode that created the session could have produced the digest.
-    const candidateKeys = Array.from(
-      new Set([cfgFor("live").apiKey, cfgFor("test").apiKey].filter(Boolean)),
-    );
+    // the live key even if the toggle later flips to test (and vice-versa). Matching
+    // either is correct because only the mode that created the session could have
+    // produced the digest.
+    const candidateKeys = await candidateApiKeys();
     for (const key of candidateKeys) {
       const calculated = crypto.createHmac("sha256", key).update(message).digest("hex");
       try {

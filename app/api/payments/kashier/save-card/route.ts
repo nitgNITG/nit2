@@ -13,10 +13,10 @@ export const dynamic = "force-dynamic";
 // API key, over Kashier's OWN response params — i.e. every query param EXCEPT our
 // own `order`, plus `mode` and `signature` — in the ORDER they appear, joined
 // `key=value` by `&`, values as decoded. Returns true when it matches.
-function verifyRedirectSignature(search: string): { ok: boolean; params: URLSearchParams } {
+async function verifyRedirectSignature(search: string): Promise<{ ok: boolean; params: URLSearchParams }> {
     const params = new URLSearchParams(search);
     const sig = (params.get("signature") || "").trim().toLowerCase();
-    const keys = candidateApiKeys();
+    const keys = await candidateApiKeys();
     if (!sig || keys.length === 0) return { ok: false, params };
     const parts: string[] = [];
     params.forEach((v, k) => {
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     // log-only (e.g. while debugging), never silently off in production.
     const verifyOn = process.env.SAVE_CARD_VERIFY !== "0";
     if (params) {
-        const { ok } = verifyRedirectSignature(search);
+        const { ok } = await verifyRedirectSignature(search);
         if (!ok) {
             console.warn("[kashier/save-card] redirect signature mismatch", { order: params.get("order") });
             if (verifyOn) return NextResponse.json({ error: "invalid signature" }, { status: 401 });
