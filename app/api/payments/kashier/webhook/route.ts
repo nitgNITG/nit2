@@ -122,6 +122,7 @@ export async function POST(req: NextRequest) {
                     locale: p.locale === "en" ? "en" : "ar",
                 },
                 platformLang: ["ar", "en", "both"].includes(p.platform_lang) ? p.platform_lang : "both",
+                licenseMode: payment.mode === "test" ? "test" : "live",
             });
             if (!result.ok) {
                 console.error("[kashier/webhook] provision failed after payment", orderId, result.error);
@@ -163,8 +164,9 @@ export async function POST(req: NextRequest) {
 
                 await prisma.academy.update({
                     where: { slug },
-                    // Clear expiry reminders so the term re-arms 7/3/1/on-expiry.
-                    data: { tier: payment.licenseKey, status: "live", subscribedAt: now, validUntil, expiryRemindersSent: {} },
+                    // Clear expiry reminders so the term re-arms 7/3/1/on-expiry. Stamp
+                    // the mode this renewal/upgrade was paid in.
+                    data: { tier: payment.licenseKey, status: "live", subscribedAt: now, validUntil, expiryRemindersSent: {}, licenseMode: payment.mode === "test" ? "test" : "live" },
                 }).catch((e) => console.error("[kashier/webhook] academy update failed", slug, e));
                 // Push the new licence to the live Moodle (best-effort).
                 await triggerApplyLicense(slug, payment.licenseKey, definition);

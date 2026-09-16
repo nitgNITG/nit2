@@ -107,6 +107,11 @@ model Academy {
   // "live" | "test", or null = inherit the platform default. Pushed to the academy's
   // Moodle as paymentprovider_kashier/payment_mode (the gateway's owner override).
   paymentMode String?
+  // Which Kashier credentials the LICENCE was purchased with — "live" | "test" |
+  // null (free / not paid). Set at paid creation and updated on each paid renewal /
+  // upgrade, so test academies (bought with sandbox creds) are distinguishable from
+  // real paying ones. Separate from paymentMode (this academy's STUDENT payments).
+  licenseMode String?
   // Custom domain (Phase 2, owner self-serve). When bound and active it becomes
   // the academy's canonical wwwroot; the <slug>.<base> subdomain 301-redirects to
   // it. null = subdomain only. domainStatus: none | pending_dns | verifying |

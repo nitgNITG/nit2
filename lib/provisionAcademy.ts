@@ -349,6 +349,8 @@ export type ProvisionInput = {
     definition: string;
     owner: { id: string; email: string; name: string; locale: "ar" | "en" };
     platformLang: "ar" | "en" | "both";
+    /** Which Kashier mode the licence was paid in ("live"|"test"); null for free. */
+    licenseMode?: "live" | "test" | null;
 };
 
 export type ProvisionResult =
@@ -439,6 +441,7 @@ export async function provisionAcademy(input: ProvisionInput): Promise<Provision
             data: {
                 name: input.name, slug: input.slug, branch, status: "branch_created",
                 tier: input.tier, ownerId: input.owner.id, subscribedAt: now, validUntil,
+                licenseMode: input.licenseMode ?? null,
                 adminPasswordEnc: encryptSecret(adminPassword), // owner account pw; null if CREDENTIAL_SECRET unset
                 nitAdminPasswordEnc: encryptSecret(nitAdminPassword), // NIT super-admin pw (support)
             },

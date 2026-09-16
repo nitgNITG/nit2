@@ -17,6 +17,7 @@ type Academy = {
   googleOauthAdded?: boolean;
   customDomain?: string | null;
   domainStatus?: string | null;
+  licenseMode?: string | null;
   owner?: { id: string; name: string | null; email: string } | null;
 };
 type License = {
@@ -633,7 +634,19 @@ const AcademiesPage = () => {
               academies.map((a) => (
                 <tr key={a.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
-                    <div className="font-semibold text-gray-900">{a.name}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-900">{a.name}</span>
+                      {a.licenseMode === "test" && (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700" title="Licence bought with TEST/sandbox credentials">
+                          🧪 TEST
+                        </span>
+                      )}
+                      {a.licenseMode === "live" && (
+                        <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700" title="Licence bought with LIVE credentials">
+                          🟢 LIVE
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-gray-400 font-mono">
                       {a.slug}
                     </div>

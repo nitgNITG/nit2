@@ -11,6 +11,7 @@ import { decryptSecret } from "@/lib/secretBox";
 import { notifyTelegram } from "@/lib/telegram";
 import { triggerSuspend, triggerExpiryReminder } from "@/lib/provisionAcademy";
 import { payWithToken } from "@/lib/kashierOrders";
+import { checkoutMode } from "@/lib/kashier";
 import {
   subscriptionsEnabled, billingRetryDays, billingCycleKey,
   renewLeadDaysResolved, preRenewNoticeDaysResolved,
@@ -115,10 +116,12 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
       }
 
       const orderId = "sub_" + crypto.randomUUID().replace(/-/g, "").slice(0, 24);
+      // The mode this auto-renew charge runs in (the same the token charge uses).
+      const mode = await checkoutMode();
       await prisma.payment.create({
         data: {
           orderId, userId: sub.userId, licenseKey: sub.licenseKey, purpose: "renew",
-          amount: sub.amountEgp, currency: sub.currency, status: "pending",
+          amount: sub.amountEgp, currency: sub.currency, status: "pending", mode,
           academySlug: sub.academySlug, subscriptionId: sub.id, billingCycle: cycle,
         },
       });
@@ -149,7 +152,7 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
         }
         await prisma.academy.update({
           where: { slug: sub.academySlug },
-          data: { status: "live", validUntil: newEnd, subscribedAt: now, expiryRemindersSent: {} },
+          data: { status: "live", validUntil: newEnd, subscribedAt: now, expiryRemindersSent: {}, licenseMode: mode },
         }).catch((e) => console.error("[billing] academy extend failed", sub.academySlug, e));
         await prisma.subscription.update({
           where: { id: sub.id },
