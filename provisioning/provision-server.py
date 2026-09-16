@@ -37,7 +37,7 @@ IMAGE_TAG_RE = re.compile(r"^(?:latest|[0-9]{4}\.[0-9]{2}(?:\.[0-9]+)?)$")
 # so a caller can never inject arbitrary environment into the shell.
 INTEGRATION_ENV_KEYS = {
     "VIDEO_SOURCE",
-    "KASHIER_ENABLED", "KASHIER_MODE",
+    "KASHIER_ENABLED", "KASHIER_MODE", "KASHIER_PAYMENT_MODE",
     # Legacy single set (kept so older callers still work).
     "KASHIER_MERCHANT_ID", "KASHIER_API_KEY", "KASHIER_SECRET_KEY", "KASHIER_SANDBOX", "KASHIER_BASE_URL",
     # Live + test sets.

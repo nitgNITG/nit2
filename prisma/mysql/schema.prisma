@@ -103,6 +103,10 @@ model Academy {
   // console yet? Google offers no API/wildcard, so it's a manual step per academy;
   // the admin ticks this once done. Purely a bookkeeping flag for the dashboard.
   googleOauthAdded Boolean @default(false)
+  // NIT-controlled Kashier payment mode for THIS academy's student payments:
+  // "live" | "test", or null = inherit the platform default. Pushed to the academy's
+  // Moodle as paymentprovider_kashier/payment_mode (the gateway's owner override).
+  paymentMode String?
   // Custom domain (Phase 2, owner self-serve). When bound and active it becomes
   // the academy's canonical wwwroot; the <slug>.<base> subdomain 301-redirects to
   // it. null = subdomain only. domainStatus: none | pending_dns | verifying |

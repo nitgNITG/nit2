@@ -125,12 +125,16 @@ export async function triggerExpiryReminder(
  *  a separate call rather than riding the create payload). Best-effort. */
 export async function triggerApplyIntegrations(
     slug: string, license: { videoSource: string; kashierEnabled: boolean },
+    opts?: { paymentMode?: "live" | "test" | "default" },
 ): Promise<void> {
     const base = process.env.PROVISION_URL;
     const secret = process.env.PROVISION_SECRET;
     if (!base || !secret) return;
     try {
         const integrations = await buildIntegrationEnv(license);
+        // Per-academy NIT-controlled mode override (sets/clears payment_mode). Only
+        // included when explicitly requested, so ordinary re-applies never touch it.
+        if (opts?.paymentMode) integrations.KASHIER_PAYMENT_MODE = opts.paymentMode;
         if (!hasIntegrationPayload(integrations)) return;
         const url = new URL(base);
         url.pathname = `/apply-integrations/${slug}`;

@@ -38,6 +38,30 @@ export default function AcademyRevenueDetailPage() {
     const [reference, setReference] = useState('')
     const [note, setNote] = useState('')
 
+    // NIT-controlled payment mode for this academy (live/test/default).
+    const [acctMode, setAcctMode] = useState<'live' | 'test' | 'default'>('default')
+    const [savingAcctMode, setSavingAcctMode] = useState(false)
+    const [acctModeMsg, setAcctModeMsg] = useState('')
+
+    useEffect(() => {
+        axios.get(`/api/academies/${slug}/payment-mode`)
+            .then((r) => setAcctMode(r.data.mode ?? 'default'))
+            .catch(() => {})
+    }, [slug])
+
+    const setAcademyMode = async (m: 'live' | 'test' | 'default') => {
+        setSavingAcctMode(true); setAcctModeMsg('')
+        try {
+            await axios.put(`/api/academies/${slug}/payment-mode`, { mode: m })
+            setAcctMode(m)
+            setAcctModeMsg(tr('تم الإرسال إلى الأكاديمية', 'Pushed to the academy'))
+        } catch (e: any) {
+            setAcctModeMsg(e?.response?.data?.error || tr('فشل الحفظ', 'Save failed'))
+        } finally {
+            setSavingAcctMode(false)
+        }
+    }
+
     const load = useCallback(async () => {
         setLoading(true); setError('')
         try {
@@ -146,6 +170,30 @@ export default function AcademyRevenueDetailPage() {
             </div>
 
             {error && <div className='rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700'>{error}</div>}
+
+            {/* NIT-controlled payment mode for this academy */}
+            <div className='rounded-xl border border-gray-200 bg-white p-5 shadow-sm'>
+                <div className='flex flex-wrap items-center justify-between gap-3'>
+                    <div>
+                        <h2 className='font-bold text-[#0B2923]'>{tr('وضع الدفع للأكاديمية (تحكّم NIT)', 'Academy payment mode (NIT-controlled)')}</h2>
+                        <p className='mt-0.5 text-xs text-gray-400'>
+                            {tr('يتحكّم في وضع مدفوعات طلاب هذه الأكاديمية. «افتراضي» = وضع المنصة. يُرسَل فوراً إلى منصّة الأكاديمية.',
+                                'Controls this academy’s student-payment mode. “Default” = the platform mode. Pushed to the academy immediately.')}
+                        </p>
+                    </div>
+                    <div className='text-end'>
+                        <div className='inline-flex overflow-hidden rounded-lg border border-gray-200'>
+                            {(['default', 'test', 'live'] as const).map((m) => (
+                                <button key={m} type='button' onClick={() => setAcademyMode(m)} disabled={savingAcctMode || acctMode === m}
+                                    className={`px-4 py-2 text-sm font-semibold ${acctMode === m ? (m === 'live' ? 'bg-green-600 text-white' : m === 'test' ? 'bg-amber-500 text-white' : 'bg-[#0B2923] text-white') : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                                    {m === 'default' ? tr('افتراضي', 'Default') : m === 'live' ? tr('🟢 مباشر', '🟢 Live') : tr('🧪 تجريبي', '🧪 Test')}
+                                </button>
+                            ))}
+                        </div>
+                        {acctModeMsg && <p className='mt-1 text-xs text-gray-500'>{acctModeMsg}</p>}
+                    </div>
+                </div>
+            </div>
 
             {/* Totals */}
             <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
