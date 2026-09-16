@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/navigation'
 import HomePreview, { DEFAULT_PALETTE, type Palette } from './HomePreview'
+import { useMe } from '../components/useMe'
 
 // The 6 palette controls the client sets (mapped to theme_nit Brand-Color roles).
 const PALETTE_FIELDS: { key: keyof Palette; ar: string; en: string }[] = [
@@ -121,6 +122,23 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
     const [autoRenew, setAutoRenew] = useState(true) // buyer's choice (paid tier, create mode)
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual') // paid-tier billing cycle
     const [changingPlan, setChangingPlan] = useState(false) // show all plans vs just the picked one
+
+    // Admin mode — an admin creating an academy FOR a user (same page, extra items):
+    // pick an owner (or a new one), any tier (incl. contact-sales), provisioned free.
+    const me = useMe()
+    const isAdmin = me?.role === 'admin'
+    type AdminUser = { id: string; name: string | null; email: string }
+    const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
+    const [ownerSel, setOwnerSel] = useState('') // '' = none, '__new__', or a user id
+    const [newOwner, setNewOwner] = useState({ email: '', name: '', password: '' })
+    const [adminPwd, setAdminPwd] = useState<{ email: string; password: string } | null>(null)
+    useEffect(() => {
+        if (!isAdmin) return
+        fetch('/api/users', { cache: 'no-store' })
+            .then((r) => r.json())
+            .then((d) => setAdminUsers(d.users ?? []))
+            .catch(() => { })
+    }, [isAdmin])
     const hasAr = platformLang !== 'en'
     const hasEn = platformLang !== 'ar'
     const [palette, setPalette] = useState<Palette>(DEFAULT_PALETTE) // brand colours
@@ -296,7 +314,20 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
             // Paid tier (create mode only) → start Kashier checkout instead of
             // provisioning now. On success the client is redirected to Kashier's
             // hosted page; the academy is provisioned by the webhook after payment.
-            if (!isEdit) {
+            // Admin creating for a user → provision free via /api/academies (skip
+            // Kashier), on any tier. Owner fields go with the create body below.
+            const adminOwner: Record<string, string> =
+                (isAdmin && ownerSel)
+                    ? (ownerSel === '__new__'
+                        ? { ownerEmail: newOwner.email.trim().toLowerCase(), ownerName: newOwner.name.trim(), ownerPassword: newOwner.password }
+                        : { ownerId: ownerSel })
+                    : {}
+            if (isAdmin && ownerSel === '__new__' && (!newOwner.email.trim() || newOwner.name.trim().length < 2)) {
+                toast.error(isAr ? 'اكتب بريد واسم المالك الجديد.' : 'Enter the new owner’s email and name.')
+                return
+            }
+
+            if (!isEdit && !(isAdmin && ownerSel)) {
                 const selected = licenses.find((l) => l.key === values.tier)
                 if (selected && (selected.priceEgp ?? 0) > 0) {
                     // Use the monthly cycle only if the tier actually has a monthly price.
@@ -346,6 +377,7 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                         locale,
                         platform_lang: platformLang,
                         _hp: values._hp,
+                        ...adminOwner,
                     }),
                 })
             const data = await res.json()
@@ -353,6 +385,8 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                 toast.error(data?.error || t('errorGeneric'))
                 return
             }
+            // Admin created a NEW owner inline → show its one-time password.
+            if (data?.ownerPassword) setAdminPwd({ email: data.ownerEmail, password: data.ownerPassword })
             toast.success(isEdit ? (isAr ? 'يتم تحديث الهوية…' : 'Applying branding…') : t('successToast'))
             // Edit mode: the modal (if any) handles closing; on the standalone edit
             // page there's no callback, so return the owner to their account.
@@ -424,6 +458,48 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
         >
             {/* Left column — the form fields (the card). */}
             <div className='min-w-0 rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/5 sm:p-8'>
+
+            {/* ══ Admin: create FOR a user (extra items, admins only) ══ */}
+            {isAdmin && !isEdit && (
+                <div className='mb-6 rounded-xl border border-[#268F79]/40 bg-[#268F79]/[0.04] p-4'>
+                    <p className='mb-2 text-xs font-bold uppercase tracking-wide text-[#268F79]'>
+                        {isAr ? 'وضع الأدمن — إنشاء لمالك' : 'Admin — create for a user'}
+                    </p>
+                    <label className='mb-1 block text-sm font-semibold text-[#0B2923]'>{isAr ? 'المالك' : 'Owner'}</label>
+                    <select value={ownerSel} onChange={(e) => setOwnerSel(e.target.value)}
+                        className='w-full rounded-lg border px-3 py-2'>
+                        <option value=''>{isAr ? '— أنا (إنشاء عادي/مدفوع) —' : '— Myself (normal/paid flow) —'}</option>
+                        <option value='__new__'>{isAr ? '➕ مالك جديد…' : '➕ New user…'}</option>
+                        {adminUsers.map((u) => (
+                            <option key={u.id} value={u.id}>{(u.name || '—')} · {u.email}</option>
+                        ))}
+                    </select>
+                    {ownerSel === '__new__' && (
+                        <div className='mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3'>
+                            <input placeholder={isAr ? 'البريد' : 'Email'} value={newOwner.email}
+                                onChange={(e) => setNewOwner((o) => ({ ...o, email: e.target.value }))} className='rounded-lg border px-3 py-2' />
+                            <input placeholder={isAr ? 'الاسم' : 'Name'} value={newOwner.name}
+                                onChange={(e) => setNewOwner((o) => ({ ...o, name: e.target.value }))} className='rounded-lg border px-3 py-2' />
+                            <input placeholder={isAr ? 'كلمة السر (أو اتركها للتوليد)' : 'Password (blank = auto)'} value={newOwner.password}
+                                onChange={(e) => setNewOwner((o) => ({ ...o, password: e.target.value }))} className='rounded-lg border px-3 py-2' />
+                        </div>
+                    )}
+                    {ownerSel && (
+                        <p className='mt-2 text-[11px] text-[#268F79]'>
+                            {isAr ? 'سيتم الإنشاء لهذا المالك بدون دفع، على أي باقة تختارها (بما فيها الاحترافية).'
+                                : 'Will provision for this owner with no payment, on any tier you pick (incl. Professional).'}
+                        </p>
+                    )}
+                    {adminPwd && (
+                        <div className='mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs'>
+                            <p className='font-semibold text-emerald-800'>{isAr ? 'تم إنشاء مستخدم جديد — بيانات الدخول (تظهر مرة واحدة):' : 'New user created — credentials (shown once):'}</p>
+                            <p className='mt-1 font-mono'>{isAr ? 'البريد' : 'Email'}: {adminPwd.email}</p>
+                            <p className='font-mono'>{isAr ? 'كلمة السر' : 'Password'}: {adminPwd.password}</p>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* ══ 1. Identity — language, name, slug (the essentials) ══ */}
             <p className='mb-4 text-xs font-bold uppercase tracking-wide text-[#1E7D67]'>
                 {isAr ? '١ · هوية المنصة' : '1 · Platform identity'}
@@ -602,7 +678,7 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                                     <button
                                         type='button'
                                         key={lic.key}
-                                        onClick={() => contact
+                                        onClick={() => (contact && !isAdmin)
                                             ? window.open(`/${locale}/contact?plan=${lic.key}`, '_blank')
                                             : (setValue('tier', lic.key), setChangingPlan(false))}
                                         className={`text-start rounded-xl border p-3 transition-colors ${contact ? 'border-[#0B2923]/20 bg-[#0B2923]/[0.03] hover:border-[#0B2923]/40' : on ? 'border-[#1E7D67] bg-[#1E7D67]/5 ring-1 ring-[#1E7D67]' : 'border-gray-200 bg-gray-50 hover:border-gray-300'}`}

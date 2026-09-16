@@ -12,6 +12,8 @@ import { alertAdmins, supportWhatsapp } from "@/lib/adminAlert";
 import { mailerConfigured } from "@/lib/mailer";
 import { createAndSendOtp } from "@/lib/emailOtp";
 import { settingOn, settingInt } from "@/lib/platformSettings";
+import bcrypt from "bcrypt";
+import crypto from "crypto";
 
 // ── SaaS repo that holds the base ("main") every academy branches from ────────
 const OWNER = process.env.SAAS_REPO_OWNER ?? "NITGg";
@@ -135,13 +137,49 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "لازم تسجّل الدخول الأول." }, { status: 401 });
         }
 
+        // Admin comp: an admin may create an academy FOR another user, on ANY tier
+        // (including contact-sales like Professional), with no payment. The owner is
+        // resolved by id (from the picker) or email; a new user can be created inline.
+        // adminComp bypasses the verified-email gate, quota, rate/daily caps and the
+        // contact-sales refusal below — and the academy is recorded under that owner.
+        const isAdmin = user.role === "admin";
+        let owner: { id: string; email: string; name: string } = { id: user.id, email: user.email, name: user.name ?? "" };
+        let adminComp = false;
+        let createdOwnerPassword: string | null = null;
+        if (isAdmin && (body?.ownerId || body?.ownerEmail)) {
+            adminComp = true;
+            let o: { id: string; email: string; name: string | null } | null = null;
+            if (body?.ownerId) o = await prisma.user.findUnique({ where: { id: String(body.ownerId) }, select: { id: true, email: true, name: true } });
+            if (!o && body?.ownerEmail) o = await prisma.user.findFirst({ where: { email: String(body.ownerEmail).toLowerCase() }, select: { id: true, email: true, name: true } });
+            if (!o) {
+                // New-user option: create the owner inline when enough info is given.
+                const email = String(body?.ownerEmail ?? "").trim().toLowerCase();
+                const oname = String(body?.ownerName ?? "").trim();
+                if (!email || oname.length < 2) {
+                    return NextResponse.json({ error: "اختر مالكاً موجوداً أو اكتب بريد واسم مالك جديد." }, { status: 400 });
+                }
+                const provided = String(body?.ownerPassword ?? "");
+                const pwd = provided.length >= 8 ? provided : crypto.randomBytes(9).toString("base64url");
+                if (provided.length < 8) createdOwnerPassword = pwd;
+                try {
+                    const created = await prisma.user.create({ data: { name: oname, email, password: await bcrypt.hash(pwd, 10), role: "client", emailVerified: true } });
+                    o = { id: created.id, email: created.email, name: created.name };
+                } catch (e: any) {
+                    if (e?.code === "P2002") return NextResponse.json({ error: "البريد ده مسجّل بالفعل." }, { status: 409 });
+                    console.error("[academies] admin owner create failed", e);
+                    return NextResponse.json({ error: "تعذّر إنشاء المستخدم." }, { status: 500 });
+                }
+            }
+            owner = { id: o.id, email: o.email, name: o.name ?? "" };
+        }
+
         // Verified-email gate — a confirmed inbox is required before provisioning a
         // real container, so a throwaway account can't demo-farm. Toggled from the
         // admin panel (require_email_verification; REQUIRE_EMAIL_VERIFICATION env as
         // legacy fallback) — the same switch that gates sign-in. Existing accounts
         // were grandfathered (emailVerified=true) by the verification migration. We
         // resend a code so the client can verify right away.
-        if ((await settingOn("require_email_verification", "REQUIRE_EMAIL_VERIFICATION")) && mailerConfigured()) {
+        if (!adminComp && (await settingOn("require_email_verification", "REQUIRE_EMAIL_VERIFICATION")) && mailerConfigured()) {
             const dbUser = await prisma.user.findUnique({
                 where: { id: user.id },
                 select: { emailVerified: true, name: true },
@@ -165,7 +203,7 @@ export async function POST(req: NextRequest) {
 
         // Rate limit by IP
         const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-        if (RATE_LIMIT > 0 && !checkRateLimit(ip)) {
+        if (!adminComp && RATE_LIMIT > 0 && !checkRateLimit(ip)) {
             return NextResponse.json({ error: "محاولات كتير في وقت قصير، حاول بعد شوية." }, { status: 429 });
         }
 
@@ -182,7 +220,7 @@ export async function POST(req: NextRequest) {
         }
         // "Contact sales" plans are provisioned only after a sales conversation —
         // never through the self-serve create flow.
-        if (lic?.contactSales) {
+        if (lic?.contactSales && !adminComp) {
             return NextResponse.json(
                 { error: "هذه الباقة بالطلب — تواصل مع المبيعات. / This plan is available by request — please contact sales." },
                 { status: 400 },
@@ -206,7 +244,7 @@ export async function POST(req: NextRequest) {
         // Free-academy quota — a global limit per user account (free_academy_limit).
         // Applies only to FREE licences (price 0), counting the client's academies
         // across ALL free licences. Paid licences are gated by payment, not counted.
-        if (lic && lic.price === 0) {
+        if (!adminComp && lic && lic.price === 0) {
             const row = await prisma.platformSetting.findUnique({ where: { key: "free_academy_limit" } });
             const limit = row ? parseInt(row.value, 10) : 1;
             if (Number.isFinite(limit) && limit >= 0) {
@@ -260,7 +298,7 @@ export async function POST(req: NextRequest) {
         // Daily per-IP creation cap — counted here (after validation + health gate,
         // before we actually provision) so failed/duplicate attempts don't burn it.
         const dailyLimit = await settingInt("academies_daily_ip_limit", 5, "ACADEMIES_DAILY_IP_LIMIT");
-        if (dailyLimit > 0 && !checkDailyIpLimit(ip, dailyLimit)) {
+        if (!adminComp && dailyLimit > 0 && !checkDailyIpLimit(ip, dailyLimit)) {
             return NextResponse.json(
                 {
                     error: `وصلت للحد الأقصى لإنشاء الأكاديميات اليوم (${dailyLimit}). حاول بكرة أو تواصل مع الدعم. / Daily academy-creation limit reached (${dailyLimit}). Try again tomorrow or contact support.`,
@@ -335,8 +373,8 @@ export async function POST(req: NextRequest) {
             kashierEnabled: !!lic?.kashierEnabled,
         });
         await triggerProvision(cleanSlug, cleanName, brand, tier, settings, definition, {
-            email: user.email,
-            name: user.name ?? "",
+            email: owner.email,
+            name: owner.name,
             locale,
         }, platformLang, adminPassword, integrations, nitAdminPassword);
 
@@ -349,7 +387,7 @@ export async function POST(req: NextRequest) {
             const academy = await prisma.academy.create({
                 data: {
                     name: cleanName, slug: cleanSlug, branch, status: "branch_created",
-                    tier, ownerId: user.id, subscribedAt: now, validUntil,
+                    tier, ownerId: owner.id, subscribedAt: now, validUntil,
                     adminPasswordEnc: encryptSecret(adminPassword), // owner account pw; null if CREDENTIAL_SECRET unset
                     nitAdminPasswordEnc: encryptSecret(nitAdminPassword), // NIT super-admin pw (support)
                 },
@@ -358,11 +396,15 @@ export async function POST(req: NextRequest) {
             // (Telegram + email), per the manager's request.
             await alertAdmins(
                 `🆕 New academy: ${academy.slug} ("${cleanName}") — tier ${tier}` +
-                (user.email ? ` · ${user.email}` : ""),
+                (owner.email ? ` · ${owner.email}` : "") + (adminComp ? " · by admin" : ""),
                 formatHealth(verdict.health),
             );
             return NextResponse.json(
-                { ok: true, slug: academy.slug, branch: academy.branch },
+                {
+                    ok: true, slug: academy.slug, branch: academy.branch,
+                    // When the admin created a NEW owner inline, return the generated password once.
+                    ...(createdOwnerPassword ? { ownerPassword: createdOwnerPassword, ownerEmail: owner.email } : {}),
+                },
                 { status: 201 }
             );
         } catch (dbErr: any) {

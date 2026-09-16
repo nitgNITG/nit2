@@ -302,3 +302,24 @@ describe("POST /api/academies", () => {
         expect(res.status).toBe(409);
     });
 });
+
+describe("POST /api/academies — admin comp (create for a user)", () => {
+    it("admin+ownerId provisions for that owner on a contactSales tier, bypassing quota", async () => {
+        getCurrentUser.mockResolvedValue({ id: "admin-1", role: "admin", email: "a@x.com", name: "Admin" });
+        db.license.findFirst.mockResolvedValue({ key: "professional", price: 0, durationDays: 365, name: "Pro", contactSales: true });
+        db.user.findUnique.mockResolvedValue({ id: "owner-9", email: "owner@x.com", name: "Owner Nine" });
+        const res = await post({ name: "Pro Academy", slug: "pro-acad", tier: "professional", ownerId: "owner-9" });
+        expect(res.status).toBe(201);
+        const data = db.academy.create.mock.calls[0][0].data;
+        expect(data.ownerId).toBe("owner-9");
+        expect(data.tier).toBe("professional");
+        expect(db.academy.count).not.toHaveBeenCalled(); // quota skipped for admin comp
+    });
+
+    it("non-admin cannot use ownerId override — contactSales still refused", async () => {
+        db.license.findFirst.mockResolvedValue({ key: "professional", price: 0, durationDays: 365, name: "Pro", contactSales: true });
+        const res = await post({ name: "X", slug: "x-acad", tier: "professional", ownerId: "owner-9" });
+        expect(res.status).toBe(400);
+        expect(db.academy.create).not.toHaveBeenCalled();
+    });
+});
