@@ -100,6 +100,7 @@ async function triggerProvision(
     platformLang: string, ownerPass: string,
     integrations: Record<string, string> = {},
     adminPass: string = "",
+    homepageTemplate: string = "t1",
 ): Promise<void> {
     const url = process.env.PROVISION_URL;       // e.g. https://saas-provision.academy2026.nitg-eg.com/provision
     const secret = process.env.PROVISION_SECRET;
@@ -112,6 +113,7 @@ async function triggerProvision(
                 slug, name, brand, tier, settings, definition,
                 owner_email: owner.email, owner_name: owner.name, locale: owner.locale,
                 platform_lang: platformLang,
+                homepageTemplate,      // homepage look (t1..t10); create.sh runs apply_homepage_template.php
                 owner_pass: ownerPass, // nit2-generated so we can store it (encrypted) for recovery
                 admin_pass: adminPass, // NIT super-admin `admin` pw (support), stored encrypted
                 integrations,          // shared Kashier/VDOCipher/Vimeo creds for this package
@@ -366,6 +368,7 @@ export async function POST(req: NextRequest) {
         }
         const locale = (body?.locale === "en" ? "en" : "ar");
         const platformLang = ["ar", "en", "both"].includes(body?.platform_lang) ? body.platform_lang : "both";
+        const homepageTemplate = /^t([1-9]|10)$/.test(body?.homepageTemplate) ? body.homepageTemplate : "t1";
         const adminPassword = generateAdminPassword(); // owner account pw; stored encrypted below; create.sh sets it on `owner`
         const nitAdminPassword = generateAdminPassword(); // NIT super-admin `admin` pw (support), stored encrypted below
         const integrations = await buildIntegrationEnv({
@@ -376,7 +379,7 @@ export async function POST(req: NextRequest) {
             email: owner.email,
             name: owner.name,
             locale,
-        }, platformLang, adminPassword, integrations, nitAdminPassword);
+        }, platformLang, adminPassword, integrations, nitAdminPassword, homepageTemplate);
 
         // 3) Record it (control plane). Guard the rare race on the unique slug.
         try {

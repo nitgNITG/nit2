@@ -220,7 +220,7 @@ def run_apply_branding(slug: str, brand: dict, platform_lang: str = "") -> None:
 def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: dict = None, definition: str = "",
                owner_email: str = "", owner_name: str = "", locale: str = "ar",
                platform_lang: str = "both", owner_pass: str = "", integrations: dict = None,
-               admin_pass: str = "") -> None:
+               admin_pass: str = "", homepage_template: str = "t1") -> None:
     """Run create.sh detached, streaming its output to the client's log file.
 
     Branding is passed through create.sh's BRAND_* env contract: names as
@@ -250,6 +250,8 @@ def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: 
     # apply-integrations.sh after the container is up, reading these from its env.
     env.update(_integration_env(integrations))
     env["PLATFORM_LANG"] = platform_lang if platform_lang in ("ar", "en", "both") else "both"
+    # Homepage template (t1..t10) — create.sh runs apply_homepage_template.php.
+    env["HOMEPAGE_TEMPLATE"] = homepage_template if re.match(r"^t([1-9]|10)$", homepage_template or "") else "t1"
     if isinstance(definition, str) and definition.strip():
         env["LICENSE_DEFINITION"] = definition
     if isinstance(settings, dict):
@@ -837,6 +839,7 @@ class Handler(BaseHTTPRequestHandler):
         owner_name = str(data.get("owner_name", "")).strip()
         locale = str(data.get("locale", "ar")).strip().lower()
         platform_lang = str(data.get("platform_lang", "both")).strip().lower()
+        homepage_template = str(data.get("homepageTemplate", "t1")).strip().lower()
         owner_pass = str(data.get("owner_pass", "")).strip()
         admin_pass = str(data.get("admin_pass", "")).strip()
         integrations = data.get("integrations") if isinstance(data.get("integrations"), dict) else {}
@@ -846,7 +849,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, {"error": "name required"})
         threading.Thread(
             target=run_create,
-            args=(slug, name, brand, tier, settings, definition, owner_email, owner_name, locale, platform_lang, owner_pass, integrations, admin_pass),
+            args=(slug, name, brand, tier, settings, definition, owner_email, owner_name, locale, platform_lang, owner_pass, integrations, admin_pass, homepage_template),
             daemon=True,
         ).start()
         return self._send(202, {"ok": True, "status": "provisioning", "slug": slug})

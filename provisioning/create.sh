@@ -319,6 +319,16 @@ docker exec "$CONTAINER" php /var/www/html/public/theme/nit/cli/apply_brand.php 
 docker exec "$CONTAINER" rm -rf /tmp/nit-brand || true
 rm -rf "$BRAND_DIR"
 
+# ── Homepage template (from the build form: t1..t10) ─────────────────────────
+# NIT picks the homepage look; the owner applies their images + brand colour
+# afterwards. The CLI rewrites the Site-home nit_section blocks from the chosen
+# template set (theme/nit/blocks/templates/<id>/).
+if [[ -n "${HOMEPAGE_TEMPLATE:-}" ]]; then
+    log "applying homepage template ${HOMEPAGE_TEMPLATE}"
+    docker exec "$CONTAINER" php /var/www/html/public/theme/nit/cli/apply_homepage_template.php \
+        --template="${HOMEPAGE_TEMPLATE}" || echo "!! homepage-template step failed (site still live)"
+fi
+
 # ── Mark this academy as provisioned so the MOBILE APP treats it as live ─────
 # theme_nit's site export reads theme_nit/provisioned; unset resolves to FALSE
 # (get_config returns false, so the theme's `?? 1` never applies), which makes

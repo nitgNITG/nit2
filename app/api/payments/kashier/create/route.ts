@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
     const brand = sanitizeBrand(body?.brand);
     const locale = body?.locale === "en" ? "en" : "ar";
     const platformLang = ["ar", "en", "both"].includes(body?.platform_lang) ? body.platform_lang : "both";
+    const homepageTemplate = /^t([1-9]|10)$/.test(body?.homepageTemplate) ? body.homepageTemplate : "t1";
     const purpose = ["new_academy", "upgrade", "renew"].includes(body?.purpose) ? body.purpose : "new_academy";
     const cycle = body?.cycle === "monthly" ? "monthly" : "annual"; // billing cycle
 
@@ -246,6 +247,7 @@ export async function POST(req: NextRequest) {
                 academySlug: purpose === "new_academy" ? slug : (body?.slug ?? null),
                 payloadJson: {
                     name, slug, tier: lic.key, brand, locale, platform_lang: platformLang,
+                    homepageTemplate, // homepage look (t1..t10) for the webhook to provision with
                     // Snapshot the owner so the (session-less) webhook can provision.
                     owner_email: user.email, owner_name: user.name ?? "",
                     autoRenew: saveCard, // recurring intent for the webhook

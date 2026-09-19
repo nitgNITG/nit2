@@ -122,6 +122,7 @@ export async function POST(req: NextRequest) {
                     locale: p.locale === "en" ? "en" : "ar",
                 },
                 platformLang: ["ar", "en", "both"].includes(p.platform_lang) ? p.platform_lang : "both",
+                homepageTemplate: /^t([1-9]|10)$/.test(p.homepageTemplate) ? p.homepageTemplate : "t1",
                 licenseMode: payment.mode === "test" ? "test" : "live",
             });
             if (!result.ok) {

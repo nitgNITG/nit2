@@ -73,6 +73,21 @@ type SuccessInfo = { slug: string; branch: string }
 // per-image limit in provision-server.py.
 const LOGO_MAX = 1.5 * 1024 * 1024
 const FAVICON_MAX = 512 * 1024
+// Homepage templates (theme_nit blocks/templates/tN). NIT picks the look; the
+// owner applies images + brand colour afterwards. Keep in sync with
+// theme/nit/classes/local/homepage_templates.php.
+const HOMEPAGE_TEMPLATES: { id: string; en: string; ar: string }[] = [
+    { id: 't1', en: 'Modern Minimal', ar: 'بسيط عصري' },
+    { id: 't2', en: 'Bold Gradient', ar: 'تدرّج جريء' },
+    { id: 't3', en: 'Academic Classic', ar: 'أكاديمي كلاسيكي' },
+    { id: 't4', en: 'Dark Premium', ar: 'داكن فاخر' },
+    { id: 't5', en: 'Warm Editorial', ar: 'تحريري دافئ' },
+    { id: 't6', en: 'Soft Glass', ar: 'زجاج ناعم' },
+    { id: 't7', en: 'Corporate Trust', ar: 'ثقة مؤسسية' },
+    { id: 't8', en: 'Playful Rounded', ar: 'مرِح مستدير' },
+    { id: 't9', en: 'Elegant Mono', ar: 'أحادي أنيق' },
+    { id: 't10', en: 'Vibrant Duotone', ar: 'ثنائي نابض' },
+]
 const LOGO_TYPES = ['image/png', 'image/svg+xml', 'image/jpeg', 'image/webp']
 const FAVICON_TYPES = ['image/png', 'image/x-icon', 'image/vnd.microsoft.icon', 'image/svg+xml']
 
@@ -118,6 +133,7 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
     const [logocompact, setLogocompact] = useState<File | null>(null)
     const [favicon, setFavicon] = useState<File | null>(null)
     const [platformLang, setPlatformLang] = useState<'ar' | 'en' | 'both'>('both') // academy language
+    const [homepageTemplate, setHomepageTemplate] = useState('t1') // homepage template (t1..t10)
     const [autoRenewEnabled, setAutoRenewEnabled] = useState(false) // is the auto-renew feature on (server flag)
     const [autoRenew, setAutoRenew] = useState(true) // buyer's choice (paid tier, create mode)
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual') // paid-tier billing cycle
@@ -343,6 +359,7 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                             brand,
                             locale,
                             platform_lang: platformLang,
+                            homepageTemplate,
                             purpose: 'new_academy',
                             autoRenew: autoRenewEnabled ? autoRenew : false,
                         }),
@@ -376,6 +393,7 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                         brand,
                         locale,
                         platform_lang: platformLang,
+                        homepageTemplate,
                         _hp: values._hp,
                         ...adminOwner,
                     }),
@@ -522,6 +540,30 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                         </button>
                     ))}
                 </div>
+            </div>
+
+            {/* Homepage template — the look of the academy's landing page (NIT picks; owner adds images/brand after) */}
+            <div className='mb-5'>
+                <label htmlFor='homepageTemplate' className='mb-1.5 block font-bold text-[#0B2923]'>
+                    {isAr ? 'قالب الصفحة الرئيسية' : 'Homepage template'}
+                </label>
+                <select
+                    id='homepageTemplate'
+                    value={homepageTemplate}
+                    onChange={(e) => setHomepageTemplate(e.target.value)}
+                    className='w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-700 transition focus:border-[#1E7D67] focus:ring-1 focus:ring-[#1E7D67]'
+                >
+                    {HOMEPAGE_TEMPLATES.map((tpl) => (
+                        <option key={tpl.id} value={tpl.id}>
+                            {tpl.id.toUpperCase()} · {isAr ? tpl.ar : tpl.en}
+                        </option>
+                    ))}
+                </select>
+                <p className='mt-1 text-xs text-gray-400'>
+                    {isAr
+                        ? 'شكل الصفحة الرئيسية للأكاديمية. يضيف المالك صوره وألوان هويته لاحقاً.'
+                        : "The academy homepage style. The owner adds their images and brand colour afterwards."}
+                </p>
             </div>
 
             {/* Academy name — primary, in the chosen language (always required) */}

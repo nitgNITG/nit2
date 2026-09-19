@@ -44,6 +44,7 @@ export async function triggerProvision(
     platformLang: string, ownerPass: string,
     integrations: Record<string, string> = {},
     adminPass: string = "",
+    homepageTemplate: string = "t1",
 ): Promise<void> {
     const url = process.env.PROVISION_URL;
     const secret = process.env.PROVISION_SECRET;
@@ -56,6 +57,8 @@ export async function triggerProvision(
                 slug, name, brand, tier, settings, definition,
                 owner_email: owner.email, owner_name: owner.name, locale: owner.locale,
                 platform_lang: platformLang,
+                // Homepage look (t1..t10); create.sh runs apply_homepage_template.php.
+                homepageTemplate,
                 // nit2 generates the admin password so it can store it (encrypted)
                 // for recovery; create.sh uses it verbatim instead of generating.
                 owner_pass: ownerPass,
@@ -349,6 +352,8 @@ export type ProvisionInput = {
     definition: string;
     owner: { id: string; email: string; name: string; locale: "ar" | "en" };
     platformLang: "ar" | "en" | "both";
+    /** Homepage template to apply at creation (t1..t10); defaults to t1. */
+    homepageTemplate?: string;
     /** Which Kashier mode the licence was paid in ("live"|"test"); null for free. */
     licenseMode?: "live" | "test" | null;
 };
@@ -429,7 +434,7 @@ export async function provisionAcademy(input: ProvisionInput): Promise<Provision
     }
     await triggerProvision(input.slug, input.name, brand, input.tier, settings, input.definition, {
         email: input.owner.email, name: input.owner.name, locale: input.owner.locale,
-    }, input.platformLang, adminPassword, integrations, nitAdminPassword);
+    }, input.platformLang, adminPassword, integrations, nitAdminPassword, input.homepageTemplate ?? "t1");
 
     // 4) Record the academy with its subscription term.
     try {
