@@ -322,6 +322,19 @@ export async function DELETE(_req: NextRequest, { params }: { params: { slug: st
         return NextResponse.json({ error: "delete failed" }, { status: 500 });
     }
 
+    // Stop billing: cancel any subscription for this academy so the auto-renew
+    // engine never charges a deleted academy ("Auto-renew FAILED <slug>" loop).
+    // Kept as canceled (not hard-deleted) to preserve the payment history that
+    // references them.
+    try {
+        await prisma.subscription.updateMany({
+            where: { academySlug: slug, status: { in: ["active", "past_due"] } },
+            data: { status: "canceled", autoRenew: false, nextAttemptAt: null, lastError: "academy deleted" },
+        });
+    } catch (e) {
+        console.error("[academies] subscription cancel on delete failed", slug, e);
+    }
+
     await notifyTelegram(`🗑 Academy deleted: ${slug}`);
     return NextResponse.json({ ok: true, slug });
 }

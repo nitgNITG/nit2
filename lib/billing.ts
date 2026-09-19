@@ -68,6 +68,24 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
     .catch((e) => { console.error("[billing] due query failed", e); return []; });
 
   for (const sub of due) {
+    // Guard: never charge an academy that no longer exists. Deleting an academy
+    // should cancel its subscription (see DELETE /api/academies/[slug]); cancel
+    // defensively here too so an already-orphaned subscription can't keep charging
+    // a deleted academy (the "Auto-renew FAILED <slug> attempt N" loop). A
+    // *suspended* academy still renews — that is how it recovers — so only a
+    // missing control-plane row cancels.
+    const academyRow = await prisma.academy
+      .findUnique({ where: { slug: sub.academySlug }, select: { id: true } })
+      .catch(() => undefined);
+    if (academyRow === null) {
+      await prisma.subscription.update({
+        where: { id: sub.id },
+        data: { status: "canceled", autoRenew: false, nextAttemptAt: null, lastError: "academy deleted" },
+      }).catch((e) => console.error("[billing] cancel orphaned subscription failed", sub.academySlug, e));
+      console.warn(`[billing] academy ${sub.academySlug} no longer exists — canceled its subscription, skipping charge`);
+      continue;
+    }
+
     summary.attempted++;
     try {
       const cycle = billingCycleKey(sub.currentPeriodEnd);
