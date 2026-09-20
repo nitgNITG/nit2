@@ -220,7 +220,7 @@ def run_apply_branding(slug: str, brand: dict, platform_lang: str = "") -> None:
 def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: dict = None, definition: str = "",
                owner_email: str = "", owner_name: str = "", locale: str = "ar",
                platform_lang: str = "both", owner_pass: str = "", integrations: dict = None,
-               admin_pass: str = "", homepage_template: str = "t1") -> None:
+               admin_pass: str = "", homepage_template: str = "t1", homepage_content=None) -> None:
     """Run create.sh detached, streaming its output to the client's log file.
 
     Branding is passed through create.sh's BRAND_* env contract: names as
@@ -252,6 +252,9 @@ def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: 
     env["PLATFORM_LANG"] = platform_lang if platform_lang in ("ar", "en", "both") else "both"
     # Homepage template (t1..t10) — create.sh runs apply_homepage_template.php.
     env["HOMEPAGE_TEMPLATE"] = homepage_template if re.match(r"^t([1-9]|10)$", homepage_template or "") else "t1"
+    # Homepage content ({text,href}) — create.sh runs apply_homepage_content.php.
+    if isinstance(homepage_content, dict):
+        env["HOMEPAGE_CONTENT_JSON"] = json.dumps(homepage_content, ensure_ascii=False)
     if isinstance(definition, str) and definition.strip():
         env["LICENSE_DEFINITION"] = definition
     if isinstance(settings, dict):
@@ -840,6 +843,7 @@ class Handler(BaseHTTPRequestHandler):
         locale = str(data.get("locale", "ar")).strip().lower()
         platform_lang = str(data.get("platform_lang", "both")).strip().lower()
         homepage_template = str(data.get("homepageTemplate", "t1")).strip().lower()
+        homepage_content = data.get("homepageContent") if isinstance(data.get("homepageContent"), dict) else None
         owner_pass = str(data.get("owner_pass", "")).strip()
         admin_pass = str(data.get("admin_pass", "")).strip()
         integrations = data.get("integrations") if isinstance(data.get("integrations"), dict) else {}
@@ -849,7 +853,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, {"error": "name required"})
         threading.Thread(
             target=run_create,
-            args=(slug, name, brand, tier, settings, definition, owner_email, owner_name, locale, platform_lang, owner_pass, integrations, admin_pass, homepage_template),
+            args=(slug, name, brand, tier, settings, definition, owner_email, owner_name, locale, platform_lang, owner_pass, integrations, admin_pass, homepage_template, homepage_content),
             daemon=True,
         ).start()
         return self._send(202, {"ok": True, "status": "provisioning", "slug": slug})

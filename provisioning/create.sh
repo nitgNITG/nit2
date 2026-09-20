@@ -329,6 +329,53 @@ if [[ -n "${HOMEPAGE_TEMPLATE:-}" ]]; then
         --template="${HOMEPAGE_TEMPLATE}" || echo "!! homepage-template step failed (site still live)"
 fi
 
+# ── Homepage content (text + images) → fill the template's editable hooks ────
+# Text/links come from the build form (HOMEPAGE_CONTENT_JSON); images reuse the
+# already-staged brand uploads (logo/hero/about/gallery). apply_homepage_content
+# leaves any field blank untouched, so the template keeps its designed defaults.
+CONTENT_DIR="$(mktemp -d)"
+C_IMAGES=""
+_copy_c_img(){ # $1=src path  $2=key
+    [[ -n "$1" && -f "$1" ]] || return 0
+    local ext="${1##*.}"; cp -f "$1" "$CONTENT_DIR/$2.${ext}"; C_IMAGES="${C_IMAGES}${2}=${2}.${ext}"$'\n'
+}
+_copy_c_img "${BRAND_LOGO:-}"  logo
+_copy_c_img "${BRAND_HERO:-}"  hero
+_copy_c_img "${BRAND_ABOUT:-}" about
+if [[ -n "${BRAND_GALLERY:-}" ]]; then
+    _ci=1; IFS=',' read -ra _cg <<< "$BRAND_GALLERY"
+    for _gp in "${_cg[@]}"; do _copy_c_img "$_gp" "gallery_${_ci}"; _ci=$((_ci+1)); done
+fi
+if [[ -n "${HOMEPAGE_CONTENT_JSON:-}" || -n "$C_IMAGES" ]]; then
+    HOMEPAGE_CONTENT_JSON="${HOMEPAGE_CONTENT_JSON:-}" C_IMAGES="$C_IMAGES" \
+    python3 - "$CONTENT_DIR/content.json" <<'PYJSON'
+import json, os, sys
+try:
+    base = json.loads(os.environ.get("HOMEPAGE_CONTENT_JSON") or "{}")
+except Exception:
+    base = {}
+if not isinstance(base, dict):
+    base = {}
+base.setdefault("text", {})
+base.setdefault("href", {})
+imgs = {}
+for line in (os.environ.get("C_IMAGES") or "").splitlines():
+    if "=" in line:
+        k, v = line.split("=", 1)
+        imgs[k] = v
+if imgs:
+    base["images"] = imgs
+json.dump(base, open(sys.argv[1], "w"), ensure_ascii=False)
+PYJSON
+    log "applying homepage content"
+    docker exec "$CONTAINER" rm -rf /tmp/nit-content || true
+    docker cp "$CONTENT_DIR" "$CONTAINER:/tmp/nit-content"
+    docker exec "$CONTAINER" php /var/www/html/public/theme/nit/cli/apply_homepage_content.php \
+        --manifest=/tmp/nit-content/content.json || echo "!! homepage-content step failed (site still live)"
+    docker exec "$CONTAINER" rm -rf /tmp/nit-content || true
+fi
+rm -rf "$CONTENT_DIR"
+
 # ── Mark this academy as provisioned so the MOBILE APP treats it as live ─────
 # theme_nit's site export reads theme_nit/provisioned; unset resolves to FALSE
 # (get_config returns false, so the theme's `?? 1` never applies), which makes

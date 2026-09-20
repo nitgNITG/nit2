@@ -88,6 +88,23 @@ const HOMEPAGE_TEMPLATES: { id: string; en: string; ar: string }[] = [
     { id: 't9', en: 'Elegant Mono', ar: 'أحادي أنيق' },
     { id: 't10', en: 'Vibrant Duotone', ar: 'ثنائي نابض' },
 ]
+
+// Homepage template content the owner can fill at creation. Text hooks in the
+// template blocks (data-nit-edit). `bi` = bilingual (EN+AR); otherwise a single
+// value. Long-tail fields (testimonials, FAQ, gallery captions) are edited in
+// Moodle afterwards. Keep keys in sync with theme_nit homepage_content::fields().
+const CONTENT_FIELDS: { key: string; en: string; ar: string; bi?: boolean; ml?: boolean; link?: boolean }[] = [
+    { key: 'hero_title', en: 'Hero title', ar: 'عنوان البطل', bi: true, ml: true },
+    { key: 'hero_subtitle', en: 'Hero subtitle', ar: 'وصف البطل', bi: true, ml: true },
+    { key: 'about_heading', en: 'About heading', ar: 'عنوان من نحن', bi: true },
+    { key: 'about_text', en: 'About text', ar: 'نص من نحن', bi: true, ml: true },
+    { key: 'footer_tagline', en: 'Footer tagline', ar: 'سطر التذييل', bi: true },
+    { key: 'contact_email', en: 'Contact email', ar: 'بريد التواصل' },
+    { key: 'contact_phone', en: 'Contact phone', ar: 'هاتف التواصل' },
+    { key: 'contact_address', en: 'Contact address', ar: 'العنوان', bi: true },
+    { key: 'app_ios', en: 'App Store URL', ar: 'رابط آب ستور', link: true },
+    { key: 'app_android', en: 'Google Play URL', ar: 'رابط جوجل بلاي', link: true },
+]
 const LOGO_TYPES = ['image/png', 'image/svg+xml', 'image/jpeg', 'image/webp']
 const FAVICON_TYPES = ['image/png', 'image/x-icon', 'image/vnd.microsoft.icon', 'image/svg+xml']
 
@@ -134,6 +151,8 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
     const [favicon, setFavicon] = useState<File | null>(null)
     const [platformLang, setPlatformLang] = useState<'ar' | 'en' | 'both'>('both') // academy language
     const [homepageTemplate, setHomepageTemplate] = useState('t1') // homepage template (t1..t10)
+    const [content, setContent] = useState<Record<string, string>>({}) // homepage template content (keyed by field key, or key_en/key_ar for bilingual)
+    const setC = (k: string, v: string) => setContent((c) => ({ ...c, [k]: v }))
     const [autoRenewEnabled, setAutoRenewEnabled] = useState(false) // is the auto-renew feature on (server flag)
     const [autoRenew, setAutoRenew] = useState(true) // buyer's choice (paid tier, create mode)
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual') // paid-tier billing cycle
@@ -327,6 +346,29 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                 )
             }
 
+            // Homepage template content (text + links). Images (logo/hero/about/
+            // gallery) already ride in `brand`; the provisioning content step reuses
+            // them. Bilingual fields become {en,ar}. Empty fields are omitted so the
+            // template keeps its designed defaults.
+            const contentText: Record<string, unknown> = {}
+            const contentHref: Record<string, string> = {}
+            for (const f of CONTENT_FIELDS) {
+                if (f.link) {
+                    const v = (content[f.key] || '').trim()
+                    if (v) contentHref[f.key] = v
+                } else if (f.bi) {
+                    const en = (content[`${f.key}_en`] || '').trim()
+                    const ar = (content[`${f.key}_ar`] || '').trim()
+                    if (en || ar) contentText[f.key] = { en, ar }
+                } else {
+                    const v = (content[f.key] || '').trim()
+                    if (v) contentText[f.key] = v
+                }
+            }
+            const contentPayload = (Object.keys(contentText).length || Object.keys(contentHref).length)
+                ? { text: contentText, href: contentHref }
+                : undefined
+
             // Paid tier (create mode only) → start Kashier checkout instead of
             // provisioning now. On success the client is redirected to Kashier's
             // hosted page; the academy is provisioned by the webhook after payment.
@@ -360,6 +402,7 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                             locale,
                             platform_lang: platformLang,
                             homepageTemplate,
+                            content: contentPayload,
                             purpose: 'new_academy',
                             autoRenew: autoRenewEnabled ? autoRenew : false,
                         }),
@@ -394,6 +437,7 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                         locale,
                         platform_lang: platformLang,
                         homepageTemplate,
+                        content: contentPayload,
                         _hp: values._hp,
                         ...adminOwner,
                     }),
@@ -565,6 +609,58 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                         : "The academy homepage style. The owner adds their images and brand colour afterwards."}
                 </p>
             </div>
+
+            {/* Homepage content — fills the template's editable text (optional; the rest is editable in Moodle later) */}
+            <details className='mb-5 rounded-xl border border-gray-200 bg-gray-50/60'>
+                <summary className='cursor-pointer px-4 py-3 text-sm font-bold text-[#0B2923]'>
+                    {isAr ? 'محتوى الصفحة الرئيسية (اختياري)' : 'Homepage content (optional)'}
+                </summary>
+                <div className='grid gap-3 px-4 pb-4'>
+                    <p className='text-xs text-gray-400'>
+                        {isAr
+                            ? 'اترك أي حقل فارغاً ليبقى النص الافتراضي. الشعار وصورة البطل ومن نحن والمعرض تُرفع من قسم الهوية. باقي المحتوى يُحرَّر داخل Moodle لاحقاً.'
+                            : 'Leave a field blank to keep the default. Logo, hero, about and gallery images upload in the identity section. The rest is editable in Moodle later.'}
+                    </p>
+                    {CONTENT_FIELDS.map((f) => (
+                        <div key={f.key}>
+                            <label className='mb-1 block text-xs font-semibold text-[#0B2923]'>{isAr ? f.ar : f.en}</label>
+                            {f.link ? (
+                                <input
+                                    type='url' inputMode='url' placeholder='https://…'
+                                    value={content[f.key] || ''}
+                                    onChange={(e) => setC(f.key, e.target.value)}
+                                    className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm'
+                                />
+                            ) : f.bi ? (
+                                <div className='grid grid-cols-2 gap-2'>
+                                    {(['en', 'ar'] as const).map((l) => (
+                                        f.ml ? (
+                                            <textarea key={l} rows={2} dir={l === 'ar' ? 'rtl' : 'ltr'}
+                                                placeholder={l === 'ar' ? 'العربية' : 'English'}
+                                                value={content[`${f.key}_${l}`] || ''}
+                                                onChange={(e) => setC(`${f.key}_${l}`, e.target.value)}
+                                                className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm' />
+                                        ) : (
+                                            <input key={l} type='text' dir={l === 'ar' ? 'rtl' : 'ltr'}
+                                                placeholder={l === 'ar' ? 'العربية' : 'English'}
+                                                value={content[`${f.key}_${l}`] || ''}
+                                                onChange={(e) => setC(`${f.key}_${l}`, e.target.value)}
+                                                className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm' />
+                                        )
+                                    ))}
+                                </div>
+                            ) : (
+                                <input
+                                    type='text'
+                                    value={content[f.key] || ''}
+                                    onChange={(e) => setC(f.key, e.target.value)}
+                                    className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm'
+                                />
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </details>
 
             {/* Academy name — primary, in the chosen language (always required) */}
             <div className='mb-5'>

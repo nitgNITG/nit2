@@ -123,6 +123,7 @@ export async function POST(req: NextRequest) {
                 },
                 platformLang: ["ar", "en", "both"].includes(p.platform_lang) ? p.platform_lang : "both",
                 homepageTemplate: /^t([1-9]|10)$/.test(p.homepageTemplate) ? p.homepageTemplate : "t1",
+                homepageContent: (p.homepageContent && typeof p.homepageContent === "object") ? p.homepageContent : null,
                 licenseMode: payment.mode === "test" ? "test" : "live",
             });
             if (!result.ok) {
