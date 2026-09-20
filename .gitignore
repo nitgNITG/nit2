@@ -53,3 +53,8 @@ __pycache__/
 
 # Vitest machine-readable reports (CI artifact, not committed)
 test-results/
+
+# Claude Code local worktrees & local settings (never commit — they contain
+# absolute host paths and hundreds of MB of duplicated checkouts)
+.claude/worktrees/
+.claude/settings.local.json
