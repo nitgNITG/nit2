@@ -14,6 +14,7 @@ Store provisioning endpoint — the store counterpart of provisioning/provision-
   GET    /domain-status/<slug>
   DELETE /deprovision/<slug>        → queued job (destroy-store.sh)
   GET    /health · GET /usage       host snapshot / per-store sizes
+  GET    /images                    image tags available on the registry (GHCR) and locally, + the platform tag
   POST   /_progress/<slug>          internal: scripts report steps (lib.sh); persisted + forwarded to nit2
 
 Differences from the academy service, on purpose:
@@ -43,6 +44,21 @@ MAX_CONCURRENT = max(1, int(os.environ.get("MAX_CONCURRENT", "2") or "2"))
 DB_CONTAINER = os.environ.get("SAAS_DB_CONTAINER", "saas_mariadb")
 DEFAULT_TAG  = os.environ.get("IMAGE_TAG", "latest")
 BASH         = os.environ.get("BASH_BIN", "bash")   # explicit path only needed on non-Linux dev boxes
+
+
+def platform_tag() -> str:
+    """The platform image tag. bump-image.sh rewrites IMAGE_TAG in provision.env
+    after a rollout, so read the file each time instead of the (stale) process env."""
+    try:
+        with open(os.path.join(STORE_ROOT, "provision.env")) as f:
+            for line in f:
+                if line.startswith("IMAGE_TAG="):
+                    v = line.split("=", 1)[1].strip()
+                    if v:
+                        return v
+    except OSError:
+        pass
+    return DEFAULT_TAG
 
 SLUG_RE   = re.compile(r"^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])$")
 TIER_RE   = re.compile(r"^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])$")
@@ -323,7 +339,7 @@ def _build_create_job(data: dict) -> tuple[str, list, dict]:
         lic.setdefault("tier", data.get("tier"))
         lic.setdefault("definition", data.get("definition", {}))
         bootstrap["license"] = _license_doc(lic)
-    tag = str(data.get("image_tag") or DEFAULT_TAG)
+    tag = str(data.get("image_tag") or platform_tag())
     if not TAG_RE.match(tag):
         raise ValueError("invalid image_tag")
     env = {"BOOTSTRAP_JSON": json.dumps(bootstrap, ensure_ascii=False), "IMAGE_TAG": tag}
@@ -420,7 +436,7 @@ def collect_health() -> dict:
                 "load5": float(la[1]) if len(la) > 1 else 0.0, "load15": float(la[2]) if len(la) > 2 else 0.0,
                 "load1_per_core": round(float(la[0]) / ncpu, 2) if la else 0.0},
         "uptime_seconds": int(float(up[0])) if up else 0, "failed_services": failed,
-        "docker": docker, "jobs_active": active, "image_tag": DEFAULT_TAG,
+        "docker": docker, "jobs_active": active, "image_tag": platform_tag(),
         "generated_at": int(time.time()),
     }
     _CACHE["health"] = (time.time(), data)
@@ -460,6 +476,60 @@ def collect_usage() -> dict:
     data = {"stores": stores, "host_disk_pct": snap["used_pct"], "host_free_bytes": snap["free_bytes"],
             "host_total_bytes": snap["total_bytes"], "generated_at": int(time.time())}
     _CACHE["usage"] = (time.time(), data)
+    return data
+
+
+# ── Image tags (for the version picker in nit2) ──────────────────────────────
+REGISTRY = os.environ.get("REGISTRY", "ghcr.io/nitgg").rstrip("/")
+_IMAGES_CACHE = {"at": 0.0, "data": None}
+
+
+def _ghcr_tags(repo: str) -> list:
+    """Tags of ghcr.io/<owner>/<repo> via the registry v2 API (token exchange with
+    GHCR_USER/GHCR_TOKEN when set; anonymous works for public packages)."""
+    host, _, path = REGISTRY.partition("/")
+    if host != "ghcr.io":
+        return []
+    import base64 as _b64
+    user, token = os.environ.get("GHCR_USER", ""), os.environ.get("GHCR_TOKEN", "")
+    try:
+        req = urllib.request.Request(f"https://ghcr.io/token?scope=repository:{path}/{repo}:pull&service=ghcr.io")
+        if token:
+            req.add_header("Authorization", "Basic " + _b64.b64encode(f"{user or 'x'}:{token}".encode()).decode())
+        bearer = json.loads(urllib.request.urlopen(req, timeout=8).read()).get("token", "")
+        req = urllib.request.Request(f"https://ghcr.io/v2/{path}/{repo}/tags/list?n=200", headers={"Authorization": f"Bearer {bearer}"})
+        return list(json.loads(urllib.request.urlopen(req, timeout=8).read()).get("tags") or [])
+    except Exception as e:  # noqa: BLE001
+        print(f"[images] ghcr tags for {repo}: {e}", flush=True)
+        return []
+
+
+def _local_tags(repo: str) -> list:
+    try:
+        out = subprocess.run(["docker", "images", f"{REGISTRY}/{repo}", "--format", "{{.Tag}}"],
+                             capture_output=True, text=True, timeout=15)
+        return [t for t in out.stdout.split() if t and t != "<none>"]
+    except Exception:
+        return []
+
+
+def _tag_key(t: str):
+    parts = re.findall(r"\d+", t)
+    return (0 if t == "latest" else 1, [int(p) for p in parts[:4]] + [0] * (4 - len(parts[:4])), t)
+
+
+def collect_images() -> dict:
+    at, data = _IMAGES_CACHE["at"], _IMAGES_CACHE["data"]
+    if data and time.time() - at < 60:
+        return data
+    # A tag is usable only when all three images carry it.
+    remote = set.intersection(*(set(_ghcr_tags(f"saas-store-{a}")) for a in ("api", "site", "dash"))) if REGISTRY.startswith("ghcr.io") else set()
+    local = set.intersection(*(set(_local_tags(f"saas-store-{a}")) for a in ("api", "site", "dash")))
+    tags = sorted(remote | local, key=_tag_key, reverse=True)
+    data = {"registry": REGISTRY, "current": platform_tag(),
+            "tags": [{"tag": t, "remote": t in remote, "local": t in local} for t in tags],
+            "generated_at": int(time.time())}
+    _IMAGES_CACHE["at"], _IMAGES_CACHE["data"] = time.time(), data
     return data
 
 
@@ -557,6 +627,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not TAG_RE.match(tag):
                     return self._send(400, {"error": "invalid tag"})
                 run_bump_all(tag)
+                _IMAGES_CACHE["data"] = None
                 return self._send(202, {"ok": True, "status": "rolling-out", "tag": tag})
 
             if path.startswith("/update-image/"):
@@ -594,6 +665,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, collect_health())
             if path == "/usage":
                 return self._send(200, collect_usage())
+            if path == "/images":
+                return self._send(200, collect_images())
             if path.startswith("/domain-status/"):
                 slug = self._slug_from("/domain-status/")
                 try:

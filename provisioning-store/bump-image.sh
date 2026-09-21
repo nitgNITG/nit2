@@ -14,7 +14,11 @@ REGISTRY="${REGISTRY:-ghcr.io/nitgg}"
 
 log "pulling $REGISTRY/saas-store-{api,site,dash}:$TAG"
 for app in api site dash; do
-    docker pull -q "$REGISTRY/saas-store-$app:$TAG" >/dev/null || die "pull failed for $app:$TAG"
+    img="$REGISTRY/saas-store-$app:$TAG"
+    if ! docker pull -q "$img" >/dev/null 2>&1; then
+        # Not on the registry (or no pull access) — fine when the tag was built on this host.
+        docker image inspect "$img" >/dev/null 2>&1 && warn "pull failed for $img — using the local image" || die "pull failed and no local image for $img"
+    fi
 done
 # Stores created from now on get this tag too.
 [[ -f "$STORE_ROOT/provision.env" ]] && env_set "$STORE_ROOT/provision.env" IMAGE_TAG "$TAG"

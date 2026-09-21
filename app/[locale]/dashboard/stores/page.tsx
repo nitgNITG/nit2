@@ -33,6 +33,9 @@ export default function StoresPage() {
   const [host, setHost] = useState<{ disk?: { free_pct: number; free_bytes: number }; memory?: { used_pct: number }; docker?: { running: number; mariadb_up: boolean }; image_tag?: string | null } | null>(null);
   const [dbBytes, setDbBytes] = useState<Record<string, number>>({});
   const [rolling, setRolling] = useState(false);
+  // Versions the host can run (registry + local), from the provisioner.
+  const [images, setImages] = useState<{ current: string | null; tags: { tag: string; remote: boolean; local: boolean }[] }>({ current: null, tags: [] });
+  const [rolloutTag, setRolloutTag] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -44,6 +47,10 @@ export default function StoresPage() {
       setStores(s.data.stores ?? []);
       setLicenses((l.data.licenses ?? []).filter((x: License) => x.active));
       setOwners(Object.fromEntries((u.data.users ?? []).map((x: Owner) => [x.id, x])));
+      axios.get("/api/stores/images").then(({ data }) => {
+        setImages({ current: data.current ?? null, tags: data.tags ?? [] });
+        setRolloutTag((cur) => cur || data.current || data.tags?.[0]?.tag || "");
+      }).catch(() => {});
       axios.get("/api/stores/usage").then(({ data }) => {
         setHost(data.host ?? null);
         setDbBytes(Object.fromEntries(Object.entries(data.stores ?? {}).map(([k, v]: [string, any]) => [k, Number(v?.db_bytes ?? 0)])));
@@ -112,9 +119,9 @@ export default function StoresPage() {
   };
 
   const rollout = async () => {
-    const tag = prompt("Image tag to roll out to EVERY store (pinned stores are skipped)", host?.image_tag ?? "");
+    const tag = rolloutTag;
     if (!tag) return;
-    if (!confirm(`Roll out ${tag} to all stores? Only containers whose image changed restart.`)) return;
+    if (!confirm(`Roll out ${tag} to ALL stores? Pinned stores are skipped; only containers whose image changed restart.`)) return;
     setRolling(true);
     try {
       await axios.post("/api/stores/update-images", { tag });
@@ -139,7 +146,13 @@ export default function StoresPage() {
         </div>
         <div className="flex items-center gap-2">
           <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter by slug / name / owner" className="rounded-lg border px-3 py-2 text-sm" />
-          <button onClick={rollout} disabled={rolling} className="rounded-lg border border-[#1E7D67] px-4 py-2 text-sm font-bold text-[#1E7D67] disabled:opacity-50">Roll out image…</button>
+          <select value={rolloutTag} onChange={(e) => setRolloutTag(e.target.value)} className="rounded-lg border px-2 py-2 font-mono text-sm" title="Versions available on the registry (CI) or built on the host">
+            {images.tags.length === 0 && <option value="">no versions found</option>}
+            {images.tags.map((t) => (
+              <option key={t.tag} value={t.tag}>{t.tag}{t.tag === images.current ? " (platform)" : ""}{t.remote ? "" : " (local only)"}</option>
+            ))}
+          </select>
+          <button onClick={rollout} disabled={rolling || !rolloutTag} className="rounded-lg border border-[#1E7D67] px-4 py-2 text-sm font-bold text-[#1E7D67] disabled:opacity-50">Roll out to all</button>
           <Link href="/build-product?product=store" className="rounded-lg bg-[#1E7D67] px-4 py-2 text-sm font-bold text-white">+ New store (comp)</Link>
         </div>
       </div>
@@ -200,10 +213,13 @@ export default function StoresPage() {
                     <td className="px-3 py-2 font-mono text-xs">
                       {s.imageTag ?? "—"}
                       {dbBytes[s.slug] ? <div className="text-[10px] text-gray-400">db {(dbBytes[s.slug] / 1024 ** 2).toFixed(1)} MB</div> : null}
-                      <button disabled={isBusy || !["live", "suspended"].includes(s.status)} className="ms-2 text-[#1E7D67] underline disabled:opacity-40" onClick={() => {
-                        const tag = prompt("Image tag to move this store to", s.imageTag ?? "latest");
-                        if (tag) patch(s.slug, { updateImage: true, tag }, `Updating to ${tag}`);
-                      }}>update</button>
+                      {["live", "suspended"].includes(s.status) && images.tags.length > 0 && (
+                        <select disabled={isBusy} value="" onChange={(e) => { const tag = e.target.value; if (tag && confirm(`Move ${s.slug} to ${tag}?`)) patch(s.slug, { updateImage: true, tag }, `Updating to ${tag}`); }}
+                          className="ms-2 rounded border px-1 py-0.5 text-[11px]" title="Move this store to a version">
+                          <option value="">move to…</option>
+                          {images.tags.filter((t) => t.tag !== s.imageTag).map((t) => <option key={t.tag} value={t.tag}>{t.tag}</option>)}
+                        </select>
+                      )}
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap gap-1">

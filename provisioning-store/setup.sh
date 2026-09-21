@@ -176,6 +176,8 @@ ACCOUNT_URL=$(_val ACCOUNT_URL "")
 MAX_IMAGE_MB=$(_val MAX_IMAGE_MB 5)
 TELEGRAM_BOT_TOKEN=$(_val TELEGRAM_BOT_TOKEN "")
 TELEGRAM_CHAT_ID=$(_val TELEGRAM_CHAT_ID "")
+# Public hostname of this service (for CI rollouts from GitHub Actions). Empty = localhost only.
+PROVISION_PUBLIC_HOST=$(_val PROVISION_PUBLIC_HOST "")
 ENV
 chmod 600 "$ENVF"
 
@@ -189,6 +191,34 @@ for app in api site dash; do
     docker pull -q "$REGISTRY/saas-store-$app:$IMAGE_TAG" >/dev/null 2>&1 && log "pulled saas-store-$app:$IMAGE_TAG" \
         || echo "!! could not pull $REGISTRY/saas-store-$app:$IMAGE_TAG (set GHCR_TOKEN / push the images first)"
 done
+
+# ── 6b. Public HTTPS vhost for CI (optional; like saas-provision.<academy domain>) ──
+# Set PROVISION_PUBLIC_HOST (e.g. saas-store-provision.commerce.nitg-eg.com — the
+# wildcard A record already covers it) and GitHub Actions can POST /update-image.
+# The shared secret is still required; only the port is exposed through the proxy.
+if [[ -n "${PROVISION_PUBLIC_HOST:-}" && "$PROXY" == "nginx" ]]; then
+    log "public vhost $PROVISION_PUBLIC_HOST → 127.0.0.1:$PROVISION_PORT"
+    cat > "/etc/nginx/conf.d/saas-store-provision.conf" <<NGX
+server {
+    listen 80;
+    listen [::]:80;
+    server_name $PROVISION_PUBLIC_HOST;
+    client_max_body_size 16m;
+    location / {
+        proxy_pass http://127.0.0.1:$PROVISION_PORT;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 300s;
+    }
+}
+NGX
+    nginx -t >/dev/null && systemctl reload nginx
+    if [[ "$TLS_MODE" == "per-host" ]]; then
+        certbot --nginx -d "$PROVISION_PUBLIC_HOST" --non-interactive --agree-tos -m "$LE_EMAIL" --redirect --keep-until-expiring             && systemctl reload nginx || echo "!! certbot failed for $PROVISION_PUBLIC_HOST — check DNS; vhost is up on http"
+    fi
+elif [[ -n "${PROVISION_PUBLIC_HOST:-}" ]]; then
+    echo "!! PROVISION_PUBLIC_HOST is set but PROXY=$PROXY — add the vhost by hand (proxy → 127.0.0.1:$PROVISION_PORT)"
+fi
 
 # ── 7. systemd service ──────────────────────────────────────────────────────
 log "installing saas-store-provision.service"
@@ -205,6 +235,7 @@ echo "============================================================"
 echo "  Store provisioner ready."
 echo "  nit2 .env (same box):   STORE_PROVISION_URL=http://127.0.0.1:$PROVISION_PORT"
 echo "  nit2 .env (other box):  put it behind a vhost of your web server, like saas-provision.<domain>"
+[[ -n "${PROVISION_PUBLIC_HOST:-}" ]] && echo "  GitHub secrets (CI):    STORE_PROVISION_URL=https://$PROVISION_PUBLIC_HOST · STORE_PROVISION_SECRET=<same secret>"
 echo "                          STORE_PROVISION_SECRET=$PROVISION_SECRET"
 echo "  Then set CALLBACK_URL / WORKER_SECRET / MAIL_* / CLOUDINARY_* in $ENVF"
 echo "  and: systemctl restart saas-store-provision"

@@ -23,7 +23,7 @@ report_step 1 $TOTAL "Pulling $TAG"
 env_set "$ENV_FILE" IMAGE_TAG "$TAG"
 # Template fixes (networks, limits…) ride along with every rollout.
 cp "$SCRIPTS_DIR/compose.store.yml" "$COMPOSE_FILE"
-compose pull -q 2>&1 | grep -v '^$' || true
+compose pull -q --ignore-pull-failures 2>&1 | grep -v '^$' || true   # locally built tags are fine
 report_step 2 $TOTAL "Recreating changed containers"
 compose up -d --remove-orphans 2>&1 | grep -v '^$' || true
 report_step 3 $TOTAL "Waiting for health"
