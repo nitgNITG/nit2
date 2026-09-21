@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 // ── Mocks (hoisted so the vi.mock factories can see them) ────────────────────
 const { db, getCurrentUser } = vi.hoisted(() => ({
     db: {
-        academy: { findUnique: vi.fn() },
+        tenant: { findUnique: vi.fn() },
         license: { findUnique: vi.fn(), findMany: vi.fn() },
         subscription: { findUnique: vi.fn() },
         paymentMethod: { findUnique: vi.fn(), findFirst: vi.fn() },
@@ -37,7 +37,7 @@ beforeEach(() => {
     vi.clearAllMocks();
     // Sensible defaults for the happy path; individual tests override.
     getCurrentUser.mockResolvedValue(OWNER);
-    db.academy.findUnique.mockResolvedValue(ACADEMY);
+    db.tenant.findUnique.mockResolvedValue(ACADEMY);
     db.license.findUnique.mockResolvedValue(LICENSE);
     db.license.findMany.mockResolvedValue([
         { key: "standard", name: "Standard", price: 200, priceEgp: 9000, durationDays: 365,
@@ -57,7 +57,7 @@ describe("GET /api/academies/[slug]/plan", () => {
     });
 
     it("404 when the academy does not exist", async () => {
-        db.academy.findUnique.mockResolvedValue(null);
+        db.tenant.findUnique.mockResolvedValue(null);
         const res = await call("ghost");
         expect(res.status).toBe(404);
     });

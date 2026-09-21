@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 const { db, getCurrentUser, triggerApplyIntegrations, triggerExpiryReminder, notifyTelegram, toLicenseDefinition, computeUpgradable } = vi.hoisted(() => ({
     db: {
-        academy: { findUnique: vi.fn(), update: vi.fn() },
+        tenant: { findUnique: vi.fn(), update: vi.fn() },
         license: { findUnique: vi.fn(), findMany: vi.fn() },
     },
     getCurrentUser: vi.fn(),
@@ -41,8 +41,8 @@ beforeEach(() => {
     getCurrentUser.mockResolvedValue(ADMIN);
     db.license.findUnique.mockResolvedValue({ key: "standard", durationDays: 365 });
     db.license.findMany.mockResolvedValue([]);
-    db.academy.findUnique.mockResolvedValue({ slug: "acme", status: "live" });
-    db.academy.update.mockImplementation(({ data }: any) => Promise.resolve({
+    db.tenant.findUnique.mockResolvedValue({ slug: "acme", status: "live" });
+    db.tenant.update.mockImplementation(({ data }: any) => Promise.resolve({
         slug: "acme", status: data.status ?? "live", tier: data.tier ?? "basic",
         validUntil: data.validUntil ?? null, googleOauthAdded: data.googleOauthAdded ?? false,
     }));
@@ -56,7 +56,7 @@ afterEach(() => { delete process.env.WORKER_SECRET; });
 describe("PATCH /api/academies/[slug]", () => {
     it("400 when nothing actionable is sent", async () => {
         expect((await patch({})).status).toBe(400);
-        expect(db.academy.update).not.toHaveBeenCalled();
+        expect(db.tenant.update).not.toHaveBeenCalled();
     });
 
     describe("status transition (worker-guarded)", () => {
@@ -69,7 +69,7 @@ describe("PATCH /api/academies/[slug]", () => {
         it("advances the status with the right secret", async () => {
             const res = await patch({ status: "live" }, { "x-worker-secret": "wsecret" });
             expect(res.status).toBe(200);
-            expect(db.academy.update.mock.calls[0][0].data.status).toBe("live");
+            expect(db.tenant.update.mock.calls[0][0].data.status).toBe("live");
         });
         it("notifies on a failed build", async () => {
             await patch({ status: "failed" }, { "x-worker-secret": "wsecret" });
@@ -93,7 +93,7 @@ describe("PATCH /api/academies/[slug]", () => {
         it("starts a fresh term and pushes the plan to the live academy", async () => {
             const res = await patch({ tier: "STANDARD" }); // case-insensitive
             expect(res.status).toBe(200);
-            const data = db.academy.update.mock.calls[0][0].data;
+            const data = db.tenant.update.mock.calls[0][0].data;
             expect(data.tier).toBe("standard");
             expect(data.subscribedAt).toBeInstanceOf(Date);
             expect(data.expiryRemindersSent).toEqual({});
@@ -104,7 +104,7 @@ describe("PATCH /api/academies/[slug]", () => {
         it("a never-expiring tier gets a null term", async () => {
             db.license.findUnique.mockResolvedValue({ key: "free", durationDays: 0 });
             await patch({ tier: "free" });
-            expect(db.academy.update.mock.calls[0][0].data.validUntil).toBeNull();
+            expect(db.tenant.update.mock.calls[0][0].data.validUntil).toBeNull();
         });
     });
 
@@ -116,7 +116,7 @@ describe("PATCH /api/academies/[slug]", () => {
         it("suspends: status suspended + notify", async () => {
             const res = await patch({ suspend: true });
             expect(res.status).toBe(200);
-            expect(db.academy.update.mock.calls[0][0].data.status).toBe("suspended");
+            expect(db.tenant.update.mock.calls[0][0].data.status).toBe("suspended");
             expect(notifyTelegram.mock.calls.some((c) => /suspended/i.test(c[0]))).toBe(true);
         });
     });
@@ -129,31 +129,31 @@ describe("PATCH /api/academies/[slug]", () => {
             const future = new Date(Date.now() + 200 * DAY).toISOString();
             const res = await patch({ validUntil: future });
             expect(res.status).toBe(200);
-            const data = db.academy.update.mock.calls[0][0].data;
+            const data = db.tenant.update.mock.calls[0][0].data;
             expect((data.validUntil as Date).toISOString()).toBe(future);
             expect(data.expiryRemindersSent).toEqual({});
             expect(triggerExpiryReminder.mock.calls[0][3]).toMatchObject({ sendEmail: false });
         });
         it("revives a suspended academy when extended into the future", async () => {
             // First update returns the row still suspended; the revive path flips it live.
-            db.academy.update.mockResolvedValueOnce({ slug: "acme", status: "suspended", tier: "basic", validUntil: null, googleOauthAdded: false });
+            db.tenant.update.mockResolvedValueOnce({ slug: "acme", status: "suspended", tier: "basic", validUntil: null, googleOauthAdded: false });
             const future = new Date(Date.now() + 30 * DAY).toISOString();
             const res = await patch({ validUntil: future });
             const body = await res.json();
             expect(body.status).toBe("live");
             // Second update flips status → live.
-            expect(db.academy.update.mock.calls[1][0].data).toEqual({ status: "live" });
+            expect(db.tenant.update.mock.calls[1][0].data).toEqual({ status: "live" });
         });
     });
 
     it("flips the googleOauthAdded flag (admin)", async () => {
         const res = await patch({ googleOauthAdded: true });
         expect(res.status).toBe(200);
-        expect(db.academy.update.mock.calls[0][0].data.googleOauthAdded).toBe(true);
+        expect(db.tenant.update.mock.calls[0][0].data.googleOauthAdded).toBe(true);
     });
 
     it("404 when the academy row doesn't exist (P2025)", async () => {
-        db.academy.update.mockRejectedValue({ code: "P2025" });
+        db.tenant.update.mockRejectedValue({ code: "P2025" });
         expect((await patch({ googleOauthAdded: true })).status).toBe(404);
     });
 
@@ -164,11 +164,11 @@ describe("PATCH /api/academies/[slug]", () => {
             expect((await res.json()).status).toBe("updating-image");
         });
         it("404 when the academy isn't found", async () => {
-            db.academy.findUnique.mockResolvedValue(null);
+            db.tenant.findUnique.mockResolvedValue(null);
             expect((await patch({ updateImage: true })).status).toBe(404);
         });
         it("409 when the academy isn't live yet", async () => {
-            db.academy.findUnique.mockResolvedValue({ slug: "acme", status: "branch_created" });
+            db.tenant.findUnique.mockResolvedValue({ slug: "acme", status: "branch_created" });
             expect((await patch({ updateImage: true })).status).toBe(409);
         });
     });

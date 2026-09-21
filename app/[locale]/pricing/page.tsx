@@ -23,7 +23,8 @@ export async function generateMetadata({
     }
 }
 
-const PricingPage = async ({ params: { locale } }: { params: { locale: string } }) => {
+const PricingPage = async ({ params: { locale }, searchParams }: { params: { locale: string }; searchParams?: { product?: string } }) => {
+    const initialProduct = searchParams?.product === 'store' ? 'store' : 'academy'
     const ar = locale === 'ar'
     // Touch getTranslations so the locale is initialised for server metadata parity.
     await getTranslations({ locale, namespace: 'Navbar' }).catch(() => null)
@@ -45,7 +46,9 @@ const PricingPage = async ({ params: { locale } }: { params: { locale: string } 
                         {ar ? 'الأسعار' : 'Pricing'}
                     </span>
                     <h1 className='text-3xl font-extrabold md:text-5xl'>
-                        {ar ? 'اختر الباقة التي تناسب أكاديميتك' : 'Choose the plan that fits your academy'}
+                        {initialProduct === 'store'
+                            ? (ar ? 'اختر الباقة التي تناسب متجرك' : 'Choose the plan that fits your store')
+                            : (ar ? 'اختر الباقة التي تناسب أكاديميتك' : 'Choose the plan that fits your academy')}
                     </h1>
                     <p className='mx-auto max-w-2xl text-sm text-white/70 md:text-base'>
                         {ar
@@ -62,7 +65,7 @@ const PricingPage = async ({ params: { locale } }: { params: { locale: string } 
 
             <section className='bg-gray-50 py-16 md:py-20'>
                 <div className='p-container'>
-                    <ScrollReveal><PricingPlans /></ScrollReveal>
+                    <ScrollReveal><PricingPlans initialProduct={initialProduct} /></ScrollReveal>
                 </div>
             </section>
 

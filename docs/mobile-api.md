@@ -95,7 +95,7 @@ academy/payments; an `admin` sees everything.
 | `/api/academies/[slug]/plan` | GET | owner of the academy, or admin | **Consolidated "My plan" for one academy** — `academy` (tier, `status`, `subscribedAt`, `validUntil`), `package` (the licence's **resources**: `maxCourses`, `maxTeachers`, `storageGb`, `videoSource`, `limits`, `features`, pricing), `subscription` (auto-renew term + saved `card {brand,last4}`, or null), and this academy's recent `payments`. **Use this for the owner's plan/billing screen — one call.** |
 | `/api/subscriptions` | GET | user (client→own, admin→all) | All auto-renew subscriptions for the user, each with saved card + recent renewal/`update_card` charges. `{enabled:false}` when the feature is off. |
 | `/api/subscriptions/[slug]` | PATCH | owner/admin | Manage one academy's subscription (e.g. toggle `autoRenew`). |
-| `/api/payments` | GET | user (client→own, admin→all) | Payment history, paginated (`?page=&limit=`), filters `?status=&purpose=&slug=`. Fields: `orderId, purpose, amount, currency, status, academySlug, billingCycle, createdAt, paidAt, …`. |
+| `/api/payments` | GET | user (client→own, admin→all) | Payment history, paginated (`?page=&limit=`), filters `?status=&purpose=&slug=`. Fields: `orderId, purpose, amount, currency, status, tenantSlug` (+ `academySlug` alias kept for older clients)`, billingCycle, createdAt, paidAt, …`. |
 | `/api/payments/[orderId]` | GET | owner/admin | One payment's status/detail (poll after a checkout redirect). |
 | `/api/licenses` | GET | public | The full package catalogue (all plans' resources) — for a plan picker/upgrade screen. |
 

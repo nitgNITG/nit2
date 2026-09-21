@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // GET /api/revenue/summary?from=ISO&to=ISO — categorised revenue for the dashboard:
-//   • student revenue per academy (from the AcademyRevenue ledger), and
+//   • student revenue per academy (from the TenantRevenue ledger), and
 //   • NIT's OWN revenue per purpose (from the Payment table, licence sales),
 // each broken down by currency. Admin only.
 export async function GET(req: NextRequest) {
@@ -29,17 +29,17 @@ export async function GET(req: NextRequest) {
 
     try {
         // ── Student revenue (per academy, per currency, split by settled) ─────────
-        const studentGroups = await prisma.academyRevenue.groupBy({
-            by: ["academySlug", "currency", "settled"],
+        const studentGroups = await prisma.tenantRevenue.groupBy({
+            by: ["tenantSlug", "currency", "settled"],
             where: { status: "paid", ...modeFilter, ...(range ? { paidAt: range } : {}) },
             _sum: { amount: true },
             _count: { _all: true },
         });
 
         // Attach academy display names (slug → name); ownerless/unknown slugs pass through.
-        const slugs = Array.from(new Set(studentGroups.map((g) => g.academySlug)));
+        const slugs = Array.from(new Set(studentGroups.map((g) => g.tenantSlug)));
         const academies = slugs.length
-            ? await prisma.academy.findMany({ where: { slug: { in: slugs } }, select: { slug: true, name: true } })
+            ? await prisma.tenant.findMany({ where: { slug: { in: slugs } }, select: { slug: true, name: true } })
             : [];
         const nameBySlug = new Map(academies.map((a) => [a.slug, a.name]));
 
@@ -47,10 +47,10 @@ export async function GET(req: NextRequest) {
         // earned / settled / outstanding.
         const rowMap = new Map<string, { slug: string; name: string; currency: string; count: number; total: number; settled: number; outstanding: number }>();
         for (const g of studentGroups) {
-            const key = `${g.academySlug}|${g.currency}`;
+            const key = `${g.tenantSlug}|${g.currency}`;
             const row = rowMap.get(key) ?? {
-                slug: g.academySlug,
-                name: nameBySlug.get(g.academySlug) ?? g.academySlug,
+                slug: g.tenantSlug,
+                name: nameBySlug.get(g.tenantSlug) ?? g.tenantSlug,
                 currency: g.currency,
                 count: 0, total: 0, settled: 0, outstanding: 0,
             };

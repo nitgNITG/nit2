@@ -22,6 +22,7 @@ type License = {
     contactSales: boolean
     popular: boolean
     videoSource: string
+    product: 'academy' | 'store'
     limits: Record<string, number>
     features: Record<string, boolean>
     order: number
@@ -33,10 +34,15 @@ const VIDEO_SOURCES = ['vimeo', 'vdocipher']
 const FEATURE_KEYS = ['drm', 'coupons', 'offers', 'subscriptions', 'packages', 'jitsi']
 const FEATURE_LABELS: Record<string, string> = { drm: 'DRM video', coupons: 'Coupons', offers: 'Offers', subscriptions: 'Subscriptions', packages: 'Packages', jitsi: 'Live sessions (Jitsi)' }
 const LIMIT_KEYS = ['quiz', 'video', 'pdf', 'default']
+// Store plans: caps and toggles enforced by store-api (PlatformLicense).
+const STORE_LIMIT_KEYS = ['products', 'staff', 'categories', 'storage_mb']
+const STORE_FEATURE_KEYS = ['coupons', 'offers', 'banners', 'blog', 'reviews', 'reports', 'custom_domain']
+const STORE_FEATURE_LABELS: Record<string, string> = { coupons: 'Coupons', offers: 'Offers', banners: 'Banners', blog: 'Blog', reviews: 'Product reviews', reports: 'Reports', custom_domain: 'Custom domain' }
 
 const blank = (): License => ({
     key: '', name: '', active: true, price: 0, priceEgp: 0, priceEgpMonthly: 0, listPriceEgp: 0, listPriceEgpMonthly: 0, durationDays: 365,
     maxCourses: -1, maxTeachers: -1, storageGb: 1, supportedApp: true, kashierEnabled: false, contactSales: false, popular: false, videoSource: 'vimeo', order: 0,
+    product: 'academy',
     limits: { quiz: -1, video: -1, pdf: -1, default: -1 },
     features: Object.fromEntries(FEATURE_KEYS.map((f) => [f, false])),
 })
@@ -137,6 +143,12 @@ const LicensesPage = () => {
                         </div>
                         <div>
                             <label className='block text-sm font-semibold mb-1'>Name <span className='text-red-400'>*</span></label>
+                            <select className='mb-2 w-full border rounded-lg px-3 py-2 text-sm' value={form.product}
+                                title='Which product this plan is sold for. Store plans use the store caps/features below.'
+                                onChange={(e) => setForm((f) => f ? { ...f, product: e.target.value === 'store' ? 'store' : 'academy' } : f)}>
+                                <option value='academy'>🎓 Academy plan</option>
+                                <option value='store'>🛒 Store plan</option>
+                            </select>
                             <input className='w-full border rounded-lg px-3 py-2' value={form.name}
                                 onChange={(e) => setForm((f) => f ? { ...f, name: e.target.value } : f)} placeholder='Enterprise' />
                         </div>
@@ -221,9 +233,9 @@ const LicensesPage = () => {
                     <div>
                         <p className='text-sm font-semibold mb-2'>Activity caps <span className='font-normal text-gray-400 text-xs'>(-1 = unlimited)</span></p>
                         <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
-                            {LIMIT_KEYS.map((k) => (
+                            {(form.product === 'store' ? STORE_LIMIT_KEYS : LIMIT_KEYS).map((k) => (
                                 <div key={k}>
-                                    <label className='block text-xs text-gray-500 mb-1 capitalize'>{k}</label>
+                                    <label className='block text-xs text-gray-500 mb-1 capitalize'>{k.replace('_', ' ')}</label>
                                     <input type='number' className='w-full border rounded-lg px-3 py-1.5 text-sm'
                                         value={form.limits[k] ?? -1}
                                         onChange={(e) => setForm((f) => f ? { ...f, limits: { ...f.limits, [k]: Number(e.target.value) } } : f)} />
@@ -231,18 +243,20 @@ const LicensesPage = () => {
                                 </div>
                             ))}
                         </div>
-                        <p className='text-[11px] text-gray-400 mt-1'>quiz / pdf / default are per-course; <strong>video</strong> is a per-academy total (blocks new provider uploads at the limit).</p>
+                        {form.product === 'store'
+                            ? <p className='text-[11px] text-gray-400 mt-1'>products / staff / categories are totals per store; storage_mb caps uploads (-1 = unlimited).</p>
+                            : <p className='text-[11px] text-gray-400 mt-1'>quiz / pdf / default are per-course; <strong>video</strong> is a per-academy total (blocks new provider uploads at the limit).</p>}
                     </div>
 
                     {/* Features */}
                     <div>
                         <p className='text-sm font-semibold mb-2'>Features</p>
                         <div className='flex flex-wrap gap-4'>
-                            {FEATURE_KEYS.map((f) => (
+                            {(form.product === 'store' ? STORE_FEATURE_KEYS : FEATURE_KEYS).map((f) => (
                                 <label key={f} className='flex items-center gap-2 text-sm'>
                                     <input type='checkbox' checked={!!form.features[f]}
                                         onChange={(e) => setForm((prev) => prev ? { ...prev, features: { ...prev.features, [f]: e.target.checked } } : prev)} />
-                                    {FEATURE_LABELS[f] ?? f}
+                                    {(form.product === 'store' ? STORE_FEATURE_LABELS[f] : FEATURE_LABELS[f]) ?? f}
                                 </label>
                             ))}
                         </div>
@@ -267,7 +281,7 @@ const LicensesPage = () => {
                         <div key={l.key} className={`bg-white rounded-xl border shadow-sm p-5 space-y-2 ${l.active ? '' : 'opacity-60'}`}>
                             <div className='flex items-start justify-between'>
                                 <div>
-                                    <p className='font-bold text-lg'>{l.name}</p>
+                                    <p className='font-bold text-lg'>{l.product === 'store' ? '🛒 ' : ''}{l.name}</p>
                                     <p className='text-xs text-gray-400 font-mono'>{l.key}</p>
                                 </div>
                                 <span className='text-[#268F79] font-bold text-right'>

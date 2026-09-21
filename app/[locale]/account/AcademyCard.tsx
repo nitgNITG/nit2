@@ -18,7 +18,7 @@ export type ClientAcademy = {
 type Tier = { key: string; name: string; price: number; priceEgp?: number; priceEgpMonthly?: number; durationDays?: number; active: boolean; contactSales?: boolean; order?: number }
 type SubPayment = { amount: number; currency: string; status: string; purpose: string; date: string | null }
 type Sub = {
-    academySlug: string; status: string; autoRenew: boolean; amountEgp: number; currency: string
+    tenantSlug: string; status: string; autoRenew: boolean; amountEgp: number; currency: string
     intervalDays: number; currentPeriodEnd: string | null; nextAttemptAt: string | null
     lastError?: string | null; card: { brand?: string | null; last4?: string | null } | null
     payments?: SubPayment[]
@@ -52,7 +52,7 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
                 if (cancelled || !d) return
                 setSubEnabled(!!d.enabled)
                 if (!d.enabled) return
-                const found = (d.subscriptions ?? []).find((s: Sub) => s.academySlug === academy.slug) ?? null
+                const found = (d.subscriptions ?? []).find((s: Sub) => s.tenantSlug === academy.slug) ?? null
                 setSub(found)
                 if (found) setRenewCycle(found.intervalDays === 30 ? 'monthly' : 'annual')
             })

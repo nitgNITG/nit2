@@ -22,7 +22,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
         return NextResponse.json({ error: "autoRenew (boolean) required" }, { status: 400 });
     }
 
-    const sub = await prisma.subscription.findUnique({ where: { academySlug: params.slug } });
+    const sub = await prisma.subscription.findUnique({ where: { tenantSlug: params.slug } });
     if (!sub) return NextResponse.json({ error: "not found" }, { status: 404 });
     if (user.role !== "admin" && sub.userId !== user.id) {
         return NextResponse.json({ error: "forbidden" }, { status: 403 });
@@ -38,7 +38,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
         : { autoRenew: false, status: "canceled", canceledAt: new Date(), nextAttemptAt: null };
 
     try {
-        const updated = await prisma.subscription.update({ where: { academySlug: params.slug }, data });
+        const updated = await prisma.subscription.update({ where: { tenantSlug: params.slug }, data });
         // Update the in-academy banner flag (renews-automatically vs renew-now).
         await triggerExpiryReminder(params.slug, 0, "", { sendEmail: false, autoRenew: on });
         await notifyTelegram(
@@ -46,7 +46,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
                 ? `🔁 Auto-renew resumed — ${params.slug}`
                 : `🚫 Auto-renew cancelled — ${params.slug} (runs until ${updated.currentPeriodEnd.toISOString().slice(0, 10)})`,
         );
-        return NextResponse.json({ ok: true, academySlug: updated.academySlug, autoRenew: updated.autoRenew, status: updated.status });
+        return NextResponse.json({ ok: true, tenantSlug: updated.tenantSlug, autoRenew: updated.autoRenew, status: updated.status });
     } catch (e) {
         console.error("[subscriptions] patch failed", params.slug, e);
         return NextResponse.json({ error: "update failed" }, { status: 500 });

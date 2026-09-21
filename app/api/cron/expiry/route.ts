@@ -3,6 +3,7 @@ import prisma from "@/lib/prismaMysql";
 import { Prisma } from "prismamysql";
 import { triggerSuspend, triggerExpiryReminder, deprovisionAndDeleteAcademy } from "@/lib/provisionAcademy";
 import { notifyTelegram } from "@/lib/telegram";
+import { storeOps, deprovisionAndDeleteStore } from "@/lib/products/store";
 import { runBillingCycle, runPreRenewNotices, weeklyBillingSummary } from "@/lib/billing";
 
 export const runtime = "nodejs";
@@ -51,18 +52,19 @@ export async function POST(req: NextRequest) {
     });
 
     // 1) Expired academies → suspend (soft-lock in Moodle, keep data).
-    const expired = await prisma.academy
+    const expired = await prisma.tenant
         .findMany({
             where: { status: "live", validUntil: { not: null, lt: cutoff } },
-            select: { slug: true, name: true, validUntil: true, ownerId: true },
+            select: { slug: true, name: true, validUntil: true, ownerId: true, product: true },
         })
         .catch((e) => { console.error("[cron/expiry] query failed", e); return []; });
 
     const suspended: string[] = [];
     for (const a of expired) {
         try {
-            await prisma.academy.update({ where: { slug: a.slug }, data: { status: "suspended" } });
-            await triggerSuspend(a.slug, true);
+            await prisma.tenant.update({ where: { slug: a.slug }, data: { status: "suspended" } });
+            if (a.product === "store") await storeOps.suspend(a.slug, true);
+            else await triggerSuspend(a.slug, true);
             suspended.push(a.slug);
         } catch (e) {
             console.error("[cron/expiry] suspend failed", a.slug, e);
@@ -77,18 +79,23 @@ export async function POST(req: NextRequest) {
     // grace). Each stage is sent at most once per term (tracked in
     // expiryRemindersSent, cleared on renewal / plan change).
     const REMIND_DAYS = [7, 3, 1, 0];
-    const soon = await prisma.academy
+    const soon = await prisma.tenant
         .findMany({
             where: {
                 status: "live",
                 validUntil: { not: null, lte: new Date(now + 7 * 86_400_000) },
             },
-            select: { slug: true, validUntil: true, expiryRemindersSent: true },
+            select: { slug: true, validUntil: true, expiryRemindersSent: true, product: true },
         })
         .catch((e) => { console.error("[cron/expiry] reminder query failed", e); return []; });
+    // Stores: the licence term already lives in the store (expires_at pushed at
+    // creation / renewal) and the dashboard shows the renew banner from it; the
+    // store provisioner has no reminder e-mail script yet, so only academies get
+    // the Moodle-sent reminders below.
+    const soonAcademies = soon.filter((a) => a.product !== "store");
 
     const reminded: string[] = [];
-    for (const a of soon) {
+    for (const a of soonAcademies) {
         if (!a.validUntil) continue;
         const daysLeft = Math.ceil((a.validUntil.getTime() - now) / 86_400_000);
         const sent: Record<string, unknown> =
@@ -107,7 +114,7 @@ export async function POST(req: NextRequest) {
             await triggerExpiryReminder(a.slug, daysLeft, renewUrl, { expiryDate, sendEmail });
             if (sendEmail) {
                 sent[`d${stage}`] = Date.now();
-                await prisma.academy.update({
+                await prisma.tenant.update({
                     where: { slug: a.slug },
                     data: { expiryRemindersSent: sent as Prisma.InputJsonValue },
                 });
@@ -133,15 +140,19 @@ export async function POST(req: NextRequest) {
     const deleted: string[] = [];
     if (autoDeleteDays > 0) {
         const delCutoff = new Date(now - autoDeleteDays * 86_400_000);
-        const toDelete = await prisma.academy
+        const toDelete = await prisma.tenant
             .findMany({
                 where: { status: "suspended", validUntil: { not: null, lt: delCutoff } },
-                select: { slug: true },
+                select: { slug: true, product: true },
             })
             .catch((e) => { console.error("[cron/expiry] delete query failed", e); return []; });
         for (const a of toDelete) {
             try {
-                if (await deprovisionAndDeleteAcademy(a.slug)) deleted.push(a.slug);
+                if (a.product === "store") {
+                    if (await deprovisionAndDeleteStore(a.slug)) deleted.push(a.slug);
+                } else if (await deprovisionAndDeleteAcademy(a.slug)) {
+                    deleted.push(a.slug);
+                }
             } catch (e) {
                 console.error("[cron/expiry] auto-delete failed", a.slug, e);
             }

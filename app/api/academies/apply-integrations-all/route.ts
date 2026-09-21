@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     let academies: { slug: string; tier: string }[] = [];
     try {
-        academies = await prisma.academy.findMany({ select: { slug: true, tier: true } });
+        academies = await prisma.tenant.findMany({ select: { slug: true, tier: true } });
     } catch (e) {
         console.error("[apply-integrations-all] list failed", e);
         return NextResponse.json({ error: "could not list academies" }, { status: 500 });

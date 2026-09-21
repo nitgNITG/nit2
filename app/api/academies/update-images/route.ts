@@ -25,8 +25,8 @@ export async function POST(req: NextRequest) {
 
     try {
         const academies = one
-            ? await prisma.academy.findMany({ where: { slug: one }, select: { slug: true } })
-            : await prisma.academy.findMany({ where: { status: "live" }, select: { slug: true } });
+            ? await prisma.tenant.findMany({ where: { slug: one }, select: { slug: true } })
+            : await prisma.tenant.findMany({ where: { status: "live" }, select: { slug: true } });
 
         // Recreate each container onto the current image — best-effort, in parallel.
         const results = await Promise.allSettled(

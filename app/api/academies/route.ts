@@ -253,7 +253,7 @@ export async function POST(req: NextRequest) {
             const limit = row ? parseInt(row.value, 10) : 1;
             if (Number.isFinite(limit) && limit >= 0) {
                 const freeKeys = (await prisma.license.findMany({ where: { price: 0 }, select: { key: true } })).map((l) => l.key);
-                const owned = await prisma.academy.count({ where: { ownerId: user.id, tier: { in: freeKeys } } });
+                const owned = await prisma.tenant.count({ where: { ownerId: user.id, tier: { in: freeKeys } } });
                 if (owned >= limit) {
                     return NextResponse.json(
                         { error: `وصلت للحد الأقصى من الأكاديميات المجانية (${limit}) لحسابك. اختر باقة مدفوعة لإضافة المزيد.` },
@@ -318,7 +318,7 @@ export async function POST(req: NextRequest) {
         // unreachable we don't block branch creation; GitHub's 422 still catches
         // a duplicate branch below.
         try {
-            const existing = await prisma.academy.findUnique({ where: { slug: cleanSlug } });
+            const existing = await prisma.tenant.findUnique({ where: { slug: cleanSlug } });
             if (existing) {
                 return NextResponse.json({ error: "المعرّف ده مستخدم بالفعل، اختار غيره." }, { status: 409 });
             }
@@ -390,7 +390,7 @@ export async function POST(req: NextRequest) {
             const now = new Date();
             const days = lic?.durationDays ?? 0;
             const validUntil = days > 0 ? new Date(now.getTime() + days * 86_400_000) : null;
-            const academy = await prisma.academy.create({
+            const academy = await prisma.tenant.create({
                 data: {
                     name: cleanName, slug: cleanSlug, branch, status: "branch_created",
                     tier, ownerId: owner.id, subscribedAt: now, validUntil,
@@ -437,7 +437,7 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
     try {
         const status = new URL(req.url).searchParams.get("status") || undefined;
-        const academies = await prisma.academy.findMany({
+        const academies = await prisma.tenant.findMany({
             where: status ? { status } : undefined,
             orderBy: { createdAt: "desc" },
         });

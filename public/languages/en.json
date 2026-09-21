@@ -4,6 +4,8 @@
         "greeting": "Welcome, {name}",
         "logout": "Log out",
         "newAcademy": "New academy",
+        "newStore": "New store",
+        "storesTitle": "Your stores",
         "count": "{n} platforms",
         "statusLive": "Live",
         "statusPreparing": "Preparing",

@@ -18,7 +18,8 @@ export async function GET(_req: NextRequest, { params }: { params: { orderId: st
     return NextResponse.json({
         status: payment.status, // pending | paid | failed
         purpose: payment.purpose,
-        academySlug: payment.academySlug,
+        tenantSlug: payment.tenantSlug,
+        academySlug: payment.tenantSlug, // backward-compatible alias (payment callback page / mobile)
         licenseKey: payment.licenseKey,
         amount: payment.amount,
         currency: payment.currency,

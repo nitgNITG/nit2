@@ -22,7 +22,7 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     const gate = await requireAdmin();
     if (gate) return NextResponse.json({ error: gate.error }, { status: gate.status });
 
-    const academy = await prisma.academy.findUnique({ where: { slug: params.slug } });
+    const academy = await prisma.tenant.findUnique({ where: { slug: params.slug } });
     if (!academy) return NextResponse.json({ error: "not found" }, { status: 404 });
 
     const password = decryptSecret(academy.adminPasswordEnc);
@@ -51,7 +51,7 @@ export async function POST(_req: Request, { params }: { params: { slug: string }
     const gate = await requireAdmin();
     if (gate) return NextResponse.json({ error: gate.error }, { status: gate.status });
 
-    const academy = await prisma.academy.findUnique({ where: { slug: params.slug } });
+    const academy = await prisma.tenant.findUnique({ where: { slug: params.slug } });
     if (!academy) return NextResponse.json({ error: "not found" }, { status: 404 });
 
     const newPass = await triggerResetWelcome(params.slug);
@@ -62,7 +62,7 @@ export async function POST(_req: Request, { params }: { params: { slug: string }
     // and the value is only shown once, right now, in the response).
     const { encryptSecret } = await import("@/lib/secretBox");
     try {
-        await prisma.academy.update({
+        await prisma.tenant.update({
             where: { slug: params.slug },
             data: { adminPasswordEnc: encryptSecret(newPass) },
         });

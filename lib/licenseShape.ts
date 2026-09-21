@@ -26,6 +26,9 @@ export function parseLicense(body: any) {
         storageGb: (() => { const g = int(body?.storageGb, 1); return g < 0 ? -1 : Math.max(1, g); })(),
         supportedApp: body?.supportedApp !== false, // default true; false = no app access (Demo)
         kashierEnabled: body?.kashierEnabled === true, // push shared Kashier gateway to this package
+        // Which product the plan is sold for. Store plans keep their caps in `limits`
+        // ({products, staff, categories, storage_mb}) and toggles in `features`.
+        product: body?.product === "store" ? "store" : "academy",
         contactSales: body?.contactSales === true, // "Contact us" plan — not directly purchasable
         popular: body?.popular === true, // highlight as "Most popular" on the pricing page
         videoSource: VIDEO_SOURCES.includes(body?.videoSource) ? body.videoSource : "vimeo",

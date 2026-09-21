@@ -16,12 +16,12 @@ if (!slug) { console.error("usage: node scripts/sub-status.mjs <slug> [--charge-
 
 const prisma = new PrismaClient();
 try {
-  const sub = await prisma.subscription.findUnique({ where: { academySlug: slug } });
+  const sub = await prisma.subscription.findUnique({ where: { tenantSlug: slug } });
   if (!sub) {
     console.log("✗ no Subscription for", slug, "— (feature off? autoRenew not set? or webhook hasn't opened it yet)");
   } else {
     console.log("── subscription ──");
-    console.log("  academy      :", sub.academySlug);
+    console.log("  academy      :", sub.tenantSlug);
     console.log("  status       :", sub.status, "  autoRenew:", sub.autoRenew);
     console.log("  license      :", sub.licenseKey, " amount:", sub.amountEgp, sub.currency, " every", sub.intervalDays, "d");
     console.log("  periodEnd    :", sub.currentPeriodEnd?.toISOString());

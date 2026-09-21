@@ -36,7 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
     if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
     const slug = params.slug;
-    const academy = await prisma.academy.findUnique({ where: { slug } });
+    const academy = await prisma.tenant.findUnique({ where: { slug } });
     if (!academy) return NextResponse.json({ error: "not found" }, { status: 404 });
     if (user.role !== "admin" && academy.ownerId !== user.id) {
         return NextResponse.json({ error: "forbidden" }, { status: 403 });

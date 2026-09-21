@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 const { db } = vi.hoisted(() => ({
-    db: { academyRevenue: { upsert: vi.fn() } },
+    db: { tenantRevenue: { upsert: vi.fn() } },
 }));
 
 vi.mock("@/lib/prismaMysql", () => ({ default: db }));
@@ -21,7 +21,7 @@ function post(body: unknown, secret: string | null = SECRET) {
 }
 
 const GOOD = {
-    academySlug: "acme",
+    tenantSlug: "acme",
     orderId: "PAY-ACME-2026-00012345",
     amount: 250,
     currency: "EGP",
@@ -35,7 +35,7 @@ const GOOD = {
 beforeEach(() => {
     vi.clearAllMocks();
     process.env.REVENUE_INGEST_SECRET = SECRET;
-    db.academyRevenue.upsert.mockResolvedValue({});
+    db.tenantRevenue.upsert.mockResolvedValue({});
 });
 
 afterEach(() => {
@@ -46,17 +46,17 @@ describe("POST /api/revenue/ingest", () => {
     it("500 when the ingest secret is not configured", async () => {
         delete process.env.REVENUE_INGEST_SECRET;
         expect((await post(GOOD)).status).toBe(500);
-        expect(db.academyRevenue.upsert).not.toHaveBeenCalled();
+        expect(db.tenantRevenue.upsert).not.toHaveBeenCalled();
     });
 
     it("401 when the secret header is missing or wrong", async () => {
         expect((await post(GOOD, null)).status).toBe(401);
         expect((await post(GOOD, "nope")).status).toBe(401);
-        expect(db.academyRevenue.upsert).not.toHaveBeenCalled();
+        expect(db.tenantRevenue.upsert).not.toHaveBeenCalled();
     });
 
     it("400 on an invalid academy slug", async () => {
-        expect((await post({ ...GOOD, academySlug: "Bad Slug!" })).status).toBe(400);
+        expect((await post({ ...GOOD, tenantSlug: "Bad Slug!" })).status).toBe(400);
     });
 
     it("400 on a missing order id", async () => {
@@ -68,25 +68,25 @@ describe("POST /api/revenue/ingest", () => {
         expect((await post({ ...GOOD, amount: "x" })).status).toBe(400);
     });
 
-    it("200 and upserts idempotently on (academySlug, orderId)", async () => {
+    it("200 and upserts idempotently on (tenantSlug, orderId)", async () => {
         const res = await post(GOOD);
         expect(res.status).toBe(200);
-        expect(db.academyRevenue.upsert).toHaveBeenCalledTimes(1);
-        const arg = db.academyRevenue.upsert.mock.calls[0][0];
-        expect(arg.where).toEqual({ academySlug_orderId: { academySlug: "acme", orderId: "PAY-ACME-2026-00012345" } });
-        expect(arg.create).toMatchObject({ academySlug: "acme", amount: 250, currency: "EGP", provider: "kashier", kind: "course", courseId: 42 });
+        expect(db.tenantRevenue.upsert).toHaveBeenCalledTimes(1);
+        const arg = db.tenantRevenue.upsert.mock.calls[0][0];
+        expect(arg.where).toEqual({ tenantSlug_orderId: { tenantSlug: "acme", orderId: "PAY-ACME-2026-00012345" } });
+        expect(arg.create).toMatchObject({ tenantSlug: "acme", amount: 250, currency: "EGP", provider: "kashier", kind: "course", courseId: 42 });
         expect(arg.create.paidAt).toBeInstanceOf(Date);
     });
 
     it("normalises currency/provider and defaults kind/status", async () => {
-        await post({ academySlug: "acme", orderId: "o1", amount: 10, currency: "usd", provider: "KASHIER" });
-        const arg = db.academyRevenue.upsert.mock.calls[0][0];
+        await post({ tenantSlug: "acme", orderId: "o1", amount: 10, currency: "usd", provider: "KASHIER" });
+        const arg = db.tenantRevenue.upsert.mock.calls[0][0];
         expect(arg.create).toMatchObject({ currency: "USD", provider: "kashier", kind: "course", status: "paid" });
     });
 
     it("defaults paidAt to now when omitted", async () => {
-        await post({ academySlug: "acme", orderId: "o2", amount: 10 });
-        const arg = db.academyRevenue.upsert.mock.calls[0][0];
+        await post({ tenantSlug: "acme", orderId: "o2", amount: 10 });
+        const arg = db.tenantRevenue.upsert.mock.calls[0][0];
         expect(arg.create.paidAt).toBeInstanceOf(Date);
     });
 });

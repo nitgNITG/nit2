@@ -35,12 +35,12 @@ if (!slug) { console.error("usage: node scripts/sub-fail-test.mjs <slug> [--rest
 
 const p = new PrismaClient();
 try {
-  const sub = await p.subscription.findUnique({ where: { academySlug: slug } });
+  const sub = await p.subscription.findUnique({ where: { tenantSlug: slug } });
   if (!sub) { console.error("✗ no subscription for", slug); process.exit(1); }
 
   if (restore) {
     if (!restoreId) { console.error("✗ pass the original PaymentMethod id: --restore <id>"); process.exit(1); }
-    await p.subscription.update({ where: { academySlug: slug }, data: { paymentMethodId: restoreId, status: "active", attemptCount: 0, lastError: null } });
+    await p.subscription.update({ where: { tenantSlug: slug }, data: { paymentMethodId: restoreId, status: "active", attemptCount: 0, lastError: null } });
     const del = await p.paymentMethod.deleteMany({ where: { userId: sub.userId, brand: "TESTFAIL" } });
     console.log(`✅ restored ${slug} → paymentMethod ${restoreId}, removed ${del.count} test card(s), status active.`);
   } else {
@@ -48,7 +48,7 @@ try {
     const bad = await p.paymentMethod.create({
       data: { userId: sub.userId, customerReference: sub.userId, cardTokenEnc: enc("BOGUS-TEST-TOKEN-" + Date.now()), brand: "TESTFAIL", last4: "0000", isDefault: false },
     });
-    await p.subscription.update({ where: { academySlug: slug }, data: { paymentMethodId: bad.id, nextAttemptAt: new Date(Date.now() - 1000), preRenewNotifiedAt: null } });
+    await p.subscription.update({ where: { tenantSlug: slug }, data: { paymentMethodId: bad.id, nextAttemptAt: new Date(Date.now() - 1000), preRenewNotifiedAt: null } });
     console.log("✅ armed a FAILING charge for", slug);
     console.log("   original paymentMethod:", originalPmId ?? "(was using default)");
     console.log("\n1) trigger the billing run:");

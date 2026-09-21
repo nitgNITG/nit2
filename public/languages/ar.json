@@ -4,6 +4,8 @@
         "greeting": "أهلاً {name}",
         "logout": "خروج",
         "newAcademy": "أكاديمية جديدة",
+        "newStore": "متجر جديد",
+        "storesTitle": "متاجرك",
         "count": "عندك {n} منصة",
         "statusLive": "حيّة",
         "statusPreparing": "بتتجهّز",

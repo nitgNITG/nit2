@@ -17,7 +17,7 @@ vi.mock("@/lib/subscriptions", () => ({ renewLeadDaysResolved }));
 import { PATCH } from "@/app/api/subscriptions/[slug]/route";
 
 const SUB = {
-    academySlug: "acme", userId: "user-1", autoRenew: true, status: "active",
+    tenantSlug: "acme", userId: "user-1", autoRenew: true, status: "active",
     currentPeriodEnd: new Date("2027-07-01T00:00:00Z"),
 };
 

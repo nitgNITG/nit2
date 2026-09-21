@@ -319,7 +319,7 @@ export async function triggerDeprovision(slug: string): Promise<void> {
 export async function deprovisionAndDeleteAcademy(slug: string): Promise<boolean> {
     let branch = "";
     try {
-        const a = await prisma.academy.findUnique({ where: { slug }, select: { branch: true } });
+        const a = await prisma.tenant.findUnique({ where: { slug }, select: { branch: true } });
         branch = a?.branch ?? "";
     } catch { /* fall through — still attempt teardown */ }
 
@@ -336,7 +336,7 @@ export async function deprovisionAndDeleteAcademy(slug: string): Promise<boolean
         }
     }
     try {
-        await prisma.academy.delete({ where: { slug } });
+        await prisma.tenant.delete({ where: { slug } });
         await notifyTelegram(`🗑 Academy auto-deleted (expired past retention): ${slug}`);
         return true;
     } catch (e) {
@@ -382,7 +382,7 @@ export async function provisionAcademy(input: ProvisionInput): Promise<Provision
 
     // Already taken?
     try {
-        const existing = await prisma.academy.findUnique({ where: { slug: input.slug } });
+        const existing = await prisma.tenant.findUnique({ where: { slug: input.slug } });
         if (existing) return { ok: false, error: "المعرّف ده مستخدم بالفعل، اختار غيره.", status: 409 };
     } catch (e) {
         console.warn("[provision] duplicate pre-check skipped (DB unavailable)", e);
@@ -447,7 +447,7 @@ export async function provisionAcademy(input: ProvisionInput): Promise<Provision
         const validUntil = input.durationDays > 0
             ? new Date(now.getTime() + input.durationDays * 86_400_000)
             : null;
-        const academy = await prisma.academy.create({
+        const academy = await prisma.tenant.create({
             data: {
                 name: input.name, slug: input.slug, branch, status: "branch_created",
                 tier: input.tier, ownerId: input.owner.id, subscribedAt: now, validUntil,
@@ -462,7 +462,7 @@ export async function provisionAcademy(input: ProvisionInput): Promise<Provision
             (input.owner.email ? ` · ${input.owner.email}` : ""),
             formatHealth(await fetchServerHealth()),
         );
-        return { ok: true, slug: academy.slug, branch: academy.branch, persisted: true };
+        return { ok: true, slug: academy.slug, branch: academy.branch ?? branch, persisted: true };
     } catch (e: any) {
         if (e?.code === "P2002") return { ok: false, error: "المعرّف ده مستخدم بالفعل، اختار غيره.", status: 409 };
         console.error("[provision] persist failed after branch create", e);

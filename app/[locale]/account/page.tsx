@@ -9,6 +9,7 @@ import Dashboard from './Dashboard'
 import AdminConsole from './AdminConsole'
 
 const DOMAIN = process.env.SAAS_CLIENT_DOMAIN ?? 'academy2026.nitg-eg.com'
+const STORE_DOMAIN = process.env.STORE_CLIENT_DOMAIN ?? 'commerce.nitg-eg.com'
 
 export const metadata: Metadata = {
     title: { absolute: 'حسابي | N.I.T Academy' },
@@ -27,7 +28,8 @@ export default async function AccountPage({ searchParams }: { searchParams?: { n
     } else if (user.role === 'admin') {
         // Admin view: every academy + every client. Both live in MySQL now; we still
         // join them in memory by ownerId (ownerId is a plain string, not a relation).
-        const academyRows = await prismaMysql.academy.findMany({ orderBy: { createdAt: 'desc' } })
+        // The admin console groups ACADEMIES per client; stores have their own admin page.
+        const academyRows = await prismaMysql.tenant.findMany({ where: { product: 'academy' }, orderBy: { createdAt: 'desc' } })
         let clientRows: { id: string; name: string | null; email: string; role: string | null }[] = []
         try {
             clientRows = await prismaMysql.user.findMany({
@@ -63,19 +65,28 @@ export default async function AccountPage({ searchParams }: { searchParams?: { n
         )
     } else {
         // Clients get their own academies.
-        const rows = await prismaMysql.academy.findMany({
+        const rows = await prismaMysql.tenant.findMany({
             where: { ownerId: user.id },
             orderBy: { createdAt: 'desc' },
         })
-        const academies = rows.map((a) => ({
+        const academies = rows.filter((a) => a.product !== 'store').map((a) => ({
             id: a.id, name: a.name, slug: a.slug, status: a.status, createdAt: a.createdAt.toISOString(),
             tier: a.tier,
             validUntil: a.validUntil ? a.validUntil.toISOString() : null,
+        }))
+        const stores = rows.filter((a) => a.product === 'store').map((a) => ({
+            id: a.id, name: a.name, slug: a.slug, status: a.status, createdAt: a.createdAt.toISOString(),
+            tier: a.tier,
+            validUntil: a.validUntil ? a.validUntil.toISOString() : null,
+            url: `https://${a.slug}.${STORE_DOMAIN}`,
+            progress: (a.progressJson as { step?: number; total?: number; label?: string } | null) ?? null,
+            lastError: a.lastError ?? null,
         }))
         content = (
             <Dashboard
                 user={{ name: user.name, email: user.email, role: user.role }}
                 academies={academies}
+                stores={stores}
                 domain={DOMAIN}
             />
         )

@@ -1,0 +1,61 @@
+# ONE store = one compose project running the three apps.
+#
+#   cd clients/<slug>  &&  docker compose -p store_<slug> --env-file store.env up -d
+#   (the provisioner copies this file there as compose.yml)
+#
+# The provisioner copies this file next to each store's store.env and sets
+# IMAGE_TAG / REGISTRY / P_SITE / P_DASH / P_API there. Rollout = change IMAGE_TAG,
+# `pull` + `up -d`: compose recreates only the services whose image changed.
+# In production the shared MariaDB is reached over the external `saas_net`
+# network; deploy/compose.local.yml adds a local MariaDB + nginx for testing.
+
+x-common: &common
+  restart: unless-stopped
+  env_file: store.env              # next to this file: clients/<slug>/store.env
+  networks: [store, saas_net]
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "3" }
+
+services:
+  api:
+    <<: *common
+    image: ${REGISTRY:-ghcr.io/nitgg}/saas-store-api:${IMAGE_TAG:-latest}
+    environment:
+      SITE_URL: http://site:3000            # revalidate webhook stays inside the project
+    volumes:
+      - uploads:/app/uploads
+    ports:
+      - "127.0.0.1:${P_API:-9102}:3005"
+    mem_limit: ${API_MEM:-384m}
+    cpus: ${API_CPUS:-1}
+
+  site:
+    <<: *common
+    image: ${REGISTRY:-ghcr.io/nitgg}/saas-store-site:${IMAGE_TAG:-latest}
+    environment:
+      API_URL: http://api:3005${API_PREFIX:-/apis/v1}
+    depends_on: [api]
+    ports:
+      - "127.0.0.1:${P_SITE:-9100}:3000"
+    mem_limit: ${SITE_MEM:-256m}
+    cpus: ${SITE_CPUS:-0.5}
+
+  dash:
+    <<: *common
+    image: ${REGISTRY:-ghcr.io/nitgg}/saas-store-dash:${IMAGE_TAG:-latest}
+    environment:
+      API_URL: http://api:3005${API_PREFIX:-/apis/v1}
+    depends_on: [api]
+    ports:
+      - "127.0.0.1:${P_DASH:-9101}:3001"
+    mem_limit: ${DASH_MEM:-192m}
+    cpus: ${DASH_CPUS:-0.5}
+
+volumes:
+  uploads:
+
+networks:
+  store: {}                      # private to this store
+  saas_net:
+    external: true               # shared MariaDB lives here (created by the provisioner's setup.sh)

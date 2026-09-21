@@ -32,7 +32,7 @@ export function OPTIONS() {
  */
 export async function GET(_req: NextRequest) {
     try {
-        const rows = await prisma.academy.findMany({
+        const rows = await prisma.tenant.findMany({
             where: { status: "live" },
             select: { id: true, name: true, slug: true, tier: true },
             orderBy: { name: "asc" },

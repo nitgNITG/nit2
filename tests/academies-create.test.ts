@@ -8,7 +8,7 @@ const {
     db: {
         license: { findFirst: vi.fn(), findMany: vi.fn() },
         platformSetting: { findMany: vi.fn(), findUnique: vi.fn() },
-        academy: { findUnique: vi.fn(), create: vi.fn(), count: vi.fn() },
+        tenant: { findUnique: vi.fn(), create: vi.fn(), count: vi.fn() },
         user: { findUnique: vi.fn() },
     },
     getCurrentUser: vi.fn(),
@@ -78,9 +78,9 @@ beforeEach(() => {
     db.platformSetting.findMany.mockResolvedValue([]);
     db.platformSetting.findUnique.mockImplementation(async ({ where }: any) =>
         where.key in settingRows ? { key: where.key, value: settingRows[where.key] } : null);
-    db.academy.findUnique.mockResolvedValue(null);
-    db.academy.count.mockResolvedValue(0);
-    db.academy.create.mockResolvedValue({ slug: "acme", branch: "client/acme" });
+    db.tenant.findUnique.mockResolvedValue(null);
+    db.tenant.count.mockResolvedValue(0);
+    db.tenant.create.mockResolvedValue({ slug: "acme", branch: "client/acme" });
     db.user.findUnique.mockResolvedValue({ emailVerified: true, name: "Owner" });
     mailerConfigured.mockReturnValue(true);
     createAndSendOtp.mockResolvedValue({ ok: true });
@@ -146,7 +146,7 @@ describe("POST /api/academies", () => {
         const body = await res.json();
         expect(body).toMatchObject({ errorcode: "server_unhealthy", reason: "unreachable", support_whatsapp: "+20100000000" });
         expect(fetchMock).not.toHaveBeenCalled();      // never touched GitHub
-        expect(db.academy.create).not.toHaveBeenCalled(); // nothing recorded
+        expect(db.tenant.create).not.toHaveBeenCalled(); // nothing recorded
         expect(alertAdmins).toHaveBeenCalled();          // admins notified of the block
     });
 
@@ -156,7 +156,7 @@ describe("POST /api/academies", () => {
     });
 
     it("409 when the slug already exists", async () => {
-        db.academy.findUnique.mockResolvedValue({ slug: "acme" });
+        db.tenant.findUnique.mockResolvedValue({ slug: "acme" });
         const res = await post({ name: "Acme", slug: "acme", tier: "basic" });
         expect(res.status).toBe(409);
         expect(fetchMock).not.toHaveBeenCalled();
@@ -166,10 +166,10 @@ describe("POST /api/academies", () => {
         db.license.findFirst.mockResolvedValue({ key: "demo", price: 0, durationDays: 14, name: "Demo" });
         settingRows.free_academy_limit = "1"; // free_academy_limit = 1
         db.license.findMany.mockResolvedValue([{ key: "demo" }]);
-        db.academy.count.mockResolvedValue(1); // already owns 1 free
+        db.tenant.count.mockResolvedValue(1); // already owns 1 free
         const res = await post({ name: "Demo", slug: "demo1", tier: "demo" });
         expect(res.status).toBe(403);
-        expect(db.academy.create).not.toHaveBeenCalled();
+        expect(db.tenant.create).not.toHaveBeenCalled();
     });
 
     it("403 (email_unverified) when verification is required and the owner isn't verified", async () => {
@@ -181,7 +181,7 @@ describe("POST /api/academies", () => {
         expect(body).toMatchObject({ errorcode: "email_unverified", needsVerify: true, email: "o@x.com" });
         expect(createAndSendOtp).toHaveBeenCalledWith("o@x.com", "verify", expect.any(Object));
         expect(fetchMock).not.toHaveBeenCalled();      // never touched GitHub
-        expect(db.academy.create).not.toHaveBeenCalled();
+        expect(db.tenant.create).not.toHaveBeenCalled();
     });
 
     it("403 (email_unverified) driven by the app-setting alone (no env)", async () => {
@@ -258,7 +258,7 @@ describe("POST /api/academies", () => {
         const res = await post({ name: "Acme", slug: "acme", tier: "pro" });
         expect(res.status).toBe(400);
         expect(fetchMock).not.toHaveBeenCalled();
-        expect(db.academy.create).not.toHaveBeenCalled();
+        expect(db.tenant.create).not.toHaveBeenCalled();
     });
 
     it("creates the branch + control-plane record and returns 201", async () => {
@@ -273,7 +273,7 @@ describe("POST /api/academies", () => {
         expect(fetchMock.mock.calls[1][0]).toContain("/git/refs");
 
         // Control-plane row: owner, tier, term, encrypted passwords.
-        const data = db.academy.create.mock.calls[0][0].data;
+        const data = db.tenant.create.mock.calls[0][0].data;
         expect(data).toMatchObject({
             name: "Acme", slug: "acme", branch: "client/acme",
             status: "branch_created", tier: "basic", ownerId: "user-1",
@@ -292,11 +292,11 @@ describe("POST /api/academies", () => {
             .mockResolvedValueOnce({ ok: false, status: 422, text: async () => "ref exists" });
         const res = await post({ name: "Acme", slug: "acme", tier: "basic" });
         expect(res.status).toBe(409);
-        expect(db.academy.create).not.toHaveBeenCalled();
+        expect(db.tenant.create).not.toHaveBeenCalled();
     });
 
     it("still returns 201 (persisted:false) if the branch built but the DB write races", async () => {
-        db.academy.create.mockRejectedValue({ code: "P2002" });
+        db.tenant.create.mockRejectedValue({ code: "P2002" });
         const res = await post({ name: "Acme", slug: "acme", tier: "basic" });
         // P2002 = unique slug race → surfaced as 409.
         expect(res.status).toBe(409);
@@ -310,16 +310,16 @@ describe("POST /api/academies — admin comp (create for a user)", () => {
         db.user.findUnique.mockResolvedValue({ id: "owner-9", email: "owner@x.com", name: "Owner Nine" });
         const res = await post({ name: "Pro Academy", slug: "pro-acad", tier: "professional", ownerId: "owner-9" });
         expect(res.status).toBe(201);
-        const data = db.academy.create.mock.calls[0][0].data;
+        const data = db.tenant.create.mock.calls[0][0].data;
         expect(data.ownerId).toBe("owner-9");
         expect(data.tier).toBe("professional");
-        expect(db.academy.count).not.toHaveBeenCalled(); // quota skipped for admin comp
+        expect(db.tenant.count).not.toHaveBeenCalled(); // quota skipped for admin comp
     });
 
     it("non-admin cannot use ownerId override — contactSales still refused", async () => {
         db.license.findFirst.mockResolvedValue({ key: "professional", price: 0, durationDays: 365, name: "Pro", contactSales: true });
         const res = await post({ name: "X", slug: "x-acad", tier: "professional", ownerId: "owner-9" });
         expect(res.status).toBe(400);
-        expect(db.academy.create).not.toHaveBeenCalled();
+        expect(db.tenant.create).not.toHaveBeenCalled();
     });
 });

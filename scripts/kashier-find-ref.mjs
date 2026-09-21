@@ -22,7 +22,7 @@ try {
   console.log("customerRef  :", p.userId, "  ← use THIS as the customerReference in `pay`");
   console.log("purpose      :", p.purpose);
   console.log("licenseKey   :", p.licenseKey);
-  console.log("academySlug  :", p.academySlug);
+  console.log("tenantSlug  :", p.tenantSlug);
   console.log("status       :", p.status, "  amount", p.amount, p.currency);
   console.log("\nnext:");
   console.log(`  node scripts/kashier-token-test.mjs pay <cardDataToken> ${p.userId} 1 --hash-only`);

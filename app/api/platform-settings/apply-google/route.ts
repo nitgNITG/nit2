@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const academies = await prisma.academy.findMany({ where: { status: "live" }, select: { slug: true } });
+        const academies = await prisma.tenant.findMany({ where: { status: "live" }, select: { slug: true } });
 
         // Push ONLY the Google credentials — apply-settings.sh runs apply_google_login.php
         // when both are present, which (idempotently) configures the OAuth2 issuer.

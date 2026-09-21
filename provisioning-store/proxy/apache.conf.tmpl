@@ -1,0 +1,14 @@
+# saas-store: {HOST}  (rendered by proxy.sh — do not edit; re-render instead)
+<VirtualHost *:80>
+    ServerName {HOST}
+    ProxyPreserveHost On
+    RequestHeader set X-Forwarded-Proto "https" env=HTTPS
+    ProxyPass        /apis/     http://127.0.0.1:{P_API}/apis/
+    ProxyPassReverse /apis/     http://127.0.0.1:{P_API}/apis/
+    ProxyPass        /dashboard http://127.0.0.1:{P_DASH}/dashboard
+    ProxyPassReverse /dashboard http://127.0.0.1:{P_DASH}/dashboard
+    ProxyPass        /          http://127.0.0.1:{P_SITE}/
+    ProxyPassReverse /          http://127.0.0.1:{P_SITE}/
+    ErrorLog ${APACHE_LOG_DIR}/store-{SLUG}_error.log
+    CustomLog ${APACHE_LOG_DIR}/store-{SLUG}_access.log combined
+</VirtualHost>

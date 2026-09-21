@@ -5,6 +5,7 @@ import { redirect } from '@/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import BuildProductHeader from './components/BuildProductHeader'
 import BuildProductForm from './BuildProductForm'
+import BuildStoreForm from './BuildStoreForm'
 import Footer from '../components/Footer'
 
 export const dynamic = 'force-dynamic'
@@ -19,7 +20,8 @@ export async function generateMetadata({
 }
 
 const page = async ({ searchParams }: { searchParams?: Record<string, string | string[]> }) => {
-    // Building an academy requires an account (each academy is tied to its owner).
+    // Building an academy or a store requires an account (each tenant is tied to its
+    // owner). ?product=store renders the store form; default is the academy form.
     // Carry the pre-selected plan through login via ?next= so the user returns here.
     const user = await getCurrentUser()
     if (!user) {
@@ -38,7 +40,9 @@ const page = async ({ searchParams }: { searchParams?: Record<string, string | s
                 {/* Soft brand glow behind the card */}
                 <div className='pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-[#1E7D67]/5 to-transparent' />
                 <div className='p-container relative'>
-                    <BuildProductForm editSlug={typeof searchParams?.edit === 'string' ? searchParams.edit : undefined} />
+                    {searchParams?.product === 'store'
+                        ? <BuildStoreForm />
+                        : <BuildProductForm editSlug={typeof searchParams?.edit === 'string' ? searchParams.edit : undefined} />}
                 </div>
             </section>
 

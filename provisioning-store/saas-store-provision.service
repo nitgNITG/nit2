@@ -1,0 +1,17 @@
+[Unit]
+Description=SaaS store provisioning endpoint (compose project per merchant)
+After=network.target docker.service
+
+[Service]
+Type=simple
+EnvironmentFile=/var/www/html/saas-stores/provision.env
+ExecStart=/usr/bin/python3 /var/www/html/saas-stores/provision-server.py
+Restart=on-failure
+RestartSec=3
+# Jobs run docker, the host proxy and certbot → root. Jobs are started in their
+# own session so a service restart never kills a running creation.
+User=root
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target

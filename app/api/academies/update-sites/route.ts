@@ -53,8 +53,8 @@ export async function POST(req: NextRequest) {
 
     try {
         const academies = one
-            ? await prisma.academy.findMany({ where: { slug: one }, select: { slug: true, tier: true } })
-            : await prisma.academy.findMany({ where: { status: "live" }, select: { slug: true, tier: true } });
+            ? await prisma.tenant.findMany({ where: { slug: one }, select: { slug: true, tier: true } })
+            : await prisma.tenant.findMany({ where: { status: "live" }, select: { slug: true, tier: true } });
 
         // Map each licence key → its definition, so update also re-applies the licence.
         const licenses = await prisma.license.findMany();

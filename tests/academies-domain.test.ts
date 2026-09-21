@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
 const { db, getCurrentUser, verifyDnsPointsHere, triggerBindDomain, triggerUnbindDomain, fetchDomainStatus, alertAdmins } = vi.hoisted(() => ({
-    db: { academy: { findUnique: vi.fn(), update: vi.fn() } },
+    db: { tenant: { findUnique: vi.fn(), update: vi.fn() } },
     getCurrentUser: vi.fn(),
     verifyDnsPointsHere: vi.fn(),
     triggerBindDomain: vi.fn(),
@@ -37,8 +37,8 @@ beforeEach(() => {
     vi.clearAllMocks();
     process.env.SAAS_CLIENT_DOMAIN = "academy2026.nitg-eg.com";
     getCurrentUser.mockResolvedValue(OWNER);
-    db.academy.findUnique.mockResolvedValue({ ...ACADEMY });
-    db.academy.update.mockImplementation(({ data }: any) => Promise.resolve({ ...ACADEMY, ...data }));
+    db.tenant.findUnique.mockResolvedValue({ ...ACADEMY });
+    db.tenant.update.mockImplementation(({ data }: any) => Promise.resolve({ ...ACADEMY, ...data }));
     verifyDnsPointsHere.mockResolvedValue({ ok: true, resolved: ["203.0.113.9"], expected: ["203.0.113.9"], detail: "ok" });
     triggerBindDomain.mockResolvedValue(true);
     triggerUnbindDomain.mockResolvedValue(undefined);
@@ -56,7 +56,7 @@ describe("domain route — auth", () => {
         expect((await POST(req("POST", { domain: "a.school.com" }), P)).status).toBe(403);
     });
     it("404 when the academy is missing", async () => {
-        db.academy.findUnique.mockResolvedValue(null);
+        db.tenant.findUnique.mockResolvedValue(null);
         expect((await GET(req("GET"), P)).status).toBe(404);
     });
 });
@@ -74,17 +74,17 @@ describe("POST set domain", () => {
         expect((await POST(req("POST", { domain: "nope" }), P)).status).toBe(400);
     });
     it("409 when the domain is bound to another academy", async () => {
-        db.academy.findUnique.mockImplementation(({ where }: any) =>
+        db.tenant.findUnique.mockImplementation(({ where }: any) =>
             Promise.resolve(where.customDomain ? { slug: "other" } : { ...ACADEMY }));
         expect((await POST(req("POST", { domain: "a.school.com" }), P)).status).toBe(409);
     });
 });
 
 describe("PUT verify + bind", () => {
-    beforeEach(() => { db.academy.findUnique.mockResolvedValue({ ...ACADEMY, customDomain: "academy.school.com", domainStatus: "pending_dns" }); });
+    beforeEach(() => { db.tenant.findUnique.mockResolvedValue({ ...ACADEMY, customDomain: "academy.school.com", domainStatus: "pending_dns" }); });
 
     it("400 when no domain is set yet", async () => {
-        db.academy.findUnique.mockResolvedValue({ ...ACADEMY });
+        db.tenant.findUnique.mockResolvedValue({ ...ACADEMY });
         expect((await PUT(req("PUT"), P)).status).toBe(400);
     });
     it("409 when DNS isn't pointing here (no bind triggered)", async () => {
@@ -98,7 +98,7 @@ describe("PUT verify + bind", () => {
         const res = await PUT(req("PUT"), P);
         expect(res.status).toBe(200);
         expect(triggerBindDomain).toHaveBeenCalledWith("acme", "academy.school.com");
-        const data = db.academy.update.mock.calls[0][0].data;
+        const data = db.tenant.update.mock.calls[0][0].data;
         expect(data).toMatchObject({ domainStatus: "verifying", domainError: null, googleOauthAdded: false });
         expect(alertAdmins).toHaveBeenCalled();
     });
@@ -110,15 +110,15 @@ describe("PUT verify + bind", () => {
 
 describe("GET sync while verifying", () => {
     it("promotes to active when server B reports success", async () => {
-        db.academy.findUnique.mockResolvedValue({ ...ACADEMY, customDomain: "academy.school.com", domainStatus: "verifying" });
+        db.tenant.findUnique.mockResolvedValue({ ...ACADEMY, customDomain: "academy.school.com", domainStatus: "verifying" });
         fetchDomainStatus.mockResolvedValue({ state: "active", domain: "academy.school.com" });
         const res = await GET(req("GET"), P);
         const body = await res.json();
         expect(body.domainStatus).toBe("active");
-        expect(db.academy.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ domainStatus: "active" }) }));
+        expect(db.tenant.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ domainStatus: "active" }) }));
     });
     it("marks failed with the error when server B reports failure", async () => {
-        db.academy.findUnique.mockResolvedValue({ ...ACADEMY, customDomain: "academy.school.com", domainStatus: "verifying" });
+        db.tenant.findUnique.mockResolvedValue({ ...ACADEMY, customDomain: "academy.school.com", domainStatus: "verifying" });
         fetchDomainStatus.mockResolvedValue({ state: "failed", error: "certbot failed" });
         const body = await (await GET(req("GET"), P)).json();
         expect(body.domainStatus).toBe("failed");
@@ -128,7 +128,7 @@ describe("GET sync while verifying", () => {
 
 describe("DELETE unbind", () => {
     it("clears the domain and tells server B to revert", async () => {
-        db.academy.findUnique.mockResolvedValue({ ...ACADEMY, customDomain: "academy.school.com", domainStatus: "active" });
+        db.tenant.findUnique.mockResolvedValue({ ...ACADEMY, customDomain: "academy.school.com", domainStatus: "active" });
         const body = await (await DELETE(req("DELETE"), P)).json();
         expect(triggerUnbindDomain).toHaveBeenCalledWith("acme");
         expect(body.customDomain).toBeNull();

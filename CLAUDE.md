@@ -12,16 +12,21 @@ Always follow the testing rules in `AGENT_TESTING.md`. Before finishing any task
 verify every applicable rule has been satisfied. If a rule cannot be satisfied,
 say so explicitly instead of skipping it silently.
 
-There is no test runner wired up yet. Per `AGENT_TESTING.md` §6, the **first**
-behaviour change sets up the standard runner (Vitest for this stack) with one real
-test for that change — do not scaffold a whole suite up front.
+Test runner: Vitest — `npm test` (`tests/*.test.ts`, ~170 tests; route handlers and
+libs are tested with the MySQL Prisma client mocked by model name). Every behaviour
+change adds or updates a test there.
 
 ## Architecture
 
 - **Two databases, two Prisma clients.**
   - **MongoDB** = the primary app DB. Default client: `import prisma from "@/lib/prisma"`.
-  - **MySQL** = the academy control plane only (Academy, License, Subscription,
-    Payment, PaymentMethod, PlatformSetting). Client: `import prisma from "@/lib/prismaMysql"`.
+  - **MySQL** = the tenant control plane only (Tenant, License, Subscription,
+    Payment, PaymentMethod, TenantRevenue, Settlement, PlatformSetting). Client:
+    `import prisma from "@/lib/prismaMysql"`. A **Tenant** is one provisioned product
+    instance — `product = academy | store` — sharing lifecycle, billing and expiry;
+    `tenantSlug` is the join key everywhere (`Payment`, `Subscription`, `TenantRevenue`).
+    The public API paths still say `/api/academies/**` (mobile/dashboard contract) and
+    `/api/revenue/ingest` still accepts `academySlug` from the academies' Moodle.
     Schema at `prisma/mysql/schema.prisma`; migrations in `prisma/mysql/migrations/`.
   - Pick the right client for the table — mixing them is the most common mistake here.
 - **Auth.** JWT signed with `SECRET_JWT`, stored in the httpOnly cookie `token`.
@@ -39,6 +44,16 @@ test for that change — do not scaffold a whole suite up front.
   `bash provisioning/deploy-provisioning.sh` — **editing a script here does nothing until
   it's deployed.** `provisioning/deploy-provisioning.sh` lists every file that gets copied;
   add new scripts to that list.
+- **Store provisioning (commerce).** `provisioning-store/` is the store counterpart of
+  `provisioning/`: a self-contained host agent (`provision-server.py` + bash scripts +
+  `provision.env` + systemd, port 9098) that runs **one docker compose project per
+  store** from the `saas-store-{api,site,dash}` images built in `saas-commerce`. Deploy
+  with `bash provisioning-store/deploy.sh --local` (this box) or `deploy.sh` (remote);
+  **editing a script here does nothing until it's deployed.** `compose.store.yml` there
+  is a copy of `saas-commerce/deploy/compose.store.yml` — keep them identical. Jobs are
+  queued (SQLite) and report every step to nit2 (`POST /api/tenants/<slug>/progress`,
+  `x-worker-secret`). Day-2 ops go through the store's own CLI
+  (`docker compose -p store_<slug> exec api node dist/cli.js …`), never SQL.
 - **Licence definition.** `lib/licenseDefinition.ts` (`toLicenseDefinition`) converts a
   MySQL `License` row into the JSON pushed to each academy's `local_license` plugin. Note
   the academy reads `expirydate` / `subscribedat` / `storagegb` from **their own cfg keys**,

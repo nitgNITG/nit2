@@ -12,7 +12,7 @@ type Txn = {
     settled: boolean; settledAt: string | null; settlementRef: string | null; settlementId: string | null
 }
 type Settlement = {
-    id: string; academySlug: string; currency: string; amount: number; txnCount: number
+    id: string; tenantSlug: string; currency: string; amount: number; txnCount: number
     method: string; reference: string | null; note: string | null; createdAt: string
 }
 
@@ -66,8 +66,8 @@ export default function AcademyRevenueDetailPage() {
         setLoading(true); setError('')
         try {
             const [tx, st] = await Promise.all([
-                axios.get('/api/revenue/transactions', { params: { academySlug: slug, mode, settled: 'all', limit: 500 } }),
-                axios.get('/api/revenue/settlements', { params: { academySlug: slug } }),
+                axios.get('/api/revenue/transactions', { params: { tenantSlug: slug, mode, settled: 'all', limit: 500 } }),
+                axios.get('/api/revenue/settlements', { params: { tenantSlug: slug } }),
             ])
             setName(tx.data.academyName ?? slug)
             setTxns(tx.data.transactions ?? [])
@@ -108,7 +108,7 @@ export default function AcademyRevenueDetailPage() {
         setBusy(true); setError('')
         try {
             await axios.post('/api/revenue/settle', {
-                academySlug: slug,
+                tenantSlug: slug,
                 mode: 'live',
                 method,
                 reference: reference || undefined,

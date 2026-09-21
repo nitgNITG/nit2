@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 
 const { db, authAdmin, triggerApplyIntegrations } = vi.hoisted(() => ({
     db: {
-        academy: { findUnique: vi.fn(), update: vi.fn() },
+        tenant: { findUnique: vi.fn(), update: vi.fn() },
         license: { findUnique: vi.fn() },
     },
     authAdmin: vi.fn(),
@@ -26,8 +26,8 @@ function get(slug: string) {
 beforeEach(() => {
     vi.clearAllMocks();
     authAdmin.mockResolvedValue(true);
-    db.academy.findUnique.mockResolvedValue({ tier: "basic", paymentMode: "test" });
-    db.academy.update.mockResolvedValue({});
+    db.tenant.findUnique.mockResolvedValue({ tier: "basic", paymentMode: "test" });
+    db.tenant.update.mockResolvedValue({});
     db.license.findUnique.mockResolvedValue({ videoSource: "all", kashierEnabled: true });
     triggerApplyIntegrations.mockResolvedValue(undefined);
 });
@@ -35,7 +35,7 @@ beforeEach(() => {
 describe("academy payment-mode", () => {
     it("GET returns the stored mode (null when NIT hasn't set it)", async () => {
         expect((await (await get("acme")).json()).mode).toBe("test");
-        db.academy.findUnique.mockResolvedValue({ paymentMode: null });
+        db.tenant.findUnique.mockResolvedValue({ paymentMode: null });
         expect((await (await get("acme")).json()).mode).toBeNull();
     });
 
@@ -47,18 +47,18 @@ describe("academy payment-mode", () => {
     it("PUT 400 on an invalid mode (incl. the removed 'default')", async () => {
         expect((await put("acme", { mode: "nope" })).status).toBe(400);
         expect((await put("acme", { mode: "default" })).status).toBe(400);
-        expect(db.academy.update).not.toHaveBeenCalled();
+        expect(db.tenant.update).not.toHaveBeenCalled();
     });
 
     it("PUT live: stores 'live' and pushes payment_mode to the academy", async () => {
         const res = await put("acme", { mode: "live" });
         expect(res.status).toBe(200);
-        expect(db.academy.update.mock.calls[0][0]).toMatchObject({ where: { slug: "acme" }, data: { paymentMode: "live" } });
+        expect(db.tenant.update.mock.calls[0][0]).toMatchObject({ where: { slug: "acme" }, data: { paymentMode: "live" } });
         expect(triggerApplyIntegrations).toHaveBeenCalledWith("acme", { videoSource: "all", kashierEnabled: true }, { paymentMode: "live" });
     });
 
     it("PUT 404 when the academy is missing", async () => {
-        db.academy.findUnique.mockResolvedValue(null);
+        db.tenant.findUnique.mockResolvedValue(null);
         expect((await put("ghost", { mode: "live" })).status).toBe(404);
     });
 });

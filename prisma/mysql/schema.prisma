@@ -74,27 +74,37 @@ model EmailOtp {
 // Moodle-side local_license package (demo|basic|standard|professional).
 // `ownerId` (optional) is the id of the client User — same MySQL DB, kept as a
 // plain string (not a Prisma relation); the account page joins by ownerId.
-model Academy {
-  id        String   @id @default(uuid())
-  name      String // Arabic display name typed by the client
-  slug      String   @unique // English identifier — branch suffix + future subdomain
-  branch    String // full branch name, e.g. "client/ahmed-academy"
-  status    String   @default("branch_created") // branch_created | provisioning | live | failed | suspended
-  tier      String   @default("demo") // the License.key this academy runs on
-  ownerId   String? // client User id (same MySQL DB; joined by string, not a relation)
+// A tenant = one provisioned product instance: an academy (Moodle) or a store
+// (commerce). Same lifecycle, billing, subscriptions and expiry for both;
+// product-specific provisioning lives in lib/products/<product>.ts.
+model Tenant {
+  id                  String    @id @default(uuid())
+  product             String    @default("academy") // academy | store — selects the ProductAdapter
+  name                String // Arabic display name typed by the client
+  slug                String    @unique // English identifier — subdomain (+ academy branch suffix)
+  branch              String? // academies only: full branch name, e.g. "client/ahmed-academy"; null for stores
+  status              String    @default("branch_created") // queued | branch_created | provisioning | live | failed | suspended
+  // Stores: the saas-store image tag this tenant runs (null = follow the platform tag).
+  imageTag            String?
+  // Last provisioning progress from the provisioner: {job, kind, step, total, label, at}.
+  progressJson        Json?
+  // Why the last provisioning job failed (shown to the admin; cleared on retry).
+  lastError           String?   @db.Text
+  tier                String    @default("demo") // the License.key this academy runs on
+  ownerId             String? // client User id (same MySQL DB; joined by string, not a relation)
   // Subscription term: when the current licence started and when it lapses.
   // `validUntil` null = never expires (License.durationDays = 0). Set on create
   // (and on plan change / renewal) from the License's durationDays.
-  subscribedAt DateTime? // start of the current subscription term
-  validUntil   DateTime? // end of the term; null = never expires
+  subscribedAt        DateTime? // start of the current subscription term
+  validUntil          DateTime? // end of the term; null = never expires
   // Encrypted (AES-256-GCM) generated OWNER password, so a lost welcome email can
   // be recovered from the dashboard. NOT a login hash and NOT the owner's chosen
   // password — only the value WE generate at provision / on reset. See lib/secretBox.
-  adminPasswordEnc String? @db.Text
+  adminPasswordEnc    String?   @db.Text
   // Encrypted (AES-256-GCM) random password for the NIT super-admin `admin`
   // account, kept so NIT support can log in to debug a broken academy. This is
   // the NIT-only super-admin, NOT the customer's owner login. See lib/secretBox.
-  nitAdminPasswordEnc String? @db.Text
+  nitAdminPasswordEnc String?   @db.Text
   // Which pre-expiry reminder emails have already been sent for the CURRENT term,
   // e.g. {"d7":<epoch>,"d3":…,"d1":…,"d0":…}. Cleared when the term is renewed or
   // the plan changes, so a fresh term re-arms the reminders. Avoids daily spam.
@@ -102,24 +112,26 @@ model Academy {
   // Has THIS academy's Google OAuth redirect URI been added to the Google Cloud
   // console yet? Google offers no API/wildcard, so it's a manual step per academy;
   // the admin ticks this once done. Purely a bookkeeping flag for the dashboard.
-  googleOauthAdded Boolean @default(false)
+  googleOauthAdded    Boolean   @default(false)
   // NIT-controlled Kashier payment mode for THIS academy's student payments:
   // "live" | "test", or null = inherit the platform default. Pushed to the academy's
   // Moodle as paymentprovider_kashier/payment_mode (the gateway's owner override).
-  paymentMode String?
+  paymentMode         String?
   // Which Kashier credentials the LICENCE was purchased with — "live" | "test" |
   // null (free / not paid). Set at paid creation and updated on each paid renewal /
   // upgrade, so test academies (bought with sandbox creds) are distinguishable from
   // real paying ones. Separate from paymentMode (this academy's STUDENT payments).
-  licenseMode String?
+  licenseMode         String?
   // Custom domain (Phase 2, owner self-serve). When bound and active it becomes
   // the academy's canonical wwwroot; the <slug>.<base> subdomain 301-redirects to
   // it. null = subdomain only. domainStatus: none | pending_dns | verifying |
   // active | failed. domainError holds the last failure reason for the owner.
-  customDomain String? @unique
-  domainStatus String  @default("none")
-  domainError  String? @db.Text
-  createdAt DateTime @default(now())
+  customDomain        String?   @unique
+  domainStatus        String    @default("none")
+  domainError         String?   @db.Text
+  createdAt           DateTime  @default(now())
+
+  @@index([product, status])
 }
 
 // A licence "product": the limits + features an academy runs on (pushed to
@@ -127,35 +139,38 @@ model Academy {
 // the dashboard — `key` is what Academy.tier references. Seeded to match the
 // original demo/basic/standard/professional tiers.
 model License {
-  id           String   @id @default(uuid())
-  key          String   @unique // demo|basic|standard|professional or a custom slug
-  name         String
-  active       Boolean  @default(true)
-  price        Int      @default(0) // USD (display only)
-  priceEgp     Int      @default(0) // ANNUAL charge in EGP via Kashier; 0 = free (no payment)
-  priceEgpMonthly Int   @default(0) // MONTHLY charge in EGP; 0 = no monthly option for this tier
+  id                  String   @id @default(uuid())
+  product             String   @default("academy") // academy | store — which product this plan is sold for
+  key                 String   @unique // demo|basic|standard|professional or a custom slug
+  name                String
+  active              Boolean  @default(true)
+  price               Int      @default(0) // USD (display only)
+  priceEgp            Int      @default(0) // ANNUAL charge in EGP via Kashier; 0 = free (no payment)
+  priceEgpMonthly     Int      @default(0) // MONTHLY charge in EGP; 0 = no monthly option for this tier
   // Optional "regular" (list) prices shown struck-through on the pricing page when
   // higher than the actual charge above, with a "% off" badge. 0 = no strikethrough.
-  listPriceEgp        Int @default(0)
-  listPriceEgpMonthly Int @default(0)
-  durationDays Int      @default(365) // annual term in days; 0 = never expires (monthly term is fixed 30d)
-  maxCourses   Int      @default(-1) // -1 = unlimited
-  maxTeachers  Int      @default(-1)
-  storageGb    Int      @default(1) // moodledata quota (GB) for academies on this licence
-  supportedApp Boolean  @default(true) // may academies on this licence open in the mobile app (design_system site.supportedapp); Demo = false
-  videoSource  String   @default("all") // all|limited|youtube|vimeo|vdocipher — selects which video integration is pushed
-  kashierEnabled Boolean @default(false) // push the shared Kashier gateway config to academies on this licence
-  limits       Json // per-activity caps e.g. {"quiz":-1,"video":-1,"pdf":-1,"default":-1}
-  features     Json // toggles e.g. {"drm":false,"coupons":true,"subscriptions":false,"packages":false,"jitsi":false,"offers":false}
+  listPriceEgp        Int      @default(0)
+  listPriceEgpMonthly Int      @default(0)
+  durationDays        Int      @default(365) // annual term in days; 0 = never expires (monthly term is fixed 30d)
+  maxCourses          Int      @default(-1) // -1 = unlimited
+  maxTeachers         Int      @default(-1)
+  storageGb           Int      @default(1) // moodledata quota (GB) for academies on this licence
+  supportedApp        Boolean  @default(true) // may academies on this licence open in the mobile app (design_system site.supportedapp); Demo = false
+  videoSource         String   @default("all") // all|limited|youtube|vimeo|vdocipher — selects which video integration is pushed
+  kashierEnabled      Boolean  @default(false) // push the shared Kashier gateway config to academies on this licence
+  limits              Json // per-activity caps e.g. {"quiz":-1,"video":-1,"pdf":-1,"default":-1}
+  features            Json // toggles e.g. {"drm":false,"coupons":true,"subscriptions":false,"packages":false,"jitsi":false,"offers":false}
   // "Contact sales" plan (e.g. Professional/Enterprise): shown on the pricing page
   // with a Contact-us CTA instead of a price, and NOT directly purchasable — the
   // checkout is refused server-side. For custom/quote-based tiers.
-  contactSales Boolean @default(false)
+  contactSales        Boolean  @default(false)
   // Highlight this plan as "Most popular" on the pricing page (one intended, but
   // not enforced — the page highlights the first popular buyable plan).
-  popular      Boolean @default(false)
-  order        Int      @default(0)
-  createdAt    DateTime @default(now())
+  popular             Boolean  @default(false)
+  order               Int      @default(0)
+  createdAt           DateTime @default(now())
+
+  @@index([product, active])
 }
 
 // A Kashier payment for a paid academy licence. Created `pending` when the client
@@ -169,11 +184,12 @@ model Payment {
   orderId        String    @unique // our merchant order id — Kashier's merchantOrderId
   userId         String // client User id (Mongo app user; joined by string)
   licenseKey     String // License.key being purchased
-  purpose        String    @default("new_academy") // new_academy | upgrade | renew
+  purpose        String    @default("new_academy") // new_academy | new_store | upgrade | renew
+  product        String    @default("academy") // academy | store
   amount         Int // charged amount, minor unit-free (whole currency units)
   currency       String    @default("EGP")
   status         String    @default("pending") // pending | paid | failed | expired
-  academySlug    String? // set for upgrade/renew, and for new_academy once provisioned
+  tenantSlug     String? // set for upgrade/renew, and for new_* once provisioned
   mode           String    @default("live") // live | test — the checkout mode this charge used
   payloadJson    Json? // the pending academy-create payload (name, slug, brand, …)
   sessionId      String? // Kashier session _id
@@ -197,25 +213,25 @@ model Payment {
 // for "is it live"; this row drives the BILLING side: when to charge next, on
 // what card, how many retries. Entirely dormant unless SUBSCRIPTIONS_ENABLED=1.
 model Subscription {
-  id               String    @id @default(uuid())
-  academySlug      String    @unique // one active subscription per academy
-  userId           String // owner / billing contact (Mongo app user id)
-  licenseKey       String // License.key being billed
-  status           String    @default("active") // active | past_due | canceled | paused
-  autoRenew        Boolean   @default(true)
-  intervalDays     Int // 30 monthly / 365 annual — from License.durationDays
-  amountEgp        Int // recurring charge per cycle (snapshot of License.priceEgp)
-  currency         String    @default("EGP")
-  currentPeriodEnd DateTime // mirrors Academy.validUntil at the last successful charge
-  nextAttemptAt    DateTime? // when the billing cron should next try (null = don't)
-  attemptCount     Int       @default(0) // retries within the CURRENT cycle
-  lastError        String?   @db.Text
-  canceledAt       DateTime?
-  consentAt        DateTime? // when the owner authorized auto-renew (mandate audit)
+  id                 String    @id @default(uuid())
+  tenantSlug         String    @unique // one active subscription per tenant
+  userId             String // owner / billing contact (Mongo app user id)
+  licenseKey         String // License.key being billed
+  status             String    @default("active") // active | past_due | canceled | paused
+  autoRenew          Boolean   @default(true)
+  intervalDays       Int // 30 monthly / 365 annual — from License.durationDays
+  amountEgp          Int // recurring charge per cycle (snapshot of License.priceEgp)
+  currency           String    @default("EGP")
+  currentPeriodEnd   DateTime // mirrors Academy.validUntil at the last successful charge
+  nextAttemptAt      DateTime? // when the billing cron should next try (null = don't)
+  attemptCount       Int       @default(0) // retries within the CURRENT cycle
+  lastError          String?   @db.Text
+  canceledAt         DateTime?
+  consentAt          DateTime? // when the owner authorized auto-renew (mandate audit)
   preRenewNotifiedAt DateTime? // when the "you'll be charged soon" heads-up was sent (per cycle; cleared on charge)
-  paymentMethodId  String? // the PaymentMethod (saved token) to charge
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  paymentMethodId    String? // the PaymentMethod (saved token) to charge
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@index([status])
   @@index([nextAttemptAt])
@@ -247,19 +263,20 @@ model PaymentMethod {
 // REPORTING ledger only (categorise revenue per academy / provider / period in the
 // dashboard) — it is NOT the source of truth for money, and it never moves funds.
 // NIT's OWN revenue (licence sales) is the separate Payment model above.
-model AcademyRevenue {
-  id          String   @id @default(uuid())
-  academySlug String // which academy earned this (== Academy.slug)
-  provider    String   @default("kashier") // kashier | fawaterk | …
-  orderId     String // the academy's own order id (e.g. PAY-<TAG>-YYYY-…)
-  amount      Int // charged amount in whole currency units
-  currency    String   @default("EGP")
-  status      String   @default("paid") // paid | refunded
-  kind        String   @default("course") // course | subscription
-  courseId    Int? // Moodle course id (null for subscriptions)
-  userRef     String? // Moodle user id (string), display/debug only
-  paidAt      DateTime // when the payment completed (from the academy)
-  createdAt   DateTime @default(now()) // when we ingested it
+model TenantRevenue {
+  id         String   @id @default(uuid())
+  product    String   @default("academy") // academy | store
+  tenantSlug String // which tenant earned this (== Tenant.slug)
+  provider   String   @default("kashier") // kashier | fawaterk | …
+  orderId    String // the academy's own order id (e.g. PAY-<TAG>-YYYY-…)
+  amount     Int // charged amount in whole currency units
+  currency   String   @default("EGP")
+  status     String   @default("paid") // paid | refunded
+  kind       String   @default("course") // course | subscription
+  courseId   Int? // Moodle course id (null for subscriptions)
+  userRef    String? // Moodle user id (string), display/debug only
+  paidAt     DateTime // when the payment completed (from the academy)
+  createdAt  DateTime @default(now()) // when we ingested it
 
   // Live vs test/sandbox — mirrored from the academy's payment-provider mode so test
   // payments never get counted as real revenue. Default "live" for pre-mode rows.
@@ -268,15 +285,15 @@ model AcademyRevenue {
   // Settlement: NIT collects centrally then pays each owner out-of-band. These track
   // which rows have been paid out to the owner (settled) vs still owed (outstanding).
   // A settlement is a manual admin action, so this is just bookkeeping — no money moves.
-  settled      Boolean   @default(false)
-  settledAt    DateTime?
+  settled       Boolean   @default(false)
+  settledAt     DateTime?
   settlementRef String? // denormalised reference (also on the linked Settlement)
   settlementId  String? // the Settlement (payout batch) this row was paid out in
 
   // Idempotent ingest: one row per (academy, order). A resend just updates status
   // (never the settlement flags — a webhook re-delivery must not un-settle a row).
-  @@unique([academySlug, orderId])
-  @@index([academySlug])
+  @@unique([tenantSlug, orderId])
+  @@index([tenantSlug])
   @@index([paidAt])
   @@index([provider])
   @@index([status])
@@ -290,16 +307,16 @@ model AcademyRevenue {
 // the settled AcademyRevenue rows point back to it via settlementId. Voiding a
 // settlement unlinks its rows (back to outstanding) and deletes this record.
 model Settlement {
-  id          String   @id @default(uuid())
-  academySlug String
-  currency    String
-  amount      Int // total paid out in this batch (whole currency units)
-  txnCount    Int      @default(0) // how many revenue rows this batch covered
-  method      String   @default("bank") // bank | instapay | cash | wallet | other
-  reference   String? // bank transfer id / cheque no / etc.
-  note        String?  @db.Text
-  createdAt   DateTime @default(now())
+  id         String   @id @default(uuid())
+  tenantSlug String
+  currency   String
+  amount     Int // total paid out in this batch (whole currency units)
+  txnCount   Int      @default(0) // how many revenue rows this batch covered
+  method     String   @default("bank") // bank | instapay | cash | wallet | other
+  reference  String? // bank transfer id / cheque no / etc.
+  note       String?  @db.Text
+  createdAt  DateTime @default(now())
 
-  @@index([academySlug])
+  @@index([tenantSlug])
   @@index([createdAt])
 }

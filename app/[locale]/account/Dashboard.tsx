@@ -1,19 +1,22 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import AcademyCard, { ClientAcademy } from './AcademyCard'
+import StoreCard, { ClientStore } from './StoreCard'
 import LocaleLink from '../components/LocaleLink'
-import { FiPlus, FiCreditCard } from 'react-icons/fi'
+import { FiPlus, FiCreditCard, FiShoppingBag } from 'react-icons/fi'
 import { FaRocket } from 'react-icons/fa'
 
 type DashUser = { name: string | null; email: string; role: string }
 
 export default function Dashboard({
-    user, academies, domain,
-}: { user: DashUser; academies: ClientAcademy[]; domain: string }) {
+    user, academies, stores: initialStores = [], domain,
+}: { user: DashUser; academies: ClientAcademy[]; stores?: ClientStore[]; domain: string }) {
     const t = useTranslations('Dashboard')
     const tn = useTranslations('Navbar')
+    const [stores, setStores] = useState(initialStores)
+    const empty = academies.length === 0 && stores.length === 0
 
     return (
         <div className='bg-[#0B2923] text-white'>
@@ -51,16 +54,24 @@ export default function Dashboard({
                     <p className='text-sm text-white/50'>
                         {academies.length ? t('count', { n: academies.length }) : ''}
                     </p>
-                    <LocaleLink
-                        href='/build-product'
-                        className='inline-flex items-center gap-1.5 rounded-full bg-[#00FFB2] px-5 py-2.5 text-sm font-extrabold text-[#0B2923] hover:scale-[1.03] transition-transform'
-                    >
-                        <FiPlus className='text-base' /> {t('newAcademy')}
-                    </LocaleLink>
+                    <div className='flex flex-wrap items-center gap-2'>
+                        <LocaleLink
+                            href='/build-product?product=store'
+                            className='inline-flex items-center gap-1.5 rounded-full border border-[#00FFB2]/40 px-5 py-2.5 text-sm font-extrabold text-[#00FFB2] hover:bg-[#00FFB2]/10 transition-colors'
+                        >
+                            <FiShoppingBag className='text-base' /> {t('newStore')}
+                        </LocaleLink>
+                        <LocaleLink
+                            href='/build-product'
+                            className='inline-flex items-center gap-1.5 rounded-full bg-[#00FFB2] px-5 py-2.5 text-sm font-extrabold text-[#0B2923] hover:scale-[1.03] transition-transform'
+                        >
+                            <FiPlus className='text-base' /> {t('newAcademy')}
+                        </LocaleLink>
+                    </div>
                 </div>
 
                 {/* Console */}
-                {academies.length === 0 ? (
+                {empty ? (
                     <div className='mt-10 rounded-3xl border border-dashed border-white/15 p-12 text-center'>
                         <div className='mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#00FFB2]/10 text-2xl text-[#00FFB2]'><FaRocket /></div>
                         <h2 className='mt-4 text-xl font-extrabold'>{t('emptyTitle')}</h2>
@@ -73,9 +84,23 @@ export default function Dashboard({
                         </LocaleLink>
                     </div>
                 ) : (
-                    <div className='mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-                        {academies.map((a) => <AcademyCard key={a.id} academy={a} domain={domain} />)}
-                    </div>
+                    <>
+                        {academies.length > 0 && (
+                            <div className='mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+                                {academies.map((a) => <AcademyCard key={a.id} academy={a} domain={domain} />)}
+                            </div>
+                        )}
+                        {stores.length > 0 && (
+                            <>
+                                <h2 className='mt-10 text-sm font-bold uppercase tracking-[0.2em] text-white/50'>{t('storesTitle')}</h2>
+                                <div className='mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+                                    {stores.map((s) => (
+                                        <StoreCard key={s.id} store={s} onDeleted={(slug) => setStores((cur) => cur.filter((x) => x.slug !== slug))} />
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                    </>
                 )}
             </div>
         </div>

@@ -74,15 +74,15 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
     // a deleted academy (the "Auto-renew FAILED <slug> attempt N" loop). A
     // *suspended* academy still renews — that is how it recovers — so only a
     // missing control-plane row cancels.
-    const academyRow = await prisma.academy
-      .findUnique({ where: { slug: sub.academySlug }, select: { id: true } })
+    const academyRow = await prisma.tenant
+      .findUnique({ where: { slug: sub.tenantSlug }, select: { id: true } })
       .catch(() => undefined);
     if (academyRow === null) {
       await prisma.subscription.update({
         where: { id: sub.id },
         data: { status: "canceled", autoRenew: false, nextAttemptAt: null, lastError: "academy deleted" },
-      }).catch((e) => console.error("[billing] cancel orphaned subscription failed", sub.academySlug, e));
-      console.warn(`[billing] academy ${sub.academySlug} no longer exists — canceled its subscription, skipping charge`);
+      }).catch((e) => console.error("[billing] cancel orphaned subscription failed", sub.tenantSlug, e));
+      console.warn(`[billing] academy ${sub.tenantSlug} no longer exists — canceled its subscription, skipping charge`);
       continue;
     }
 
@@ -113,7 +113,7 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
           select: { paidAt: true },
         });
         if (recent) {
-          console.warn(`[billing] cooldown: ${sub.academySlug} charged at ${recent.paidAt?.toISOString()} — skipping`);
+          console.warn(`[billing] cooldown: ${sub.tenantSlug} charged at ${recent.paidAt?.toISOString()} — skipping`);
           await prisma.subscription.update({
             where: { id: sub.id },
             data: { nextAttemptAt: scheduleNextAttempt(sub.currentPeriodEnd, sub.intervalDays, lead) },
@@ -128,8 +128,8 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
       const token = pm ? decryptSecret(pm.cardTokenEnc) : null;
       if (!pm || !token) {
         await markPastDue(sub.id, "no saved card token", 1);
-        summary.failed.push(sub.academySlug);
-        await notifyTelegram(`⚠️ Auto-renew: no saved card for ${sub.academySlug} — needs owner action`);
+        summary.failed.push(sub.tenantSlug);
+        await notifyTelegram(`⚠️ Auto-renew: no saved card for ${sub.tenantSlug} — needs owner action`);
         continue;
       }
 
@@ -140,7 +140,7 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
         data: {
           orderId, userId: sub.userId, licenseKey: sub.licenseKey, purpose: "renew",
           amount: sub.amountEgp, currency: sub.currency, status: "pending", mode,
-          academySlug: sub.academySlug, subscriptionId: sub.id, billingCycle: cycle,
+          tenantSlug: sub.tenantSlug, subscriptionId: sub.id, billingCycle: cycle,
         },
       });
 
@@ -168,10 +168,10 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
             where: { id: pm.id }, data: { expMonth: charge.expMonth, expYear: charge.expYear },
           }).catch(() => {});
         }
-        await prisma.academy.update({
-          where: { slug: sub.academySlug },
+        await prisma.tenant.update({
+          where: { slug: sub.tenantSlug },
           data: { status: "live", validUntil: newEnd, subscribedAt: now, expiryRemindersSent: {}, licenseMode: mode },
-        }).catch((e) => console.error("[billing] academy extend failed", sub.academySlug, e));
+        }).catch((e) => console.error("[billing] academy extend failed", sub.tenantSlug, e));
         await prisma.subscription.update({
           where: { id: sub.id },
           data: {
@@ -186,14 +186,14 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
         // One call: syncs the academy's expirydate (banner) AND emails a receipt
         // confirming the charge + the next renewal date.
         const subYmd = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
-        await triggerExpiryReminder(sub.academySlug, daysLeft, base ? `${base}/account` : "", {
+        await triggerExpiryReminder(sub.tenantSlug, daysLeft, base ? `${base}/account` : "", {
           expiryDate: ymd, sendEmail: true, mode: "receipt", amountEgp: sub.amountEgp, cardLast4: pm.last4 ?? "",
           autoRenew: true, subscribedAt: subYmd, // mirror the fresh term start into the academy
         });
-        await triggerSuspend(sub.academySlug, false);
+        await triggerSuspend(sub.tenantSlug, false);
 
-        summary.renewed.push(sub.academySlug);
-        await notifyTelegram(`💳 Auto-renewed ${sub.academySlug} → ${sub.licenseKey} (paid, next ${ymd})`);
+        summary.renewed.push(sub.tenantSlug);
+        await notifyTelegram(`💳 Auto-renewed ${sub.tenantSlug} → ${sub.licenseKey} (paid, next ${ymd})`);
         continue;
       }
 
@@ -214,19 +214,19 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
       // notice with the last-4 and a link to update it / renew. daysLeft from the
       // (still current) term.
       const daysLeft = Math.ceil((sub.currentPeriodEnd.getTime() - now.getTime()) / DAY);
-      await triggerExpiryReminder(sub.academySlug, daysLeft, base ? `${base}/account` : "", {
+      await triggerExpiryReminder(sub.tenantSlug, daysLeft, base ? `${base}/account` : "", {
         sendEmail: true, mode: "payment_failed", amountEgp: sub.amountEgp, cardLast4: pm.last4 ?? "",
       });
 
       if ((charge as any).needsAuth) {
-        summary.needsAuth.push(sub.academySlug);
-        await notifyTelegram(`🔐 Auto-renew needs 3DS/OTP — ${sub.academySlug}: charge card manually / owner must renew`);
+        summary.needsAuth.push(sub.tenantSlug);
+        await notifyTelegram(`🔐 Auto-renew needs 3DS/OTP — ${sub.tenantSlug}: charge card manually / owner must renew`);
       } else {
-        summary.failed.push(sub.academySlug);
-        await notifyTelegram(`⚠️ Auto-renew FAILED ${sub.academySlug} (attempt ${attempt}): ${reason}`);
+        summary.failed.push(sub.tenantSlug);
+        await notifyTelegram(`⚠️ Auto-renew FAILED ${sub.tenantSlug} (attempt ${attempt}): ${reason}`);
       }
     } catch (e) {
-      console.error("[billing] subscription attempt failed", sub.academySlug, e);
+      console.error("[billing] subscription attempt failed", sub.tenantSlug, e);
     }
   }
 
@@ -234,11 +234,11 @@ export async function runBillingCycle(base: string): Promise<BillingSummary> {
 }
 
 /** Open (or refresh) the auto-renew subscription for an academy after a paid term.
- *  Idempotent on academySlug. Links the user's default saved card if one exists;
+ *  Idempotent on tenantSlug. Links the user's default saved card if one exists;
  *  billing falls back to the default card by userId otherwise. No-op while the
  *  feature is off. Called from the webhook once a paid term's validUntil is known. */
 export async function openSubscription(opts: {
-  academySlug: string;
+  tenantSlug: string;
   userId: string;
   licenseKey: string;
   intervalDays: number;
@@ -254,9 +254,9 @@ export async function openSubscription(opts: {
     .catch(() => null);
   try {
     await prisma.subscription.upsert({
-      where: { academySlug: opts.academySlug },
+      where: { tenantSlug: opts.tenantSlug },
       create: {
-        academySlug: opts.academySlug, userId: opts.userId, licenseKey: opts.licenseKey,
+        tenantSlug: opts.tenantSlug, userId: opts.userId, licenseKey: opts.licenseKey,
         status: "active", autoRenew: true, intervalDays: opts.intervalDays,
         amountEgp: opts.amountEgp, currency: opts.currency,
         currentPeriodEnd: opts.currentPeriodEnd, nextAttemptAt,
@@ -274,9 +274,9 @@ export async function openSubscription(opts: {
     // Tell the academy it's auto-renewing (banner shows "renews on <date>").
     const d = opts.currentPeriodEnd;
     const ymd = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
-    await triggerExpiryReminder(opts.academySlug, 0, "", { sendEmail: false, expiryDate: ymd, autoRenew: true });
+    await triggerExpiryReminder(opts.tenantSlug, 0, "", { sendEmail: false, expiryDate: ymd, autoRenew: true });
   } catch (e) {
-    console.error("[billing] openSubscription failed", opts.academySlug, e);
+    console.error("[billing] openSubscription failed", opts.tenantSlug, e);
   }
 }
 
@@ -312,14 +312,14 @@ export async function runPreRenewNotices(base: string): Promise<{ notified: stri
       // If the saved card will be expired by the charge date, the heads-up becomes
       // an "update your card or the renewal will fail" warning instead.
       const cardExpiring = !!pm && cardExpiredBy(pm, sub.nextAttemptAt!);
-      await triggerExpiryReminder(sub.academySlug, daysLeft, base ? `${base}/account` : "", {
+      await triggerExpiryReminder(sub.tenantSlug, daysLeft, base ? `${base}/account` : "", {
         sendEmail: true, mode: "prerenew", amountEgp: sub.amountEgp, cardLast4: pm?.last4 ?? "",
         cardExpiring,
       });
       await prisma.subscription.update({ where: { id: sub.id }, data: { preRenewNotifiedAt: new Date() } });
-      notified.push(sub.academySlug);
+      notified.push(sub.tenantSlug);
     } catch (e) {
-      console.error("[billing] pre-renew notice failed", sub.academySlug, e);
+      console.error("[billing] pre-renew notice failed", sub.tenantSlug, e);
     }
   }
   return { notified };

@@ -17,7 +17,7 @@ async function reapplyToAcademies(
     const base = process.env.PROVISION_URL;
     const secret = process.env.PROVISION_SECRET;
     if (!base || !secret) return 0;
-    const academies = await prisma.academy.findMany({ where: { tier: key, status: "live" }, select: { slug: true } });
+    const academies = await prisma.tenant.findMany({ where: { tier: key, status: "live" }, select: { slug: true } });
     await Promise.allSettled(
         academies.flatMap((a) => {
             const url = new URL(base);
@@ -69,7 +69,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { key: str
     const gate = await requireAdmin();
     if (gate) return NextResponse.json({ error: gate.error }, { status: gate.status });
     try {
-        const inUse = await prisma.academy.count({ where: { tier: params.key } });
+        const inUse = await prisma.tenant.count({ where: { tier: params.key } });
         if (inUse > 0) {
             return NextResponse.json(
                 { error: `Can't delete — ${inUse} academ${inUse === 1 ? "y is" : "ies are"} on this licence. Move them first.` },

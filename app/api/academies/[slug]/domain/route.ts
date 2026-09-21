@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 async function loadOwned(slug: string) {
     const user = await getCurrentUser();
     if (!user) return { error: "unauthorized", status: 401 as const };
-    const academy = await prisma.academy.findUnique({ where: { slug } });
+    const academy = await prisma.tenant.findUnique({ where: { slug } });
     if (!academy) return { error: "not found", status: 404 as const };
     if (user.role !== "admin" && academy.ownerId !== user.id) return { error: "forbidden", status: 403 as const };
     return { user, academy };
@@ -50,7 +50,7 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
         if (st && st.state !== "verifying") {
             const domainStatus = st.state === "active" ? "active" : "failed";
             const domainError = st.state === "active" ? null : (st.error ?? "Binding failed.");
-            academy = await prisma.academy.update({ where: { slug: params.slug }, data: { domainStatus, domainError } });
+            academy = await prisma.tenant.update({ where: { slug: params.slug }, data: { domainStatus, domainError } });
             await alertAdmins(
                 domainStatus === "active"
                     ? `🌐 Custom domain active — ${academy.customDomain} (${params.slug})`
@@ -72,12 +72,12 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
     if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
 
     // Refuse a domain already bound to a different academy.
-    const clash = await prisma.academy.findUnique({ where: { customDomain: v.domain } }).catch(() => null);
+    const clash = await prisma.tenant.findUnique({ where: { customDomain: v.domain } }).catch(() => null);
     if (clash && clash.slug !== params.slug) {
         return NextResponse.json({ error: "That domain is already in use by another academy." }, { status: 409 });
     }
 
-    const academy = await prisma.academy.update({
+    const academy = await prisma.tenant.update({
         where: { slug: params.slug },
         data: { customDomain: v.domain, domainStatus: "pending_dns", domainError: null },
     });
@@ -93,7 +93,7 @@ export async function PUT(_req: NextRequest, { params }: { params: { slug: strin
     // 1) DNS must point here before we ask certbot (a failed HTTP-01 rate-limits us).
     const dns = await verifyDnsPointsHere(academy.customDomain, params.slug);
     if (!dns.ok) {
-        const updated = await prisma.academy.update({
+        const updated = await prisma.tenant.update({
             where: { slug: params.slug }, data: { domainStatus: "pending_dns", domainError: dns.detail },
         });
         return NextResponse.json({ ...view(updated), dns }, { status: 409 });
@@ -104,7 +104,7 @@ export async function PUT(_req: NextRequest, { params }: { params: { slug: strin
     if (!sent) {
         return NextResponse.json({ error: "Provisioning service is unavailable — try again shortly." }, { status: 503 });
     }
-    const updated = await prisma.academy.update({
+    const updated = await prisma.tenant.update({
         where: { slug: params.slug },
         // Binding changes the canonical URL → the Google OAuth redirect URI must be
         // re-added for the new domain, so re-arm that bookkeeping flag.
@@ -122,7 +122,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { slug: st
     if ("error" in r) return NextResponse.json({ error: r.error }, { status: r.status });
 
     await triggerUnbindDomain(params.slug);
-    const academy = await prisma.academy.update({
+    const academy = await prisma.tenant.update({
         where: { slug: params.slug },
         data: { customDomain: null, domainStatus: "none", domainError: null },
     });
