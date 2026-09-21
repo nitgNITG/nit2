@@ -131,6 +131,23 @@ describe("PATCH /api/stores/[slug] (admin)", () => {
     });
 });
 
+describe("PATCH issueTls", () => {
+    it("asks the provisioner for the certificate and clears the pending note", async () => {
+        getCurrentUser.mockResolvedValue(ADMIN);
+        db.tenant.findUnique.mockResolvedValue({ ...STORE, lastError: "TLS certificate pending — …" });
+        const res = await patch({ issueTls: true });
+        expect(res.status).toBe(200);
+        expect(String(fetchMock.mock.calls[0][0])).toBe("http://127.0.0.1:9098/tls/ziad");
+        expect(db.tenant.update.mock.calls[0][0].data.lastError).toBeNull();
+    });
+    it("502 when certbot fails (DNS still missing)", async () => {
+        getCurrentUser.mockResolvedValue(ADMIN);
+        fetchMock.mockResolvedValue({ ok: false, status: 502, json: async () => ({ error: "certbot failed" }) });
+        expect((await patch({ issueTls: true })).status).toBe(502);
+        expect(db.tenant.update).not.toHaveBeenCalled();
+    });
+});
+
 describe("DELETE /api/stores/[slug]", () => {
     it("owner: deprovisions on the provisioner, deletes the row and cancels subscriptions", async () => {
         getCurrentUser.mockResolvedValue(OWNER);
@@ -164,6 +181,14 @@ describe("POST /api/tenants/[slug]/progress", () => {
         const data = db.tenant.update.mock.calls[0][0].data;
         expect(data).toMatchObject({ status: "live", imageTag: "1.0.0", lastError: null, adminPasswordEnc: "enc(Generated#1)" });
         expect(alertAdmins).toHaveBeenCalled();
+    });
+
+    it("done with tls pending → live, but the reason is kept for the admin", async () => {
+        db.tenant.findUnique.mockResolvedValue({ ...STORE, status: "provisioning" });
+        await progress({ job: 7, kind: "create", state: "done", url: "https://ziad.commerce.nitg-eg.com", tls: "pending" });
+        const data = db.tenant.update.mock.calls[0][0].data;
+        expect(data.status).toBe("live");
+        expect(String(data.lastError)).toMatch(/TLS certificate pending/);
     });
 
     it("failed → failed with the reason", async () => {

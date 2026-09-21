@@ -156,14 +156,22 @@ report_step 9 $TOTAL "Publishing $HOST"
 bash "$SCRIPTS_DIR/proxy/proxy.sh" add "$SLUG" "$HOST" "$P_SITE" "$P_DASH" "$P_API"
 
 # ── 10. Smoke test through the proxy (no DNS dependency: --resolve) ─────────
+# If certbot could not issue a certificate (typically: the wildcard DNS record
+# is not there yet), the vhost still answers on port 80 — test that, go live,
+# and flag TLS as pending so the admin can issue it later (POST /tls/<slug>).
 report_step 10 $TOTAL "Smoke test"
+TLS_PENDING=0
+if [[ "$SCHEME" == "https" && "${PROXY:-nginx}" != "none" && ! -d "/etc/letsencrypt/live/$HOST" ]]; then
+    warn "no certificate for $HOST yet — testing over http, TLS marked pending"
+    TLS_PENDING=1
+fi
 smoke(){ # $1=path $2=direct host port (used when PROXY=none)
     if [[ "${PROXY:-nginx}" == "none" ]]; then
         curl -s -o /dev/null -w '%{http_code}' -m 15 "http://127.0.0.1:$2$1"
         return
     fi
     local port=443 proto=https
-    [[ "$SCHEME" == "http" ]] && { port=80; proto=http; }
+    [[ "$SCHEME" == "http" || "$TLS_PENDING" == 1 ]] && { port=80; proto=http; }
     curl -sk -o /dev/null -w '%{http_code}' --resolve "$HOST:$port:127.0.0.1" -m 15 "$proto://$HOST$1"
 }
 for pair in "/apis/v1/health:$P_API" "/dashboard/login:$P_DASH" "/:$P_SITE"; do
@@ -175,7 +183,7 @@ done
 
 # ── 11. Done ────────────────────────────────────────────────────────────────
 report_step 11 $TOTAL "Live"
-EXTRA="\"image_tag\":$(json_escape "$IMAGE_TAG"),\"owner_email\":$(json_escape "$OWNER_EMAIL"),\"mail_sent\":$([[ "$MAIL_SENT" == "True" ]] && echo true || echo false)"
+EXTRA="\"image_tag\":$(json_escape "$IMAGE_TAG"),\"owner_email\":$(json_escape "$OWNER_EMAIL"),\"mail_sent\":$([[ "$MAIL_SENT" == "True" ]] && echo true || echo false),\"tls\":$([[ "$TLS_PENDING" == 1 ]] && echo '"pending"' || echo '"ok"')"
 # Only when nit2 did not supply the owner password (then it must store this one).
 [[ -n "$GENERATED_PW" && "$GENERATED_PW" != "None" ]] && EXTRA="$EXTRA,\"owner_password\":$(json_escape "$GENERATED_PW")"
 report_done "$PUBLIC_URL" "$EXTRA"

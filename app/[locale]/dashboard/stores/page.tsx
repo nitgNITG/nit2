@@ -151,7 +151,7 @@ export default function StoresPage() {
                       {(s.status === "queued" || s.status === "provisioning") && p && (
                         <div className="mt-1 text-xs text-gray-500">{p.label} {p.total ? `(${p.step}/${p.total})` : ""}</div>
                       )}
-                      {s.status === "failed" && s.lastError && <div className="mt-1 max-w-[260px] break-words font-mono text-[11px] text-red-700" dir="ltr">{s.lastError.slice(0, 160)}</div>}
+                      {(s.status === "failed" || s.status === "live") && s.lastError && <div className={`mt-1 max-w-[260px] break-words font-mono text-[11px] ${s.status === "failed" ? "text-red-700" : "text-amber-700"}`} dir="ltr">{s.lastError.slice(0, 160)}</div>}
                     </td>
                     <td className="px-3 py-2 text-xs">
                       <div>from {fmt(s.subscribedAt)}</div>
@@ -172,6 +172,7 @@ export default function StoresPage() {
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap gap-1">
                         {s.status === "failed" && <button disabled={isBusy} onClick={() => patch(s.slug, { retry: true }, "Retry queued")} className="rounded bg-blue-600 px-2 py-1 text-xs text-white">Retry</button>}
+                        {s.status === "live" && s.lastError?.startsWith("TLS certificate pending") && <button disabled={isBusy} onClick={() => patch(s.slug, { issueTls: true }, "Certificate issued")} className="rounded bg-purple-600 px-2 py-1 text-xs text-white">Issue TLS</button>}
                         {s.status === "live" && <button disabled={isBusy} onClick={() => patch(s.slug, { suspend: true }, "Suspended")} className="rounded bg-amber-500 px-2 py-1 text-xs text-white">Suspend</button>}
                         {s.status === "suspended" && <button disabled={isBusy} onClick={() => patch(s.slug, { suspend: false }, "Resumed")} className="rounded bg-green-600 px-2 py-1 text-xs text-white">Resume</button>}
                         <button disabled={isBusy} onClick={() => showCred(s.slug)} className="rounded bg-gray-700 px-2 py-1 text-xs text-white">Credentials</button>

@@ -42,6 +42,7 @@ On the host: `STORE_ROOT=/var/www/html/saas-stores` holds `provision.env`, the s
 | `POST /apply-license/<slug>` | `{tier, definition, expires_at, …}` | sync, CLI result |
 | `POST /suspend/<slug>` | `{suspended}` | sync |
 | `POST /reset-owner/<slug>` | `{email?}` | sync; returns the new temporary password (nit2 stores it encrypted) |
+| `POST /tls/<slug>` | — | (re)issue the Let's Encrypt certificate; a creation whose certbot failed (DNS not ready) goes live over HTTP with `tls:"pending"` |
 | `POST /update-image/<slug>` · `POST /update-image` | `{tag}` | one store (queued) · every store (detached `bump-image.sh --all`) |
 | `POST /bind-domain/<slug>` · `POST /unbind-domain/<slug>` · `GET /domain-status/<slug>` | `{domain}` | queued |
 | `DELETE /deprovision/<slug>` | — | queued `destroy-store.sh` |

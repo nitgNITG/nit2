@@ -5,6 +5,7 @@
 #
 #    proxy.sh add    <slug> <host> <p_site> <p_dash> <p_api>   render + test + reload (+ TLS)
 #    proxy.sh remove <slug> <host>                             disable + delete (+ cert)
+#    proxy.sh tls    <slug> <host>                             (re)issue the certificate only
 #
 #  PROXY=nginx|apache|none (provision.env; none = another layer routes to the
 #  host ports, nothing is written here). Config changes are applied with a
@@ -23,7 +24,7 @@ log(){ echo "==> [proxy] $*"; }
 die(){ echo "ERROR: [proxy] $*" >&2; exit 1; }
 
 ACTION="${1:-}"; SLUG="${2:-}"; HOST="${3:-}"
-[[ -n "$ACTION" && -n "$SLUG" && -n "$HOST" ]] || die "usage: proxy.sh add|remove <slug> <host> [ports]"
+[[ -n "$ACTION" && -n "$SLUG" && -n "$HOST" ]] || die "usage: proxy.sh add|remove|tls <slug> <host> [ports]"
 
 render(){ # $1=template → stdout
     sed -e "s|{HOST}|$HOST|g" -e "s|{SLUG}|$SLUG|g" \
@@ -35,12 +36,15 @@ nginx_add(){
     render "$HERE/nginx.conf.tmpl" > "$conf"
     nginx -t >/dev/null || { rm -f "$conf"; die "nginx config test failed for $HOST"; }
     systemctl reload nginx
-    if [[ "$TLS_MODE" == "per-host" ]]; then
-        log "requesting certificate for $HOST"
-        certbot --nginx -d "$HOST" --non-interactive --agree-tos -m "$LE_EMAIL" --redirect --keep-until-expiring \
-            || echo "!! certbot failed for $HOST — check DNS (*.${HOST#*.} → this host) and port 80; site is up on http"
-        systemctl reload nginx
+    [[ "$TLS_MODE" == "per-host" ]] && nginx_tls || true
+}
+nginx_tls(){
+    log "requesting certificate for $HOST"
+    if certbot --nginx -d "$HOST" --non-interactive --agree-tos -m "$LE_EMAIL" --redirect --keep-until-expiring; then
+        systemctl reload nginx; return 0
     fi
+    echo "!! certbot failed for $HOST — check DNS (*.${HOST#*.} → this host) and port 80; site is up on http"
+    return 1
 }
 nginx_remove(){
     rm -f "/etc/nginx/conf.d/saas-store-${HOST}.conf"
@@ -55,12 +59,15 @@ apache_add(){
     a2ensite "${HOST}.conf" >/dev/null
     apache2ctl configtest >/dev/null 2>&1 || { a2dissite "${HOST}.conf" >/dev/null; rm -f "$conf"; die "apache configtest failed for $HOST"; }
     systemctl reload apache2
-    if [[ "$TLS_MODE" == "per-host" ]]; then
-        log "requesting certificate for $HOST"
-        certbot --apache -d "$HOST" --non-interactive --agree-tos -m "$LE_EMAIL" --redirect --keep-until-expiring \
-            || echo "!! certbot failed for $HOST — check DNS (*.${HOST#*.} → this host) and port 80; site is up on http"
-        systemctl reload apache2
+    [[ "$TLS_MODE" == "per-host" ]] && apache_tls || true
+}
+apache_tls(){
+    log "requesting certificate for $HOST"
+    if certbot --apache -d "$HOST" --non-interactive --agree-tos -m "$LE_EMAIL" --redirect --keep-until-expiring; then
+        systemctl reload apache2; return 0
     fi
+    echo "!! certbot failed for $HOST — check DNS (*.${HOST#*.} → this host) and port 80; site is up on http"
+    return 1
 }
 apache_remove(){
     for conf in "${HOST}.conf" "${HOST}-le-ssl.conf"; do
@@ -86,5 +93,8 @@ case "$ACTION" in
     remove)
         log "removing $HOST ($PROXY)"
         [[ "$PROXY" == "apache" ]] && apache_remove || nginx_remove ;;
+    tls)
+        [[ "$TLS_MODE" == "per-host" ]] || die "TLS_MODE is $TLS_MODE — nothing to issue"
+        [[ "$PROXY" == "apache" ]] && apache_tls || nginx_tls ;;
     *) die "unknown action $ACTION" ;;
 esac

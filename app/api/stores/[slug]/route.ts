@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 // /api/stores/<slug> — mirror of /api/academies/<slug> for the store product.
 //   GET     owner or admin: the row (+ url)
-//   PATCH   admin: { tier } | { suspend } | { validUntil } | { updateImage, tag? } | { retry }
+//   PATCH   admin: { tier } | { suspend } | { validUntil } | { updateImage, tag? } | { retry } | { issueTls }
 //   DELETE  owner or admin: deprovision + delete row + cancel subscriptions
 
 const TAG_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
@@ -92,6 +92,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
         const r = await storeOps.updateImage(slug, tag);
         if (!r.ok) return NextResponse.json({ error: `provisioner: ${r.error}` }, { status: r.status === 409 ? 409 : 502 });
         return NextResponse.json({ ok: true, slug, status: "updating-image", job: r.data?.job ?? null });
+    }
+
+    // ── (Re)issue the TLS certificate (after the wildcard DNS record exists) ──
+    if (body?.issueTls) {
+        const r = await storeOps.issueTls(slug);
+        if (!r.ok) return NextResponse.json({ error: `certbot: ${r.error}` }, { status: 502 });
+        const updated = await prisma.tenant.update({ where: { slug }, data: { lastError: null } });
+        return NextResponse.json({ ok: true, store: publicRow(updated) });
     }
 
     // ── Retry a failed creation (free/comp stores; paid ones use /api/payments/<order>/retry-provision) ──

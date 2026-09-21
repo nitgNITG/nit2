@@ -47,7 +47,11 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
         if (state === "running" && tenant.status === "queued") data.status = "provisioning";
         if (state === "done") {
             data.status = "live";
-            data.lastError = null;
+            // Live over HTTP only: certbot could not issue the cert (usually the wildcard
+            // DNS record is missing). Kept in lastError so the card/admin page show it.
+            data.lastError = body?.tls === "pending"
+                ? "TLS certificate pending — DNS for this store does not point here yet. Add the wildcard A record, then Issue TLS."
+                : null;
             if (typeof body?.image_tag === "string" && body.image_tag) data.imageTag = body.image_tag;
             // Only when nit2 did not supply the owner password (fallback): store it encrypted.
             if (typeof body?.owner_password === "string" && body.owner_password.length >= 8 && !tenant.adminPasswordEnc) {

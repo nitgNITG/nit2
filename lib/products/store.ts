@@ -158,6 +158,8 @@ export const storeOps = {
     resetOwner: (slug: string) =>
         storeProvisionerCall<{ ok: boolean; password?: string; owner?: { email: string } }>(`/reset-owner/${slug}`, { body: {}, timeoutMs: 60_000 }),
     updateImage: (slug: string, tag: string) => storeProvisionerCall(`/update-image/${slug}`, { body: { tag } }),
+    /** (Re)issue the store's Let's Encrypt certificate (after the DNS record exists). Sync, up to 3 min. */
+    issueTls: (slug: string) => storeProvisionerCall(`/tls/${slug}`, { body: {}, timeoutMs: 180_000 }),
     deprovision: (slug: string) => storeProvisionerCall(`/deprovision/${slug}`, { method: "DELETE" }),
     bindDomain: (slug: string, domain: string) => storeProvisionerCall(`/bind-domain/${slug}`, { body: { domain } }),
     unbindDomain: (slug: string) => storeProvisionerCall(`/unbind-domain/${slug}`, { body: {} }),

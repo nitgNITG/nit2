@@ -7,6 +7,7 @@ Store provisioning endpoint — the store counterpart of provisioning/provision-
   POST   /apply-license/<slug>      {tier, definition, expires_at, subscribed_at, grace_days, renew_url} → sync
   POST   /suspend/<slug>            {suspended: bool} → sync
   POST   /reset-owner/<slug>        {email?} → sync, returns the CLI JSON (contains the new password)
+  POST   /tls/<slug>                (re)issue the Let's Encrypt certificate for <slug>.<STORE_DOMAIN> → sync
   POST   /update-image/<slug>       {tag} → queued job
   POST   /update-image              {tag} → bump-image.sh --all, detached (rollout of every store)
   POST   /bind-domain/<slug>        {domain} → queued job     POST /unbind-domain/<slug> → queued job
@@ -537,6 +538,12 @@ class Handler(BaseHTTPRequestHandler):
                 rc, out = _run_sync(argv)
                 res = _last_json_line(out) or {}
                 return self._send(200 if rc == 0 else 500, {"ok": rc == 0, "slug": slug, **res, **({} if rc == 0 else {"error": out[-800:]})})
+
+            if path.startswith("/tls/"):
+                slug = self._slug_from("/tls/")
+                host = f"{slug}.{os.environ.get('STORE_DOMAIN', 'commerce.nitg-eg.com')}"
+                rc, out = _run_sync([BASH, os.path.join(SCRIPTS_DIR, "proxy", "proxy.sh"), "tls", slug, host], timeout=180)
+                return self._send(200 if rc == 0 else 502, {"ok": rc == 0, "slug": slug, "host": host, **({} if rc == 0 else {"error": out[-800:]})})
 
             if path == "/update-image":
                 tag = str(self._json().get("tag", "")).strip()
