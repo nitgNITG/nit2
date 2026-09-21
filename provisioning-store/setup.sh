@@ -31,10 +31,30 @@ _val(){ # NAME DEFAULT → exported var > provision.env > default
 log(){ echo "==> $*"; }
 
 # ── 1. Packages: docker, python3, curl, certbot, ss ─────────────────────────
-log "packages"
+# apt is only touched when something is actually missing, so a re-run on a box
+# that already has everything never waits on the apt/dpkg lock (unattended
+# upgrades run whenever they like).
 export DEBIAN_FRONTEND=noninteractive
-apt-get update -qq
-apt-get install -y -qq ca-certificates curl python3 iproute2 openssl >/dev/null
+_apt_updated=0
+apt_install(){ # packages...
+    if [[ "$_apt_updated" == 0 ]]; then
+        log "apt: installing $*"
+        if fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; then
+            log "waiting for another apt/dpkg process to finish"
+            while fuser /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock >/dev/null 2>&1; do sleep 5; done
+        fi
+        apt-get update -qq; _apt_updated=1
+    fi
+    apt-get install -y -qq "$@" >/dev/null
+}
+missing=()
+for c in curl python3 ss openssl fuser; do command -v "$c" >/dev/null 2>&1 || missing+=("$c"); done
+if ((${#missing[@]})); then
+    log "packages missing: ${missing[*]}"
+    apt_install ca-certificates curl python3 iproute2 openssl psmisc
+else
+    log "packages: curl python3 ss openssl present — apt not needed"
+fi
 if ! command -v docker >/dev/null 2>&1; then
     log "installing docker"
     install -m 0755 -d /etc/apt/keyrings
@@ -42,10 +62,9 @@ if ! command -v docker >/dev/null 2>&1; then
     . /etc/os-release
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${VERSION_CODENAME} stable" \
         > /etc/apt/sources.list.d/docker.list
-    apt-get update -qq
-    apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin >/dev/null
+    apt_install docker-ce docker-ce-cli containerd.io docker-compose-plugin
 fi
-docker compose version >/dev/null 2>&1 || apt-get install -y -qq docker-compose-plugin >/dev/null
+docker compose version >/dev/null 2>&1 || apt_install docker-compose-plugin
 systemctl enable --now docker >/dev/null
 
 # ── 2. Host web server (the stores' vhosts live in it) ──────────────────────
@@ -53,14 +72,17 @@ PROXY="$(_val PROXY "")"
 if [[ -z "$PROXY" ]]; then
     if systemctl is-active --quiet nginx; then PROXY=nginx
     elif systemctl is-active --quiet apache2; then PROXY=apache
-    else PROXY=nginx; log "no web server found — installing nginx"; apt-get install -y -qq nginx >/dev/null; systemctl enable --now nginx; fi
+    else PROXY=nginx; log "no web server found — installing nginx"; apt_install nginx; systemctl enable --now nginx; fi
 fi
 log "proxy: $PROXY"
 TLS_MODE="$(_val TLS_MODE per-host)"
 if [[ "$TLS_MODE" == "per-host" ]]; then
     if ! command -v certbot >/dev/null 2>&1; then
         log "installing certbot"
-        apt-get install -y -qq certbot "python3-certbot-$PROXY" >/dev/null
+        apt_install certbot "python3-certbot-$PROXY"
+    elif ! certbot plugins 2>/dev/null | grep -q "^\* $PROXY"; then
+        log "installing the certbot $PROXY plugin"
+        apt_install "python3-certbot-$PROXY"
     fi
 fi
 
