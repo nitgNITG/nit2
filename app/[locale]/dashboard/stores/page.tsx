@@ -36,6 +36,7 @@ export default function StoresPage() {
   // Versions the host can run (registry + local), from the provisioner.
   const [images, setImages] = useState<{ current: string | null; tags: { tag: string; remote: boolean; local: boolean }[] }>({ current: null, tags: [] });
   const [rolloutTag, setRolloutTag] = useState("");
+  const [imagesError, setImagesError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -49,8 +50,9 @@ export default function StoresPage() {
       setOwners(Object.fromEntries((u.data.users ?? []).map((x: Owner) => [x.id, x])));
       axios.get("/api/stores/images").then(({ data }) => {
         setImages({ current: data.current ?? null, tags: data.tags ?? [] });
+        setImagesError(data.error ?? (data.tags?.length ? null : "no image tags on the host or the registry"));
         setRolloutTag((cur) => cur || data.current || data.tags?.[0]?.tag || "");
-      }).catch(() => {});
+      }).catch((e) => setImagesError(e?.response?.data?.error || e?.message || "could not list versions"));
       axios.get("/api/stores/usage").then(({ data }) => {
         setHost(data.host ?? null);
         setDbBytes(Object.fromEntries(Object.entries(data.stores ?? {}).map(([k, v]: [string, any]) => [k, Number(v?.db_bytes ?? 0)])));
@@ -146,7 +148,7 @@ export default function StoresPage() {
         </div>
         <div className="flex items-center gap-2">
           <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter by slug / name / owner" className="rounded-lg border px-3 py-2 text-sm" />
-          <select value={rolloutTag} onChange={(e) => setRolloutTag(e.target.value)} className="rounded-lg border px-2 py-2 font-mono text-sm" title="Versions available on the registry (CI) or built on the host">
+          <select value={rolloutTag} onChange={(e) => setRolloutTag(e.target.value)} className="rounded-lg border px-2 py-2 font-mono text-sm" title={imagesError ?? "Versions available on the registry (CI) or built on the host"}>
             {images.tags.length === 0 && <option value="">no versions found</option>}
             {images.tags.map((t) => (
               <option key={t.tag} value={t.tag}>{t.tag}{t.tag === images.current ? " (platform)" : ""}{t.remote ? "" : " (local only)"}</option>
@@ -156,6 +158,11 @@ export default function StoresPage() {
           <Link href="/build-product?product=store" className="rounded-lg bg-[#1E7D67] px-4 py-2 text-sm font-bold text-white">+ New store (comp)</Link>
         </div>
       </div>
+      {imagesError && images.tags.length === 0 && (
+        <p className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          Versions unavailable: <span className="font-mono">{imagesError}</span> — if this says 404 / not found, the provisioner on the host is outdated: run <span className="font-mono">bash provisioning-store/deploy.sh --local</span>.
+        </p>
+      )}
       {host && (
         <div className="mb-4 flex flex-wrap gap-4 rounded-xl border bg-white px-4 py-3 text-xs text-gray-600">
           <span>🖥️ Store host</span>
