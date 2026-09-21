@@ -139,9 +139,12 @@ else
 fi
 
 # ── 5. provision.env (values preserved across re-runs) ─────────────────────
+# Written to a temp file first: `cat > "$ENVF" <<…` truncates the file BEFORE
+# the $(_val …) calls in the heredoc read it, which wiped every custom value
+# (CALLBACK_URL, IMAGE_TAG, GHCR_*, PROVISION_PUBLIC_HOST…) on each re-run.
 PROVISION_SECRET="$(_val PROVISION_SECRET "$(openssl rand -hex 32)")"
 log "writing $ENVF"
-cat > "$ENVF" <<ENV
+cat > "$ENVF.new" <<ENV
 PROVISION_SECRET=$PROVISION_SECRET
 PROVISION_PORT=$(_val PROVISION_PORT 9098)
 STORE_ROOT=$STORE_ROOT
@@ -179,6 +182,7 @@ TELEGRAM_CHAT_ID=$(_val TELEGRAM_CHAT_ID "")
 # Public hostname of this service (for CI rollouts from GitHub Actions). Empty = localhost only.
 PROVISION_PUBLIC_HOST=$(_val PROVISION_PUBLIC_HOST "")
 ENV
+mv -f "$ENVF.new" "$ENVF"
 chmod 600 "$ENVF"
 
 # ── 6. Registry login + image pre-pull (so the first creation never pulls) ──
