@@ -9,10 +9,16 @@
 # In production the shared MariaDB is reached over the external `saas_net`
 # network; deploy/compose.local.yml adds a local MariaDB + nginx for testing.
 
+# NETWORKS — read before touching: every project registers its service names
+# (api/site/dash) as DNS aliases on each network it joins. On the SHARED saas_net
+# those names collide across stores, so only `api` joins it (it needs the shared
+# MariaDB); site and dash stay on the private `store` network, where `api` can
+# only ever be this store's api. (A store once rendered another store's data
+# because all three were on saas_net.)
 x-common: &common
   restart: unless-stopped
   env_file: store.env              # next to this file: clients/<slug>/store.env
-  networks: [store, saas_net]
+  networks: [store]
   logging:
     driver: json-file
     options: { max-size: "10m", max-file: "3" }
@@ -21,6 +27,11 @@ services:
   api:
     <<: *common
     image: ${REGISTRY:-ghcr.io/nitgg}/saas-store-api:${IMAGE_TAG:-latest}
+    networks:
+      store: {}
+      saas_net:
+        aliases:
+          - "api-${STORE_SLUG:-store}"   # a unique name on the shared network
     environment:
       SITE_URL: http://site:3000            # revalidate webhook stays inside the project
     volumes:
