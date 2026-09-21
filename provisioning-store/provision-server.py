@@ -391,6 +391,13 @@ def collect_health() -> dict:
     total, avail = kb(mem.get("MemTotal", "")), kb(mem.get("MemAvailable", ""))
     la = _read("/proc/loadavg").split()
     ncpu = os.cpu_count() or 1
+    up = _read("/proc/uptime").split()
+    try:
+        out = subprocess.run(["systemctl", "--failed", "--no-legend", "--plain", "--no-pager"],
+                             capture_output=True, text=True, timeout=15)
+        failed = [l.split()[0] for l in out.stdout.splitlines() if l.strip()]
+    except Exception:
+        failed = []
     try:
         out = subprocess.run(["docker", "ps", "--format", "{{.Names}}"], capture_output=True, text=True, timeout=15)
         names = [n for n in out.stdout.splitlines() if n.strip()]
@@ -405,7 +412,9 @@ def collect_health() -> dict:
         "memory": {"total_bytes": total, "available_bytes": avail,
                    "used_pct": round((total - avail) * 100 / total) if total else 0},
         "cpu": {"count": ncpu, "load1": float(la[0]) if la else 0.0,
+                "load5": float(la[1]) if len(la) > 1 else 0.0, "load15": float(la[2]) if len(la) > 2 else 0.0,
                 "load1_per_core": round(float(la[0]) / ncpu, 2) if la else 0.0},
+        "uptime_seconds": int(float(up[0])) if up else 0, "failed_services": failed,
         "docker": docker, "jobs_active": active, "image_tag": DEFAULT_TAG,
         "generated_at": int(time.time()),
     }

@@ -112,9 +112,15 @@ export async function createStore(input: CreateStoreInput): Promise<CreateStoreR
         return { ok: false, error: "تعذّر تسجيل المتجر، تواصل مع الدعم.", status: 500 };
     }
 
-    await alertAdmins(
-        `🛒 New store: ${slug} ("${input.name}") — tier ${input.lic.key} · ${input.owner.email}`,
-        formatHealth(await fetchStoreHealth()),
-    );
+    // Best effort: the store is queued and recorded by now — never fail the
+    // request over the admin notification.
+    try {
+        await alertAdmins(
+            `🛒 New store: ${slug} ("${input.name}") — tier ${input.lic.key} · ${input.owner.email}`,
+            formatHealth(await fetchStoreHealth(), "Store host health"),
+        );
+    } catch (e) {
+        console.error("[stores] admin alert failed", slug, e);
+    }
     return { ok: true, slug, job: r.data.job, url: storeLiveUrl(slug) };
 }

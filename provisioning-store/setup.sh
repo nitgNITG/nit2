@@ -64,7 +64,26 @@ if ! command -v docker >/dev/null 2>&1; then
         > /etc/apt/sources.list.d/docker.list
     apt_install docker-ce docker-ce-cli containerd.io docker-compose-plugin
 fi
-docker compose version >/dev/null 2>&1 || apt_install docker-compose-plugin
+# Compose v2 + BuildKit (buildx). Package names differ between Docker's own repo
+# (docker-compose-plugin / docker-buildx-plugin) and Ubuntu's docker.io
+# (docker-compose-v2 / docker-buildx); fall back to the release binaries.
+if ! docker compose version >/dev/null 2>&1; then
+    apt_install docker-compose-plugin 2>/dev/null || apt_install docker-compose-v2 2>/dev/null || {
+        log "installing docker compose plugin binary"
+        mkdir -p /usr/local/lib/docker/cli-plugins
+        curl -fsSL "https://github.com/docker/compose/releases/download/v2.29.7/docker-compose-linux-$(uname -m)" -o /usr/local/lib/docker/cli-plugins/docker-compose
+        chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+    }
+fi
+if ! docker buildx version >/dev/null 2>&1; then
+    apt_install docker-buildx-plugin 2>/dev/null || apt_install docker-buildx 2>/dev/null || {
+        log "installing docker buildx plugin binary"
+        mkdir -p /usr/local/lib/docker/cli-plugins
+        arch="$(uname -m)"; [[ "$arch" == "x86_64" ]] && arch=amd64; [[ "$arch" == "aarch64" ]] && arch=arm64
+        curl -fsSL "https://github.com/docker/buildx/releases/download/v0.17.1/buildx-v0.17.1.linux-${arch}" -o /usr/local/lib/docker/cli-plugins/docker-buildx
+        chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
+    }
+fi
 systemctl enable --now docker >/dev/null
 
 # ── 2. Host web server (the stores' vhosts live in it) ──────────────────────
