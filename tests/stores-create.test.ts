@@ -122,6 +122,8 @@ describe("POST /api/stores", () => {
         const sent = JSON.parse(provisionCall![1].body);
         expect(sent.slug).toBe("ziad");
         expect(sent.owner).toMatchObject({ email: "o@x.com", password: "TempPass#123" });
+        // NIT support login travels with the bootstrap; its password is stored encrypted in nit2.
+        expect(sent.nit_admin).toMatchObject({ email: "support@nitg-eg.com", name: "NIT Support", password: "TempPass#123" });
         expect(sent.store).toMatchObject({ country: "EG", currency: "EGP" });
         expect(sent.license).toMatchObject({ tier: "store-free", definition: { limits: { products: 20, staff: 1, categories: -1, storage_mb: -1 }, features: [] } });
         expect(provisionCall![1].headers["X-Provision-Secret"]).toBe("s3cret");
@@ -129,6 +131,7 @@ describe("POST /api/stores", () => {
         const row = db.tenant.create.mock.calls[0][0].data;
         expect(row).toMatchObject({ product: "store", slug: "ziad", status: "queued", tier: "store-free", ownerId: "user-1", branch: null });
         expect(row.adminPasswordEnc).toBe("enc(TempPass#123)");
+        expect(row.nitAdminPasswordEnc).toBe("enc(TempPass#123)");
         expect(row.validUntil).toBeNull(); // durationDays 0 = never expires
     });
 

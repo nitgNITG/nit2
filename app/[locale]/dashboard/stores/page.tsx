@@ -28,8 +28,11 @@ export default function StoresPage() {
   const [owners, setOwners] = useState<Record<string, Owner>>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
-  const [cred, setCred] = useState<{ slug: string; username: string | null; password: string | null; dashboardUrl: string } | null>(null);
+  const [cred, setCred] = useState<{ slug: string; username: string | null; password: string | null; dashboardUrl: string; admin?: { username: string; password: string | null } } | null>(null);
   const [filter, setFilter] = useState("");
+  const [host, setHost] = useState<{ disk?: { free_pct: number; free_bytes: number }; memory?: { used_pct: number }; docker?: { running: number; mariadb_up: boolean }; image_tag?: string | null } | null>(null);
+  const [dbBytes, setDbBytes] = useState<Record<string, number>>({});
+  const [rolling, setRolling] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -41,6 +44,10 @@ export default function StoresPage() {
       setStores(s.data.stores ?? []);
       setLicenses((l.data.licenses ?? []).filter((x: License) => x.active));
       setOwners(Object.fromEntries((u.data.users ?? []).map((x: Owner) => [x.id, x])));
+      axios.get("/api/stores/usage").then(({ data }) => {
+        setHost(data.host ?? null);
+        setDbBytes(Object.fromEntries(Object.entries(data.stores ?? {}).map(([k, v]: [string, any]) => [k, Number(v?.db_bytes ?? 0)])));
+      }).catch(() => {});
     } catch (e: any) {
       toast.error(e?.response?.data?.error || "Could not load stores");
     } finally {
@@ -89,18 +96,36 @@ export default function StoresPage() {
       setBusy(null);
     }
   };
-  const showCred = async (slug: string, reset = false) => {
+  const showCred = async (slug: string, reset: false | "owner" | "nit" = false) => {
     setBusy(slug);
     try {
-      const { data } = reset ? await axios.post(`/api/stores/${slug}/credentials`) : await axios.get(`/api/stores/${slug}/credentials`);
-      setCred({ slug, username: data.username ?? null, password: data.password ?? null, dashboardUrl: data.dashboardUrl ?? `${stores.find((s) => s.slug === slug)?.url}/dashboard` });
-      if (reset) toast.success("Owner password reset and e-mailed");
+      if (reset) await axios.post(`/api/stores/${slug}/credentials`, { which: reset });
+      const { data } = await axios.get(`/api/stores/${slug}/credentials`);
+      setCred({ slug, username: data.username ?? null, password: data.password ?? null, admin: data.admin, dashboardUrl: data.dashboardUrl ?? `${stores.find((s) => s.slug === slug)?.url}/dashboard` });
+      if (reset === "owner") toast.success("Owner password reset and e-mailed");
+      if (reset === "nit") toast.success("NIT support password reset");
     } catch (e: any) {
       toast.error(e?.response?.data?.error || "Could not load credentials");
     } finally {
       setBusy(null);
     }
   };
+
+  const rollout = async () => {
+    const tag = prompt("Image tag to roll out to EVERY store (pinned stores are skipped)", host?.image_tag ?? "");
+    if (!tag) return;
+    if (!confirm(`Roll out ${tag} to all stores? Only containers whose image changed restart.`)) return;
+    setRolling(true);
+    try {
+      await axios.post("/api/stores/update-images", { tag });
+      toast.success(`Rollout of ${tag} started — watch imageTag per store`);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || "Rollout failed");
+    } finally {
+      setRolling(false);
+    }
+  };
+  const gb = (b: number) => `${(b / 1024 ** 3).toFixed(1)} GB`;
 
   const rows = stores.filter((s) => !filter || `${s.slug} ${s.name} ${owners[s.ownerId ?? ""]?.email ?? ""}`.toLowerCase().includes(filter.toLowerCase()));
   const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString("en-GB") : "—");
@@ -114,9 +139,19 @@ export default function StoresPage() {
         </div>
         <div className="flex items-center gap-2">
           <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter by slug / name / owner" className="rounded-lg border px-3 py-2 text-sm" />
+          <button onClick={rollout} disabled={rolling} className="rounded-lg border border-[#1E7D67] px-4 py-2 text-sm font-bold text-[#1E7D67] disabled:opacity-50">Roll out image…</button>
           <Link href="/build-product?product=store" className="rounded-lg bg-[#1E7D67] px-4 py-2 text-sm font-bold text-white">+ New store (comp)</Link>
         </div>
       </div>
+      {host && (
+        <div className="mb-4 flex flex-wrap gap-4 rounded-xl border bg-white px-4 py-3 text-xs text-gray-600">
+          <span>🖥️ Store host</span>
+          {host.disk && <span>Disk free: <b>{host.disk.free_pct}%</b> ({gb(host.disk.free_bytes)})</span>}
+          {host.memory && <span>Memory used: <b>{host.memory.used_pct}%</b></span>}
+          {host.docker && <span>Containers: <b>{host.docker.running}</b> · MariaDB {host.docker.mariadb_up ? "up ✅" : "DOWN ❌"}</span>}
+          <span>Platform tag: <b className="font-mono">{host.image_tag ?? "—"}</b></span>
+        </div>
+      )}
 
       {loading ? <p className="text-gray-400">Loading…</p> : (
         <div className="overflow-x-auto rounded-xl border bg-white">
@@ -164,6 +199,7 @@ export default function StoresPage() {
                     </td>
                     <td className="px-3 py-2 font-mono text-xs">
                       {s.imageTag ?? "—"}
+                      {dbBytes[s.slug] ? <div className="text-[10px] text-gray-400">db {(dbBytes[s.slug] / 1024 ** 2).toFixed(1)} MB</div> : null}
                       <button disabled={isBusy || !["live", "suspended"].includes(s.status)} className="ms-2 text-[#1E7D67] underline disabled:opacity-40" onClick={() => {
                         const tag = prompt("Image tag to move this store to", s.imageTag ?? "latest");
                         if (tag) patch(s.slug, { updateImage: true, tag }, `Updating to ${tag}`);
@@ -198,8 +234,16 @@ export default function StoresPage() {
               <div><span className="text-gray-500">Email:</span> {cred.username ?? "—"}</div>
               <div><span className="text-gray-500">Password:</span> {cred.password ?? <i className="text-gray-400">not stored (changed by owner, or encryption not configured)</i>}</div>
             </div>
-            <div className="mt-5 flex justify-between">
-              <button onClick={() => showCred(cred.slug, true)} disabled={busy === cred.slug} className="rounded bg-amber-500 px-3 py-1.5 text-sm text-white">Reset & e-mail new password</button>
+            <h3 className="mt-5 text-sm font-bold">NIT support login (hidden from the merchant)</h3>
+            <div className="mt-2 space-y-2 font-mono text-sm" dir="ltr">
+              <div><span className="text-gray-500">Email:</span> {cred.admin?.username ?? "—"}</div>
+              <div><span className="text-gray-500">Password:</span> {cred.admin?.password ?? <i className="text-gray-400">not stored</i>}</div>
+            </div>
+            <div className="mt-5 flex flex-wrap justify-between gap-2">
+              <div className="flex gap-2">
+                <button onClick={() => showCred(cred.slug, "owner")} disabled={busy === cred.slug} className="rounded bg-amber-500 px-3 py-1.5 text-sm text-white">Reset owner & e-mail</button>
+                <button onClick={() => showCred(cred.slug, "nit")} disabled={busy === cred.slug} className="rounded bg-gray-700 px-3 py-1.5 text-sm text-white">Reset NIT login</button>
+              </div>
               <button onClick={() => setCred(null)} className="rounded border px-3 py-1.5 text-sm">Close</button>
             </div>
           </div>

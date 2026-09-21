@@ -142,6 +142,8 @@ export type StoreProvisionRequest = {
         logo?: { filename: string; data_b64: string } | null;
     };
     license: ReturnType<typeof storeLicensePayload>;
+    /** NIT support login inside the store (platform user, hidden from the merchant). */
+    nit_admin?: { email: string; name: string; password: string } | null;
     image_tag?: string | null;
     /** Retry of a failed creation: the provisioner destroys the leftovers first, in the same job. */
     force?: boolean;
@@ -155,8 +157,8 @@ export const storeOps = {
         storeProvisionerCall(`/apply-license/${slug}`, { body: license, timeoutMs: 60_000 }),
     suspend: (slug: string, suspended: boolean) =>
         storeProvisionerCall(`/suspend/${slug}`, { body: { suspended }, timeoutMs: 60_000 }),
-    resetOwner: (slug: string) =>
-        storeProvisionerCall<{ ok: boolean; password?: string; owner?: { email: string } }>(`/reset-owner/${slug}`, { body: {}, timeoutMs: 60_000 }),
+    resetOwner: (slug: string, email?: string, platform = false) =>
+        storeProvisionerCall<{ ok: boolean; password?: string; owner?: { email: string } }>(`/reset-owner/${slug}`, { body: email ? { email, ...(platform ? { platform: true } : {}) } : {}, timeoutMs: 60_000 }),
     updateImage: (slug: string, tag: string) => storeProvisionerCall(`/update-image/${slug}`, { body: { tag } }),
     /** (Re)issue the store's Let's Encrypt certificate (after the DNS record exists). Sync, up to 3 min. */
     issueTls: (slug: string) => storeProvisionerCall(`/tls/${slug}`, { body: {}, timeoutMs: 180_000 }),

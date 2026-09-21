@@ -75,8 +75,12 @@ export async function createStore(input: CreateStoreInput): Promise<CreateStoreR
     const now = new Date();
     const validUntil = input.durationDays > 0 ? new Date(now.getTime() + input.durationDays * 86_400_000) : null;
     // nit2 generates the owner's temporary dashboard password so it can be stored
-    // (encrypted) for recovery; the store forces a change on first login.
+    // (encrypted) for recovery; the store forces a change on first login. The NIT
+    // support login (like the academies' `admin`) gets its own random password,
+    // stored encrypted in nitAdminPasswordEnc and never e-mailed.
     const ownerPassword = generateAdminPassword();
+    const nitAdminPassword = generateAdminPassword();
+    const nitAdminEmail = (process.env.STORE_NIT_ADMIN_EMAIL || "support@nitg-eg.com").toLowerCase();
 
     const req: StoreProvisionRequest = {
         slug,
@@ -85,6 +89,7 @@ export async function createStore(input: CreateStoreInput): Promise<CreateStoreR
         owner: { email: input.owner.email, name: input.owner.name || input.owner.email.split("@")[0], locale: input.owner.locale, password: ownerPassword },
         store: input.store,
         license: storeLicensePayload(input.lic, { subscribedAt: now, validUntil, upgradable: computeUpgradable(input.lic.key, input.rank) }),
+        nit_admin: { email: nitAdminEmail, name: "NIT Support", password: nitAdminPassword },
         ...(input.force ? { force: true } : {}),
     };
 
@@ -102,6 +107,7 @@ export async function createStore(input: CreateStoreInput): Promise<CreateStoreR
                 tier: input.lic.key, ownerId: input.owner.id, subscribedAt: now, validUntil,
                 licenseMode: input.licenseMode ?? null,
                 adminPasswordEnc: encryptSecret(ownerPassword),
+                nitAdminPasswordEnc: encryptSecret(nitAdminPassword),
                 progressJson: { job: r.data.job, kind: "create", step: 0, total: 0, label: "Queued", at: now.toISOString() },
             },
         });
