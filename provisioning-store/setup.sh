@@ -19,6 +19,10 @@
 set -euo pipefail
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 [[ $EUID -eq 0 ]] || { echo "run as root (sudo -E bash setup.sh)"; exit 1; }
+# `sudo -E` keeps the caller's HOME, so `docker login` would write the registry
+# credentials to /home/<user>/.docker — where neither the provisioner service
+# (root) nor `sudo docker pull` will ever find them. Everything here acts as root.
+export HOME=/root
 
 STORE_ROOT="${STORE_ROOT:-/var/www/html/saas-stores}"
 ENVF="$STORE_ROOT/provision.env"
