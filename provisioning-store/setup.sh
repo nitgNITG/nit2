@@ -157,6 +157,9 @@ REGISTRY=$(_val REGISTRY ghcr.io/nitgg)
 IMAGE_TAG=$(_val IMAGE_TAG latest)
 GHCR_USER=$(_val GHCR_USER "")
 GHCR_TOKEN=$(_val GHCR_TOKEN "")
+# Follow the newest X.Y.Z tag on the registry automatically (1) or only via CI / the dashboard (0).
+AUTO_UPDATE=$(_val AUTO_UPDATE 1)
+AUTO_UPDATE_MINUTES=$(_val AUTO_UPDATE_MINUTES 15)
 PROXY=$PROXY
 TLS_MODE=$TLS_MODE
 LE_EMAIL=$(_val LE_EMAIL admin@nitg-eg.com)

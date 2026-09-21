@@ -14,8 +14,13 @@ Store provisioning endpoint — the store counterpart of provisioning/provision-
   GET    /domain-status/<slug>
   DELETE /deprovision/<slug>        → queued job (destroy-store.sh)
   GET    /health · GET /usage       host snapshot / per-store sizes
-  GET    /images                    image tags available on the registry (GHCR) and locally, + the platform tag
+  GET    /images                    image tags on the registry (GHCR) and locally, platform tag, newest release,
+                                    auto-update + rollout state
   POST   /_progress/<slug>          internal: scripts report steps (lib.sh); persisted + forwarded to nit2
+
+Auto-update (AUTO_UPDATE=1, every AUTO_UPDATE_MINUTES): the newest X.Y.Z tag on
+the registry is rolled out to every store when it differs from the platform tag -
+the CI callback (POST /update-image) is the fast path, this is the safety net.
 
 Differences from the academy service, on purpose:
   * jobs are persisted in jobs.sqlite and run by a small worker pool — a service
@@ -44,6 +49,10 @@ MAX_CONCURRENT = max(1, int(os.environ.get("MAX_CONCURRENT", "2") or "2"))
 DB_CONTAINER = os.environ.get("SAAS_DB_CONTAINER", "saas_mariadb")
 DEFAULT_TAG  = os.environ.get("IMAGE_TAG", "latest")
 BASH         = os.environ.get("BASH_BIN", "bash")   # explicit path only needed on non-Linux dev boxes
+# Follow the newest release on the registry without waiting for the CI callback
+# (covers "the box was down when CI called" and images pushed by hand).
+AUTO_UPDATE  = os.environ.get("AUTO_UPDATE", "1") not in ("0", "false", "no", "")
+AUTO_UPDATE_MINUTES = max(1, int(os.environ.get("AUTO_UPDATE_MINUTES", "15") or "15"))
 
 
 def platform_tag() -> str:
@@ -370,12 +379,25 @@ def _last_json_line(text: str):
     return None
 
 
-def run_bump_all(tag: str):
+_BUMP = {"proc": None, "tag": None, "at": 0.0, "source": None}
+
+
+def bump_running() -> bool:
+    p = _BUMP["proc"]
+    return p is not None and p.poll() is None
+
+
+def run_bump_all(tag: str, source: str = "api") -> bool:
+    """Start a fleet rollout (detached). Returns False when one is already running."""
+    if bump_running():
+        return False
     logpath = os.path.join(LOG_DIR, "bump-image.log")
     log = open(logpath, "ab", buffering=0)
-    log.write(f"\n===== update-image -> {tag} (all) {time.strftime('%F %T')} =====\n".encode())
-    subprocess.Popen([BASH, script("bump-image.sh"), tag, "--all"], stdout=log, stderr=subprocess.STDOUT,
-                     env={**os.environ, "SCRIPTS_DIR": SCRIPTS_DIR}, start_new_session=True)
+    log.write(f"\n===== update-image -> {tag} (all, {source}) {time.strftime('%F %T')} =====\n".encode())
+    _BUMP["proc"] = subprocess.Popen([BASH, script("bump-image.sh"), tag, "--all"], stdout=log, stderr=subprocess.STDOUT,
+                                     env={**os.environ, "SCRIPTS_DIR": SCRIPTS_DIR}, start_new_session=True)
+    _BUMP.update(tag=tag, at=time.time(), source=source)
+    return True
 
 
 # ── Health / usage ───────────────────────────────────────────────────────────
@@ -518,19 +540,66 @@ def _tag_key(t: str):
     return (0 if t == "latest" else 1, [int(p) for p in parts[:4]] + [0] * (4 - len(parts[:4])), t)
 
 
-def collect_images() -> dict:
+RELEASE_RE = re.compile(r"^\d+\.\d+\.\d+$")   # only real releases are auto-followed (never sha-*/latest)
+
+
+def newest_release(tags) -> str | None:
+    rel = [t for t in tags if RELEASE_RE.match(t)]
+    return max(rel, key=_tag_key) if rel else None
+
+
+def collect_images(force: bool = False) -> dict:
     at, data = _IMAGES_CACHE["at"], _IMAGES_CACHE["data"]
-    if data and time.time() - at < 60:
+    if data and not force and time.time() - at < 60:
         return data
     # A tag is usable only when all three images carry it.
     remote = set.intersection(*(set(_ghcr_tags(f"saas-store-{a}")) for a in ("api", "site", "dash"))) if REGISTRY.startswith("ghcr.io") else set()
     local = set.intersection(*(set(_local_tags(f"saas-store-{a}")) for a in ("api", "site", "dash")))
     tags = sorted(remote | local, key=_tag_key, reverse=True)
-    data = {"registry": REGISTRY, "current": platform_tag(),
+    data = {"registry": REGISTRY, "current": platform_tag(), "latest": newest_release(remote),
             "tags": [{"tag": t, "remote": t in remote, "local": t in local} for t in tags],
+            "auto_update": {"enabled": AUTO_UPDATE, "interval_min": AUTO_UPDATE_MINUTES,
+                            "last_check": int(_AUTO["last_check"]), "last_error": _AUTO["last_error"]},
+            "rollout": {"running": bump_running(), "tag": _BUMP["tag"], "started_at": int(_BUMP["at"]), "source": _BUMP["source"]},
             "generated_at": int(time.time())}
     _IMAGES_CACHE["at"], _IMAGES_CACHE["data"] = time.time(), data
     return data
+
+
+# ── Auto-update: follow the newest release tag ───────────────────────────────
+_AUTO = {"last_check": 0.0, "last_error": None, "tried": {}}
+
+
+def auto_update_tick() -> str | None:
+    """One check. Returns the tag a rollout was started for, else None."""
+    _AUTO["last_check"] = time.time()
+    if bump_running():
+        return None
+    data = collect_images(force=True)
+    latest = data.get("latest")
+    if not latest or latest == platform_tag():
+        return None
+    # A failed rollout (pull denied, unhealthy store...) is retried hourly, not every tick.
+    if time.time() - _AUTO["tried"].get(latest, 0) < 3600:
+        return None
+    _AUTO["tried"][latest] = time.time()
+    if run_bump_all(latest, source="auto"):
+        print(f"[auto-update] newest release {latest} (platform {data.get('current')}) - rolling out", flush=True)
+        _IMAGES_CACHE["data"] = None
+        return latest
+    return None
+
+
+def _auto_update_loop():
+    time.sleep(60)   # let the box settle after a (re)start
+    while True:
+        try:
+            auto_update_tick()
+            _AUTO["last_error"] = None
+        except Exception as e:  # noqa: BLE001
+            _AUTO["last_error"] = str(e)[:300]
+            print(f"[auto-update] {e}", flush=True)
+        time.sleep(AUTO_UPDATE_MINUTES * 60)
 
 
 # ── HTTP ─────────────────────────────────────────────────────────────────────
@@ -626,7 +695,8 @@ class Handler(BaseHTTPRequestHandler):
                 tag = str(self._json().get("tag", "")).strip()
                 if not TAG_RE.match(tag):
                     return self._send(400, {"error": "invalid tag"})
-                run_bump_all(tag)
+                if not run_bump_all(tag, source="api"):
+                    return self._send(409, {"error": f"a rollout to {_BUMP['tag']} is still running"})
                 _IMAGES_CACHE["data"] = None
                 return self._send(202, {"ok": True, "status": "rolling-out", "tag": tag})
 
@@ -710,5 +780,8 @@ if __name__ == "__main__":
     _recover_on_start()
     for _ in range(MAX_CONCURRENT):
         threading.Thread(target=_worker, daemon=True).start()
-    print(f"store provisioner on 127.0.0.1:{PORT} root={STORE_ROOT} workers={MAX_CONCURRENT}", flush=True)
+    if AUTO_UPDATE:
+        threading.Thread(target=_auto_update_loop, daemon=True).start()
+    auto = f"every {AUTO_UPDATE_MINUTES}min" if AUTO_UPDATE else "off"
+    print(f"store provisioner on 127.0.0.1:{PORT} root={STORE_ROOT} workers={MAX_CONCURRENT} auto-update={auto}", flush=True)
     ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()

@@ -43,10 +43,18 @@ On the host: `STORE_ROOT=/var/www/html/saas-stores` holds `provision.env`, the s
 | `POST /suspend/<slug>` | `{suspended}` | sync |
 | `POST /reset-owner/<slug>` | `{email?}` | sync; returns the new temporary password (nit2 stores it encrypted) |
 | `POST /tls/<slug>` | — | (re)issue the Let's Encrypt certificate; a creation whose certbot failed (DNS not ready) goes live over HTTP with `tls:"pending"` |
-| `POST /update-image/<slug>` · `POST /update-image` | `{tag}` | one store (queued) · every store (detached `bump-image.sh --all`) |
+| `POST /update-image/<slug>` · `POST /update-image` | `{tag}` | one store (queued) · every store (detached `bump-image.sh --all`; 409 while one is running) |
+| `GET /images` | — | tags on the registry ∩ local, `current` platform tag, `latest` release, `auto_update` + `rollout` state (the dashboard version picker) |
 | `POST /bind-domain/<slug>` · `POST /unbind-domain/<slug>` · `GET /domain-status/<slug>` | `{domain}` | queued |
 | `DELETE /deprovision/<slug>` | — | queued `destroy-store.sh` |
 | `GET /health` · `GET /usage` | — | host snapshot (nit2's create gate) · per-store image tag + DB size |
+
+**Auto-update.** With `AUTO_UPDATE=1` (default) the service checks the registry every
+`AUTO_UPDATE_MINUTES` (15) and rolls every store to the newest `X.Y.Z` tag when it differs
+from `IMAGE_TAG` in `provision.env` — the CI callback is the fast path, this is the safety
+net (box was down when CI called, image pushed by hand). Pinned stores (`clients/<slug>/pin`)
+are skipped as always; a failed rollout is retried hourly. `sha-*` / `latest` are never
+auto-followed. Set `AUTO_UPDATE=0` to move stores only via CI or the dashboard.
 
 Every queued job reports each step to nit2 — `POST $CALLBACK_URL/api/tenants/<slug>/progress`
 with `x-worker-secret: $WORKER_SECRET` and `{product:"store", job, kind, state, step, total,

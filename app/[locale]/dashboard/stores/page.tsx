@@ -34,7 +34,14 @@ export default function StoresPage() {
   const [dbBytes, setDbBytes] = useState<Record<string, number>>({});
   const [rolling, setRolling] = useState(false);
   // Versions the host can run (registry + local), from the provisioner.
-  const [images, setImages] = useState<{ current: string | null; tags: { tag: string; remote: boolean; local: boolean }[] }>({ current: null, tags: [] });
+  type Images = {
+    current: string | null;
+    latest?: string | null;                                   // newest X.Y.Z on the registry
+    tags: { tag: string; remote: boolean; local: boolean }[];
+    auto_update?: { enabled: boolean; interval_min: number; last_check: number; last_error: string | null };
+    rollout?: { running: boolean; tag: string | null; started_at: number; source: string | null };
+  };
+  const [images, setImages] = useState<Images>({ current: null, tags: [] });
   const [rolloutTag, setRolloutTag] = useState("");
   const [imagesError, setImagesError] = useState<string | null>(null);
 
@@ -49,9 +56,10 @@ export default function StoresPage() {
       setLicenses((l.data.licenses ?? []).filter((x: License) => x.active));
       setOwners(Object.fromEntries((u.data.users ?? []).map((x: Owner) => [x.id, x])));
       axios.get("/api/stores/images").then(({ data }) => {
-        setImages({ current: data.current ?? null, tags: data.tags ?? [] });
+        setImages({ current: data.current ?? null, latest: data.latest ?? null, tags: data.tags ?? [], auto_update: data.auto_update, rollout: data.rollout });
         setImagesError(data.error ?? (data.tags?.length ? null : "no image tags on the host or the registry"));
-        setRolloutTag((cur) => cur || data.current || data.tags?.[0]?.tag || "");
+        // Default to the newest release so "Roll out to all" = "go to latest".
+        setRolloutTag((cur) => cur || data.latest || data.current || data.tags?.[0]?.tag || "");
       }).catch((e) => setImagesError(e?.response?.data?.error || e?.message || "could not list versions"));
       axios.get("/api/stores/usage").then(({ data }) => {
         setHost(data.host ?? null);
@@ -151,7 +159,7 @@ export default function StoresPage() {
           <select value={rolloutTag} onChange={(e) => setRolloutTag(e.target.value)} className="rounded-lg border px-2 py-2 font-mono text-sm" title={imagesError ?? "Versions available on the registry (CI) or built on the host"}>
             {images.tags.length === 0 && <option value="">no versions found</option>}
             {images.tags.map((t) => (
-              <option key={t.tag} value={t.tag}>{t.tag}{t.tag === images.current ? " (platform)" : ""}{t.remote ? "" : " (local only)"}</option>
+              <option key={t.tag} value={t.tag}>{t.tag}{t.tag === images.latest ? " (latest)" : ""}{t.tag === images.current ? " (platform)" : ""}{t.remote ? "" : " (local only)"}</option>
             ))}
           </select>
           <button onClick={rollout} disabled={rolling || !rolloutTag} className="rounded-lg border border-[#1E7D67] px-4 py-2 text-sm font-bold text-[#1E7D67] disabled:opacity-50">Roll out to all</button>
@@ -170,6 +178,14 @@ export default function StoresPage() {
           {host.memory && <span>Memory used: <b>{host.memory.used_pct}%</b></span>}
           {host.docker && <span>Containers: <b>{host.docker.running}</b> · MariaDB {host.docker.mariadb_up ? "up ✅" : "DOWN ❌"}</span>}
           <span>Platform tag: <b className="font-mono">{host.image_tag ?? "—"}</b></span>
+          {images.rollout?.running && <span className="text-amber-700">⏳ rolling out <b className="font-mono">{images.rollout.tag}</b> ({images.rollout.source})</span>}
+          {images.auto_update && (
+            <span title={images.auto_update.last_error ? `last check failed: ${images.auto_update.last_error}` : undefined}>
+              Auto-update: {images.auto_update.enabled
+                ? <>follows newest release{images.latest ? <> (<b className="font-mono">{images.latest}</b>)</> : null} · every {images.auto_update.interval_min} min{images.auto_update.last_error ? " ⚠️" : ""}</>
+                : "off (CI / manual only)"}
+            </span>
+          )}
         </div>
       )}
 
