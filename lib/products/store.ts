@@ -34,7 +34,13 @@ export async function storeProvisionerCall<T = any>(
     const base = process.env.STORE_PROVISION_URL;
     const secret = process.env.STORE_PROVISION_SECRET;
     if (!base || !secret) return { ok: false, status: 0, error: "store provisioner not configured" };
-    const url = new URL(base);
+    let url: URL;
+    try {
+        url = new URL(base);
+    } catch {
+        // A bare hostname in STORE_PROVISION_URL used to crash every stores route with a 500.
+        return { ok: false, status: 0, error: `STORE_PROVISION_URL is not a URL (needs http:// or https://): ${base}` };
+    }
     url.pathname = (url.pathname.replace(/\/$/, "") + path).replace(/\/{2,}/g, "/");
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), init.timeoutMs ?? 15_000);
