@@ -159,10 +159,11 @@ const Navbar = () => {
         | { name: string; links: NavLink[] }
 
     // Pricing dropdown — like Services, but a flat list of product lines. Academies
-    // is live (→ /pricing); e-commerce and loyalty are coming soon.
+    // and e-commerce stores are live (the pricing page switches catalogue with
+    // ?product=); loyalty is coming soon.
     const pricingLinks: NavLink[] = [
-        { name: isAr ? 'الأكاديميات (منصات تعليمية)' : 'Academies (LMS)', href: '/pricing' },
-        { name: isAr ? 'التجارة الإلكترونية' : 'E-commerce apps', href: '/pricing', soon: true },
+        { name: isAr ? 'الأكاديميات (منصات تعليمية)' : 'Academies (LMS)', href: '/pricing?product=academy' },
+        { name: isAr ? 'المتاجر الإلكترونية' : 'E-commerce stores', href: '/pricing?product=store' },
         { name: isAr ? 'أنظمة الولاء' : 'Loyalty apps', href: '/pricing', soon: true },
     ]
 
@@ -196,8 +197,10 @@ const Navbar = () => {
     const MOBILE_LINK_BASE = 'inline-block font-semibold text-xl px-5 py-2 rounded-full transition-colors'
     const MOBILE_ACTIVE_CLASS = 'bg-[#00FFB2]/15 text-[#00FFB2] font-bold ring-1 ring-[#00FFB2]/30'
 
+    // Compare paths only: a link may carry a query (?product=store) that the
+    // pathname never includes.
     const isActive = (href: string) =>
-        href === '/' ? pathname === `/${locale}` : `/${locale}${href}` === pathname
+        href === '/' ? pathname === `/${locale}` : `/${locale}${href.split('?')[0]}` === pathname
 
     const NAV_BAR_CLASS = clsx(
         'transition-all duration-700 ease-in-out w-full mx-auto bg-white',

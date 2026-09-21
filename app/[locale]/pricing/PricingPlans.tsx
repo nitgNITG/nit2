@@ -62,6 +62,9 @@ export default function PricingPlans({ initialProduct = 'academy' }: { initialPr
     const [cycle, setCycle] = useState<'monthly' | 'annual'>('annual')
     const [openFeats, setOpenFeats] = useState<Record<string, boolean>>({}) // per-card feature list toggle
 
+    // Navbar links switch ?product= while this component stays mounted.
+    useEffect(() => { setProduct(initialProduct) }, [initialProduct])
+
     useEffect(() => {
         setLoading(true)
         axios.get(`/api/licenses?product=${product}`)
