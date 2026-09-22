@@ -541,6 +541,9 @@ def _tag_key(t: str):
 
 
 RELEASE_RE = re.compile(r"^\d+\.\d+\.\d+$")   # only real releases are auto-followed (never sha-*/latest)
+# CI also pushes sha-<commit> and dev-<commit> aliases of the same images (traceability);
+# they are noise in a version picker, so /images lists releases, `dev` and `latest` only.
+ALIAS_RE   = re.compile(r"^(sha-[0-9a-f]{7,}|dev-[0-9a-f]{7,})$")
 
 
 def newest_release(tags) -> str | None:
@@ -555,7 +558,7 @@ def collect_images(force: bool = False) -> dict:
     # A tag is usable only when all three images carry it.
     remote = set.intersection(*(set(_ghcr_tags(f"saas-store-{a}")) for a in ("api", "site", "dash"))) if REGISTRY.startswith("ghcr.io") else set()
     local = set.intersection(*(set(_local_tags(f"saas-store-{a}")) for a in ("api", "site", "dash")))
-    tags = sorted(remote | local, key=_tag_key, reverse=True)
+    tags = sorted((t for t in remote | local if not ALIAS_RE.match(t)), key=_tag_key, reverse=True)
     data = {"registry": REGISTRY, "current": platform_tag(), "latest": newest_release(remote),
             "tags": [{"tag": t, "remote": t in remote, "local": t in local} for t in tags],
             "auto_update": {"enabled": AUTO_UPDATE, "interval_min": AUTO_UPDATE_MINUTES,
