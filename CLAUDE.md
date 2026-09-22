@@ -78,8 +78,9 @@ change adds or updates a test there.
 - **`.env` `$` escaping.** A literal `$` in a nit2 `.env` value is truncated unless
   written `\$` (dotenv-expand runs variable expansion). Bit us on secrets/keys.
 - **Two email paths.** Academy Moodle mail sends welcome / expiry / receipts; the
-  site-account SMTP path (`MAIL_*`, nodemailer) sends verify / forgot-password. Don't
-  conflate them.
+  site-account SMTP path (`MAIL_*`, nodemailer) sends verify / forgot-password **and
+  the store expiry / suspension mails** (`lib/tenants/storeExpiryEmail.ts`, from the
+  daily cron — stores have no platform mail path of their own). Don't conflate them.
 - **Never store plaintext secrets.** `saveIntegrationSettings` refuses to save when
   `CREDENTIAL_SECRET` is unset rather than persisting an empty/plaintext secret — keep
   that guard.
