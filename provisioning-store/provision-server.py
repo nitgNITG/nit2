@@ -16,6 +16,8 @@ Store provisioning endpoint — the store counterpart of provisioning/provision-
   GET    /health · GET /usage       host snapshot / per-store sizes
   GET    /images                    image tags on the registry (GHCR) and locally, platform tag, newest release,
                                     auto-update + rollout state
+  GET/POST /config                  host settings nit2 manages (mail, Cloudinary, Google, memory, auto-update):
+                                    POST {values} rewrites provision.env and runs apply-config.sh for running stores
   POST   /_progress/<slug>          internal: scripts report steps (lib.sh); persisted + forwarded to nit2
 
 Auto-update (AUTO_UPDATE=1, every AUTO_UPDATE_MINUTES): the newest X.Y.Z tag on
@@ -51,8 +53,94 @@ DEFAULT_TAG  = os.environ.get("IMAGE_TAG", "latest")
 BASH         = os.environ.get("BASH_BIN", "bash")   # explicit path only needed on non-Linux dev boxes
 # Follow the newest release on the registry without waiting for the CI callback
 # (covers "the box was down when CI called" and images pushed by hand).
-AUTO_UPDATE  = os.environ.get("AUTO_UPDATE", "1") not in ("0", "false", "no", "")
-AUTO_UPDATE_MINUTES = max(1, int(os.environ.get("AUTO_UPDATE_MINUTES", "15") or "15"))
+ENV_PATH     = os.path.join(STORE_ROOT, "provision.env")
+
+
+_ENV_PLAIN = re.compile(r"^[A-Za-z0-9_./:@%+=,-]*$")
+
+
+def env_quote(v: str) -> str:
+    """provision.env is `source`d by bash (setup.sh, lib.sh) and read by systemd
+    and compose: anything beyond a plain token is double-quoted."""
+    return v if _ENV_PLAIN.match(v) else '"' + v.replace("\\", "\\\\").replace('"', '\\"').replace("$", "\$").replace("`", "\`") + '"'
+
+
+def env_unquote(v: str) -> str:
+    v = v.strip()
+    if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'":
+        inner = v[1:-1]
+        return inner.replace('\\"', '"').replace("\$", "$").replace("\`", "`").replace("\\\\", "\\") if v[0] == '"' else inner
+    return v
+
+
+def env_file_get(key: str, default: str = "") -> str:
+    """Read one key from provision.env (the file, not the process env — nit2 can
+    rewrite it through POST /config while we run)."""
+    try:
+        with open(ENV_PATH) as f:
+            for line in f:
+                if line.startswith(key + "="):
+                    return env_unquote(line.split("=", 1)[1])
+    except OSError:
+        pass
+    return default
+
+
+def env_file_set(values: dict) -> list:
+    """Rewrite provision.env with the given KEY=value pairs (added when missing).
+    Returns the keys whose value actually changed. Values are written raw, one
+    per line, like setup.sh writes them."""
+    try:
+        lines = open(ENV_PATH).read().splitlines()
+    except OSError:
+        lines = []
+    changed = []
+    seen = set()
+    out = []
+    for line in lines:
+        k = line.split("=", 1)[0] if "=" in line and not line.startswith("#") else None
+        if k in values:
+            seen.add(k)
+            new = f"{k}={env_quote(values[k])}"
+            if line != new:
+                changed.append(k)
+            out.append(new)
+        else:
+            out.append(line)
+    for k, v in values.items():
+        if k not in seen:
+            out.append(f"{k}={env_quote(v)}")
+            changed.append(k)
+    tmp = ENV_PATH + ".new"
+    with open(tmp, "w") as f:
+        f.write("\n".join(out) + "\n")
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, ENV_PATH)
+    return changed
+
+
+def auto_update_enabled() -> bool:
+    return env_file_get("AUTO_UPDATE", os.environ.get("AUTO_UPDATE", "1")) not in ("0", "false", "no", "")
+
+
+def auto_update_minutes() -> int:
+    try:
+        return max(1, int(env_file_get("AUTO_UPDATE_MINUTES", os.environ.get("AUTO_UPDATE_MINUTES", "15")) or "15"))
+    except ValueError:
+        return 15
+
+
+# Keys nit2's Platform Settings → Stores tab may push (POST /config). Everything
+# else in provision.env (secrets of this service, ports, DB) stays host-only.
+CONFIG_KEYS = {
+    "AUTO_UPDATE", "AUTO_UPDATE_MINUTES",
+    "MAIL_HOST", "MAIL_PORT", "MAIL_USER", "MAIL_PASS", "MAIL_FROM",
+    "CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET",
+    "GOOGLE_WEB_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "ACCOUNT_URL", "MAX_IMAGE_MB",
+    "API_MEM", "SITE_MEM", "DASH_MEM",
+}
+# Of those, the ones copied into every store's store.env (apply-config.sh).
+PER_STORE_KEYS = CONFIG_KEYS - {"AUTO_UPDATE", "AUTO_UPDATE_MINUTES"}
 
 
 def platform_tag() -> str:
@@ -561,7 +649,7 @@ def collect_images(force: bool = False) -> dict:
     tags = sorted((t for t in remote | local if not ALIAS_RE.match(t)), key=_tag_key, reverse=True)
     data = {"registry": REGISTRY, "current": platform_tag(), "latest": newest_release(remote),
             "tags": [{"tag": t, "remote": t in remote, "local": t in local} for t in tags],
-            "auto_update": {"enabled": AUTO_UPDATE, "interval_min": AUTO_UPDATE_MINUTES,
+            "auto_update": {"enabled": auto_update_enabled(), "interval_min": auto_update_minutes(),
                             "last_check": int(_AUTO["last_check"]), "last_error": _AUTO["last_error"]},
             "rollout": {"running": bump_running(), "tag": _BUMP["tag"], "started_at": int(_BUMP["at"]), "source": _BUMP["source"]},
             "generated_at": int(time.time())}
@@ -576,7 +664,7 @@ _AUTO = {"last_check": 0.0, "last_error": None, "tried": {}}
 def auto_update_tick() -> str | None:
     """One check. Returns the tag a rollout was started for, else None."""
     _AUTO["last_check"] = time.time()
-    if bump_running():
+    if not auto_update_enabled() or bump_running():
         return None
     data = collect_images(force=True)
     latest = data.get("latest")
@@ -602,7 +690,7 @@ def _auto_update_loop():
         except Exception as e:  # noqa: BLE001
             _AUTO["last_error"] = str(e)[:300]
             print(f"[auto-update] {e}", flush=True)
-        time.sleep(AUTO_UPDATE_MINUTES * 60)
+        time.sleep(auto_update_minutes() * 60)
 
 
 # ── HTTP ─────────────────────────────────────────────────────────────────────
@@ -694,6 +782,30 @@ class Handler(BaseHTTPRequestHandler):
                 rc, out = _run_sync([BASH, os.path.join(SCRIPTS_DIR, "proxy", "proxy.sh"), "tls", slug, host], timeout=180)
                 return self._send(200 if rc == 0 else 502, {"ok": rc == 0, "slug": slug, "host": host, **({} if rc == 0 else {"error": out[-800:]})})
 
+            if path == "/config":
+                values = self._json().get("values")
+                if not isinstance(values, dict) or not values:
+                    return self._send(400, {"error": "values object expected"})
+                bad = [k for k in values if k not in CONFIG_KEYS]
+                if bad:
+                    return self._send(400, {"error": f"unknown keys: {', '.join(sorted(bad))}"})
+                clean = {}
+                for k, v in values.items():
+                    v = str(v).strip().replace("\n", " ")
+                    if len(v) > 500:
+                        return self._send(400, {"error": f"{k}: too long"})
+                    clean[k] = v
+                changed = env_file_set(clean)
+                per_store = sorted(k for k in changed if k in PER_STORE_KEYS)
+                stores = len(glob.glob(os.path.join(STORE_ROOT, "clients", "*", "store.env")))
+                if per_store and stores:
+                    logf = open(os.path.join(LOG_DIR, "apply-config.log"), "ab", buffering=0)
+                    logf.write(f"\n===== apply-config {' '.join(per_store)} {time.strftime('%F %T')} =====\n".encode())
+                    subprocess.Popen([BASH, script("apply-config.sh"), *per_store], stdout=logf, stderr=subprocess.STDOUT,
+                                     env={**os.environ, "SCRIPTS_DIR": SCRIPTS_DIR}, start_new_session=True)
+                _IMAGES_CACHE["data"] = None
+                return self._send(200, {"ok": True, "changed": changed, "applied_to_stores": per_store, "stores": stores})
+
             if path == "/update-image":
                 tag = str(self._json().get("tag", "")).strip()
                 if not TAG_RE.match(tag):
@@ -740,6 +852,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, collect_usage())
             if path == "/images":
                 return self._send(200, collect_images())
+            if path == "/config":
+                secret = {"MAIL_PASS", "CLOUDINARY_API_SECRET", "GOOGLE_CLIENT_SECRET"}
+                return self._send(200, {"values": {k: ("••••" if k in secret and env_file_get(k) else env_file_get(k)) for k in sorted(CONFIG_KEYS)}})
             if path.startswith("/domain-status/"):
                 slug = self._slug_from("/domain-status/")
                 try:
@@ -783,8 +898,7 @@ if __name__ == "__main__":
     _recover_on_start()
     for _ in range(MAX_CONCURRENT):
         threading.Thread(target=_worker, daemon=True).start()
-    if AUTO_UPDATE:
-        threading.Thread(target=_auto_update_loop, daemon=True).start()
-    auto = f"every {AUTO_UPDATE_MINUTES}min" if AUTO_UPDATE else "off"
+    threading.Thread(target=_auto_update_loop, daemon=True).start()   # no-op ticks while AUTO_UPDATE=0
+    auto = f"every {auto_update_minutes()}min" if auto_update_enabled() else "off"
     print(f"store provisioner on 127.0.0.1:{PORT} root={STORE_ROOT} workers={MAX_CONCURRENT} auto-update={auto}", flush=True)
     ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()

@@ -114,7 +114,7 @@ log "installing scripts to $STORE_ROOT"
 mkdir -p "$STORE_ROOT"/{clients,logs,staging,proxy}
 chmod 750 "$STORE_ROOT/clients"
 for f in provision-server.py lib.sh create-store.sh destroy-store.sh apply-license.sh apply-suspend.sh \
-         reset-owner.sh update-image.sh bump-image.sh bind-domain.sh unbind-domain.sh upload-image.sh compose.store.yml; do
+         reset-owner.sh update-image.sh bump-image.sh bind-domain.sh unbind-domain.sh upload-image.sh apply-config.sh compose.store.yml; do
     cp "$SRC/$f" "$STORE_ROOT/$f"
 done
 cp "$SRC"/proxy/* "$STORE_ROOT/proxy/"

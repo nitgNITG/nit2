@@ -61,7 +61,11 @@ change adds or updates a test there.
   directly. Keep those two scripts in sync when adding a pushed field.
 - **Integrations.** Shared NIT accounts (Kashier / VDOCipher / Vimeo) live once in
   `PlatformSetting` (encrypted via `lib/secretBox.ts`, key `CREDENTIAL_SECRET`) and are
-  pushed per-academy based on its licence — `lib/integrations.ts`.
+  pushed per-academy based on its licence — `lib/integrations.ts`. The store
+  equivalent is `lib/storeSettings.ts` (Platform Settings → 🛒 Stores tab): host values
+  (mail, Cloudinary, Google, memory, auto-update) are saved there and pushed to the
+  provisioner's `provision.env` via `POST /config` — don't edit that file by hand for
+  those keys any more.
 
 ## Commands
 

@@ -44,6 +44,7 @@ On the host: `STORE_ROOT=/var/www/html/saas-stores` holds `provision.env`, the s
 | `POST /reset-owner/<slug>` | `{email?}` | sync; returns the new temporary password (nit2 stores it encrypted) |
 | `POST /tls/<slug>` | — | (re)issue the Let's Encrypt certificate; a creation whose certbot failed (DNS not ready) goes live over HTTP with `tls:"pending"` |
 | `POST /update-image/<slug>` · `POST /update-image` | `{tag}` | one store (queued) · every store (detached `bump-image.sh --all`; 409 while one is running) |
+| `GET /config` · `POST /config` | `{values}` | host settings nit2's Platform Settings → Stores tab manages (mail, Cloudinary, Google, memory, auto-update). POST rewrites `provision.env` (shell-quoted) and runs `apply-config.sh` to re-apply the per-store keys to every running store |
 | `GET /images` | — | tags on the registry ∩ local, `current` platform tag, `latest` release, `auto_update` + `rollout` state (the dashboard version picker) |
 | `POST /bind-domain/<slug>` · `POST /unbind-domain/<slug>` · `GET /domain-status/<slug>` | `{domain}` | queued |
 | `DELETE /deprovision/<slug>` | — | queued `destroy-store.sh` |

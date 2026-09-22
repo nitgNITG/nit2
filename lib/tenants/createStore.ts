@@ -14,6 +14,7 @@ import {
     STORE_PRODUCT, storeOps, storeLicensePayload, fetchStoreHealth, storeLiveUrl,
     type StoreProvisionRequest,
 } from "@/lib/products/store";
+import { nitAdminEmail as nitAdminEmailSetting } from "@/lib/storeSettings";
 
 export type StoreSettingsInput = StoreProvisionRequest["store"];
 
@@ -80,7 +81,7 @@ export async function createStore(input: CreateStoreInput): Promise<CreateStoreR
     // stored encrypted in nitAdminPasswordEnc and never e-mailed.
     const ownerPassword = generateAdminPassword();
     const nitAdminPassword = generateAdminPassword();
-    const nitAdminEmail = (process.env.STORE_NIT_ADMIN_EMAIL || "support@nitg-eg.com").toLowerCase();
+    const nitAdminEmail = await nitAdminEmailSetting();
 
     const req: StoreProvisionRequest = {
         slug,
