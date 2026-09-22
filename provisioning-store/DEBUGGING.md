@@ -124,6 +124,24 @@ safe. Queue state for the service itself:
 sudo journalctl -u saas-store-provision -n 50 --no-pager
 ```
 
+## Step 5b — no welcome e-mail / images don't upload
+
+The store reads SMTP, Cloudinary and Google **from its own database row**
+(`IntegrationSettings`), not from its container environment — the merchant can
+override them in the dashboard. The provisioner seeds that row from
+`provision.env` at creation, and **Push to store host** re-sends it to existing
+stores. So:
+
+* `(welcome e-mail NOT sent — mail not configured)` on a *new* store → `MAIL_*`
+  was empty in `provision.env` when it was created, or the values never reached
+  the row. Fill them in nit2 → Platform Settings → 🛒 Stores → Save → **Push to
+  store host**, then `Credentials → Reset owner password` to send the mail again.
+* Same for `CLOUDINARY_*` and image uploads.
+
+```bash
+sudo tail -20 /var/www/html/saas-stores/logs/apply-config.log   # what was pushed
+```
+
 ## Step 6 — database
 
 Day-2 work goes through the store's CLI, not SQL. Read-only poking is fine:

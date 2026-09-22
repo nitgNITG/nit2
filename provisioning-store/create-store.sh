@@ -144,6 +144,29 @@ BOOT="$BOOTSTRAP_JSON"
 if [[ -n "$LOGO_URL" ]]; then
     BOOT="$(J="$BOOT" U="$LOGO_URL" "${PYTHON_BIN:-python3}" -c 'import json,os; d=json.loads(os.environ["J"]); d["logo_url"]=os.environ["U"]; print(json.dumps(d, ensure_ascii=False))')"
 fi
+# NIT's shared accounts (mail / Cloudinary / Google) come from provision.env and
+# are written into the store's own IntegrationSettings row — the api stopped
+# reading them from the environment (20260922140000_integration_settings), which
+# is why a store could not send its welcome e-mail.
+BOOT="$(J="$BOOT" SLUG="$SLUG" "${PYTHON_BIN:-python3}" - <<'PY'
+import json, os
+d = json.loads(os.environ["J"])
+def block(pairs):
+    out = {k: v for k, v in pairs if v}
+    return out or None
+mail = block([("host", os.environ.get("MAIL_HOST")), ("port", os.environ.get("MAIL_PORT")),
+              ("user", os.environ.get("MAIL_USER")), ("pass", os.environ.get("MAIL_PASS")),
+              ("from", os.environ.get("MAIL_FROM"))])
+cloud = block([("cloud_name", os.environ.get("CLOUDINARY_CLOUD_NAME")), ("api_key", os.environ.get("CLOUDINARY_API_KEY")),
+               ("api_secret", os.environ.get("CLOUDINARY_API_SECRET")), ("root_folder", f"stores/{os.environ['SLUG']}"),
+               ("max_file_size_mb", os.environ.get("MAX_IMAGE_MB"))])
+google = block([("client_id", os.environ.get("GOOGLE_WEB_CLIENT_ID")), ("client_secret", os.environ.get("GOOGLE_CLIENT_SECRET"))])
+integrations = {k: v for k, v in (("mail", mail), ("cloudinary", cloud), ("google", google)) if v}
+if integrations:
+    d["integrations"] = integrations
+print(json.dumps(d, ensure_ascii=False))
+PY
+)"
 SETUP_OUT="$(store_cli setup --file - <<<"$BOOT")" || { echo "$SETUP_OUT"; die "cli setup failed"; }
 [[ "$(json_get "$SETUP_OUT" ok)" == "True" ]] || die "cli setup: $(json_get "$SETUP_OUT" error)"
 OWNER_EMAIL="$(json_get "$SETUP_OUT" owner.email)"

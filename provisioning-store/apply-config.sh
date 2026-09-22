@@ -43,7 +43,29 @@ PY
     # compose compares the rendered config: unchanged env → nothing restarts.
     if compose up -d --remove-orphans 2>&1 | grep -v '^$'; then :; fi
     P_API="$(env_get "$ENV_FILE" P_API)"
-    if wait_api_health "$P_API" 120; then OK+=("$slug"); else FAILED+=("$slug"); fi
+    if ! wait_api_health "$P_API" 120; then FAILED+=("$slug"); continue; fi
+    # The api reads mail / Cloudinary / Google from its own IntegrationSettings
+    # row, not from the environment, so the new values have to go in through the
+    # CLI. Only non-empty ones are sent: a store's own edits are never blanked.
+    INTEG="$(SLUG="$slug" "${PYTHON_BIN:-python3}" - <<'PY'
+import json, os
+def block(pairs):
+    out = {k: v for k, v in pairs if v}
+    return out or None
+mail = block([("host", os.environ.get("MAIL_HOST")), ("port", os.environ.get("MAIL_PORT")),
+              ("user", os.environ.get("MAIL_USER")), ("pass", os.environ.get("MAIL_PASS")),
+              ("from", os.environ.get("MAIL_FROM"))])
+cloud = block([("cloud_name", os.environ.get("CLOUDINARY_CLOUD_NAME")), ("api_key", os.environ.get("CLOUDINARY_API_KEY")),
+               ("api_secret", os.environ.get("CLOUDINARY_API_SECRET")), ("root_folder", f"stores/{os.environ['SLUG']}"),
+               ("max_file_size_mb", os.environ.get("MAX_IMAGE_MB"))])
+google = block([("client_id", os.environ.get("GOOGLE_WEB_CLIENT_ID")), ("client_secret", os.environ.get("GOOGLE_CLIENT_SECRET"))])
+print(json.dumps({k: v for k, v in (("mail", mail), ("cloudinary", cloud), ("google", google)) if v}, ensure_ascii=False))
+PY
+)"
+    if [[ "$INTEG" != "{}" ]]; then
+        if OUT="$(store_cli integrations --file - <<<"$INTEG")"; then log "$slug integrations: $OUT"; else warn "$slug: integrations push failed"; fi
+    fi
+    OK+=("$slug")
 done
 SUMMARY="⚙️ store config ($*): ok=${#OK[@]} failed=${#FAILED[@]}"
 [[ ${#FAILED[@]} -gt 0 ]] && SUMMARY="$SUMMARY · failed: ${FAILED[*]}"
