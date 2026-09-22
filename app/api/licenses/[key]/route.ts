@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { parseLicense } from "@/lib/licenseShape";
 import { toLicenseDefinition, computeUpgradable } from "@/lib/licenseDefinition";
 import { triggerApplyIntegrations } from "@/lib/provisionAcademy";
+import { pushStoreLicense } from "@/lib/products/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,6 +37,17 @@ async function reapplyToAcademies(
     return academies.length;
 }
 
+// Same for stores: every live store on this plan gets the new caps/features
+// pushed into its own PlatformLicense row, so a toggle takes effect at once
+// instead of waiting for the next plan change or renewal.
+async function reapplyToStores(key: string): Promise<number> {
+    const stores = await prisma.tenant.findMany({ where: { tier: key, product: "store", status: "live" }, select: { slug: true } });
+    const results = await Promise.allSettled(stores.map((s) => pushStoreLicense(s.slug)));
+    const failed = results.filter((r) => r.status === "rejected" || !r.value.ok);
+    if (failed.length) console.error(`[licenses] re-apply to stores: ${failed.length}/${stores.length} failed for ${key}`);
+    return stores.length - failed.length;
+}
+
 async function requireAdmin() {
     const user = await getCurrentUser();
     if (!user) return { error: "unauthorized", status: 401 as const };
@@ -51,12 +63,20 @@ export async function PUT(req: NextRequest, { params }: { params: { key: string 
         const data = parseLicense(await req.json());
         if (!data.name) return NextResponse.json({ error: "name required" }, { status: 400 });
         const license = await prisma.license.update({ where: { key: params.key }, data });
-        // Push the new limits/features to every academy already on this licence.
-        const rankLics = await prisma.license.findMany({ where: { active: true }, select: { key: true, active: true, order: true, priceEgp: true } });
-        const applied = await reapplyToAcademies(params.key, toLicenseDefinition(license, { upgradable: computeUpgradable(params.key, rankLics) }), {
-            videoSource: license.videoSource, kashierEnabled: license.kashierEnabled,
-        });
-        return NextResponse.json({ license, applied, message: `License updated${applied ? ` — re-applied to ${applied} academ${applied === 1 ? "y" : "ies"}` : ""}` });
+        // Push the new limits/features to every tenant already on this licence.
+        let applied = 0;
+        let noun = "academies";
+        if (license.product === "store") {
+            applied = await reapplyToStores(params.key);
+            noun = applied === 1 ? "store" : "stores";
+        } else {
+            const rankLics = await prisma.license.findMany({ where: { active: true }, select: { key: true, active: true, order: true, priceEgp: true } });
+            applied = await reapplyToAcademies(params.key, toLicenseDefinition(license, { upgradable: computeUpgradable(params.key, rankLics) }), {
+                videoSource: license.videoSource, kashierEnabled: license.kashierEnabled,
+            });
+            noun = applied === 1 ? "academy" : "academies";
+        }
+        return NextResponse.json({ license, applied, message: `License updated${applied ? ` — re-applied to ${applied} ${noun}` : ""}` });
     } catch (err: any) {
         if (err?.code === "P2025") return NextResponse.json({ error: "not found" }, { status: 404 });
         console.error("[licenses] update failed", err);
