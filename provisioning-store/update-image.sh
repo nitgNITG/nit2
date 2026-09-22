@@ -28,22 +28,25 @@ report_step 2 $TOTAL "Recreating changed containers"
 compose up -d --remove-orphans 2>&1 | grep -v '^$' || true
 # Verify, don't trust: compose has been seen printing "Running" and leaving a
 # container on the previous image (a storefront kept serving the old build for
-# hours). Recreate for real when any service is still on another tag.
-stale=""
-for svc in api site dash; do
-    cid="$(compose ps -q "$svc" 2>/dev/null | head -1)"
-    [[ -n "$cid" ]] || { stale="$svc"; continue; }
-    running="$(docker inspect --format '{{.Config.Image}}' "$cid" 2>/dev/null)"
-    [[ "$running" == *":$TAG" ]] || stale="$stale $svc"
-done
-if [[ -n "${stale// /}" ]]; then
-    warn "still on the old image after up -d:$stale — forcing recreate"
-    compose up -d --force-recreate --remove-orphans 2>&1 | grep -v '^$' || true
+# hours). Compare image IDs, not tags — `dev` is a moving tag, so the container
+# can sit on an old build while still reporting ":dev".
+REGISTRY="${REGISTRY:-ghcr.io/nitgg}"
+wanted_id(){ docker image inspect --format '{{.Id}}' "$REGISTRY/saas-store-$1:$TAG" 2>/dev/null; }
+running_id(){ docker inspect --format '{{.Image}}' "$1" 2>/dev/null; }
+stale_services(){
+    local out="" svc cid
     for svc in api site dash; do
         cid="$(compose ps -q "$svc" 2>/dev/null | head -1)"
-        running="$(docker inspect --format '{{.Config.Image}}' "$cid" 2>/dev/null)"
-        [[ "$running" == *":$TAG" ]] || die "$svc is still on $running after --force-recreate"
+        if [[ -z "$cid" ]] || [[ "$(running_id "$cid")" != "$(wanted_id "$svc")" ]]; then out="$out $svc"; fi
     done
+    printf '%s' "$out"
+}
+stale="$(stale_services)"
+if [[ -n "${stale// /}" ]]; then
+    warn "not on the $TAG image after up -d:$stale — forcing recreate"
+    compose up -d --force-recreate --remove-orphans 2>&1 | grep -v '^$' || true
+    stale="$(stale_services)"
+    [[ -z "${stale// /}" ]] || die "still not on $TAG after --force-recreate:$stale"
 fi
 report_step 3 $TOTAL "Waiting for health"
 P_API="$(env_get "$ENV_FILE" P_API)"
