@@ -1,11 +1,11 @@
-// Licence feature catalogue — one place for the toggle keys, their labels and
-// the tab each one lives under in the licence editor (Add-ons / Blog / Offers /
-// Ads / Coupons), for both products. Values are stored in License.features as
-// {key: bool} and pushed as-is: academies read them through local_license
-// (has_feature), stores through the PlatformLicense definition (requireFeature).
+// Licence feature catalogue — one flat list of toggles per product, shared by the
+// licence editor and the public pricing page. Values live in License.features as
+// {key: bool} and are pushed as-is: academies read them through local_license
+// (has_feature), stores through the PlatformLicense definition (requireFeature in
+// store-api/src/app.ts).
 //
-// Keys marked `pending` are stored and pushed but not enforced by the app yet
-// (the toggle starts working the moment the app gates on it) — the editor says so.
+// `pending` marks a toggle the product does not gate on yet — it is stored and
+// pushed, and starts biting the moment its module calls requireFeature/has_feature.
 
 export type Product = "academy" | "store";
 
@@ -16,55 +16,42 @@ export type FeatureDef = {
     pending?: boolean;
 };
 
-export type FeatureTab = { id: "addons" | "blog" | "offers" | "ads" | "coupons"; label: string; academy: FeatureDef[]; store: FeatureDef[] };
+const ADDONS: FeatureDef = { key: "addons", label: { en: "Add-ons", ar: "الإضافات" }, pending: true };
+const BLOG: FeatureDef = { key: "blog", label: { en: "Blog", ar: "المدونة" } };
+const OFFERS: FeatureDef = { key: "offers", label: { en: "Offers", ar: "العروض" } };
+const ADS: FeatureDef = { key: "ads", label: { en: "Ads", ar: "الإعلانات" } };
+const COUPONS: FeatureDef = { key: "coupons", label: { en: "Coupons", ar: "كوبونات الخصم" } };
 
-export const FEATURE_TABS: FeatureTab[] = [
-    {
-        id: "addons", label: "Add-ons",
-        academy: [
-            { key: "drm", label: { en: "Protected video (DRM)", ar: "فيديو محمي (DRM)" } },
-            { key: "jitsi", label: { en: "Live sessions", ar: "الحصص المباشرة" } },
-            { key: "subscriptions", label: { en: "Subscriptions", ar: "الاشتراكات" } },
-            { key: "packages", label: { en: "Course bundles", ar: "الباقات" } },
-        ],
-        store: [
-            { key: "custom_domain", label: { en: "Custom domain", ar: "دومين خاص" } },
-            { key: "reviews", label: { en: "Product reviews", ar: "تقييمات المنتجات" }, pending: true },
-            { key: "reports", label: { en: "Reports", ar: "التقارير" }, pending: true },
-        ],
-    },
-    {
-        id: "blog", label: "Blog",
-        academy: [{ key: "blog", label: { en: "Blog", ar: "المدونة" }, pending: true }],
-        store: [{ key: "blog", label: { en: "Blog", ar: "المدونة" } }],
-    },
-    {
-        id: "offers", label: "Offers",
-        academy: [{ key: "offers", label: { en: "Offers", ar: "العروض" } }],
-        store: [{ key: "offers", label: { en: "Offers", ar: "العروض" }, pending: true }],
-    },
-    {
-        id: "ads", label: "Ads",
-        academy: [{ key: "ads", label: { en: "Ads / banners", ar: "الإعلانات والبانرات" }, pending: true }],
-        store: [{ key: "ads", label: { en: "Ads / banners", ar: "الإعلانات والبانرات" }, pending: true }],
-    },
-    {
-        id: "coupons", label: "Coupons",
-        academy: [{ key: "coupons", label: { en: "Discount coupons", ar: "كوبونات الخصم" } }],
-        store: [{ key: "coupons", label: { en: "Discount coupons", ar: "كوبونات الخصم" }, pending: true }],
-    },
-];
+export const FEATURES: Record<Product, FeatureDef[]> = {
+    // The five sold on every plan, then the academy-only extras.
+    academy: [
+        ADDONS,
+        { ...BLOG, pending: true },
+        OFFERS,
+        { ...ADS, pending: true },
+        COUPONS,
+        { key: "drm", label: { en: "Protected video (DRM)", ar: "فيديو محمي (DRM)" } },
+        { key: "jitsi", label: { en: "Live sessions", ar: "الحصص المباشرة" } },
+        { key: "subscriptions", label: { en: "Subscriptions", ar: "الاشتراكات" } },
+        { key: "packages", label: { en: "Course bundles", ar: "الباقات" } },
+    ],
+    // Store: blog / ads / coupons are enforced by store-api; offers has no module yet.
+    store: [
+        ADDONS,
+        BLOG,
+        { ...OFFERS, pending: true },
+        ADS,
+        COUPONS,
+        { key: "reports", label: { en: "Reports", ar: "التقارير" } },
+        { key: "reviews", label: { en: "Product reviews", ar: "تقييمات المنتجات" }, pending: true },
+        { key: "custom_domain", label: { en: "Custom domain", ar: "دومين خاص" } },
+    ],
+};
 
-/** All feature defs for a product, in tab order. */
-export function featureDefs(product: Product): FeatureDef[] {
-    return FEATURE_TABS.flatMap((t) => t[product]);
-}
-
-export function featureKeys(product: Product): string[] {
-    return featureDefs(product).map((f) => f.key);
-}
+export const featureDefs = (product: Product): FeatureDef[] => FEATURES[product];
+export const featureKeys = (product: Product): string[] => FEATURES[product].map((f) => f.key);
 
 /** Label lookup (falls back to the key for legacy toggles like `banners`). */
 export function featureLabel(product: Product, key: string, lang: "en" | "ar" = "en"): string {
-    return featureDefs(product).find((f) => f.key === key)?.label[lang] ?? key;
+    return FEATURES[product].find((f) => f.key === key)?.label[lang] ?? key;
 }

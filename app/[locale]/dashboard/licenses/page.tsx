@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
-import { FEATURE_TABS, featureDefs, featureLabel, type Product } from '@/lib/licenseFeatures'
+import { featureDefs, featureLabel, type Product } from '@/lib/licenseFeatures'
 
 type License = {
     id?: string
@@ -56,7 +56,6 @@ const LicensesPage = () => {
     const [saving, setSaving] = useState(false)
     // Which product's plans are listed; a new licence starts on the current tab.
     const [tab, setTab] = useState<Product>('academy')
-    const [featureTab, setFeatureTab] = useState<typeof FEATURE_TABS[number]['id']>('addons')
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -72,12 +71,11 @@ const LicensesPage = () => {
 
     useEffect(() => { load() }, [load])
 
-    const openNew = () => { setForm(blank(tab)); setEditingKey(null); setFeatureTab('addons') }
+    const openNew = () => { setForm(blank(tab)); setEditingKey(null) }
     const openEdit = (l: License) => {
         const b = blank(l.product)
         setForm({ ...b, ...l, limits: { ...b.limits, ...l.limits }, features: { ...b.features, ...l.features } })
         setEditingKey(l.key)
-        setFeatureTab('addons')
     }
     const isStore = form?.product === 'store'
     const visible = licenses.filter((l) => (l.product ?? 'academy') === tab)
@@ -270,33 +268,18 @@ const LicensesPage = () => {
                             : <p className='text-[11px] text-gray-400 mt-1'>quiz / pdf / default are per-course; <strong>video</strong> is a per-academy total (blocks new provider uploads at the limit).</p>}
                     </div>
 
-                    {/* Features — grouped in tabs (Add-ons / Blog / Offers / Ads / Coupons); the
-                        same tabs for both products, each with its own toggles. */}
+                    {/* Features — one flat list of toggles; store keys are enforced by
+                        store-api (requireFeature), academy keys by local_license. */}
                     <div>
                         <p className='text-sm font-semibold mb-2'>Features</p>
-                        <div className='flex flex-wrap gap-1 border-b border-gray-200'>
-                            {FEATURE_TABS.map((ft) => {
-                                const on = ft[form.product].filter((f) => form.features[f.key]).length
-                                return (
-                                    <button key={ft.id} type='button' onClick={() => setFeatureTab(ft.id)}
-                                        className={`-mb-px rounded-t-md border px-3 py-1.5 text-sm ${featureTab === ft.id ? 'border-gray-200 border-b-white bg-white font-bold text-[#1E7D67]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-                                        {ft.label}{on ? <span className='ms-1 rounded-full bg-[#1E7D67]/10 px-1.5 text-[10px] font-bold text-[#1E7D67]'>{on}</span> : null}
-                                    </button>
-                                )
-                            })}
-                        </div>
-                        <div className='rounded-b-lg border border-t-0 border-gray-200 p-4'>
-                            {FEATURE_TABS.filter((ft) => ft.id === featureTab).map((ft) => (
-                                <div key={ft.id} className='flex flex-wrap gap-x-6 gap-y-3'>
-                                    {ft[form.product].map((f) => (
-                                        <label key={f.key} className='flex items-center gap-2 text-sm'>
-                                            <input type='checkbox' checked={!!form.features[f.key]}
-                                                onChange={(e) => setForm((prev) => prev ? { ...prev, features: { ...prev.features, [f.key]: e.target.checked } } : prev)} />
-                                            {f.label.en}
-                                            {f.pending && <span className='rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700' title='Stored and pushed now; the app starts enforcing it once its module gates on this key.'>not enforced yet</span>}
-                                        </label>
-                                    ))}
-                                </div>
+                        <div className='grid grid-cols-2 gap-x-6 gap-y-3 rounded-lg border border-gray-200 p-4 md:grid-cols-3'>
+                            {featureDefs(form.product).map((f) => (
+                                <label key={f.key} className='flex items-center gap-2 text-sm'>
+                                    <input type='checkbox' checked={!!form.features[f.key]}
+                                        onChange={(e) => setForm((prev) => prev ? { ...prev, features: { ...prev.features, [f.key]: e.target.checked } } : prev)} />
+                                    {f.label.en}
+                                    {f.pending && <span className='rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700' title='Stored and pushed now; the app starts enforcing it once its module gates on this key.'>soon</span>}
+                                </label>
                             ))}
                         </div>
                     </div>
