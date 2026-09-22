@@ -64,6 +64,9 @@ export default function StoresPage() {
       axios.get("/api/stores/usage").then(({ data }) => {
         setHost(data.host ?? null);
         setDbBytes(Object.fromEntries(Object.entries(data.stores ?? {}).map(([k, v]: [string, any]) => [k, Number(v?.db_bytes ?? 0)])));
+        // The host knows what each store really runs (fleet rollouts never report per store).
+        const live: Record<string, string> = Object.fromEntries(Object.entries(data.stores ?? {}).flatMap(([k, v]: [string, any]) => (v?.image_tag ? [[k, String(v.image_tag)]] : [])));
+        setStores((cur) => cur.map((s) => (live[s.slug] && live[s.slug] !== s.imageTag ? { ...s, imageTag: live[s.slug] } : s)));
       }).catch(() => {});
     } catch (e: any) {
       toast.error(e?.response?.data?.error || "Could not load stores");
