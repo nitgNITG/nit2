@@ -48,8 +48,18 @@ env_set(){ # $1=file $2=key $3=value
 }
 
 # ── docker compose for one store (always -p <project>, always --env-file) ────
+# The service runs with EnvironmentFile=provision.env, so IMAGE_TAG, REGISTRY and
+# the *_MEM limits are already in our process environment — and compose gives the
+# SHELL environment precedence over --env-file. That silently pinned every store
+# to the host's tag: rollouts rewrote the store's IMAGE_TAG, compose ignored it
+# and kept recreating the old image. Unset the keys each store owns so the
+# store.env values are the ones that count.
+STORE_OWNED_ENV=(IMAGE_TAG REGISTRY API_MEM SITE_MEM DASH_MEM API_CPUS SITE_CPUS DASH_CPUS
+                 P_SITE P_DASH P_API STORE_SLUG PUBLIC_URL API_PREFIX)
 compose(){ # compose <slug-already-set> args...
-    docker compose -p "$PROJECT" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
+    local unset_args=() k
+    for k in "${STORE_OWNED_ENV[@]}"; do unset_args+=(-u "$k"); done
+    env "${unset_args[@]}" docker compose -p "$PROJECT" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
 }
 
 # Run the store-api CLI inside the store's api container; stdin is passed through
