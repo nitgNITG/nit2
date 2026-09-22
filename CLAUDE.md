@@ -54,6 +54,8 @@ change adds or updates a test there.
   queued (SQLite) and report every step to nit2 (`POST /api/tenants/<slug>/progress`,
   `x-worker-secret`). Day-2 ops go through the store's own CLI
   (`docker compose -p store_<slug> exec api node dist/cli.js …`), never SQL.
+  `provisioning-store/DEBUGGING.md` is the runbook for a broken store (which layer,
+  which log, which image is really running).
 - **Licence definition.** `lib/licenseDefinition.ts` (`toLicenseDefinition`) converts a
   MySQL `License` row into the JSON pushed to each academy's `local_license` plugin. Note
   the academy reads `expirydate` / `subscribedat` / `storagegb` from **their own cfg keys**,
