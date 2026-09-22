@@ -16,16 +16,14 @@ export type FeatureDef = {
     pending?: boolean;
 };
 
-const ADDONS: FeatureDef = { key: "addons", label: { en: "Add-ons", ar: "الإضافات" }, pending: true };
 const BLOG: FeatureDef = { key: "blog", label: { en: "Blog", ar: "المدونة" } };
 const OFFERS: FeatureDef = { key: "offers", label: { en: "Offers", ar: "العروض" } };
 const ADS: FeatureDef = { key: "ads", label: { en: "Ads", ar: "الإعلانات" } };
 const COUPONS: FeatureDef = { key: "coupons", label: { en: "Coupons", ar: "كوبونات الخصم" } };
 
 export const FEATURES: Record<Product, FeatureDef[]> = {
-    // The five sold on every plan, then the academy-only extras.
+    // The four sold on every plan, then the academy-only extras.
     academy: [
-        ADDONS,
         { ...BLOG, pending: true },
         OFFERS,
         { ...ADS, pending: true },
@@ -37,7 +35,6 @@ export const FEATURES: Record<Product, FeatureDef[]> = {
     ],
     // Store: blog / ads / coupons are enforced by store-api; offers has no module yet.
     store: [
-        ADDONS,
         BLOG,
         { ...OFFERS, pending: true },
         ADS,

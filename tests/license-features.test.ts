@@ -5,9 +5,10 @@ import { FEATURES, featureKeys, featureLabel } from "@/lib/licenseFeatures";
 // products: store-api gates on them (requireFeature) and local_license does the
 // same for academies, so a rename here silently turns a paid feature off.
 describe("licence feature catalogue", () => {
-    it("offers the five plan features for both products", () => {
+    it("offers the four plan features for both products", () => {
         for (const p of ["academy", "store"] as const) {
-            expect(featureKeys(p).slice(0, 5)).toEqual(["addons", "blog", "offers", "ads", "coupons"]);
+            expect(featureKeys(p).slice(0, 4)).toEqual(["blog", "offers", "ads", "coupons"]);
+            expect(featureKeys(p)).not.toContain("addons");
         }
     });
 
@@ -25,8 +26,8 @@ describe("licence feature catalogue", () => {
 
     it("marks only the toggles the products do not gate on yet", () => {
         const pending = (p: "academy" | "store") => FEATURES[p].filter((f) => f.pending).map((f) => f.key);
-        expect(pending("store")).toEqual(["addons", "offers", "reviews"]);
-        expect(pending("academy")).toEqual(["addons", "blog", "ads"]);
+        expect(pending("store")).toEqual(["offers", "reviews"]);
+        expect(pending("academy")).toEqual(["blog", "ads"]);
     });
 
     it("labels fall back to the key for legacy toggles", () => {
