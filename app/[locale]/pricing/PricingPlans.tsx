@@ -13,8 +13,8 @@ type License = {
     features?: Record<string, boolean>; limits?: Record<string, number>; order?: number
 }
 
-// Every feature we sell — shown with ✓ / ✗ on each plan so buyers see the full set.
-const ALL_FEATURES = ['drm', 'coupons', 'offers', 'subscriptions', 'packages', 'jitsi'] as const
+// Every feature we sell — shown with ✓ / ✗ on each plan so buyers see the full
+// set (keys + labels from lib/licenseFeatures.ts, shared with the licence editor).
 const BUCKETS: { key: string; ar: string; en: string }[] = [
     { key: 'quiz', ar: 'اختبارات لكل كورس', en: 'Quizzes / course' },
     { key: 'video', ar: 'فيديوهات لكل كورس', en: 'Videos / course' },
@@ -30,27 +30,8 @@ function rememberPlan(tier: string, cycle: string, product: Product = 'academy')
 // Two catalogues: academies (Moodle) and stores (commerce). Same License table,
 // filtered by `product`; store plans describe products/staff/storage instead of
 // courses/teachers/video.
-type Product = 'academy' | 'store'
-const STORE_FEATURE_LABELS: Record<string, { ar: string; en: string }> = {
-    coupons: { ar: 'كوبونات الخصم', en: 'Discount coupons' },
-    offers: { ar: 'العروض', en: 'Offers' },
-    banners: { ar: 'البانرات الإعلانية', en: 'Banners' },
-    blog: { ar: 'المدونة', en: 'Blog' },
-    reviews: { ar: 'تقييمات المنتجات', en: 'Product reviews' },
-    reports: { ar: 'التقارير', en: 'Reports' },
-    custom_domain: { ar: 'دومين خاص', en: 'Custom domain' },
-}
-const STORE_FEATURES = Object.keys(STORE_FEATURE_LABELS)
-
-const FEATURE_LABELS: Record<string, { ar: string; en: string }> = {
-    drm: { ar: 'فيديو محمي (DRM)', en: 'Protected video (DRM)' },
-    coupons: { ar: 'كوبونات الخصم', en: 'Discount coupons' },
-    offers: { ar: 'العروض', en: 'Offers' },
-    subscriptions: { ar: 'الاشتراكات', en: 'Subscriptions' },
-    packages: { ar: 'الباقات', en: 'Course bundles' },
-    jitsi: { ar: 'الحصص المباشرة', en: 'Live sessions' },
-}
-
+import { featureKeys, featureLabel, type Product } from '@/lib/licenseFeatures'
+// Feature keys + labels come from lib/licenseFeatures.ts (shared with the licence editor).
 const cap = (n?: number, unlimited?: string) => ((n ?? -1) < 0 ? (unlimited ?? '∞') : String(n))
 
 export default function PricingPlans({ initialProduct = 'academy' }: { initialProduct?: Product } = {}) {
@@ -162,10 +143,8 @@ export default function PricingPlans({ initialProduct = 'academy' }: { initialPr
                         `${tr('تطبيق الموبايل', 'Mobile app')}: ${p.supportedApp === false ? tr('لا', 'No') : tr('نعم', 'Yes')}`,
                     ]
                     // Every feature with ✓ (included) / ✗ (not).
-                    const featureRows = (isStore ? STORE_FEATURES : [...ALL_FEATURES]).map((f) => ({
-                        label: isStore
-                            ? ((isAr ? STORE_FEATURE_LABELS[f]?.ar : STORE_FEATURE_LABELS[f]?.en) ?? f)
-                            : ((isAr ? FEATURE_LABELS[f]?.ar : FEATURE_LABELS[f]?.en) ?? f),
+                    const featureRows = featureKeys(product).map((f) => ({
+                        label: featureLabel(product, f, isAr ? 'ar' : 'en'),
                         on: !!p.features?.[f],
                     }))
 
