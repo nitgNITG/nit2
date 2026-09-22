@@ -246,6 +246,10 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
                 <span className={`text-xs font-bold ${suspended ? 'text-red-600' : live ? 'text-[#0b8f66]' : 'text-[#b9791f]'}`}>
                     {suspended ? tr('موقوفة', 'Suspended') : live ? t('statusLive') : t('statusPreparing')}
                 </span>
+                {/* Kind badge — the account grid mixes academies and stores. */}
+                <span className='ms-auto rounded-full bg-[#0B2923]/[0.06] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#0B2923]/60'>
+                    🎓 {t('kindAcademy')}{academy.tier ? ` · ${academy.tier}` : ''}
+                </span>
             </div>
 
             <div>
