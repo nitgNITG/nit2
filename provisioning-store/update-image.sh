@@ -26,6 +26,25 @@ cp "$SCRIPTS_DIR/compose.store.yml" "$COMPOSE_FILE"
 compose pull -q --ignore-pull-failures 2>&1 | grep -v '^$' || true   # locally built tags are fine
 report_step 2 $TOTAL "Recreating changed containers"
 compose up -d --remove-orphans 2>&1 | grep -v '^$' || true
+# Verify, don't trust: compose has been seen printing "Running" and leaving a
+# container on the previous image (a storefront kept serving the old build for
+# hours). Recreate for real when any service is still on another tag.
+stale=""
+for svc in api site dash; do
+    cid="$(compose ps -q "$svc" 2>/dev/null | head -1)"
+    [[ -n "$cid" ]] || { stale="$svc"; continue; }
+    running="$(docker inspect --format '{{.Config.Image}}' "$cid" 2>/dev/null)"
+    [[ "$running" == *":$TAG" ]] || stale="$stale $svc"
+done
+if [[ -n "${stale// /}" ]]; then
+    warn "still on the old image after up -d:$stale — forcing recreate"
+    compose up -d --force-recreate --remove-orphans 2>&1 | grep -v '^$' || true
+    for svc in api site dash; do
+        cid="$(compose ps -q "$svc" 2>/dev/null | head -1)"
+        running="$(docker inspect --format '{{.Config.Image}}' "$cid" 2>/dev/null)"
+        [[ "$running" == *":$TAG" ]] || die "$svc is still on $running after --force-recreate"
+    done
+fi
 report_step 3 $TOTAL "Waiting for health"
 P_API="$(env_get "$ENV_FILE" P_API)"
 wait_api_health "$P_API" 120 || die "api not healthy after update to $TAG"
