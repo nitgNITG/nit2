@@ -38,7 +38,7 @@ export default function StoresPage() {
     current: string | null;
     latest?: string | null;                                   // newest X.Y.Z on the registry
     tags: { tag: string; remote: boolean; local: boolean }[];
-    auto_update?: { enabled: boolean; interval_min: number; last_check: number; last_error: string | null };
+    auto_update?: { enabled: boolean; interval_min: number; tag?: string | null; last_check: number; last_error: string | null };
     rollout?: { running: boolean; tag: string | null; started_at: number; source: string | null };
   };
   const [images, setImages] = useState<Images>({ current: null, tags: [] });
@@ -185,7 +185,9 @@ export default function StoresPage() {
           {images.auto_update && (
             <span title={images.auto_update.last_error ? `last check failed: ${images.auto_update.last_error}` : undefined}>
               Auto-update: {images.auto_update.enabled
-                ? <>follows newest release{images.latest ? <> (<b className="font-mono">{images.latest}</b>)</> : null} · every {images.auto_update.interval_min} min{images.auto_update.last_error ? " ⚠️" : ""}</>
+                ? <>follows {images.auto_update.tag
+                        ? <><b className="font-mono">{images.auto_update.tag}</b> (staging)</>
+                        : <>newest release{images.latest ? <> (<b className="font-mono">{images.latest}</b>)</> : null}</>} · every {images.auto_update.interval_min} min{images.auto_update.last_error ? " ⚠️" : ""}</>
                 : "off (CI / manual only)"}
             </span>
           )}
