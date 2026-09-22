@@ -20,9 +20,11 @@ Store provisioning endpoint — the store counterpart of provisioning/provision-
                                     POST {values} rewrites provision.env and runs apply-config.sh for running stores
   POST   /_progress/<slug>          internal: scripts report steps (lib.sh); persisted + forwarded to nit2
 
-Auto-update (AUTO_UPDATE=1, every AUTO_UPDATE_MINUTES): the newest X.Y.Z tag on
-the registry is rolled out to every store when it differs from the platform tag -
-the CI callback (POST /update-image) is the fast path, this is the safety net.
+Auto-update (AUTO_UPDATE=1, every AUTO_UPDATE_MINUTES): the fleet follows
+AUTO_UPDATE_TAG - a moving tag like `dev` (rolled out whenever the tag points at
+a new image: staging) or, when empty, the newest X.Y.Z release on the registry
+(production). The CI callback (POST /update-image) is the fast path, this is the
+safety net.
 
 Differences from the academy service, on purpose:
   * jobs are persisted in jobs.sqlite and run by a small worker pool — a service
@@ -123,6 +125,12 @@ def auto_update_enabled() -> bool:
     return env_file_get("AUTO_UPDATE", os.environ.get("AUTO_UPDATE", "1")) not in ("0", "false", "no", "")
 
 
+def auto_update_tag() -> str:
+    """Which tag the fleet follows: a moving tag like `dev` (staging: every new
+    build lands), or empty = the newest X.Y.Z release on the registry."""
+    return env_file_get("AUTO_UPDATE_TAG", os.environ.get("AUTO_UPDATE_TAG", "")).strip()
+
+
 def auto_update_minutes() -> int:
     try:
         return max(1, int(env_file_get("AUTO_UPDATE_MINUTES", os.environ.get("AUTO_UPDATE_MINUTES", "15")) or "15"))
@@ -133,7 +141,7 @@ def auto_update_minutes() -> int:
 # Keys nit2's Platform Settings → Stores tab may push (POST /config). Everything
 # else in provision.env (secrets of this service, ports, DB) stays host-only.
 CONFIG_KEYS = {
-    "AUTO_UPDATE", "AUTO_UPDATE_MINUTES",
+    "AUTO_UPDATE", "AUTO_UPDATE_MINUTES", "AUTO_UPDATE_TAG",
     "MAIL_HOST", "MAIL_PORT", "MAIL_USER", "MAIL_PASS", "MAIL_FROM",
     "CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET",
     "GOOGLE_WEB_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "ACCOUNT_URL", "MAX_IMAGE_MB",
@@ -649,7 +657,7 @@ def collect_images(force: bool = False) -> dict:
     tags = sorted((t for t in remote | local if not ALIAS_RE.match(t)), key=_tag_key, reverse=True)
     data = {"registry": REGISTRY, "current": platform_tag(), "latest": newest_release(remote),
             "tags": [{"tag": t, "remote": t in remote, "local": t in local} for t in tags],
-            "auto_update": {"enabled": auto_update_enabled(), "interval_min": auto_update_minutes(),
+            "auto_update": {"enabled": auto_update_enabled(), "interval_min": auto_update_minutes(), "tag": auto_update_tag() or None,
                             "last_check": int(_AUTO["last_check"]), "last_error": _AUTO["last_error"]},
             "rollout": {"running": bump_running(), "tag": _BUMP["tag"], "started_at": int(_BUMP["at"]), "source": _BUMP["source"]},
             "generated_at": int(time.time())}
@@ -661,13 +669,49 @@ def collect_images(force: bool = False) -> dict:
 _AUTO = {"last_check": 0.0, "last_error": None, "tried": {}}
 
 
+def _local_image_ids(tag: str) -> dict:
+    out = {}
+    for app in ("api", "site", "dash"):
+        try:
+            r = subprocess.run(["docker", "image", "inspect", "--format", "{{.Id}}", f"{REGISTRY}/saas-store-{app}:{tag}"],
+                               capture_output=True, text=True, timeout=15)
+            out[app] = r.stdout.strip()
+        except Exception:  # noqa: BLE001
+            out[app] = ""
+    return out
+
+
+def _follow_moving_tag(tag: str) -> str | None:
+    """A moving tag (`dev`) keeps its name, so compare image IDs: pull, and roll
+    out when what the tag points at changed."""
+    before = _local_image_ids(tag)
+    for app in ("api", "site", "dash"):
+        subprocess.run(["docker", "pull", "-q", f"{REGISTRY}/saas-store-{app}:{tag}"],
+                       capture_output=True, text=True, timeout=600)
+    after = _local_image_ids(tag)
+    if not any(after.values()):
+        _AUTO["last_error"] = f"{tag} is not on the registry"
+        return None
+    if before == after and _AUTO.get("rolled") == after:
+        return None
+    if run_bump_all(tag, source="auto"):
+        _AUTO["rolled"] = after
+        print(f"[auto-update] {tag} moved - rolling out", flush=True)
+        _IMAGES_CACHE["data"] = None
+        return tag
+    return None
+
+
 def auto_update_tick() -> str | None:
     """One check. Returns the tag a rollout was started for, else None."""
     _AUTO["last_check"] = time.time()
     if not auto_update_enabled() or bump_running():
         return None
+    follow = auto_update_tag()
+    if follow and not RELEASE_RE.match(follow):
+        return _follow_moving_tag(follow)
     data = collect_images(force=True)
-    latest = data.get("latest")
+    latest = follow or data.get("latest")
     if not latest or latest == platform_tag():
         return None
     # A failed rollout (pull denied, unhealthy store...) is retried hourly, not every tick.
@@ -899,6 +943,6 @@ if __name__ == "__main__":
     for _ in range(MAX_CONCURRENT):
         threading.Thread(target=_worker, daemon=True).start()
     threading.Thread(target=_auto_update_loop, daemon=True).start()   # no-op ticks while AUTO_UPDATE=0
-    auto = f"every {auto_update_minutes()}min" if auto_update_enabled() else "off"
+    auto = f"{auto_update_tag() or 'newest release'} every {auto_update_minutes()}min" if auto_update_enabled() else "off"
     print(f"store provisioner on 127.0.0.1:{PORT} root={STORE_ROOT} workers={MAX_CONCURRENT} auto-update={auto}", flush=True)
     ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()

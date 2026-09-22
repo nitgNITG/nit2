@@ -37,6 +37,7 @@ export const STORE_FIELDS: StoreField[] = [
     // ── pushed to the host ──────────────────────────────────────────────────
     { group: "updates", key: "auto_update", label: "Auto-update to the newest release", host: "AUTO_UPDATE", hint: "1 = every store follows the newest X.Y.Z tag on the registry; 0 = only CI / the dashboard move stores.", placeholder: "1" },
     { group: "updates", key: "auto_update_minutes", label: "Check every (minutes)", host: "AUTO_UPDATE_MINUTES", placeholder: "15" },
+    { group: "updates", key: "auto_update_tag", label: "Version the fleet follows", host: "AUTO_UPDATE_TAG", hint: "Blank = newest release (X.Y.Z) — what a production host should do. `dev` = every build the team merges, for a staging host. A store pinned with clients/<slug>/pin is never moved either way.", placeholder: "blank = newest release" },
     { group: "mail", key: "mail_host", label: "SMTP host", host: "MAIL_HOST", hint: "Sends the store welcome / owner-reset mails from inside each store.", placeholder: "smtp.gmail.com" },
     { group: "mail", key: "mail_port", label: "SMTP port", host: "MAIL_PORT", placeholder: "587" },
     { group: "mail", key: "mail_user", label: "SMTP user", host: "MAIL_USER", placeholder: "nit.eg.co@gmail.com" },
@@ -95,6 +96,7 @@ export async function saveStoreSettings(body: Record<string, unknown>): Promise<
             if (raw !== "" && !/^-?\d+$/.test(raw)) throw new Error(`${f.label}: must be a whole number`);
         }
         if (f.key === "auto_update" && raw !== "" && !["0", "1"].includes(raw)) throw new Error("Auto-update: use 1 or 0");
+        if (f.key === "auto_update_tag" && raw !== "" && !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(raw)) throw new Error("Version the fleet follows: not a valid image tag");
         let value = raw;
         if (f.secret) {
             const enc = encryptSecret(raw);
