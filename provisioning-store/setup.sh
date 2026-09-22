@@ -248,6 +248,15 @@ echo "  nit2 .env (same box):   STORE_PROVISION_URL=http://127.0.0.1:$PROVISION_
 echo "  nit2 .env (other box):  put it behind a vhost of your web server, like saas-provision.<domain>"
 [[ -n "${PROVISION_PUBLIC_HOST:-}" ]] && echo "  GitHub secrets (CI):    STORE_PROVISION_URL=https://$PROVISION_PUBLIC_HOST · STORE_PROVISION_SECRET=<same secret>"
 echo "                          STORE_PROVISION_SECRET=$PROVISION_SECRET"
-echo "  Then set CALLBACK_URL / WORKER_SECRET / MAIL_* / CLOUDINARY_* in $ENVF"
-echo "  and: systemctl restart saas-store-provision"
+# Only nag about what is actually still empty (the file was just re-read above).
+missing=()
+for v in CALLBACK_URL WORKER_SECRET GHCR_TOKEN MAIL_HOST MAIL_USER MAIL_PASS CLOUDINARY_CLOUD_NAME CLOUDINARY_API_KEY CLOUDINARY_API_SECRET; do
+    [[ -n "${!v:-}" ]] || missing+=("$v")
+done
+if [[ ${#missing[@]} -gt 0 ]]; then
+    echo "  Still empty in $ENVF: ${missing[*]}"
+    echo "  (set them, then: bash provisioning-store/deploy.sh --local)"
+else
+    echo "  All settings present: callbacks, GHCR pulls, mail and Cloudinary are configured."
+fi
 echo "============================================================"
