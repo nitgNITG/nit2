@@ -131,7 +131,6 @@ export default function PricingPlans({ initialProduct = 'academy' }: { initialPr
                     // Resources with a value (always ✓).
                     const resourceRows = isStore ? [
                         `${tr('المنتجات', 'Products')}: ${capB('products')}`,
-                        `${tr('أعضاء الفريق', 'Staff accounts')}: ${capB('staff')}`,
                         `${tr('الأقسام', 'Categories')}: ${capB('categories')}`,
                         `${tr('التخزين', 'Storage')}: ${(p.limits?.storage_mb ?? -1) < 0 ? tr('غير محدود', 'Unlimited') : `${Math.round((p.limits?.storage_mb ?? 0) / 1024 * 10) / 10} GB`}`,
                     ] : [

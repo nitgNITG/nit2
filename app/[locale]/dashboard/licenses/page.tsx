@@ -183,12 +183,16 @@ const LicensesPage = () => {
                         <div>
                             <label className='block text-sm font-semibold mb-1'>Regular annual price (EGP)</label>
                             <input type='number' min={0} className='w-full border rounded-lg px-3 py-2' value={form.listPriceEgp} onChange={num('listPriceEgp')} />
-                            <p className='text-xs text-gray-400 mt-1'>Shown struck-through with a “% off” badge when higher than the annual charge. <span className='font-mono'>0</span> = no discount shown.</p>
+                            {form.listPriceEgp > 0 && form.listPriceEgp <= form.priceEgp
+                                ? <p className='text-xs text-amber-600 mt-1'>Ignored: it must be <strong>higher</strong> than the annual charge ({form.priceEgp}) to show a “was” price.</p>
+                                : <p className='text-xs text-gray-400 mt-1'>Shown struck-through with a “% off” badge when higher than the annual charge. <span className='font-mono'>0</span> = no discount shown.</p>}
                         </div>
                         <div>
                             <label className='block text-sm font-semibold mb-1'>Regular monthly price (EGP)</label>
                             <input type='number' min={0} className='w-full border rounded-lg px-3 py-2' value={form.listPriceEgpMonthly} onChange={num('listPriceEgpMonthly')} />
-                            <p className='text-xs text-gray-400 mt-1'>Strikethrough for the monthly price. <span className='font-mono'>0</span> = none.</p>
+                            {form.listPriceEgpMonthly > 0 && form.listPriceEgpMonthly <= form.priceEgpMonthly
+                                ? <p className='text-xs text-amber-600 mt-1'>Ignored: it must be <strong>higher</strong> than the monthly charge ({form.priceEgpMonthly}).</p>
+                                : <p className='text-xs text-gray-400 mt-1'>Strikethrough for the monthly price. <span className='font-mono'>0</span> = none.</p>}
                         </div>
                     </div>
 

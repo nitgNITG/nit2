@@ -26,10 +26,9 @@ export default async function AccountPage({ searchParams }: { searchParams?: { n
     if (!user) {
         content = <AuthScreen mode='login' next={searchParams?.next} />
     } else if (user.role === 'admin') {
-        // Admin view: every academy + every client. Both live in MySQL now; we still
-        // join them in memory by ownerId (ownerId is a plain string, not a relation).
-        // The admin console groups ACADEMIES per client; stores have their own admin page.
-        const academyRows = await prismaMysql.tenant.findMany({ where: { product: 'academy' }, orderBy: { createdAt: 'desc' } })
+        // Admin view: every tenant (academies AND stores) + every client. Both live
+        // in MySQL; we join them in memory by ownerId (a plain string, not a relation).
+        const academyRows = await prismaMysql.tenant.findMany({ orderBy: { createdAt: 'desc' } })
         let clientRows: { id: string; name: string | null; email: string; role: string | null }[] = []
         try {
             clientRows = await prismaMysql.user.findMany({
@@ -48,6 +47,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: { n
             const owner = a.ownerId ? ownerById.get(a.ownerId) : undefined
             return {
                 id: a.id, name: a.name, slug: a.slug, status: a.status,
+                product: (a.product === 'store' ? 'store' : 'academy') as 'academy' | 'store',
                 ownerId: a.ownerId ?? null,
                 owner: owner?.name || owner?.email || null,
             }
@@ -60,6 +60,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: { n
                 academies={academies}
                 clients={clients}
                 domain={DOMAIN}
+                storeDomain={STORE_DOMAIN}
                 adminName={user.name || user.email}
             />
         )
