@@ -148,8 +148,18 @@ Day-2 work goes through the store's CLI, not SQL. Read-only poking is fine:
 
 ```bash
 DB=$(sudo sed -n 's/^DB_NAME=//p' /var/www/html/saas-stores/clients/$SLUG/store.env)
-sudo docker exec -it saas_mariadb mysql -uroot -p"$(sudo sed -n 's/^DB_ROOT_PW=//p' /var/www/html/saas-stores/provision.env)" \
+PW=$(sudo sed -n 's/^DB_ROOT_PW=//p' /var/www/html/saas-stores/provision.env)
+# The client binary is `mariadb` — recent images no longer ship a `mysql` alias.
+sudo docker exec -it saas_mariadb mariadb -uroot -p"$PW" \
   -e "USE \`$DB\`; SHOW TABLES; SELECT id,email,is_platform FROM store_user;"
+```
+
+What the store is really enforcing, straight from its row — the same thing
+`cli status` prints, and the way to check it on an image older than that command:
+
+```bash
+sudo docker exec saas_mariadb mariadb -uroot -p"$PW" -N \
+  -e "SELECT tier, definition FROM \`$DB\`.platform_license WHERE id=1"
 ```
 
 A failed migration blocks every start-up. Look at `_prisma_migrations` for the
