@@ -36,6 +36,10 @@ const LIMIT_KEYS = ['quiz', 'video', 'pdf', 'default']
 // Store plans: caps enforced by store-api (PlatformLicense).
 const STORE_LIMIT_KEYS = ['products', 'staff', 'categories', 'storage_mb']
 const STORE_LIMIT_LABELS: Record<string, string> = { products: 'Products', staff: 'Staff accounts', categories: 'Categories', storage_mb: 'Storage (MB)' }
+// Caps the store does not enforce yet — same "soon" marker as the features.
+// staff: the team module was removed (every dashboard account is an admin);
+// storage_mb: nothing measures uploads against it yet.
+const STORE_LIMITS_SOON = ['staff', 'storage_mb']
 
 const blank = (product: Product = 'academy'): License => ({
     key: '', name: '', active: true, price: 0, priceEgp: 0, priceEgpMonthly: 0, listPriceEgp: 0, listPriceEgpMonthly: 0, durationDays: 365,
@@ -255,7 +259,13 @@ const LicensesPage = () => {
                         <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
                             {(isStore ? STORE_LIMIT_KEYS : LIMIT_KEYS).map((k) => (
                                 <div key={k}>
-                                    <label className='block text-xs text-gray-500 mb-1 capitalize'>{isStore ? STORE_LIMIT_LABELS[k] : k.replace('_', ' ')}</label>
+                                    <label className='block text-xs text-gray-500 mb-1 capitalize'>
+                                        {isStore ? STORE_LIMIT_LABELS[k] : k.replace('_', ' ')}
+                                        {isStore && STORE_LIMITS_SOON.includes(k) && (
+                                            <span className='ms-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold normal-case text-amber-700'
+                                                title='Stored and pushed now; the store starts enforcing it once its module does.'>soon</span>
+                                        )}
+                                    </label>
                                     <input type='number' className='w-full border rounded-lg px-3 py-1.5 text-sm'
                                         value={form.limits[k] ?? -1}
                                         onChange={(e) => setForm((f) => f ? { ...f, limits: { ...f.limits, [k]: Number(e.target.value) } } : f)} />
@@ -264,7 +274,7 @@ const LicensesPage = () => {
                             ))}
                         </div>
                         {isStore
-                            ? <p className='text-[11px] text-gray-400 mt-1'>Products / staff / categories are totals per store; storage caps uploads in MB (-1 = unlimited).</p>
+                            ? <p className='text-[11px] text-gray-400 mt-1'>Totals per store (-1 = unlimited). <strong>Products</strong> and <strong>categories</strong> are enforced; staff and storage are stored but not enforced yet.</p>
                             : <p className='text-[11px] text-gray-400 mt-1'>quiz / pdf / default are per-course; <strong>video</strong> is a per-academy total (blocks new provider uploads at the limit).</p>}
                     </div>
 
