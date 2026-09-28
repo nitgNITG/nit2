@@ -68,24 +68,27 @@ export type PreviewProps = {
 export default function HomePreview({ name, palette, template = 't1', logoUrl, heroUrl, aboutUrl, faviconUrl, galleryUrls = [], aboutBullets = [], isAr }: PreviewProps) {
     const displayName = (name || (isAr ? 'اسم المنصة' : 'Academy Name')).trim()
 
-    // STRUCTURE comes from the chosen template; BRAND (primary/accent) from the palette.
+    // The template drives LAYOUT ONLY (item positions, hero arrangement, corner
+    // radius). ALL colours come from the brand group chosen in "ألوان المنصة" —
+    // the template never recolours the page. Light/dark follows the palette's own
+    // background, not the template.
     const s = templateStructure(template)
     const accent = palette.accent || palette.primary
+    const isDark = onColor(palette.background) === '#fff' // dark bg → light text
     const c = {
-        bg: s.bg,
-        surface: s.surface,
-        field: s.field,
-        ink: s.ink,
-        muted: s.muted,
-        border: s.border,
-        line: s.line,
-        radius: s.radius,
+        bg: palette.background,
+        surface: palette.surface,
+        field: mix(palette.surface, palette.text, 0.06),
+        ink: palette.text,
+        muted: mix(palette.text, palette.background, 0.42),
+        border: mix(palette.surface, palette.text, 0.14),
+        radius: s.radius, // ← the one structural value the template contributes
         primary: palette.primary,
         accent,
         onPrimary: onColor(palette.primary),
         onAccent: onColor(accent),
-        // A soft tint of the brand for badges / washes, legible on the template bg.
-        accentSoft: mix(accent, s.bg, s.scheme === 'dark' ? 0.72 : 0.86),
+        // A soft tint of the brand for badges / washes, legible on the brand bg.
+        accentSoft: mix(accent, palette.background, isDark ? 0.72 : 0.86),
         success: '#3fa877',
     }
     const t = (ar: string, en: string) => (isAr ? ar : en)
@@ -237,8 +240,8 @@ export default function HomePreview({ name, palette, template = 't1', logoUrl, h
                 </div>
 
                 {/* footer */}
-                <div style={{ background: s.scheme === 'dark' ? shade(c.bg, 0.04) : c.ink, borderTop: `1px solid ${c.border}`, padding: '16px', textAlign: 'center', color: s.scheme === 'dark' ? c.muted : mix(c.surface, c.ink, 0.25), fontSize: 12 }}>
-                    <div style={{ fontWeight: 800, color: s.scheme === 'dark' ? c.ink : c.surface, marginBottom: 4 }}>{displayName}</div>
+                <div style={{ background: isDark ? shade(c.bg, 0.04) : c.ink, borderTop: `1px solid ${c.border}`, padding: '16px', textAlign: 'center', color: isDark ? c.muted : mix(c.surface, c.ink, 0.25), fontSize: 12 }}>
+                    <div style={{ fontWeight: 800, color: isDark ? c.ink : c.surface, marginBottom: 4 }}>{displayName}</div>
                     © {new Date().getFullYear()} — {t('جميع الحقوق محفوظة', 'All rights reserved')} · N.I.T
                 </div>
             </div>

@@ -1234,8 +1234,10 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
             </button>
             </div>{/* end left column */}
 
-            {/* Right column — sticky live preview beside the form. */}
-            <aside className='lg:sticky lg:top-6 h-fit rounded-2xl bg-white p-4 shadow-xl ring-1 ring-black/5'>
+            {/* Right column — sticky live preview beside the form. top offset
+                clears the fixed site navbar (~100px) so the preview's top edge
+                does not slide under it while scrolling. */}
+            <aside className='lg:sticky lg:top-28 h-fit rounded-2xl bg-white p-4 shadow-xl ring-1 ring-black/5'>
                 <p className='mb-2 text-sm font-bold text-[#0B2923]'>
                     {isAr ? 'معاينة مباشرة لمنصتك' : 'Live preview of your platform'}
                 </p>
