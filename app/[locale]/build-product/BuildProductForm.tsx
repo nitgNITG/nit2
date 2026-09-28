@@ -7,37 +7,12 @@ import toast from 'react-hot-toast'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/navigation'
 import HomePreview, { DEFAULT_PALETTE, type Palette } from './HomePreview'
+import { BRAND_GROUPS } from './designTokens'
 import { useMe } from '../components/useMe'
 
-// The 6 palette controls the client sets (mapped to theme_nit Brand-Color roles).
-const PALETTE_FIELDS: { key: keyof Palette; ar: string; en: string }[] = [
-    { key: 'primary', ar: 'اللون الأساسي', en: 'Primary' },
-    { key: 'accent', ar: 'لون التمييز', en: 'Accent' },
-    { key: 'secondary', ar: 'اللون الثانوي', en: 'Secondary' },
-    { key: 'background', ar: 'الخلفية', en: 'Background' },
-    { key: 'surface', ar: 'البطاقات', en: 'Surface' },
-    { key: 'text', ar: 'النص', en: 'Text' },
-]
-// Ready-made professional palettes (one click sets all 6): 5 dark + 5 light.
-const PALETTE_PRESETS: { name: string; dark: boolean; p: Palette }[] = [
-    // ── Dark ──
-    { name: 'Slate', dark: true, p: DEFAULT_PALETTE },
-    { name: 'Teal', dark: true, p: { primary: '#2f9e8f', accent: '#3fb8a6', secondary: '#10221f', background: '#0a1a17', surface: '#102a25', text: '#eafaf6' } },
-    { name: 'Indigo', dark: true, p: { primary: '#7c6cd6', accent: '#9b8cf0', secondary: '#1a1730', background: '#0d0b1a', surface: '#171334', text: '#eeeaff' } },
-    { name: 'Ruby', dark: true, p: { primary: '#c2456b', accent: '#e06a8c', secondary: '#2a1420', background: '#170a10', surface: '#241019', text: '#fdeef3' } },
-    { name: 'Amber', dark: true, p: { primary: '#d4933a', accent: '#e8b45c', secondary: '#2a2012', background: '#17120a', surface: '#241c10', text: '#fdf5e8' } },
-    // ── Light — derived from real academy brand palettes ──
-    // Royal navy + gold (al3alamy.com).
-    { name: 'Royal', dark: false, p: { primary: '#00126c', accent: '#c9a227', secondary: '#eaeef9', background: '#ffffff', surface: '#f3f5fb', text: '#0b1230' } },
-    // Deep teal + warm gold (xmathsacademy.com).
-    { name: 'Teal Gold', dark: false, p: { primary: '#0e504d', accent: '#c7ae72', secondary: '#eaf3f1', background: '#ffffff', surface: '#f2f8f6', text: '#14201f' } },
-    // Fresh emerald green (kotoof.org).
-    { name: 'Emerald', dark: false, p: { primary: '#167b44', accent: '#1f9e57', secondary: '#eaf5ee', background: '#ffffff', surface: '#f2f9f4', text: '#12241a' } },
-    // Brick red + navy (3alemny.net).
-    { name: 'Brick', dark: false, p: { primary: '#92251e', accent: '#b23a2e', secondary: '#fbeeec', background: '#ffffff', surface: '#fbf4f3', text: '#183041' } },
-    // Deep blue + slate (mrfathybakrmathematics.com).
-    { name: 'Navy', dark: false, p: { primary: '#003362', accent: '#1f6fb2', secondary: '#e9eef4', background: '#ffffff', surface: '#f2f6fa', text: '#10233a' } },
-]
+// Brand colours are now chosen as a whole design-system group (BRAND_GROUPS,
+// Group 1..17 in ./designTokens) — see the "ألوان المنصة" picker below. The
+// per-role pickers and ad-hoc presets were replaced by that gallery of groups.
 type License = { key: string; name: string; price: number; priceEgp?: number; priceEgpMonthly?: number; durationDays?: number; active: boolean; contactSales?: boolean; maxCourses: number; maxTeachers?: number; storageGb?: number; videoSource?: string; supportedApp?: boolean; features: Record<string, boolean>; limits?: Record<string, number> }
 const FEATURE_LABELS: Record<string, string> = { drm: 'DRM video', coupons: 'coupons', offers: 'offers', subscriptions: 'subscriptions', packages: 'packages', jitsi: 'live sessions' }
 const ALL_FEATURES = ['drm', 'coupons', 'offers', 'subscriptions', 'packages', 'jitsi'] as const
@@ -177,7 +152,6 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
     const hasAr = platformLang !== 'en'
     const hasEn = platformLang !== 'ar'
     const [palette, setPalette] = useState<Palette>(DEFAULT_PALETTE) // brand colours
-    const setColor = (k: keyof Palette, v: string) => setPalette((p) => ({ ...p, [k]: v }))
     const [hero, setHero] = useState<File | null>(null) // cover/hero image
     const heroUrl = useMemo(() => (hero ? URL.createObjectURL(hero) : null), [hero])
     useEffect(() => () => { if (heroUrl) URL.revokeObjectURL(heroUrl) }, [heroUrl])
@@ -964,47 +938,43 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                 </div>
             </div>
 
-            {/* Brand colours (6 controls → theme_nit roles) + images + live preview */}
+            {/* Brand colours — pick one design-system group (theme_nit Brand Colors,
+                Group 1..17). One click paints the whole platform; structure/light-dark
+                comes from the chosen homepage template above. */}
             <div className='mb-6'>
                 <label className='mb-1.5 block font-bold text-[#0B2923]'>
                     {isAr ? 'ألوان المنصة' : 'Brand colours'}
                 </label>
+                <p className='mb-3 text-xs text-gray-400'>
+                    {isAr
+                        ? 'اختر مجموعة ألوان جاهزة من نظام التصميم — لون واحد يلوّن المنصة كلها.'
+                        : 'Pick a ready-made colour group from the design system — one choice paints the whole platform.'}
+                </p>
 
-                {/* One-click ready palettes */}
-                <div className='mb-3 flex flex-wrap gap-2'>
-                    {PALETTE_PRESETS.map((pr) => {
-                        const on = JSON.stringify(palette) === JSON.stringify(pr.p)
+                {/* Design-system groups (Group 1..17) */}
+                <div className='grid grid-cols-2 gap-2 sm:grid-cols-3'>
+                    {BRAND_GROUPS.map((g) => {
+                        const on = JSON.stringify(palette) === JSON.stringify(g.p)
                         return (
-                        <button
-                            type='button'
-                            key={pr.name}
-                            onClick={() => setPalette(pr.p)}
-                            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${on ? 'border-[#1E7D67] bg-[#1E7D67]/10 text-[#1E7D67] ring-1 ring-[#1E7D67]' : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300'}`}
-                        >
-                            <span className='inline-flex'>
-                                <span className='h-4 w-4 rounded-full ring-1 ring-black/10' style={{ background: pr.p.primary }} />
-                                <span className='-ms-1 h-4 w-4 rounded-full ring-1 ring-black/10' style={{ background: pr.p.background }} />
-                            </span>
-                            {pr.name}
-                        </button>
+                            <button
+                                type='button'
+                                key={g.id}
+                                onClick={() => setPalette(g.p)}
+                                aria-pressed={on}
+                                className={`flex items-center gap-2 rounded-xl border px-2.5 py-2 text-start transition ${on ? 'border-[#1E7D67] bg-[#1E7D67]/10 ring-1 ring-[#1E7D67]' : 'border-gray-200 bg-gray-50 hover:border-gray-300'}`}
+                            >
+                                <span className='inline-flex shrink-0'>
+                                    <span className='h-5 w-5 rounded-full ring-1 ring-black/10' style={{ background: g.p.primary }} />
+                                    <span className='-ms-1.5 h-5 w-5 rounded-full ring-1 ring-black/10' style={{ background: g.p.background }} />
+                                    <span className='-ms-1.5 h-5 w-5 rounded-full ring-1 ring-black/10' style={{ background: g.p.surface }} />
+                                </span>
+                                <span className='min-w-0'>
+                                    <span className='block truncate text-xs font-semibold text-gray-700'>{isAr ? g.ar : g.en}</span>
+                                    <span className='block text-[10px] text-gray-400'>{g.scheme === 'dark' ? (isAr ? 'داكن' : 'Dark') : (isAr ? 'فاتح' : 'Light')}</span>
+                                </span>
+                            </button>
                         )
                     })}
-                </div>
-
-                {/* Individual colour controls */}
-                <div className='grid grid-cols-2 gap-2 sm:grid-cols-3'>
-                    {PALETTE_FIELDS.map((f) => (
-                        <label key={f.key} className='flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm'>
-                            <input
-                                type='color'
-                                value={palette[f.key]}
-                                onChange={(e) => setColor(f.key, e.target.value)}
-                                className='h-7 w-7 cursor-pointer rounded border-0 bg-transparent p-0'
-                                aria-label={isAr ? f.ar : f.en}
-                            />
-                            <span className='text-gray-600'>{isAr ? f.ar : f.en}</span>
-                        </label>
-                    ))}
                 </div>
 
                 {/* Hero / cover image — shown in the preview + applied on provision */}
@@ -1269,7 +1239,7 @@ const BuildProductForm = ({ onSuccess, editSlug }: { onSuccess?: () => void; edi
                 <p className='mb-2 text-sm font-bold text-[#0B2923]'>
                     {isAr ? 'معاينة مباشرة لمنصتك' : 'Live preview of your platform'}
                 </p>
-                <HomePreview name={nameWatch} palette={palette} logoUrl={logoUrl} heroUrl={heroUrl} aboutUrl={aboutUrl} faviconUrl={faviconUrl} galleryUrls={galleryUrls} aboutBullets={aboutBullets.map(bulletPreview)} isAr={isAr} />
+                <HomePreview name={nameWatch} palette={palette} template={homepageTemplate} logoUrl={logoUrl} heroUrl={heroUrl} aboutUrl={aboutUrl} faviconUrl={faviconUrl} galleryUrls={galleryUrls} aboutBullets={aboutBullets.map(bulletPreview)} isAr={isAr} />
             </aside>
         </form>
     )
