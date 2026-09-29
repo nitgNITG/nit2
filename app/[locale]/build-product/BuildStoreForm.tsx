@@ -464,12 +464,6 @@ export default function BuildStoreForm() {
   const [defaultLocale, setDefaultLocale] =
     useState<"ar" | "en">("ar");
 
-  const [primary, setPrimary] =
-    useState("#111111");
-
-  const [accent, setAccent] =
-    useState("#1fb6c7");
-
   const [logo, setLogo] =
     useState<File | null>(null);
 
@@ -682,9 +676,12 @@ export default function BuildStoreForm() {
         prices_include_vat: true,
         default_locale: defaultLocale,
 
+        // Brand colours are no longer chosen here — the merchant sets them later
+        // from the store dashboard (Store info → Store colours). Seed sensible
+        // defaults so a new store still has a theme.
         theme: {
-          primary_color: primary,
-          accent_color: accent,
+          primary_color: "#111111",
+          accent_color: "#1fb6c7",
           font: "Tajawal",
         },
 
@@ -1298,64 +1295,6 @@ export default function BuildStoreForm() {
 
       {/* Brand */}
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        <div>
-          <label className={label}>
-            {tr(
-              "اللون الأساسي",
-              "Primary colour",
-            )}
-          </label>
-
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={primary}
-              onChange={(e) =>
-                setPrimary(
-                  e.target.value,
-                )
-              }
-              className="h-10 w-14 cursor-pointer rounded border border-gray-200"
-            />
-
-            <span
-              className="font-mono text-sm"
-              dir="ltr"
-            >
-              {primary}
-            </span>
-          </div>
-        </div>
-
-        <div>
-          <label className={label}>
-            {tr(
-              "لون التمييز",
-              "Accent colour",
-            )}
-          </label>
-
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={accent}
-              onChange={(e) =>
-                setAccent(
-                  e.target.value,
-                )
-              }
-              className="h-10 w-14 cursor-pointer rounded border border-gray-200"
-            />
-
-            <span
-              className="font-mono text-sm"
-              dir="ltr"
-            >
-              {accent}
-            </span>
-          </div>
-        </div>
-
         <div>
           <label className={label}>
             {tr(
