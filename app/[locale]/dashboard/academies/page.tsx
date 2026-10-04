@@ -227,7 +227,7 @@ const AcademiesPage = () => {
       setLicenses(l.data.licenses ?? []);
       const map: Record<string, { autoRenew: boolean; status: string; amountEgp?: number; intervalDays?: number }> = {};
       for (const sub of s.data?.subscriptions ?? [])
-        map[sub.academySlug] = { autoRenew: sub.autoRenew, status: sub.status, amountEgp: sub.amountEgp, intervalDays: sub.intervalDays };
+        map[sub.tenantSlug] = { autoRenew: sub.autoRenew, status: sub.status, amountEgp: sub.amountEgp, intervalDays: sub.intervalDays };
       setSubs(map);
     } catch {
       toast.error("Could not load academies");

@@ -3,6 +3,7 @@ import prisma from "@/lib/prismaMysql";
 import { authAdmin } from "@/lib/predict";
 import { provisionAcademy, licenseToDefinition } from "@/lib/provisionAcademy";
 import { computeUpgradable } from "@/lib/licenseDefinition";
+import { createStore, sanitizeStoreSettings } from "@/lib/tenants/createStore";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,8 +26,8 @@ export async function POST(req: NextRequest, { params }: { params: { orderId: st
     if (payment.status !== "paid") {
         return NextResponse.json({ error: `payment is '${payment.status}', not paid — nothing to recover` }, { status: 400 });
     }
-    if (payment.purpose !== "new_academy") {
-        return NextResponse.json({ error: `only new_academy payments provision an academy (this is '${payment.purpose}')` }, { status: 400 });
+    if (payment.purpose !== "new_academy" && payment.purpose !== "new_store") {
+        return NextResponse.json({ error: `only new_academy / new_store payments provision a tenant (this is '${payment.purpose}')` }, { status: 400 });
     }
 
     const p: any = payment.payloadJson || {};
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest, { params }: { params: { orderId: st
     }
 
     // Already provisioned? Idempotent success.
-    const existing = await prisma.academy.findUnique({ where: { slug } }).catch(() => null);
+    const existing = await prisma.tenant.findUnique({ where: { slug } }).catch(() => null);
     if (existing) {
         await prisma.payment.update({ where: { orderId }, data: { failureReason: null } }).catch(() => {});
         return NextResponse.json({ ok: true, slug, alreadyProvisioned: true });
@@ -53,6 +54,21 @@ export async function POST(req: NextRequest, { params }: { params: { orderId: st
               upgradable: computeUpgradable(payment.licenseKey, rankLics),
           })
         : "";
+
+    if (payment.purpose === "new_store") {
+        if (!lic) return NextResponse.json({ error: `licence ${payment.licenseKey} not found` }, { status: 400 });
+        const rank = await prisma.license.findMany({ where: { active: true, product: "store" }, select: { key: true, active: true, order: true, priceEgp: true } }).catch(() => []);
+        const r = await createStore({
+            slug, name: String(p.name || slug), nameAr: p.name_ar ?? null, store: sanitizeStoreSettings(p.store),
+            lic, rank, durationDays,
+            owner: { id: payment.userId, email: String(p.owner_email || ""), name: String(p.owner_name || ""), locale: p.locale === "en" ? "en" : "ar" },
+            licenseMode: payment.mode === "test" ? "test" : "live",
+            force: true, // a failed first attempt may have left a half-created store behind
+        });
+        if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status });
+        await prisma.payment.update({ where: { orderId }, data: { failureReason: null } }).catch(() => {});
+        return NextResponse.json({ ok: true, slug, job: r.job, status: "queued" });
+    }
 
     const result = await provisionAcademy({
         slug,

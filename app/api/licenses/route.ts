@@ -7,9 +7,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // GET /api/licenses — list all licences (ordered). Product definitions, not secret.
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
-        const licenses = await prisma.license.findMany({ orderBy: [{ order: "asc" }, { price: "asc" }] });
+        // ?product=store|academy narrows the catalogue (pricing page per product); default = all.
+        const product = new URL(req.url).searchParams.get("product");
+        const where = product === "store" || product === "academy" ? { product } : {};
+        const licenses = await prisma.license.findMany({ where, orderBy: [{ order: "asc" }, { price: "asc" }] });
         return NextResponse.json({ licenses });
     } catch (err) {
         console.error("[licenses] list failed", err);

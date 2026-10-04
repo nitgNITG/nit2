@@ -4,17 +4,19 @@ import DeletePlatformButton from './DeletePlatformButton'
 
 const MONO = "'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace"
 
-export type AdminAcademy = { id: string; name: string; slug: string; status: string; ownerId: string | null; owner: string | null }
+// One provisioned product instance — academy or store. Both are Tenant rows, so
+// the console lists them together under the client who owns them.
+export type AdminTenant = { id: string; name: string; slug: string; status: string; product: 'academy' | 'store'; ownerId: string | null; owner: string | null }
 export type AdminClient = { id: string; name: string | null; email: string; role: string; academies: number }
 
 export default async function AdminConsole({
-    academies, clients, domain, adminName,
-}: { academies: AdminAcademy[]; clients: AdminClient[]; domain: string; adminName: string }) {
+    academies, clients, domain, storeDomain, adminName,
+}: { academies: AdminTenant[]; clients: AdminClient[]; domain: string; storeDomain: string; adminName: string }) {
     const t = await getTranslations('Admin')
 
     // Group every platform under the client who owns it. Platforms whose owner is
     // missing (legacy/test rows) fall into a trailing "unassigned" group.
-    const byOwner = new Map<string, AdminAcademy[]>()
+    const byOwner = new Map<string, AdminTenant[]>()
     for (const a of academies) {
         const key = a.ownerId ?? '__none__'
         const list = byOwner.get(key) ?? []
@@ -51,6 +53,7 @@ export default async function AdminConsole({
                                     countLabel={t('platformsCount', { n: platforms.length })}
                                     platforms={platforms}
                                     domain={domain}
+                                    storeDomain={storeDomain}
                                     emptyLabel={t('noPlatforms')}
                                     openLabel={t('open')}
                                 />
@@ -67,6 +70,7 @@ export default async function AdminConsole({
                                 countLabel={t('platformsCount', { n: orphans.length })}
                                 platforms={orphans}
                                 domain={domain}
+                                storeDomain={storeDomain}
                                 emptyLabel={t('noPlatforms')}
                                 openLabel={t('open')}
                             />
@@ -79,15 +83,16 @@ export default async function AdminConsole({
 }
 
 function ClientGroup({
-    title, subtitle, role, isAdmin, countLabel, platforms, domain, emptyLabel, openLabel,
+    title, subtitle, role, isAdmin, countLabel, platforms, domain, storeDomain, emptyLabel, openLabel,
 }: {
     title: string
     subtitle: string | null
     role: string | null
     isAdmin: boolean
     countLabel: string
-    platforms: AdminAcademy[]
+    platforms: AdminTenant[]
     domain: string
+    storeDomain: string
     emptyLabel: string
     openLabel: string
 }) {
@@ -110,25 +115,31 @@ function ClientGroup({
                 <p className='mt-4 text-sm text-white/40'>{emptyLabel}</p>
             ) : (
                 <div className='mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-                    {platforms.map((a) => (
+                    {platforms.map((a) => {
+                        const host = `${a.slug}.${a.product === 'store' ? storeDomain : domain}`
+                        return (
                         <div key={a.id} className='rounded-2xl bg-white/[0.03] ring-1 ring-white/10 p-5 flex flex-col gap-2'>
-                            <p className='text-lg font-extrabold'>{a.name}</p>
-                            <p dir='ltr' className='text-xs text-white/50 truncate' style={{ fontFamily: MONO }}>
-                                {a.slug}.{domain}
-                            </p>
+                            <div className='flex items-start justify-between gap-2'>
+                                <p className='text-lg font-extrabold'>{a.name}</p>
+                                <span className='shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white/60'>
+                                    {a.product === 'store' ? '🛒' : '🎓'}
+                                </span>
+                            </div>
+                            <p dir='ltr' className='text-xs text-white/50 truncate' style={{ fontFamily: MONO }}>{host}</p>
                             <div className='mt-1 flex flex-wrap items-center gap-2'>
                                 <a
-                                    href={`https://${a.slug}.${domain}`}
+                                    href={`https://${host}`}
                                     target='_blank'
                                     rel='noopener noreferrer'
                                     className='inline-flex w-fit items-center gap-1 rounded-lg bg-[#00FFB2] px-3 py-1.5 text-sm font-bold text-[#0B2923]'
                                 >
                                     {openLabel} ↗
                                 </a>
-                                <DeletePlatformButton slug={a.slug} name={a.name} />
+                                <DeletePlatformButton slug={a.slug} name={a.name} product={a.product} />
                             </div>
                         </div>
-                    ))}
+                        )
+                    })}
                 </div>
             )}
         </section>

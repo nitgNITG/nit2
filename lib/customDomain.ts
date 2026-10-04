@@ -67,10 +67,14 @@ export type DnsInstruction = {
 
 /** What to tell the owner to add at their registrar — both a CNAME and an A
  *  record where possible, so they can use whichever their DNS provider supports. */
-export function dnsInstructions(domain: string, slug: string): DnsInstruction {
+/** Per-product zone/IP: academies default to SAAS_CLIENT_DOMAIN + SERVER_PUBLIC_IP;
+ *  stores pass their own base (STORE_CLIENT_DOMAIN) and no fixed IP (derived from DNS). */
+export type DomainZone = { base?: string; publicIp?: string | null };
+
+export function dnsInstructions(domain: string, slug: string, zone: DomainZone = {}): DnsInstruction {
     const apex = isApex(domain);
-    const cnameValue = `${slug}.${baseDomain()}`;
-    const aRecordValue = serverPublicIp();
+    const cnameValue = `${slug}.${zone.base ?? baseDomain()}`;
+    const aRecordValue = zone.publicIp === undefined ? serverPublicIp() : (zone.publicIp ?? "");
     const options: DnsOption[] = [];
 
     if (!apex) {
@@ -108,11 +112,11 @@ async function resolve4(host: string): Promise<string[]> {
  * pointing here and certbot will succeed. Also accepts a configured SERVER_PUBLIC_IP.
  */
 export async function verifyDnsPointsHere(
-    domain: string, slug: string,
+    domain: string, slug: string, zone: DomainZone = {},
 ): Promise<{ ok: boolean; resolved: string[]; expected: string[]; detail: string }> {
-    const [domainIps, subIps] = await Promise.all([resolve4(domain), resolve4(`${slug}.${baseDomain()}`)]);
+    const [domainIps, subIps] = await Promise.all([resolve4(domain), resolve4(`${slug}.${zone.base ?? baseDomain()}`)]);
     const expected = new Set(subIps);
-    const ip = serverPublicIp();
+    const ip = zone.publicIp === undefined ? serverPublicIp() : (zone.publicIp ?? "");
     if (ip) expected.add(ip);
     if (domainIps.length === 0) {
         return { ok: false, resolved: [], expected: Array.from(expected), detail: "The domain doesn’t resolve yet. DNS can take up to a few hours to propagate." };

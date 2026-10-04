@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest, { params }: { params: { slug: string } }) {
     if (!(await authAdmin(req))) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    const academy = await prisma.academy.findUnique({ where: { slug: params.slug }, select: { paymentMode: true } });
+    const academy = await prisma.tenant.findUnique({ where: { slug: params.slug }, select: { paymentMode: true } });
     if (!academy) return NextResponse.json({ error: "not found" }, { status: 404 });
     // null = NIT hasn't set it (the academy keeps its provisioned/owner value).
     return NextResponse.json({ mode: academy.paymentMode ?? null });
@@ -27,11 +27,11 @@ export async function PUT(req: NextRequest, { params }: { params: { slug: string
         return NextResponse.json({ error: "mode must be live or test" }, { status: 400 });
     }
 
-    const academy = await prisma.academy.findUnique({ where: { slug: params.slug }, select: { tier: true } });
+    const academy = await prisma.tenant.findUnique({ where: { slug: params.slug }, select: { tier: true } });
     if (!academy) return NextResponse.json({ error: "not found" }, { status: 404 });
 
     try {
-        await prisma.academy.update({ where: { slug: params.slug }, data: { paymentMode: mode } });
+        await prisma.tenant.update({ where: { slug: params.slug }, data: { paymentMode: mode } });
     } catch (e) {
         console.error("[payment-mode] persist failed", params.slug, e);
         return NextResponse.json({ error: "save failed" }, { status: 500 });

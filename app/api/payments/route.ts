@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
         ...(isAdmin ? {} : { userId: user.id }),
         ...(status ? { status } : {}),
         ...(purpose ? { purpose } : {}),
-        ...(slug ? { academySlug: slug } : {}),
+        ...(slug ? { tenantSlug: slug } : {}),
     };
 
     try {
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
                 take: limit,
                 select: {
                     orderId: true, userId: true, licenseKey: true, purpose: true, amount: true,
-                    currency: true, status: true, academySlug: true, providerRef: true,
+                    currency: true, status: true, tenantSlug: true, providerRef: true,
                     failureReason: true, billingCycle: true, subscriptionId: true,
                     createdAt: true, paidAt: true,
                 },
@@ -47,9 +47,9 @@ export async function GET(req: NextRequest) {
         ]);
 
         // Attach academy names, and (admin only) the owner name/email.
-        const slugs = Array.from(new Set(payments.map((p) => p.academySlug).filter(Boolean) as string[]));
+        const slugs = Array.from(new Set(payments.map((p) => p.tenantSlug).filter(Boolean) as string[]));
         const academies = slugs.length
-            ? await prisma.academy.findMany({ where: { slug: { in: slugs } }, select: { slug: true, name: true } })
+            ? await prisma.tenant.findMany({ where: { slug: { in: slugs } }, select: { slug: true, name: true } })
             : [];
         const nameBySlug = new Map(academies.map((a) => [a.slug, a.name]));
 
@@ -64,7 +64,8 @@ export async function GET(req: NextRequest) {
 
         const rows = payments.map((p) => ({
             ...p,
-            academyName: p.academySlug ? nameBySlug.get(p.academySlug) ?? null : null,
+            academySlug: p.tenantSlug, // documented mobile field (docs/mobile-api.md); keep alongside tenantSlug
+            academyName: p.tenantSlug ? nameBySlug.get(p.tenantSlug) ?? null : null,
             owner: isAdmin ? ownerById.get(p.userId) ?? null : undefined,
             kind: p.subscriptionId ? "auto-renew" : "manual",
         }));

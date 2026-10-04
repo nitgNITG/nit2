@@ -115,9 +115,9 @@ export async function POST(req: NextRequest) {
         });
         // Point THIS academy's subscription at the newest card (covers both the
         // first save and a later "update card"). No-op if there's no subscription yet.
-        if (payment.academySlug) {
+        if (payment.tenantSlug) {
             await prisma.subscription.updateMany({
-                where: { academySlug: payment.academySlug },
+                where: { tenantSlug: payment.tenantSlug },
                 data: { paymentMethodId: pm.id },
             }).catch(() => {});
         }

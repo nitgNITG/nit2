@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 
 const { db, getCurrentUser, kashierConfigured, createSession, subscriptionsEnabled, sanitizeBrand } = vi.hoisted(() => ({
     db: {
-        academy: { findUnique: vi.fn() },
+        tenant: { findUnique: vi.fn() },
         license: { findUnique: vi.fn(), findFirst: vi.fn() },
         subscription: { findUnique: vi.fn() },
         payment: { create: vi.fn(), update: vi.fn() },
@@ -39,7 +39,7 @@ beforeEach(() => {
     subscriptionsEnabled.mockReturnValue(true);
     sanitizeBrand.mockImplementation((b: unknown) => b ?? {});
     getCurrentUser.mockResolvedValue(USER);
-    db.academy.findUnique.mockResolvedValue(null);
+    db.tenant.findUnique.mockResolvedValue(null);
     db.license.findUnique.mockResolvedValue(null);
     db.license.findFirst.mockResolvedValue(null);
     db.subscription.findUnique.mockResolvedValue(null);
@@ -72,7 +72,7 @@ describe("POST /api/payments/kashier/create", () => {
             const data = db.payment.create.mock.calls[0][0].data;
             expect(data).toMatchObject({
                 licenseKey: "basic", purpose: "new_academy", amount: 5000,
-                currency: "EGP", status: "pending", academySlug: "acme",
+                currency: "EGP", status: "pending", tenantSlug: "acme",
             });
             expect(data.payloadJson).toMatchObject({
                 slug: "acme", tier: "basic", owner_email: "o@x.com",
@@ -110,7 +110,7 @@ describe("POST /api/payments/kashier/create", () => {
 
         it("409 when the slug is already taken", async () => {
             db.license.findFirst.mockResolvedValue(PAID);
-            db.academy.findUnique.mockResolvedValue({ slug: "acme" });
+            db.tenant.findUnique.mockResolvedValue({ slug: "acme" });
             expect((await post({ purpose: "new_academy", tier: "basic", name: "A", slug: "acme" })).status).toBe(409);
         });
 
@@ -133,7 +133,7 @@ describe("POST /api/payments/kashier/create", () => {
             validUntil: new Date(Date.now() + 100 * 86_400_000) };
 
         beforeEach(() => {
-            db.academy.findUnique.mockResolvedValue(ACADEMY);
+            db.tenant.findUnique.mockResolvedValue(ACADEMY);
             db.license.findUnique.mockResolvedValue({ key: "basic", priceEgp: 5000, durationDays: 365 });
             db.license.findFirst.mockResolvedValue({ key: "standard", priceEgp: 9000, durationDays: 365, active: true });
             db.subscription.findUnique.mockResolvedValue({ intervalDays: 365, autoRenew: true, status: "active" });
@@ -173,12 +173,12 @@ describe("POST /api/payments/kashier/create", () => {
     describe("update_card", () => {
         it("400 when subscriptions are disabled", async () => {
             subscriptionsEnabled.mockReturnValue(false);
-            db.academy.findUnique.mockResolvedValue({ slug: "acme", ownerId: "user-1", tier: "basic" });
+            db.tenant.findUnique.mockResolvedValue({ slug: "acme", ownerId: "user-1", tier: "basic" });
             expect((await post({ purpose: "update_card", slug: "acme" })).status).toBe(400);
         });
 
         it("opens a verification charge for the owner and saves the card", async () => {
-            db.academy.findUnique.mockResolvedValue({ slug: "acme", ownerId: "user-1", tier: "basic" });
+            db.tenant.findUnique.mockResolvedValue({ slug: "acme", ownerId: "user-1", tier: "basic" });
             const res = await post({ purpose: "update_card", slug: "acme" });
             expect(res.status).toBe(200);
             expect(db.payment.create.mock.calls[0][0].data.purpose).toBe("update_card");

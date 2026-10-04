@@ -21,7 +21,7 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-    const academy = await prisma.academy.findUnique({ where: { slug: params.slug } });
+    const academy = await prisma.tenant.findUnique({ where: { slug: params.slug } });
     if (!academy) return NextResponse.json({ error: "not found" }, { status: 404 });
     if (user.role !== "admin" && academy.ownerId !== user.id) {
         return NextResponse.json({ error: "forbidden" }, { status: 403 });
@@ -31,7 +31,7 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     const lic = await prisma.license.findUnique({ where: { key: academy.tier } });
 
     // Auto-renew subscription for this academy (one per academy), + saved card.
-    const sub = await prisma.subscription.findUnique({ where: { academySlug: params.slug } }).catch(() => null);
+    const sub = await prisma.subscription.findUnique({ where: { tenantSlug: params.slug } }).catch(() => null);
     let card: { brand: string | null; last4: string | null } | null = null;
     if (sub) {
         const pm = sub.paymentMethodId
@@ -42,7 +42,7 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
 
     // This academy's recent payments (newest first).
     const payments = await prisma.payment.findMany({
-        where: { academySlug: params.slug },
+        where: { tenantSlug: params.slug },
         orderBy: { createdAt: "desc" },
         take: 10,
         select: {

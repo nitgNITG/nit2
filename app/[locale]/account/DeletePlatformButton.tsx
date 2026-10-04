@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useRouter } from '@/navigation'
 import { useTranslations } from 'next-intl'
 
-export default function DeletePlatformButton({ slug, name, triggerClassName }: { slug: string; name: string; triggerClassName?: string }) {
+export default function DeletePlatformButton({ slug, name, product = 'academy', triggerClassName }: { slug: string; name: string; product?: 'academy' | 'store'; triggerClassName?: string }) {
     const t = useTranslations('Admin')
     const router = useRouter()
     const [open, setOpen] = useState(false)
@@ -24,7 +24,7 @@ export default function DeletePlatformButton({ slug, name, triggerClassName }: {
         setBusy(true)
         setError(false)
         try {
-            const res = await fetch(`/api/academies/${slug}`, { method: 'DELETE' })
+            const res = await fetch(`/api/${product === 'store' ? 'stores' : 'academies'}/${slug}`, { method: 'DELETE' })
             if (!res.ok) throw new Error(String(res.status))
             router.refresh() // drop the deleted platform from the list
         } catch {

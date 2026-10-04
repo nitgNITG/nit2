@@ -116,17 +116,20 @@ export function healthBlockAlertBody(v: HealthVerdict): string {
 }
 
 /** Compact multi-line health summary for Telegram / email bodies. */
-export function formatHealth(health: ServerHealth | null): string {
-    if (!health) return "Server B: ❌ unreachable";
+export function formatHealth(health: ServerHealth | null, label = "Server B health (academies host)"): string {
+    if (!health) return `${label}: ❌ unreachable`;
+    // Tolerant of a partial snapshot: the store provisioner reports the same
+    // shape but may omit optional fields (failed_services, uptime, load5/15).
     const d = health.disk, m = health.memory, c = health.cpu;
+    const failed = Array.isArray(health.failed_services) ? health.failed_services : [];
     const lines = [
-        `🖥️ Server B health (academies host)`,
-        `• Disk: ${d.free_pct}% free (${gb(d.free_bytes)} of ${gb(d.total_bytes)})`,
-        `• Memory: ${m.used_pct}% used (${gb(m.available_bytes)} free)`,
-        `• Load: ${c.load1} / ${c.count} cores (${c.load1_per_core}/core)`,
-        `• Docker: ${health.docker.running} running · MariaDB ${health.docker.mariadb_up ? "up ✅" : "DOWN ❌"}`,
-        `• Failed services: ${health.failed_services.length ? "⚠️ " + health.failed_services.join(", ") : "none ✅"}`,
-        `• Uptime: ${fmtUptime(health.uptime_seconds)}`,
-    ];
+        `🖥️ ${label}`,
+        d ? `• Disk: ${d.free_pct}% free (${gb(d.free_bytes)} of ${gb(d.total_bytes)})` : "• Disk: n/a",
+        m ? `• Memory: ${m.used_pct}% used (${gb(m.available_bytes)} free)` : "• Memory: n/a",
+        c ? `• Load: ${c.load1} / ${c.count} cores (${c.load1_per_core}/core)` : "• Load: n/a",
+        health.docker ? `• Docker: ${health.docker.running} running · MariaDB ${health.docker.mariadb_up ? "up ✅" : "DOWN ❌"}` : "• Docker: n/a",
+        `• Failed services: ${failed.length ? "⚠️ " + failed.join(", ") : "none ✅"}`,
+        typeof health.uptime_seconds === "number" ? `• Uptime: ${fmtUptime(health.uptime_seconds)}` : "",
+    ].filter(Boolean);
     return lines.join("\n");
 }

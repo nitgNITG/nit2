@@ -3,6 +3,8 @@ import prisma from "@/lib/prismaMysql";
 import { Prisma } from "prismamysql";
 import { triggerSuspend, triggerExpiryReminder, deprovisionAndDeleteAcademy } from "@/lib/provisionAcademy";
 import { notifyTelegram } from "@/lib/telegram";
+import { storeOps, deprovisionAndDeleteStore } from "@/lib/products/store";
+import { sendStoreExpiryEmail, type StoreExpiryStage } from "@/lib/tenants/storeExpiryEmail";
 import { runBillingCycle, runPreRenewNotices, weeklyBillingSummary } from "@/lib/billing";
 
 export const runtime = "nodejs";
@@ -50,22 +52,59 @@ export async function POST(req: NextRequest) {
         return { attempted: 0, renewed: [], failed: [], needsAuth: [] };
     });
 
-    // 1) Expired academies → suspend (soft-lock in Moodle, keep data).
-    const expired = await prisma.academy
+    // How long a suspended tenant is kept before auto-delete (used by 1c, and
+    // quoted in the store suspension e-mail). 0 / blank = never.
+    let autoDeleteDays = 0;
+    try {
+        const row = await prisma.platformSetting.findUnique({ where: { key: "auto_delete_days" } });
+        autoDeleteDays = Math.max(0, parseInt(row?.value ?? "0", 10) || 0);
+    } catch (e) {
+        console.error("[cron/expiry] auto_delete_days read failed", e);
+    }
+
+    // Owner e-mail lookup for the store mails (academies are mailed by Moodle).
+    const owners = new Map<string, { email: string; name: string | null }>();
+    const loadOwners = async (ids: (string | null)[]) => {
+        const missing = Array.from(new Set(ids.filter((id): id is string => !!id && !owners.has(id))));
+        if (!missing.length) return;
+        const rows = await prisma.user.findMany({ where: { id: { in: missing } }, select: { id: true, email: true, name: true } }).catch(() => []);
+        for (const u of rows) owners.set(u.id, { email: u.email, name: u.name });
+    };
+
+    // 1) Expired tenants → suspend (academy: soft-lock in Moodle; store: licence
+    // gate shows "temporarily unavailable"). Data is kept.
+    const expired = await prisma.tenant
         .findMany({
             where: { status: "live", validUntil: { not: null, lt: cutoff } },
-            select: { slug: true, name: true, validUntil: true, ownerId: true },
+            select: { slug: true, name: true, validUntil: true, ownerId: true, product: true, tier: true },
         })
         .catch((e) => { console.error("[cron/expiry] query failed", e); return []; });
 
     const suspended: string[] = [];
+    await loadOwners(expired.filter((a) => a.product === "store").map((a) => a.ownerId));
     for (const a of expired) {
         try {
-            await prisma.academy.update({ where: { slug: a.slug }, data: { status: "suspended" } });
-            await triggerSuspend(a.slug, true);
+            await prisma.tenant.update({ where: { slug: a.slug }, data: { status: "suspended" } });
+            if (a.product === "store") await storeOps.suspend(a.slug, true);
+            else await triggerSuspend(a.slug, true);
             suspended.push(a.slug);
         } catch (e) {
             console.error("[cron/expiry] suspend failed", a.slug, e);
+            continue;
+        }
+        // Store owners get a "suspended — renew to bring it back" mail (once: the
+        // row is no longer 'live', so it never matches this sweep again).
+        if (a.product === "store" && a.validUntil) {
+            const o = a.ownerId ? owners.get(a.ownerId) : undefined;
+            if (!o) continue;
+            try {
+                await sendStoreExpiryEmail({
+                    to: o.email, ownerName: o.name, storeName: a.name, slug: a.slug, tier: a.tier,
+                    validUntil: a.validUntil, renewUrl, stage: "suspended", graceDays, autoDeleteDays,
+                });
+            } catch (e) {
+                console.error("[cron/expiry] suspension mail failed", a.slug, e);
+            }
         }
     }
     if (suspended.length) {
@@ -77,19 +116,33 @@ export async function POST(req: NextRequest) {
     // grace). Each stage is sent at most once per term (tracked in
     // expiryRemindersSent, cleared on renewal / plan change).
     const REMIND_DAYS = [7, 3, 1, 0];
-    const soon = await prisma.academy
+    const soon = await prisma.tenant
         .findMany({
             where: {
                 status: "live",
                 validUntil: { not: null, lte: new Date(now + 7 * 86_400_000) },
             },
-            select: { slug: true, validUntil: true, expiryRemindersSent: true },
+            select: { slug: true, name: true, validUntil: true, expiryRemindersSent: true, product: true, ownerId: true, tier: true },
         })
         .catch((e) => { console.error("[cron/expiry] reminder query failed", e); return []; });
+    // Stores: same stages, but the mail comes from nit2 (the store has no platform
+    // mail path; the renew action is on /account). Stores on auto-renew are told
+    // by the pre-renew / payment-failed notices in lib/billing.ts instead — a
+    // "renew now" mail on top of "your card will be charged" would contradict it.
+    const soonStores = soon.filter((a) => a.product === "store");
+    const autoRenewing = new Set<string>();
+    if (soonStores.length) {
+        const subs = await prisma.subscription
+            .findMany({ where: { tenantSlug: { in: soonStores.map((a) => a.slug) }, status: { in: ["active", "past_due"] } }, select: { tenantSlug: true } })
+            .catch(() => []);
+        for (const x of subs) autoRenewing.add(x.tenantSlug);
+        await loadOwners(soonStores.map((a) => a.ownerId));
+    }
 
     const reminded: string[] = [];
     for (const a of soon) {
         if (!a.validUntil) continue;
+        if (a.product === "store" && autoRenewing.has(a.slug)) continue;
         const daysLeft = Math.ceil((a.validUntil.getTime() - now) / 86_400_000);
         const sent: Record<string, unknown> =
             a.expiryRemindersSent && typeof a.expiryRemindersSent === "object"
@@ -98,6 +151,24 @@ export async function POST(req: NextRequest) {
         // Largest unsent threshold reached (undefined = no email due this run).
         const stage = REMIND_DAYS.find((t) => daysLeft <= t && !sent[`d${t}`]);
         const sendEmail = stage !== undefined;
+        if (a.product === "store") {
+            if (!sendEmail) continue;
+            const o = a.ownerId ? owners.get(a.ownerId) : undefined;
+            if (!o) { console.error("[cron/expiry] store owner not found", a.slug); continue; }
+            try {
+                const ok = await sendStoreExpiryEmail({
+                    to: o.email, ownerName: o.name, storeName: a.name, slug: a.slug, tier: a.tier,
+                    validUntil: a.validUntil, renewUrl, stage: Math.max(0, daysLeft) as StoreExpiryStage, graceDays, autoDeleteDays,
+                });
+                if (!ok) continue;   // SMTP off: leave the stage unsent so it goes out once mail works
+                sent[`d${stage}`] = Date.now();
+                await prisma.tenant.update({ where: { slug: a.slug }, data: { expiryRemindersSent: sent as Prisma.InputJsonValue } });
+                reminded.push(a.slug);
+            } catch (e) {
+                console.error("[cron/expiry] store reminder failed", a.slug, e);
+            }
+            continue;
+        }
         // Keep the academy's local_license/expirydate in sync with validUntil (as
         // YYYY-MM-DD, UTC) every run, so the in-academy banner always matches —
         // even when no reminder email is due.
@@ -107,7 +178,7 @@ export async function POST(req: NextRequest) {
             await triggerExpiryReminder(a.slug, daysLeft, renewUrl, { expiryDate, sendEmail });
             if (sendEmail) {
                 sent[`d${stage}`] = Date.now();
-                await prisma.academy.update({
+                await prisma.tenant.update({
                     where: { slug: a.slug },
                     data: { expiryRemindersSent: sent as Prisma.InputJsonValue },
                 });
@@ -120,28 +191,25 @@ export async function POST(req: NextRequest) {
 
     // 1c) Auto-delete: PERMANENTLY remove academies that have been suspended
     // (expired past grace) for longer than the platform's `auto_delete_days`.
-    // Opt-in and conservative: only status='suspended' rows are eligible, so an
-    // academy must have already been expired + suspended by step (1); a renewed
-    // one is 'live' again and never matches. 0 / blank = never auto-delete.
-    let autoDeleteDays = 0;
-    try {
-        const row = await prisma.platformSetting.findUnique({ where: { key: "auto_delete_days" } });
-        autoDeleteDays = Math.max(0, parseInt(row?.value ?? "0", 10) || 0);
-    } catch (e) {
-        console.error("[cron/expiry] auto_delete_days read failed", e);
-    }
+    // Opt-in and conservative: only status='suspended' rows are eligible, so a
+    // tenant must have already been expired + suspended by step (1); a renewed
+    // one is 'live' again and never matches. autoDeleteDays was read above.
     const deleted: string[] = [];
     if (autoDeleteDays > 0) {
         const delCutoff = new Date(now - autoDeleteDays * 86_400_000);
-        const toDelete = await prisma.academy
+        const toDelete = await prisma.tenant
             .findMany({
                 where: { status: "suspended", validUntil: { not: null, lt: delCutoff } },
-                select: { slug: true },
+                select: { slug: true, product: true },
             })
             .catch((e) => { console.error("[cron/expiry] delete query failed", e); return []; });
         for (const a of toDelete) {
             try {
-                if (await deprovisionAndDeleteAcademy(a.slug)) deleted.push(a.slug);
+                if (a.product === "store") {
+                    if (await deprovisionAndDeleteStore(a.slug)) deleted.push(a.slug);
+                } else if (await deprovisionAndDeleteAcademy(a.slug)) {
+                    deleted.push(a.slug);
+                }
             } catch (e) {
                 console.error("[cron/expiry] auto-delete failed", a.slug, e);
             }

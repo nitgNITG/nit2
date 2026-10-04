@@ -35,29 +35,29 @@ export async function GET() {
     const defByUser = new Map(defaults.map((p) => [p.userId, p]));
 
     // Billing history — the last few renewal/update charges per academy.
-    const slugs = subs.map((s) => s.academySlug);
+    const slugs = subs.map((s) => s.tenantSlug);
     const history = slugs.length
         ? await prisma.payment.findMany({
-              where: { academySlug: { in: slugs }, purpose: { in: ["renew", "update_card"] } },
+              where: { tenantSlug: { in: slugs }, purpose: { in: ["renew", "update_card"] } },
               orderBy: { createdAt: "desc" },
-              select: { academySlug: true, amount: true, currency: true, status: true, purpose: true, createdAt: true, paidAt: true },
+              select: { tenantSlug: true, amount: true, currency: true, status: true, purpose: true, createdAt: true, paidAt: true },
           }).catch(() => [])
         : [];
     const histBySlug = new Map<string, typeof history>();
     for (const h of history) {
-        const arr = histBySlug.get(h.academySlug!) ?? [];
-        if (arr.length < 6) { arr.push(h); histBySlug.set(h.academySlug!, arr); }
+        const arr = histBySlug.get(h.tenantSlug!) ?? [];
+        if (arr.length < 6) { arr.push(h); histBySlug.set(h.tenantSlug!, arr); }
     }
 
     const subscriptions = subs.map((s) => {
         const pm = (s.paymentMethodId && byId.get(s.paymentMethodId)) || defByUser.get(s.userId) || null;
         return {
-            academySlug: s.academySlug, userId: s.userId, status: s.status, autoRenew: s.autoRenew,
+            tenantSlug: s.tenantSlug, userId: s.userId, status: s.status, autoRenew: s.autoRenew,
             licenseKey: s.licenseKey, amountEgp: s.amountEgp, currency: s.currency,
             intervalDays: s.intervalDays, currentPeriodEnd: s.currentPeriodEnd,
             nextAttemptAt: s.nextAttemptAt, lastError: s.lastError,
             card: pm ? { brand: pm.brand, last4: pm.last4 } : null,
-            payments: (histBySlug.get(s.academySlug) ?? []).map((h) => ({
+            payments: (histBySlug.get(s.tenantSlug) ?? []).map((h) => ({
                 amount: h.amount, currency: h.currency, status: h.status, purpose: h.purpose,
                 date: (h.paidAt ?? h.createdAt),
             })),

@@ -11,7 +11,7 @@ type Row = {
     amount: number
     currency: string
     status: string
-    academySlug: string | null
+    tenantSlug: string | null
     academyName: string | null
     providerRef: string | null
     failureReason: string | null
@@ -139,7 +139,7 @@ export default function PaymentsHistory() {
                             <tr key={p.orderId} className='hover:bg-gray-50'>
                                 <td className='px-4 py-3 whitespace-nowrap text-gray-600'>{fmt(p.paidAt || p.createdAt)}</td>
                                 <td className='px-4 py-3'>
-                                    <div className='font-semibold text-gray-900'>{p.academyName || p.academySlug || '—'}</div>
+                                    <div className='font-semibold text-gray-900'>{p.academyName || p.tenantSlug || '—'}</div>
                                     <div className='text-xs text-gray-400 font-mono'>{p.licenseKey}</div>
                                 </td>
                                 {isAdmin && (

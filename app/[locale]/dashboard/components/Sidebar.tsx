@@ -23,6 +23,7 @@ const Sidebar = () => {
         { label: 'Blog', href: '/dashboard/blog' },
         { label: '💰 Plans & Pricing', href: '/dashboard/plans' },
         { label: '🎓 Academies', href: '/dashboard/academies' },
+        { label: '🛒 Stores', href: '/dashboard/stores' },
         { label: '💳 Payments', href: '/dashboard/payments' },
         { label: '📊 Revenue', href: '/dashboard/revenue' },
         { label: '🎫 Licenses', href: '/dashboard/licenses' },

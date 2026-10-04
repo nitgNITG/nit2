@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     try {
         const [rows, academies] = await Promise.all([
             prisma.platformSetting.findMany(),
-            prisma.academy.findMany({ where: { status: "live" }, select: { slug: true } }),
+            prisma.tenant.findMany({ where: { status: "live" }, select: { slug: true } }),
         ]);
         const settings: Record<string, string> = Object.fromEntries(
             rows.filter((r) => (r.value ?? "").trim() !== "").map((r) => [r.key, r.value]),

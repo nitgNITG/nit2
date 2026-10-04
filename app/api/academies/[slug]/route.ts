@@ -119,7 +119,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
         const user = await getCurrentUser();
         if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
         if (user.role !== "admin") return NextResponse.json({ error: "forbidden" }, { status: 403 });
-        const academy = await prisma.academy.findUnique({ where: { slug: params.slug } });
+        const academy = await prisma.tenant.findUnique({ where: { slug: params.slug } });
         if (!academy) return NextResponse.json({ error: "not found" }, { status: 404 });
         if (!["live", "suspended"].includes(academy.status)) {
             return NextResponse.json({ error: "academy is not live yet" }, { status: 409 });
@@ -171,7 +171,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
     }
 
     try {
-        const academy = await prisma.academy.update({ where: { slug: params.slug }, data });
+        const academy = await prisma.tenant.update({ where: { slug: params.slug }, data });
         if (buildFailed) {
             await notifyTelegram(`❌ Academy ${params.slug} build FAILED — provisioning did not complete.`);
         }
@@ -201,7 +201,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
             // Extending a suspended (expired) academy into the future revives it.
             let revived = false;
             if (academy.status === "suspended" && validUntilChanged.getTime() > Date.now()) {
-                await prisma.academy.update({ where: { slug: params.slug }, data: { status: "live" } });
+                await prisma.tenant.update({ where: { slug: params.slug }, data: { status: "live" } });
                 await triggerSuspend(params.slug, false);
                 finalStatus = "live";
                 revived = true;
@@ -289,7 +289,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { slug: st
     if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
     const slug = params.slug;
-    const academy = await prisma.academy.findUnique({ where: { slug } });
+    const academy = await prisma.tenant.findUnique({ where: { slug } });
     if (!academy) return NextResponse.json({ error: "not found" }, { status: 404 });
 
     // Admins can delete any academy; a client may delete only their own.
@@ -316,7 +316,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { slug: st
     }
 
     try {
-        await prisma.academy.delete({ where: { slug } });
+        await prisma.tenant.delete({ where: { slug } });
     } catch (e) {
         console.error("[academies] db delete failed", slug, e);
         return NextResponse.json({ error: "delete failed" }, { status: 500 });
@@ -328,7 +328,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { slug: st
     // references them.
     try {
         await prisma.subscription.updateMany({
-            where: { academySlug: slug, status: { in: ["active", "past_due"] } },
+            where: { tenantSlug: slug, status: { in: ["active", "past_due"] } },
             data: { status: "canceled", autoRenew: false, nextAttemptAt: null, lastError: "academy deleted" },
         });
     } catch (e) {

@@ -29,7 +29,7 @@ export async function GET() {
     try {
         const [users, academies] = await prismaMysql.$transaction([
             prismaMysql.user.count(),
-            prismaMysql.academy.count(),
+            prismaMysql.tenant.count(),
         ])
         results.database.mysql = '✅ Connected'
         results.counts.users = users

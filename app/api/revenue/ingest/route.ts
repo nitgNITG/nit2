@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 // Auth: shared secret in the `x-revenue-secret` header (REVENUE_INGEST_SECRET), the
 // same value provisioned into each academy. This is a REPORTING mirror only; it never
 // moves money, so a shared secret + self-declared academy slug is acceptable.
-// Idempotent on (academySlug, orderId): a resend just updates the row (e.g. refund).
+// Idempotent on (tenantSlug, orderId): a resend just updates the row (e.g. refund).
 
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
 const KINDS = new Set(["course", "subscription"]);
@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "invalid json" }, { status: 400 });
     }
 
-    const academySlug = String(body?.academySlug ?? "").trim().toLowerCase();
+    // The academies' Moodle mirror still sends `academySlug` (its own contract); accept both.
+    const tenantSlug = String(body?.tenantSlug ?? body?.academySlug ?? "").trim().toLowerCase();
     const orderId = String(body?.orderId ?? "").trim();
     const amount = Math.trunc(Number(body?.amount));
     const currency = String(body?.currency ?? "EGP").trim().toUpperCase().slice(0, 8) || "EGP";
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
     const userRef = body?.userRef != null ? String(body.userRef).slice(0, 64) : null;
     const mode = String(body?.mode) === "test" ? "test" : "live";
 
-    if (!SLUG_RE.test(academySlug)) {
+    if (!SLUG_RE.test(tenantSlug)) {
         return NextResponse.json({ error: "invalid academySlug" }, { status: 400 });
     }
     if (!orderId || orderId.length > 191) {
@@ -58,10 +59,10 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-        await prisma.academyRevenue.upsert({
-            where: { academySlug_orderId: { academySlug, orderId } },
+        await prisma.tenantRevenue.upsert({
+            where: { tenantSlug_orderId: { tenantSlug, orderId } },
             update: { amount, currency, status, kind, courseId, userRef, paidAt, provider, mode },
-            create: { academySlug, orderId, amount, currency, status, kind, courseId, userRef, paidAt, provider, mode },
+            create: { tenantSlug, orderId, amount, currency, status, kind, courseId, userRef, paidAt, provider, mode },
         });
         return NextResponse.json({ ok: true }, { status: 200 });
     } catch (e) {

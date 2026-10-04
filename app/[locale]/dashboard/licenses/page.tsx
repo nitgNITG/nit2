@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
+import { featureDefs, featureLabel, type Product } from '@/lib/licenseFeatures'
 
 type License = {
     id?: string
@@ -22,26 +23,34 @@ type License = {
     contactSales: boolean
     popular: boolean
     videoSource: string
+    product: 'academy' | 'store'
     limits: Record<string, number>
     features: Record<string, boolean>
     order: number
 }
 
 const VIDEO_SOURCES = ['vimeo', 'vdocipher']
-// Must match local_license's feature set (drm|coupons|offers|subscriptions|packages|jitsi).
-// 'jitsi' = live sessions (Jitsi) activity; gated per tier by local_license::has_feature('jitsi').
-const FEATURE_KEYS = ['drm', 'coupons', 'offers', 'subscriptions', 'packages', 'jitsi']
-const FEATURE_LABELS: Record<string, string> = { drm: 'DRM video', coupons: 'Coupons', offers: 'Offers', subscriptions: 'Subscriptions', packages: 'Packages', jitsi: 'Live sessions (Jitsi)' }
+// Feature toggles + their editor tabs live in lib/licenseFeatures.ts (shared with
+// the pricing page). Academies: local_license::has_feature; stores: PlatformLicense.
 const LIMIT_KEYS = ['quiz', 'video', 'pdf', 'default']
+// Store plans: caps enforced by store-api (PlatformLicense).
+const STORE_LIMIT_KEYS = ['products', 'staff', 'categories', 'storage_mb']
+const STORE_LIMIT_LABELS: Record<string, string> = { products: 'Products', staff: 'Staff accounts', categories: 'Categories', storage_mb: 'Storage (MB)' }
+// Caps the store does not enforce yet — same "soon" marker as the features.
+// staff: the team module was removed (every dashboard account is an admin);
+// storage_mb: nothing measures uploads against it yet.
+const STORE_LIMITS_SOON = ['staff', 'storage_mb']
 
-const blank = (): License => ({
+const blank = (product: Product = 'academy'): License => ({
     key: '', name: '', active: true, price: 0, priceEgp: 0, priceEgpMonthly: 0, listPriceEgp: 0, listPriceEgpMonthly: 0, durationDays: 365,
     maxCourses: -1, maxTeachers: -1, storageGb: 1, supportedApp: true, kashierEnabled: false, contactSales: false, popular: false, videoSource: 'vimeo', order: 0,
-    limits: { quiz: -1, video: -1, pdf: -1, default: -1 },
-    features: Object.fromEntries(FEATURE_KEYS.map((f) => [f, false])),
+    product,
+    limits: product === 'store' ? { products: -1, staff: -1, categories: -1, storage_mb: -1 } : { quiz: -1, video: -1, pdf: -1, default: -1 },
+    features: Object.fromEntries(featureDefs(product).map((f) => [f.key, false])),
 })
 
 const cap = (n: number) => (n < 0 ? '∞' : String(n))
+const mb = (n?: number) => ((n ?? -1) < 0 ? '∞' : n! >= 1024 ? `${(n! / 1024).toFixed(n! % 1024 ? 1 : 0)} GB` : `${n} MB`)
 
 const LicensesPage = () => {
     const [licenses, setLicenses] = useState<License[]>([])
@@ -49,6 +58,8 @@ const LicensesPage = () => {
     const [form, setForm] = useState<License | null>(null)
     const [editingKey, setEditingKey] = useState<string | null>(null)
     const [saving, setSaving] = useState(false)
+    // Which product's plans are listed; a new licence starts on the current tab.
+    const [tab, setTab] = useState<Product>('academy')
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -64,11 +75,14 @@ const LicensesPage = () => {
 
     useEffect(() => { load() }, [load])
 
-    const openNew = () => { setForm(blank()); setEditingKey(null) }
+    const openNew = () => { setForm(blank(tab)); setEditingKey(null) }
     const openEdit = (l: License) => {
-        setForm({ ...blank(), ...l, limits: { ...blank().limits, ...l.limits }, features: { ...blank().features, ...l.features } })
+        const b = blank(l.product)
+        setForm({ ...b, ...l, limits: { ...b.limits, ...l.limits }, features: { ...b.features, ...l.features } })
         setEditingKey(l.key)
     }
+    const isStore = form?.product === 'store'
+    const visible = licenses.filter((l) => (l.product ?? 'academy') === tab)
     const close = () => { setForm(null); setEditingKey(null) }
 
     const num = (k: keyof License) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -112,21 +126,31 @@ const LicensesPage = () => {
                 <div>
                     <h4 className='font-bold text-lg md:text-xl lg:text-2xl'>🎫 Licenses</h4>
                     <p className='text-sm text-gray-500 mt-1 max-w-2xl'>
-                        Define the licences (packages) academies run on — limits and features. The free-academy limit per
-                        client is set on <strong>Platform Settings</strong>. Manage which academy is on which licence on the
-                        <strong> Academies</strong> page.
+                        {tab === 'academy'
+                            ? <>Plans academies run on — course/teacher/storage caps, video source and features. The free-academy
+                                limit is on <strong>Platform Settings</strong>; assign plans on the <strong>Academies</strong> page.</>
+                            : <>Plans stores run on — product/staff/category/storage caps and features enforced inside each store.
+                                The free-store limit is on <strong>Platform Settings → Stores</strong>; assign plans on the <strong>Stores</strong> page.</>}
                     </p>
+                    <div className='mt-3 inline-flex rounded-lg border border-gray-200 bg-white p-1 text-sm font-semibold'>
+                        {([['academy', '🎓 Academies'], ['store', '🛒 Stores']] as [Product, string][]).map(([p, label]) => (
+                            <button key={p} type='button' onClick={() => setTab(p)}
+                                className={`rounded-md px-4 py-1.5 ${tab === p ? 'bg-[#1E7D67] text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
+                                {label} <span className='opacity-60'>({licenses.filter((l) => (l.product ?? 'academy') === p).length})</span>
+                            </button>
+                        ))}
+                    </div>
                 </div>
                 <button onClick={openNew}
                     className='shrink-0 bg-gradient-to-r from-[#268F79] to-[#0B2923] text-[#00FFB2] font-bold px-5 py-2 rounded-md'>
-                    + New licence
+                    + New {tab === 'store' ? 'store' : 'academy'} licence
                 </button>
             </div>
 
             {/* Editor */}
             {form && (
                 <form onSubmit={save} className='bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-5'>
-                    <h5 className='font-bold text-lg'>{editingKey ? `Edit "${editingKey}"` : 'New licence'}</h5>
+                    <h5 className='font-bold text-lg'>{isStore ? '🛒' : '🎓'} {editingKey ? `Edit "${editingKey}"` : `New ${isStore ? 'store' : 'academy'} licence`}</h5>
 
                     <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
                         <div>
@@ -137,6 +161,12 @@ const LicensesPage = () => {
                         </div>
                         <div>
                             <label className='block text-sm font-semibold mb-1'>Name <span className='text-red-400'>*</span></label>
+                            <select className='mb-2 w-full border rounded-lg px-3 py-2 text-sm disabled:bg-gray-100' value={form.product} disabled={!!editingKey}
+                                title='Which product this plan is sold for. Store plans use the store caps/features below.'
+                                onChange={(e) => { const p: Product = e.target.value === 'store' ? 'store' : 'academy'; setForm((f) => f ? { ...blank(p), key: f.key, name: f.name, priceEgp: f.priceEgp, priceEgpMonthly: f.priceEgpMonthly, listPriceEgp: f.listPriceEgp, listPriceEgpMonthly: f.listPriceEgpMonthly, durationDays: f.durationDays } : f) }}>
+                                <option value='academy'>🎓 Academy plan</option>
+                                <option value='store'>🛒 Store plan</option>
+                            </select>
                             <input className='w-full border rounded-lg px-3 py-2' value={form.name}
                                 onChange={(e) => setForm((f) => f ? { ...f, name: e.target.value } : f)} placeholder='Enterprise' />
                         </div>
@@ -153,12 +183,16 @@ const LicensesPage = () => {
                         <div>
                             <label className='block text-sm font-semibold mb-1'>Regular annual price (EGP)</label>
                             <input type='number' min={0} className='w-full border rounded-lg px-3 py-2' value={form.listPriceEgp} onChange={num('listPriceEgp')} />
-                            <p className='text-xs text-gray-400 mt-1'>Shown struck-through with a “% off” badge when higher than the annual charge. <span className='font-mono'>0</span> = no discount shown.</p>
+                            {form.listPriceEgp > 0 && form.listPriceEgp <= form.priceEgp
+                                ? <p className='text-xs text-amber-600 mt-1'>Ignored: it must be <strong>higher</strong> than the annual charge ({form.priceEgp}) to show a “was” price.</p>
+                                : <p className='text-xs text-gray-400 mt-1'>Shown struck-through with a “% off” badge when higher than the annual charge. <span className='font-mono'>0</span> = no discount shown.</p>}
                         </div>
                         <div>
                             <label className='block text-sm font-semibold mb-1'>Regular monthly price (EGP)</label>
                             <input type='number' min={0} className='w-full border rounded-lg px-3 py-2' value={form.listPriceEgpMonthly} onChange={num('listPriceEgpMonthly')} />
-                            <p className='text-xs text-gray-400 mt-1'>Strikethrough for the monthly price. <span className='font-mono'>0</span> = none.</p>
+                            {form.listPriceEgpMonthly > 0 && form.listPriceEgpMonthly <= form.priceEgpMonthly
+                                ? <p className='text-xs text-amber-600 mt-1'>Ignored: it must be <strong>higher</strong> than the monthly charge ({form.priceEgpMonthly}).</p>
+                                : <p className='text-xs text-gray-400 mt-1'>Strikethrough for the monthly price. <span className='font-mono'>0</span> = none.</p>}
                         </div>
                     </div>
 
@@ -168,6 +202,7 @@ const LicensesPage = () => {
                             <input type='number' min={0} className='w-full border rounded-lg px-3 py-2' value={form.durationDays} onChange={num('durationDays')} />
                             <p className='text-[11px] text-gray-400 mt-0.5'>0 = never expires</p>
                         </div>
+                        {!isStore && <>
                         <div>
                             <label className='block text-sm font-semibold mb-1'>Max courses</label>
                             <input type='number' className='w-full border rounded-lg px-3 py-2' value={form.maxCourses} onChange={num('maxCourses')} />
@@ -183,9 +218,11 @@ const LicensesPage = () => {
                             <input type='number' min={-1} className='w-full border rounded-lg px-3 py-2' value={form.storageGb} onChange={num('storageGb')} />
                             <p className='text-[11px] text-gray-400 mt-0.5'>moodledata quota per academy · -1 = unlimited (off-server hosting)</p>
                         </div>
+                        </>}
                     </div>
 
                     <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                        {!isStore && (
                         <div>
                             <label className='block text-sm font-semibold mb-1'>Video source</label>
                             <select className='w-full border rounded-lg px-3 py-2' value={form.videoSource}
@@ -193,11 +230,13 @@ const LicensesPage = () => {
                                 {VIDEO_SOURCES.map((v) => <option key={v} value={v}>{v}</option>)}
                             </select>
                         </div>
+                        )}
                         <div className='flex items-end gap-4 flex-wrap'>
                             <label className='flex items-center gap-2 text-sm font-semibold'>
                                 <input type='checkbox' checked={form.active} onChange={(e) => setForm((f) => f ? { ...f, active: e.target.checked } : f)} />
                                 Active (offered on the build form)
                             </label>
+                            {!isStore && <>
                             <label className='flex items-center gap-2 text-sm font-semibold' title='When off, academies on this licence are refused by the mobile app at onboarding (design_system site.supportedapp=false). Use for Demo.'>
                                 <input type='checkbox' checked={form.supportedApp} onChange={(e) => setForm((f) => f ? { ...f, supportedApp: e.target.checked } : f)} />
                                 App access
@@ -206,6 +245,7 @@ const LicensesPage = () => {
                                 <input type='checkbox' checked={form.kashierEnabled} onChange={(e) => setForm((f) => f ? { ...f, kashierEnabled: e.target.checked } : f)} />
                                 Kashier payments
                             </label>
+                            </>}
                             <label className='flex items-center gap-2 text-sm font-semibold' title='Show this plan with a “Contact us” button instead of a price, and refuse any direct purchase. For custom / quote-based tiers (e.g. Professional / Enterprise).'>
                                 <input type='checkbox' checked={form.contactSales} onChange={(e) => setForm((f) => f ? { ...f, contactSales: e.target.checked } : f)} />
                                 Contact sales (not buyable)
@@ -219,11 +259,17 @@ const LicensesPage = () => {
 
                     {/* Activity limits */}
                     <div>
-                        <p className='text-sm font-semibold mb-2'>Activity caps <span className='font-normal text-gray-400 text-xs'>(-1 = unlimited)</span></p>
+                        <p className='text-sm font-semibold mb-2'>{isStore ? 'Store caps' : 'Activity caps'} <span className='font-normal text-gray-400 text-xs'>(-1 = unlimited)</span></p>
                         <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
-                            {LIMIT_KEYS.map((k) => (
+                            {(isStore ? STORE_LIMIT_KEYS : LIMIT_KEYS).map((k) => (
                                 <div key={k}>
-                                    <label className='block text-xs text-gray-500 mb-1 capitalize'>{k}</label>
+                                    <label className='block text-xs text-gray-500 mb-1 capitalize'>
+                                        {isStore ? STORE_LIMIT_LABELS[k] : k.replace('_', ' ')}
+                                        {isStore && STORE_LIMITS_SOON.includes(k) && (
+                                            <span className='ms-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold normal-case text-amber-700'
+                                                title='Stored and pushed now; the store starts enforcing it once its module does.'>soon</span>
+                                        )}
+                                    </label>
                                     <input type='number' className='w-full border rounded-lg px-3 py-1.5 text-sm'
                                         value={form.limits[k] ?? -1}
                                         onChange={(e) => setForm((f) => f ? { ...f, limits: { ...f.limits, [k]: Number(e.target.value) } } : f)} />
@@ -231,18 +277,22 @@ const LicensesPage = () => {
                                 </div>
                             ))}
                         </div>
-                        <p className='text-[11px] text-gray-400 mt-1'>quiz / pdf / default are per-course; <strong>video</strong> is a per-academy total (blocks new provider uploads at the limit).</p>
+                        {isStore
+                            ? <p className='text-[11px] text-gray-400 mt-1'>Totals per store (-1 = unlimited). <strong>Products</strong> and <strong>categories</strong> are enforced; staff and storage are stored but not enforced yet.</p>
+                            : <p className='text-[11px] text-gray-400 mt-1'>quiz / pdf / default are per-course; <strong>video</strong> is a per-academy total (blocks new provider uploads at the limit).</p>}
                     </div>
 
-                    {/* Features */}
+                    {/* Features — one flat list of toggles; store keys are enforced by
+                        store-api (requireFeature), academy keys by local_license. */}
                     <div>
                         <p className='text-sm font-semibold mb-2'>Features</p>
-                        <div className='flex flex-wrap gap-4'>
-                            {FEATURE_KEYS.map((f) => (
-                                <label key={f} className='flex items-center gap-2 text-sm'>
-                                    <input type='checkbox' checked={!!form.features[f]}
-                                        onChange={(e) => setForm((prev) => prev ? { ...prev, features: { ...prev.features, [f]: e.target.checked } } : prev)} />
-                                    {FEATURE_LABELS[f] ?? f}
+                        <div className='grid grid-cols-2 gap-x-6 gap-y-3 rounded-lg border border-gray-200 p-4 md:grid-cols-3'>
+                            {featureDefs(form.product).map((f) => (
+                                <label key={f.key} className='flex items-center gap-2 text-sm'>
+                                    <input type='checkbox' checked={!!form.features[f.key]}
+                                        onChange={(e) => setForm((prev) => prev ? { ...prev, features: { ...prev.features, [f.key]: e.target.checked } } : prev)} />
+                                    {f.label.en}
+                                    {f.pending && <span className='rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700' title='Stored and pushed now; the app starts enforcing it once its module gates on this key.'>soon</span>}
                                 </label>
                             ))}
                         </div>
@@ -263,12 +313,13 @@ const LicensesPage = () => {
                 <p className='text-gray-400'>Loading…</p>
             ) : (
                 <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                    {licenses.map((l) => (
+                    {visible.length === 0 && <p className='text-gray-400 text-sm'>No {tab} licences yet.</p>}
+                    {visible.map((l) => (
                         <div key={l.key} className={`bg-white rounded-xl border shadow-sm p-5 space-y-2 ${l.active ? '' : 'opacity-60'}`}>
                             <div className='flex items-start justify-between'>
                                 <div>
-                                    <p className='font-bold text-lg'>{l.name}</p>
-                                    <p className='text-xs text-gray-400 font-mono'>{l.key}</p>
+                                    <p className='font-bold text-lg'>{l.product === 'store' ? '🛒 ' : '🎓 '}{l.name}</p>
+                                    <p className='text-xs text-gray-400 font-mono'>{l.key} · <span className='uppercase'>{l.product === 'store' ? 'store' : 'academy'}</span>{!l.active && ' · inactive'}</p>
                                 </div>
                                 <span className='text-[#268F79] font-bold text-right'>
                                     {(l.priceEgp ?? 0) === 0 ? 'Free' : `${l.priceEgp} EGP/yr`}
@@ -278,9 +329,14 @@ const LicensesPage = () => {
                                 </span>
                             </div>
                             <ul className='text-xs text-gray-600 space-y-0.5'>
-                                <li>Courses: <b>{cap(l.maxCourses)}</b> · Teachers: <b>{cap(l.maxTeachers)}</b> · Storage: <b>{l.storageGb ?? 1} GB</b></li>
-                                <li>Video: <b>{l.videoSource}</b> · {l.durationDays === 0 ? 'no expiry' : `${l.durationDays}d`} · App: <b>{l.supportedApp === false ? 'no' : 'yes'}</b></li>
-                                <li className='truncate'>Features: <b>{FEATURE_KEYS.filter((f) => l.features?.[f]).map((f) => FEATURE_LABELS[f] ?? f).join(', ') || 'none'}</b></li>
+                                {l.product === 'store' ? <>
+                                    <li>Products: <b>{cap(l.limits?.products ?? -1)}</b> · Staff: <b>{cap(l.limits?.staff ?? -1)}</b> · Categories: <b>{cap(l.limits?.categories ?? -1)}</b></li>
+                                    <li>Storage: <b>{mb(l.limits?.storage_mb)}</b> · {l.durationDays === 0 ? 'no expiry' : `${l.durationDays}d`}</li>
+                                </> : <>
+                                    <li>Courses: <b>{cap(l.maxCourses)}</b> · Teachers: <b>{cap(l.maxTeachers)}</b> · Storage: <b>{(l.storageGb ?? 1) < 0 ? '∞' : `${l.storageGb ?? 1} GB`}</b></li>
+                                    <li>Video: <b>{l.videoSource}</b> · {l.durationDays === 0 ? 'no expiry' : `${l.durationDays}d`} · App: <b>{l.supportedApp === false ? 'no' : 'yes'}</b></li>
+                                </>}
+                                <li className='truncate'>Features: <b>{Object.keys(l.features ?? {}).filter((f) => l.features?.[f]).map((f) => featureLabel(l.product ?? 'academy', f)).join(', ') || 'none'}</b></li>
                             </ul>
                             <div className='flex gap-2 pt-2 border-t'>
                                 <button onClick={() => openEdit(l)} className='flex-1 text-sm border rounded-lg py-1.5 hover:bg-gray-50'>Edit</button>

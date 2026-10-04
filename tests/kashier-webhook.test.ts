@@ -3,11 +3,15 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 const {
     db, verifyWebhook, isPaidStatus, provisionAcademy, licenseToDefinition,
     triggerSuspend, triggerExpiryReminder, computeUpgradable, notifyTelegram, openSubscription,
+    createStore, pushStoreLicense, storeSuspend,
 } = vi.hoisted(() => ({
+    createStore: vi.fn(),
+    pushStoreLicense: vi.fn(),
+    storeSuspend: vi.fn(),
     db: {
         payment: { findUnique: vi.fn(), update: vi.fn() },
         license: { findFirst: vi.fn(), findMany: vi.fn() },
-        academy: { findUnique: vi.fn(), update: vi.fn() },
+        tenant: { findUnique: vi.fn(), update: vi.fn() },
         paymentMethod: { findFirst: vi.fn() },
     },
     verifyWebhook: vi.fn(),
@@ -27,6 +31,8 @@ vi.mock("@/lib/provisionAcademy", () => ({ provisionAcademy, licenseToDefinition
 vi.mock("@/lib/licenseDefinition", () => ({ computeUpgradable }));
 vi.mock("@/lib/telegram", () => ({ notifyTelegram }));
 vi.mock("@/lib/billing", () => ({ openSubscription }));
+vi.mock("@/lib/tenants/createStore", () => ({ createStore, sanitizeStoreSettings: (v: unknown) => v ?? {} }));
+vi.mock("@/lib/products/store", () => ({ pushStoreLicense, storeOps: { suspend: storeSuspend } }));
 
 import { POST } from "@/app/api/payments/kashier/webhook/route";
 
@@ -55,14 +61,17 @@ beforeEach(() => {
     db.license.findFirst.mockResolvedValue({ key: "basic", durationDays: 365, videoSource: "vimeo", kashierEnabled: true });
     db.license.findMany.mockResolvedValue([]);
     db.payment.update.mockResolvedValue({});
-    db.academy.update.mockResolvedValue({});
-    db.academy.findUnique.mockResolvedValue(null);
+    db.tenant.update.mockResolvedValue({});
+    db.tenant.findUnique.mockResolvedValue(null);
     db.paymentMethod.findFirst.mockResolvedValue(null);
     provisionAcademy.mockResolvedValue({ ok: true });
     triggerExpiryReminder.mockResolvedValue(undefined);
     triggerSuspend.mockResolvedValue(undefined);
     notifyTelegram.mockResolvedValue(undefined);
     openSubscription.mockResolvedValue(undefined);
+    createStore.mockResolvedValue({ ok: true, slug: "ziad", job: 7, url: "https://ziad.commerce.nitg-eg.com" });
+    pushStoreLicense.mockResolvedValue({ ok: true });
+    storeSuspend.mockResolvedValue({ ok: true });
 });
 
 afterEach(() => {
@@ -87,7 +96,7 @@ describe("POST /api/payments/kashier/webhook", () => {
         db.payment.findUnique.mockResolvedValue({ orderId: "acad_1", status: "paid" });
         const body = await (await hook()).json();
         expect(body.status).toBe("already-processed");
-        expect(db.academy.update).not.toHaveBeenCalled();
+        expect(db.tenant.update).not.toHaveBeenCalled();
     });
 
     it("leaves auto-renew charges to the billing engine (subscriptionId set)", async () => {
@@ -95,7 +104,7 @@ describe("POST /api/payments/kashier/webhook", () => {
         const body = await (await hook()).json();
         expect(body.status).toBe("handled-by-billing");
         expect(provisionAcademy).not.toHaveBeenCalled();
-        expect(db.academy.update).not.toHaveBeenCalled();
+        expect(db.tenant.update).not.toHaveBeenCalled();
     });
 
     it("records a failure on a non-success event", async () => {
@@ -121,18 +130,59 @@ describe("POST /api/payments/kashier/webhook", () => {
         expect(db.payment.update.mock.calls.some((c) => c[0].data?.status === "paid")).toBe(true);
     });
 
+    it("new_store: queues the store from the stored payload once paid, opens the subscription when opted in", async () => {
+        db.license.findFirst.mockResolvedValue({ key: "store-basic", product: "store", durationDays: 365, name: "Basic", limits: { products: 100 }, features: {} });
+        db.payment.findUnique.mockResolvedValue({
+            orderId: "acad_1", status: "pending", purpose: "new_store", product: "store", mode: "live",
+            licenseKey: "store-basic", userId: "user-1", amount: 1500, currency: "EGP",
+            payloadJson: { slug: "ziad", name: "Ziad Store", name_ar: "متجر زياد", product: "store", store: { country: "EG" }, cycleDays: 30, owner_email: "o@x", owner_name: "O", locale: "ar", autoRenew: true },
+        });
+        const res = await hook();
+        expect(res.status).toBe(200);
+        expect(provisionAcademy).not.toHaveBeenCalled();
+        expect(createStore).toHaveBeenCalledTimes(1);
+        expect(createStore.mock.calls[0][0]).toMatchObject({ slug: "ziad", name: "Ziad Store", nameAr: "متجر زياد", durationDays: 30, licenseMode: "live", owner: { id: "user-1", email: "o@x", locale: "ar" } });
+        expect(openSubscription.mock.calls[0][0]).toMatchObject({ tenantSlug: "ziad", intervalDays: 30, amountEgp: 1500 });
+    });
+
+    it("new_store: a failed queue is recorded on the payment (paid-but-provision-failed)", async () => {
+        createStore.mockResolvedValue({ ok: false, error: "provisioner down", status: 503 });
+        db.payment.findUnique.mockResolvedValue({
+            orderId: "acad_1", status: "pending", purpose: "new_store", product: "store", mode: "live",
+            licenseKey: "store-basic", userId: "user-1", amount: 1500, currency: "EGP",
+            payloadJson: { slug: "ziad", name: "Ziad Store", cycleDays: 365, owner_email: "o@x", owner_name: "O" },
+        });
+        await hook();
+        expect(db.payment.update.mock.calls.some((c) => String(c[0].data?.failureReason ?? "").startsWith("paid-but-provision-failed"))).toBe(true);
+        expect(openSubscription).not.toHaveBeenCalled();
+    });
+
+    it("renew of a STORE pushes the licence to the store provisioner, not to Moodle", async () => {
+        db.tenant.findUnique.mockResolvedValue({ slug: "ziad", product: "store", status: "suspended", validUntil: null });
+        db.payment.findUnique.mockResolvedValue({
+            orderId: "acad_1", status: "pending", purpose: "renew", product: "store", tenantSlug: "ziad", mode: "live",
+            licenseKey: "store-basic", userId: "user-1", amount: 1500, currency: "EGP", payloadJson: { cycleDays: 365 },
+        });
+        await hook();
+        expect(pushStoreLicense).toHaveBeenCalledWith("ziad");
+        expect(storeSuspend).toHaveBeenCalledWith("ziad", false);
+        expect(triggerSuspend).not.toHaveBeenCalled();
+        expect(triggerExpiryReminder).not.toHaveBeenCalled();
+        expect(db.tenant.update.mock.calls[0][0].data.status).toBe("live");
+    });
+
     it("renew stacks the new term on remaining time and moves the academy live", async () => {
         const remaining = new Date(Date.now() + 30 * 86_400_000);
         db.payment.findUnique.mockResolvedValue({
             orderId: "acad_1", status: "pending", purpose: "renew", licenseKey: "basic",
-            userId: "user-1", amount: 5000, currency: "EGP", academySlug: "acme",
+            userId: "user-1", amount: 5000, currency: "EGP", tenantSlug: "acme",
             payloadJson: { cycleDays: 365, autoRenew: false },
         });
-        db.academy.findUnique.mockResolvedValue({ slug: "acme", status: "live", validUntil: remaining });
+        db.tenant.findUnique.mockResolvedValue({ slug: "acme", status: "live", validUntil: remaining });
 
         const res = await hook();
         expect(res.status).toBe(200);
-        const data = db.academy.update.mock.calls[0][0].data;
+        const data = db.tenant.update.mock.calls[0][0].data;
         expect(data).toMatchObject({ tier: "basic", status: "live" });
         // Stacked: 365 days added on top of the ~30 days still left (not from now).
         const expected = new Date(remaining.getTime() + 365 * 86_400_000).getTime();
@@ -144,14 +194,14 @@ describe("POST /api/payments/kashier/webhook", () => {
         const keep = new Date(Date.now() + 100 * 86_400_000);
         db.payment.findUnique.mockResolvedValue({
             orderId: "acad_1", status: "pending", purpose: "upgrade", licenseKey: "standard",
-            userId: "user-1", amount: 1096, currency: "EGP", academySlug: "acme",
+            userId: "user-1", amount: 1096, currency: "EGP", tenantSlug: "acme",
             payloadJson: { proratedUpgrade: true, keepEnd: keep.toISOString(), cycleDays: 365, newFullPrice: 9000, autoRenew: false },
         });
-        db.academy.findUnique.mockResolvedValue({ slug: "acme", status: "live", validUntil: keep });
+        db.tenant.findUnique.mockResolvedValue({ slug: "acme", status: "live", validUntil: keep });
 
         const res = await hook();
         expect(res.status).toBe(200);
-        const data = db.academy.update.mock.calls[0][0].data;
+        const data = db.tenant.update.mock.calls[0][0].data;
         expect(data.tier).toBe("standard");
         expect((data.validUntil as Date).toISOString()).toBe(keep.toISOString());
     });

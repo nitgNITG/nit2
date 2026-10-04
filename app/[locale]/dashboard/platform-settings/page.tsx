@@ -2,6 +2,8 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
+import StoreSettingsTab from './StoreSettingsTab'
 
 // Must match PLATFORM_KEYS in app/api/platform-settings/route.ts
 type FieldDef = { key: string; label: string; hint?: string; placeholder?: string }
@@ -68,7 +70,15 @@ const GROUPS: { title: string; note: string; fields: FieldDef[] }[] = [
 const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key))
 const emptyForm = () => Object.fromEntries(ALL_KEYS.map((k) => [k, ''])) as Record<string, string>
 
+type Tab = 'academies' | 'stores'
+
 const PlatformSettingsPage = () => {
+    // ?product=store deep-links the Stores tab (the Stores page links here).
+    const search = useSearchParams()
+    const router = useRouter()
+    const pathname = usePathname()
+    const tab: Tab = search.get('product') === 'store' ? 'stores' : 'academies'
+    const setTab = (t: Tab) => router.replace(t === 'stores' ? `${pathname}?product=store` : pathname)
     const [form, setForm] = useState<Record<string, string>>(emptyForm)
     const [loading, setLoading] = useState(false)
     const [saving, setSaving] = useState(false)
@@ -183,11 +193,27 @@ const PlatformSettingsPage = () => {
             <div>
                 <h4 className='font-bold text-lg md:text-xl lg:text-2xl'>🌐 Platform Settings</h4>
                 <p className='text-sm text-gray-500 mt-1 max-w-2xl'>
-                    Global values that must be identical for <strong>every</strong> academy. Stored once here and pushed
-                    into each academy&rsquo;s Moodle when it is provisioned. Per-academy secrets (tokens, payment
-                    credentials, VdoCipher keys) are <strong>not</strong> here — those live in each academy&rsquo;s own settings.
+                    {tab === 'academies' ? (
+                        <>Global values that must be identical for <strong>every</strong> academy. Stored once here and pushed
+                        into each academy&rsquo;s Moodle when it is provisioned. Per-academy secrets (tokens, payment
+                        credentials, VdoCipher keys) are <strong>not</strong> here — those live in each academy&rsquo;s own settings.</>
+                    ) : (
+                        <>Global values for <strong>every</strong> store: creation guards, host updates, and the shared accounts
+                        (mail, Cloudinary, Google) the store host puts into each store. Saved here, pushed to the host with one click.</>
+                    )}
                 </p>
+                <div className='mt-4 inline-flex rounded-lg border border-gray-200 bg-white p-1 text-sm font-semibold'>
+                    {([['academies', '🎓 Academies'], ['stores', '🛒 Stores']] as [Tab, string][]).map(([t, label]) => (
+                        <button key={t} type='button' onClick={() => setTab(t)}
+                            className={`rounded-md px-4 py-1.5 ${tab === t ? 'bg-[#1E7D67] text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
+                            {label}
+                        </button>
+                    ))}
+                </div>
             </div>
+
+            {tab === 'stores' && <StoreSettingsTab />}
+            {tab === 'academies' && <>
 
             {/* Free-academy limit — control-plane only (not pushed to academies). */}
             <div className='bg-white rounded-xl border border-gray-200 shadow-sm p-6 max-w-3xl'>
@@ -316,6 +342,7 @@ const PlatformSettingsPage = () => {
                     {loading && <span className='text-sm text-gray-400'>Loading…</span>}
                 </div>
             </form>
+            </>}
         </div>
     )
 }

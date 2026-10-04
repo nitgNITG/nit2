@@ -7,7 +7,7 @@ const {
         subscription: { findMany: vi.fn(), update: vi.fn() },
         payment: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
         paymentMethod: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
-        academy: { update: vi.fn() },
+        tenant: { update: vi.fn(), findUnique: vi.fn() },
     },
     subs: {
         subscriptionsEnabled: vi.fn(),
@@ -39,7 +39,7 @@ const DAY = 86_400_000;
 
 function makeSub(over: Record<string, unknown> = {}) {
     return {
-        id: "sub_1", academySlug: "acme", userId: "user-1", licenseKey: "basic",
+        id: "sub_1", tenantSlug: "acme", userId: "user-1", licenseKey: "basic",
         amountEgp: 5000, currency: "EGP", intervalDays: 365,
         currentPeriodEnd: new Date("2027-01-01T00:00:00Z"),
         attemptCount: 0, paymentMethodId: "pm-1", status: "active", autoRenew: true,
@@ -66,7 +66,8 @@ beforeEach(() => {
     db.paymentMethod.findUnique.mockResolvedValue(PM);
     db.paymentMethod.findFirst.mockResolvedValue(PM);
     db.paymentMethod.update.mockResolvedValue({});
-    db.academy.update.mockResolvedValue({});
+    db.tenant.update.mockResolvedValue({});
+    db.tenant.findUnique.mockResolvedValue({ id: "tenant-1" }); // the orphan guard: the tenant still exists
     decryptSecret.mockReturnValue("tok_live");
     payWithToken.mockResolvedValue({ ok: true, transactionId: "txn-1", expMonth: 12, expYear: 2030 });
     triggerExpiryReminder.mockResolvedValue(undefined);
@@ -93,8 +94,8 @@ describe("runBillingCycle", () => {
 
         // Term extends from currentPeriodEnd (+intervalDays), not from "now".
         const expectedEnd = new Date(Date.parse("2027-01-01T00:00:00Z") + 365 * DAY);
-        expect((db.academy.update.mock.calls[0][0].data.validUntil as Date).toISOString()).toBe(expectedEnd.toISOString());
-        expect(db.academy.update.mock.calls[0][0].data.status).toBe("live");
+        expect((db.tenant.update.mock.calls[0][0].data.validUntil as Date).toISOString()).toBe(expectedEnd.toISOString());
+        expect(db.tenant.update.mock.calls[0][0].data.status).toBe("live");
 
         const subData = db.subscription.update.mock.calls[0][0].data;
         expect(subData).toMatchObject({ status: "active", attemptCount: 0, lastError: null, nextAttemptAt: NEXT });
@@ -148,7 +149,7 @@ describe("runBillingCycle", () => {
         // Dunning email, not a receipt.
         expect(triggerExpiryReminder.mock.calls[0][3]).toMatchObject({ mode: "payment_failed" });
         // The academy term is NOT extended on a failed charge.
-        expect(db.academy.update).not.toHaveBeenCalled();
+        expect(db.tenant.update).not.toHaveBeenCalled();
     });
 
     it("routes a 3DS/step-up decline to needsAuth (not silently failed)", async () => {

@@ -50,7 +50,7 @@ function PaymentCallbackInner() {
                 const r = await fetch(`/api/payments/${orderId}`, { cache: 'no-store' })
                 const d = await r.json()
                 if (!r.ok) { setStatus('error'); return }
-                setSlug(d.academySlug ?? null)
+                setSlug(d.tenantSlug ?? null)
                 if (d.status === 'paid') { setStatus('paid'); return }
                 if (d.status === 'failed') { setStatus('failed'); return }
             } catch { /* keep polling */ }

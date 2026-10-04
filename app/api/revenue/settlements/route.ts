@@ -7,19 +7,19 @@ export const dynamic = "force-dynamic";
 
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
 
-// GET /api/revenue/settlements?academySlug= — payout history for one academy
+// GET /api/revenue/settlements?tenantSlug= — payout history for one academy
 // (newest first). Admin only.
 export async function GET(req: NextRequest) {
     if (!(await authAdmin(req))) {
         return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
-    const slug = (new URL(req.url).searchParams.get("academySlug") ?? "").trim().toLowerCase();
+    const slug = (new URL(req.url).searchParams.get("tenantSlug") ?? "").trim().toLowerCase();
     if (!SLUG_RE.test(slug)) {
-        return NextResponse.json({ error: "invalid academySlug" }, { status: 400 });
+        return NextResponse.json({ error: "invalid tenantSlug" }, { status: 400 });
     }
     try {
         const settlements = await prisma.settlement.findMany({
-            where: { academySlug: slug },
+            where: { tenantSlug: slug },
             orderBy: { createdAt: "desc" },
         });
         return NextResponse.json({ settlements });
@@ -44,7 +44,7 @@ export async function DELETE(req: NextRequest) {
         if (!settlement) {
             return NextResponse.json({ error: "not found" }, { status: 404 });
         }
-        await prisma.academyRevenue.updateMany({
+        await prisma.tenantRevenue.updateMany({
             where: { settlementId: id },
             data: { settled: false, settledAt: null, settlementRef: null, settlementId: null },
         });

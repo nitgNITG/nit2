@@ -13,8 +13,8 @@ type License = {
     features?: Record<string, boolean>; limits?: Record<string, number>; order?: number
 }
 
-// Every feature we sell — shown with ✓ / ✗ on each plan so buyers see the full set.
-const ALL_FEATURES = ['drm', 'coupons', 'offers', 'subscriptions', 'packages', 'jitsi'] as const
+// Every feature we sell — shown with ✓ / ✗ on each plan so buyers see the full
+// set (keys + labels from lib/licenseFeatures.ts, shared with the licence editor).
 const BUCKETS: { key: string; ar: string; en: string }[] = [
     { key: 'quiz', ar: 'اختبارات لكل كورس', en: 'Quizzes / course' },
     { key: 'video', ar: 'فيديوهات لكل كورس', en: 'Videos / course' },
@@ -23,35 +23,36 @@ const BUCKETS: { key: string; ar: string; en: string }[] = [
 
 // Remember the plan the visitor picked so it survives the sign-in redirect
 // (BuildProductForm reads this on mount). URL params alone are lost after login.
-function rememberPlan(tier: string, cycle: string) {
-    try { localStorage.setItem('nit_selected_plan', JSON.stringify({ tier, cycle })) } catch { /* ignore */ }
+function rememberPlan(tier: string, cycle: string, product: Product = 'academy') {
+    try { localStorage.setItem('nit_selected_plan', JSON.stringify({ tier, cycle, product })) } catch { /* ignore */ }
 }
 
-const FEATURE_LABELS: Record<string, { ar: string; en: string }> = {
-    drm: { ar: 'فيديو محمي (DRM)', en: 'Protected video (DRM)' },
-    coupons: { ar: 'كوبونات الخصم', en: 'Discount coupons' },
-    offers: { ar: 'العروض', en: 'Offers' },
-    subscriptions: { ar: 'الاشتراكات', en: 'Subscriptions' },
-    packages: { ar: 'الباقات', en: 'Course bundles' },
-    jitsi: { ar: 'الحصص المباشرة', en: 'Live sessions' },
-}
-
+// Two catalogues: academies (Moodle) and stores (commerce). Same License table,
+// filtered by `product`; store plans describe products/staff/storage instead of
+// courses/teachers/video.
+import { featureKeys, featureLabel, type Product } from '@/lib/licenseFeatures'
+// Feature keys + labels come from lib/licenseFeatures.ts (shared with the licence editor).
 const cap = (n?: number, unlimited?: string) => ((n ?? -1) < 0 ? (unlimited ?? '∞') : String(n))
 
-export default function PricingPlans() {
+export default function PricingPlans({ initialProduct = 'academy' }: { initialProduct?: Product } = {}) {
     const isAr = useLocale() === 'ar'
     const tr = (ar: string, en: string) => (isAr ? ar : en)
+    const [product, setProduct] = useState<Product>(initialProduct)
     const [licenses, setLicenses] = useState<License[]>([])
     const [loading, setLoading] = useState(true)
     const [cycle, setCycle] = useState<'monthly' | 'annual'>('annual')
     const [openFeats, setOpenFeats] = useState<Record<string, boolean>>({}) // per-card feature list toggle
 
+    // Navbar links switch ?product= while this component stays mounted.
+    useEffect(() => { setProduct(initialProduct) }, [initialProduct])
+
     useEffect(() => {
-        axios.get('/api/licenses')
+        setLoading(true)
+        axios.get(`/api/licenses?product=${product}`)
             .then((r) => setLicenses((r.data.licenses ?? []).filter((l: License) => l.active)))
             .catch(() => { })
             .finally(() => setLoading(false))
-    }, [])
+    }, [product])
 
     const plans = useMemo(
         () => [...licenses].sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.priceEgp ?? 0) - (b.priceEgp ?? 0)),
@@ -64,11 +65,32 @@ export default function PricingPlans() {
 
     const anyMonthly = plans.some((p) => (p.priceEgpMonthly ?? 0) > 0)
 
-    if (loading) return <p className='text-center text-gray-400 py-10'>{tr('جارٍ التحميل…', 'Loading…')}</p>
-    if (!plans.length) return null
+    const isStore = product === 'store'
+    const productSwitch = (
+        <div className='flex justify-center'>
+            <div className='inline-flex rounded-full border border-[#0B2923]/10 bg-white p-1 text-sm'>
+                {(['academy', 'store'] as const).map((pr) => (
+                    <button key={pr} type='button' onClick={() => setProduct(pr)}
+                        className={`rounded-full px-5 py-1.5 font-bold transition-colors ${product === pr ? 'bg-[#0B2923] text-white' : 'text-gray-600 hover:text-[#0B2923]'}`}>
+                        {pr === 'academy' ? tr('🎓 أكاديمية', '🎓 Academy') : tr('🛒 متجر إلكتروني', '🛒 Online store')}
+                    </button>
+                ))}
+            </div>
+        </div>
+    )
+
+    if (loading) return <div className='space-y-8'>{productSwitch}<p className='text-center text-gray-400 py-10'>{tr('جارٍ التحميل…', 'Loading…')}</p></div>
+    if (!plans.length) {
+        return (
+            <div className='space-y-8'>{productSwitch}
+                <p className='text-center text-gray-400 py-10'>{isStore ? tr('باقات المتاجر قريباً.', 'Store plans are coming soon.') : tr('لا توجد باقات.', 'No plans yet.')}</p>
+            </div>
+        )
+    }
 
     return (
         <div className='space-y-8'>
+            {productSwitch}
             {/* Monthly / Annual toggle */}
             {anyMonthly && (
                 <div className='flex justify-center'>
@@ -107,7 +129,11 @@ export default function PricingPlans() {
                         : 0
                     const capB = (k: string) => cap(p.limits?.[k], tr('غير محدود', 'Unlimited'))
                     // Resources with a value (always ✓).
-                    const resourceRows = [
+                    const resourceRows = isStore ? [
+                        `${tr('المنتجات', 'Products')}: ${capB('products')}`,
+                        `${tr('الأقسام', 'Categories')}: ${capB('categories')}`,
+                        `${tr('التخزين', 'Storage')}: ${(p.limits?.storage_mb ?? -1) < 0 ? tr('غير محدود', 'Unlimited') : `${Math.round((p.limits?.storage_mb ?? 0) / 1024 * 10) / 10} GB`}`,
+                    ] : [
                         `${tr('الكورسات', 'Courses')}: ${cap(p.maxCourses, tr('غير محدود', 'Unlimited'))}`,
                         `${tr('المدرّسون', 'Teachers')}: ${cap(p.maxTeachers, tr('غير محدود', 'Unlimited'))}`,
                         `${tr('التخزين', 'Storage')}: ${p.storageGb ?? 1} GB`,
@@ -116,8 +142,8 @@ export default function PricingPlans() {
                         `${tr('تطبيق الموبايل', 'Mobile app')}: ${p.supportedApp === false ? tr('لا', 'No') : tr('نعم', 'Yes')}`,
                     ]
                     // Every feature with ✓ (included) / ✗ (not).
-                    const featureRows = ALL_FEATURES.map((f) => ({
-                        label: (isAr ? FEATURE_LABELS[f]?.ar : FEATURE_LABELS[f]?.en) ?? f,
+                    const featureRows = featureKeys(product).map((f) => ({
+                        label: featureLabel(product, f, isAr ? 'ar' : 'en'),
                         on: !!p.features?.[f],
                     }))
 
@@ -178,8 +204,8 @@ export default function PricingPlans() {
                                     {tr('تواصل معنا', 'Contact us')}
                                 </LocaleLink>
                             ) : (
-                                <LocaleLink href={`/build-product?tier=${p.key}&cycle=${cycle}`}
-                                    onClick={() => rememberPlan(p.key, cycle)}
+                                <LocaleLink href={`/build-product?${isStore ? 'product=store&' : ''}tier=${p.key}&cycle=${cycle}`}
+                                    onClick={() => rememberPlan(p.key, cycle, product)}
                                     className={`mt-4 block rounded-xl py-2.5 text-center text-sm font-bold transition-colors ${popular ? 'bg-[#1E7D67] text-white hover:bg-[#186655]' : 'border-2 border-[#1E7D67] text-[#1E7D67] hover:bg-[#1E7D67] hover:text-white'}`}>
                                     {paid ? tr('اختر الباقة', 'Choose plan') : tr('ابدأ مجاناً', 'Start free')}
                                 </LocaleLink>

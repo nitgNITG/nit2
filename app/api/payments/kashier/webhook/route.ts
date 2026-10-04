@@ -5,6 +5,8 @@ import { provisionAcademy, licenseToDefinition, triggerSuspend, triggerExpiryRem
 import { computeUpgradable } from "@/lib/licenseDefinition";
 import { notifyTelegram } from "@/lib/telegram";
 import { openSubscription } from "@/lib/billing";
+import { pushStoreLicense, storeOps } from "@/lib/products/store";
+import { createStore, sanitizeStoreSettings } from "@/lib/tenants/createStore";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -106,7 +108,30 @@ export async function POST(req: NextRequest) {
         if (payment.purpose === "update_card") {
             // Card-update verification charge — the new token was captured by the
             // save-card callback; nothing to provision or extend here.
-            await notifyTelegram(`💳 Card updated for ${payment.academySlug || p.slug || "academy"}`);
+            await notifyTelegram(`💳 Card updated for ${payment.tenantSlug || p.slug || "academy"}`);
+        } else if (payment.purpose === "new_store") {
+            // Paid store: queue it on the store provisioner (progress comes back to
+            // /api/tenants/<slug>/progress). Same auto-renew rule as academies.
+            const rank = await prisma.license.findMany({ where: { active: true, product: "store" }, select: { key: true, active: true, order: true, priceEgp: true } }).catch(() => []);
+            const result = lic
+                ? await createStore({
+                    slug: String(p.slug), name: String(p.name), nameAr: p.name_ar ?? null,
+                    store: sanitizeStoreSettings(p.store), lic, rank, durationDays,
+                    owner: { id: payment.userId, email: String(p.owner_email || ""), name: String(p.owner_name || ""), locale: p.locale === "en" ? "en" : "ar" },
+                    licenseMode: payment.mode === "test" ? "test" : "live",
+                })
+                : { ok: false as const, error: `licence ${payment.licenseKey} not found`, status: 400 };
+            if (!result.ok) {
+                console.error("[kashier/webhook] store provision failed after payment", orderId, result.error);
+                await prisma.payment.update({ where: { orderId }, data: { failureReason: `paid-but-provision-failed: ${result.error}` } }).catch(() => {});
+                await notifyTelegram(`❌ PAID but store provision FAILED — ${p.slug} (order ${orderId}): ${result.error}`);
+            } else if (p.autoRenew && durationDays > 0) {
+                await openSubscription({
+                    tenantSlug: String(p.slug), userId: payment.userId, licenseKey: payment.licenseKey,
+                    intervalDays: durationDays, amountEgp: payment.amount, currency: payment.currency,
+                    currentPeriodEnd: new Date(Date.now() + durationDays * 86_400_000),
+                });
+            }
         } else if (payment.purpose === "new_academy") {
             const result = await provisionAcademy({
                 slug: String(p.slug),
@@ -136,18 +161,18 @@ export async function POST(req: NextRequest) {
                 // openSubscription links it if present, and billing falls back to the
                 // user's default card otherwise. No-op unless SUBSCRIPTIONS_ENABLED=1.
                 await openSubscription({
-                    academySlug: String(p.slug), userId: payment.userId, licenseKey: payment.licenseKey,
+                    tenantSlug: String(p.slug), userId: payment.userId, licenseKey: payment.licenseKey,
                     intervalDays: durationDays, amountEgp: payment.amount, currency: payment.currency,
                     currentPeriodEnd: new Date(Date.now() + durationDays * 86_400_000),
                 });
             }
         } else {
             // upgrade | renew — move the existing academy to the paid tier + extend term.
-            const slug = payment.academySlug || String(p.slug || "");
+            const slug = payment.tenantSlug || String(p.slug || "");
             if (slug) {
                 const now = new Date();
                 // Was it suspended (e.g. expired past grace)? Resume Moodle if so.
-                const prev = await prisma.academy.findUnique({ where: { slug } }).catch(() => null);
+                const prev = await prisma.tenant.findUnique({ where: { slug } }).catch(() => null);
 
                 // A PRORATED upgrade keeps the SAME end date (they paid only the
                 // difference for the remaining days); future renewals bill the new
@@ -164,25 +189,33 @@ export async function POST(req: NextRequest) {
                 const subAmount = prorated ? (Number(p.newFullPrice) || payment.amount) : payment.amount;
                 const subInterval = prorated ? (Number(p.cycleDays) || durationDays) : durationDays;
 
-                await prisma.academy.update({
+                await prisma.tenant.update({
                     where: { slug },
                     // Clear expiry reminders so the term re-arms 7/3/1/on-expiry. Stamp
                     // the mode this renewal/upgrade was paid in.
                     data: { tier: payment.licenseKey, status: "live", subscribedAt: now, validUntil, expiryRemindersSent: {}, licenseMode: payment.mode === "test" ? "test" : "live" },
                 }).catch((e) => console.error("[kashier/webhook] academy update failed", slug, e));
-                // Push the new licence to the live Moodle (best-effort).
-                await triggerApplyLicense(slug, payment.licenseKey, definition);
-                if (prev?.status === "suspended") await triggerSuspend(slug, false);
+                // Push the new licence to the live tenant (best-effort), per product.
+                if (prev?.product === "store") {
+                    const push = await pushStoreLicense(slug);
+                    if (!push.ok) console.error("[kashier/webhook] store licence push failed", slug, push.error);
+                    if (prev.status === "suspended") await storeOps.suspend(slug, false);
+                } else {
+                    await triggerApplyLicense(slug, payment.licenseKey, definition);
+                    if (prev?.status === "suspended") await triggerSuspend(slug, false);
+                }
                 if (p.autoRenew && subInterval > 0 && validUntil) {
                     await openSubscription({
-                        academySlug: slug, userId: payment.userId, licenseKey: payment.licenseKey,
+                        tenantSlug: slug, userId: payment.userId, licenseKey: payment.licenseKey,
                         intervalDays: subInterval, amountEgp: subAmount, currency: payment.currency,
                         currentPeriodEnd: validUntil,
                     });
                 }
                 // Email a receipt for the manual renew/upgrade (auto-renew charges get
                 // theirs from the billing cron; this covers the customer-present path).
-                if (validUntil) {
+                // (Store receipts: the store provisioner has no reminder script yet — the
+                // dashboard's plan card shows the new term instead.)
+                if (validUntil && prev?.product !== "store") {
                     const pm = await prisma.paymentMethod.findFirst({ where: { userId: payment.userId, isDefault: true } }).catch(() => null);
                     const ymd = `${validUntil.getUTCFullYear()}-${String(validUntil.getUTCMonth() + 1).padStart(2, "0")}-${String(validUntil.getUTCDate()).padStart(2, "0")}`;
                     const daysLeft = Math.ceil((validUntil.getTime() - now.getTime()) / 86_400_000);
@@ -191,7 +224,7 @@ export async function POST(req: NextRequest) {
                     });
                 }
                 await notifyTelegram(
-                    `💳 Academy ${slug} ${payment.purpose === "renew" ? "renewed" : "upgraded"} → ` +
+                    `💳 ${prev?.product === "store" ? "Store" : "Academy"} ${slug} ${payment.purpose === "renew" ? "renewed" : "upgraded"} → ` +
                     `${payment.licenseKey} (paid, until ${validUntil ? validUntil.toISOString().slice(0, 10) : "—"})`,
                 );
             }

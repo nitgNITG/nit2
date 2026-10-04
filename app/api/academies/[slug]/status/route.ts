@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
     if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
     const slug = params.slug;
-    const academy = await prisma.academy.findUnique({ where: { slug } });
+    const academy = await prisma.tenant.findUnique({ where: { slug } });
     if (!academy) return NextResponse.json({ error: "not found" }, { status: 404 });
     if (user.role !== "admin" && academy.ownerId !== user.id) {
         return NextResponse.json({ error: "forbidden" }, { status: 403 });
@@ -34,7 +34,7 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
     // A suspended academy still serves a 200 notice page — don't let reachability
     // flip it back to "live". Only promote from the provisioning states.
     if (live && academy.status !== "live" && academy.status !== "suspended") {
-        try { await prisma.academy.update({ where: { slug }, data: { status: "live" } }); } catch {}
+        try { await prisma.tenant.update({ where: { slug }, data: { status: "live" } }); } catch {}
     }
     return NextResponse.json({ slug, live, url });
 }

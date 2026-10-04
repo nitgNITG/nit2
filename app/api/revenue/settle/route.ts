@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 // mode is overridden.
 //
 // Body:
-//   academySlug: required
+//   tenantSlug: required
 //   currency?:   restrict to one currency
 //   orderIds?:   restrict to specific orders (settle a selection); else all matching
 //   upToPaidAt?: only rows paid on/before this ISO date
@@ -36,13 +36,13 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "invalid json" }, { status: 400 });
     }
 
-    const academySlug = String(body?.academySlug ?? "").trim().toLowerCase();
-    if (!SLUG_RE.test(academySlug)) {
-        return NextResponse.json({ error: "invalid academySlug" }, { status: 400 });
+    const tenantSlug = String(body?.tenantSlug ?? "").trim().toLowerCase();
+    if (!SLUG_RE.test(tenantSlug)) {
+        return NextResponse.json({ error: "invalid tenantSlug" }, { status: 400 });
     }
 
     const where: any = {
-        academySlug,
+        tenantSlug,
         status: "paid",
         settled: false,
         mode: body?.mode === "test" ? "test" : "live",
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
 
     try {
         // Amount + count per currency (a settlement batch is per currency).
-        const affected = await prisma.academyRevenue.groupBy({
+        const affected = await prisma.tenantRevenue.groupBy({
             by: ["currency"],
             where,
             _sum: { amount: true },
@@ -80,9 +80,9 @@ export async function POST(req: NextRequest) {
             const amount = grp._sum.amount ?? 0;
             const txnCount = grp._count._all;
             const settlement = await prisma.settlement.create({
-                data: { academySlug, currency: grp.currency, amount, txnCount, method, reference, note },
+                data: { tenantSlug, currency: grp.currency, amount, txnCount, method, reference, note },
             });
-            await prisma.academyRevenue.updateMany({
+            await prisma.tenantRevenue.updateMany({
                 where: { ...where, currency: grp.currency },
                 data: { settled: true, settledAt: now, settlementRef: reference, settlementId: settlement.id },
             });

@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prismaMysql";
+import { Prisma } from "prismamysql";
 import { getCurrentUser } from "@/lib/auth";
 import { sanitizeBrand } from "@/lib/brand";
 import { createSession, kashierConfigured } from "@/lib/kashier";
 import { subscriptionsEnabled } from "@/lib/subscriptions";
+import { evaluateStoreHealth } from "@/lib/products/store";
+import { sanitizeStoreSettings } from "@/lib/tenants/createStore";
 import { evaluateServerHealth, creationBlockedMessage, healthBlockAlertBody } from "@/lib/serverHealth";
 import { alertAdmins, supportWhatsapp } from "@/lib/adminAlert";
 import crypto from "crypto";
@@ -36,7 +39,15 @@ export async function POST(req: NextRequest) {
     const platformLang = ["ar", "en", "both"].includes(body?.platform_lang) ? body.platform_lang : "both";
     const homepageTemplate = /^t([1-9]|10)$/.test(body?.homepageTemplate) ? body.homepageTemplate : "t1";
     const homepageContent = (body?.content && typeof body.content === "object") ? body.content : null;
-    const purpose = ["new_academy", "upgrade", "renew"].includes(body?.purpose) ? body.purpose : "new_academy";
+    // Product: academies (default) or stores. A "new" purchase creates a tenant of
+    // that product from the webhook; upgrade/renew act on an existing tenant.
+    const product: "academy" | "store" = body?.product === "store" ? "store" : "academy";
+    const newPurpose = product === "store" ? "new_store" : "new_academy";
+    const purpose = ["upgrade", "renew"].includes(body?.purpose) ? body.purpose : newPurpose;
+    const isNew = purpose === newPurpose;
+    // JSON-cloned so Prisma accepts it as InputJsonValue (base64 logo included).
+    const storeSettings = product === "store" ? (JSON.parse(JSON.stringify(sanitizeStoreSettings(body?.store))) as Prisma.InputJsonObject) : null;
+    const nameAr = typeof body?.name_ar === "string" ? body.name_ar.trim().slice(0, 150) : null;
     const cycle = body?.cycle === "monthly" ? "monthly" : "annual"; // billing cycle
 
     // ── Update card ──────────────────────────────────────────────────────────
@@ -45,7 +56,7 @@ export async function POST(req: NextRequest) {
     // captures the new token and re-points the subscription at it.
     if (body?.purpose === "update_card") {
         if (!subscriptionsEnabled()) return NextResponse.json({ error: "غير متاح حالياً." }, { status: 400 });
-        const academy = await prisma.academy.findUnique({ where: { slug } }).catch(() => null);
+        const academy = await prisma.tenant.findUnique({ where: { slug } }).catch(() => null);
         if (!academy) return NextResponse.json({ error: "الأكاديمية غير موجودة." }, { status: 404 });
         if (user.role !== "admin" && academy.ownerId !== user.id) {
             return NextResponse.json({ error: "forbidden" }, { status: 403 });
@@ -62,7 +73,7 @@ export async function POST(req: NextRequest) {
             await prisma.payment.create({
                 data: {
                     orderId, userId: user.id, licenseKey: academy.tier, purpose: "update_card",
-                    amount: upAmount, currency: "EGP", status: "pending", academySlug: slug,
+                    amount: upAmount, currency: "EGP", status: "pending", tenantSlug: slug,
                     payloadJson: { updateCard: true, autoRenew: false },
                 },
             });
@@ -91,7 +102,7 @@ export async function POST(req: NextRequest) {
     // losing (or re-buying) time. Falls back to a full charge if there's no time
     // left. Future auto-renewals then bill the new tier's full price.
     if (body?.purpose === "upgrade") {
-        const academy = await prisma.academy.findUnique({ where: { slug } }).catch(() => null);
+        const academy = await prisma.tenant.findUnique({ where: { slug } }).catch(() => null);
         if (!academy) return NextResponse.json({ error: "الأكاديمية غير موجودة." }, { status: 404 });
         if (user.role !== "admin" && academy.ownerId !== user.id) {
             return NextResponse.json({ error: "forbidden" }, { status: 403 });
@@ -105,7 +116,7 @@ export async function POST(req: NextRequest) {
             );
         }
         const curLic = await prisma.license.findUnique({ where: { key: academy.tier } });
-        const sub = await prisma.subscription.findUnique({ where: { academySlug: slug } }).catch(() => null);
+        const sub = await prisma.subscription.findUnique({ where: { tenantSlug: slug } }).catch(() => null);
         const cycle: "monthly" | "annual" = sub?.intervalDays === 30 ? "monthly" : "annual";
         const termDays = sub?.intervalDays ?? (curLic?.durationDays ?? 365);
         const priceOf = (l: any) => (cycle === "monthly" ? (l?.priceEgpMonthly ?? 0) : (l?.priceEgp ?? 0));
@@ -131,7 +142,7 @@ export async function POST(req: NextRequest) {
                 await prisma.payment.create({
                     data: {
                         orderId, userId: user.id, licenseKey: newLic.key, purpose: "upgrade",
-                        amount: prorated, currency: "EGP", status: "pending", academySlug: slug,
+                        amount: prorated, currency: "EGP", status: "pending", tenantSlug: slug,
                         payloadJson: {
                             proratedUpgrade: true, cycle, cycleDays: termDays,
                             keepEnd: academy.validUntil?.toISOString() ?? null,
@@ -163,7 +174,7 @@ export async function POST(req: NextRequest) {
 
     // Validate the licence and that it's actually a PAID one.
     const lic = requestedKey
-        ? await prisma.license.findFirst({ where: { key: requestedKey, active: true } })
+        ? await prisma.license.findFirst({ where: { key: requestedKey, active: true, product } })
         : null;
     if (!lic) return NextResponse.json({ error: "الباقة غير موجودة." }, { status: 400 });
     // "Contact sales" plans are never bought directly — the pricing page shows a
@@ -186,21 +197,21 @@ export async function POST(req: NextRequest) {
         );
     }
 
-    if (purpose === "new_academy") {
-        if (!name) return NextResponse.json({ error: "اسم الأكاديمية مطلوب." }, { status: 400 });
+    if (isNew) {
+        if (!name) return NextResponse.json({ error: "الاسم مطلوب." }, { status: 400 });
         if (!SLUG_RE.test(slug)) {
             return NextResponse.json({ error: "المعرّف لازم يكون حروف إنجليزية صغيرة وأرقام وشرطات (3 إلى 40 حرف)." }, { status: 400 });
         }
         // Slug must be free before we take money for it.
-        const existing = await prisma.academy.findUnique({ where: { slug } }).catch(() => null);
+        const existing = await prisma.tenant.findUnique({ where: { slug } }).catch(() => null);
         if (existing) return NextResponse.json({ error: "المعرّف ده مستخدم بالفعل، اختار غيره." }, { status: 409 });
 
         // Don't take payment if we can't provision: server-B health gate (same as
         // the free path). Alert admins and refuse with a support message.
-        const verdict = await evaluateServerHealth();
+        const verdict = product === "store" ? await evaluateStoreHealth() : await evaluateServerHealth();
         if (!verdict.ok) {
             await alertAdmins(
-                `🚫 Paid academy creation blocked — ${slug}`,
+                `🚫 Paid ${product} creation blocked — ${slug}`,
                 `${healthBlockAlertBody(verdict)}\n\nRequested by: ${user.email ?? user.id} · tier ${requestedKey}`,
             );
             return NextResponse.json(
@@ -243,11 +254,12 @@ export async function POST(req: NextRequest) {
     try {
         await prisma.payment.create({
             data: {
-                orderId, userId: user.id, licenseKey: lic.key, purpose,
+                orderId, userId: user.id, licenseKey: lic.key, purpose, product,
                 amount, currency: "EGP", status: "pending",
-                academySlug: purpose === "new_academy" ? slug : (body?.slug ?? null),
+                tenantSlug: isNew ? slug : (body?.slug ?? null),
                 payloadJson: {
                     name, slug, tier: lic.key, brand, locale, platform_lang: platformLang,
+                    product, name_ar: nameAr, store: storeSettings, // store-product fields (ignored for academies)
                     homepageTemplate, // homepage look (t1..t10) for the webhook to provision with
                     homepageContent,  // {text,href} for the template's editable hooks
                     // Snapshot the owner so the (session-less) webhook can provision.
@@ -271,7 +283,7 @@ export async function POST(req: NextRequest) {
         customerEmail: user.email,
         webhookUrl: `${base}/api/payments/kashier/webhook`,
         successUrl: `${base}/${locale}/payment/callback?order=${orderId}`,
-        metadata: { purpose, licenseKey: lic.key, slug },
+        metadata: { purpose, licenseKey: lic.key, slug, product },
         saveCard,
     });
 
