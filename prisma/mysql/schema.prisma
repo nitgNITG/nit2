@@ -48,6 +48,9 @@ model User {
   name          String?
   role          String?  @default("client")
   emailVerified Boolean  @default(false) // set via the email-OTP verification flow
+  // AI agent staff permissions: ["sales" | "support" | "viewer"]; null = none.
+  // Independent of `role` — admin already has every agent permission (SRS §13.14).
+  agentPermissions Json?
   createdAt     DateTime @default(now())
 }
 

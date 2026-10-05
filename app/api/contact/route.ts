@@ -2,18 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/prisma/client';
 import { authAdmin } from "@/lib/predict";
 import { computeLeadScore } from "@/utils/leadScore";
-
-// ── Disposable / known-spam email domains ─────────────────────────────────────
-const BLOCKED_DOMAINS = new Set([
-    'mailinator.com', 'guerrillamail.com', 'tempmail.com', 'throwam.com',
-    'yopmail.com', 'sharklasers.com', 'guerrillamailblock.com', 'grr.la',
-    'guerrillamail.info', 'guerrillamail.biz', 'guerrillamail.de',
-    'guerrillamail.net', 'guerrillamail.org', 'spam4.me', 'trashmail.me',
-    'trashmail.at', 'trashmail.io', 'trashmail.xyz', 'fakeinbox.com',
-    'dispostable.com', 'mailnull.com', 'maildrop.cc', 'spamgourmet.com',
-    '10minutemail.com', 'temp-mail.org', 'getnada.com', 'discard.email',
-    'spamhereplease.com', 'spamthisplease.com',
-]);
+// Disposable / known-spam email domains — shared with the AI agent's capture_lead.
+import { BLOCKED_DOMAINS } from "@/lib/spamRules";
 
 // ── Simple in-memory rate limiter: max 3 submissions per IP per 10 min ────────
 const ipCache = new Map<string, { count: number; resetAt: number }>();
