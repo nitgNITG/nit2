@@ -19,7 +19,7 @@ export default function PrivacyPolicyPage({
 
                 {isAr ? (
                     <div className="space-y-6 text-gray-700 leading-relaxed text-right">
-                        <p className="text-sm text-gray-400">آخر تحديث: يوليو 2025</p>
+                        <p className="text-sm text-gray-400">آخر تحديث: أكتوبر 2026</p>
 
                         <section>
                             <h2 className="text-xl font-bold text-gray-900 mb-2">١. من نحن</h2>
@@ -54,14 +54,26 @@ export default function PrivacyPolicyPage({
                         </section>
 
                         <section>
-                            <h2 className="text-xl font-bold text-gray-900 mb-2">٥. ملفات تعريف الارتباط (Cookies)</h2>
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">٥. المساعد الذكي (المحادثة على الموقع)</h2>
+                            <ul className="list-disc list-inside space-y-1 mr-4">
+                                <li>يرد على المحادثة في الموقع مساعد آلي يعمل بالذكاء الاصطناعي، ويمكنك طلب التحدث مع أحد أعضاء فريقنا في أي وقت.</li>
+                                <li>تُحفظ رسائل المحادثة لمدة ١٢ شهراً، وقد يراجعها فريقنا للرد عليك ولتحسين الخدمة.</li>
+                                <li>تُرسَل رسائلك إلى مزوّد نموذج الذكاء الاصطناعي (Anthropic) لإنتاج الرد فقط، ولا تُستخدم بياناتك لبيعها لأي طرف.</li>
+                                <li>بيانات التواصل التي تتركها في المحادثة (الاسم، الهاتف، البريد) تُحفظ كطلب تواصل، ولا نتواصل معك على واتساب أو البريد إلا بموافقتك.</li>
+                                <li>نستخدم ملف ارتباط أساسياً لربط المحادثة بمتصفحك، ونحتفظ بعنوان IP بشكل مُشفّر لمنع الإساءة فقط.</li>
+                                <li>لا تشارك في المحادثة كلمات مرور أو بيانات بطاقات الدفع.</li>
+                            </ul>
+                        </section>
+
+                        <section>
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">٦. ملفات تعريف الارتباط (Cookies)</h2>
                             <p>
                                 نستخدم ملفات تعريف الارتباط الأساسية لضمان عمل الموقع. لا نستخدم ملفات تتبع إعلانية. يمكنك تعطيل ملفات الارتباط من إعدادات متصفحك.
                             </p>
                         </section>
 
                         <section>
-                            <h2 className="text-xl font-bold text-gray-900 mb-2">٦. حقوقك</h2>
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">٧. حقوقك</h2>
                             <p>
                                 يحق لك طلب الاطلاع على بياناتك، تصحيحها، أو حذفها في أي وقت. تواصل معنا على{" "}
                                 <a href="mailto:info@nitg-eg.com" className="text-[#1E7D67] underline">
@@ -71,7 +83,7 @@ export default function PrivacyPolicyPage({
                         </section>
 
                         <section>
-                            <h2 className="text-xl font-bold text-gray-900 mb-2">٧. التواصل</h2>
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">٨. التواصل</h2>
                             <p>
                                 لأي استفسار بخصوص الخصوصية: <a href="mailto:info@nitg-eg.com" className="text-[#1E7D67] underline">info@nitg-eg.com</a> | هاتف: <a href="tel:+201091568240" className="text-[#1E7D67] underline">+20 109 156 8240</a>
                             </p>
@@ -79,7 +91,7 @@ export default function PrivacyPolicyPage({
                     </div>
                 ) : (
                     <div className="space-y-6 text-gray-700 leading-relaxed text-left">
-                        <p className="text-sm text-gray-400">Last updated: July 2025</p>
+                        <p className="text-sm text-gray-400">Last updated: October 2026</p>
 
                         <section>
                             <h2 className="text-xl font-bold text-gray-900 mb-2">1. Who We Are</h2>
@@ -114,14 +126,26 @@ export default function PrivacyPolicyPage({
                         </section>
 
                         <section>
-                            <h2 className="text-xl font-bold text-gray-900 mb-2">5. Cookies</h2>
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">5. AI Assistant (Website Chat)</h2>
+                            <ul className="list-disc list-inside space-y-1 ml-4">
+                                <li>The chat on our website is answered by an automated AI assistant. You can ask to talk to a member of our team at any time.</li>
+                                <li>Chat messages are kept for 12 months and may be reviewed by our team to reply to you and to improve the service.</li>
+                                <li>Your messages are sent to our AI model provider (Anthropic) only to generate replies. We never sell your data.</li>
+                                <li>Contact details you share in the chat (name, phone, email) are saved as a contact request. We contact you on WhatsApp or email only with your consent.</li>
+                                <li>We use an essential cookie to link the conversation to your browser, and keep your IP address only in hashed form to prevent abuse.</li>
+                                <li>Please do not share passwords or payment-card details in the chat.</li>
+                            </ul>
+                        </section>
+
+                        <section>
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">6. Cookies</h2>
                             <p>
                                 We use essential cookies to ensure the website functions correctly. We do not use advertising tracking cookies. You can disable cookies in your browser settings.
                             </p>
                         </section>
 
                         <section>
-                            <h2 className="text-xl font-bold text-gray-900 mb-2">6. Your Rights</h2>
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">7. Your Rights</h2>
                             <p>
                                 You have the right to access, correct, or delete your data at any time. Contact us at{" "}
                                 <a href="mailto:info@nitg-eg.com" className="text-[#1E7D67] underline">
@@ -131,7 +155,7 @@ export default function PrivacyPolicyPage({
                         </section>
 
                         <section>
-                            <h2 className="text-xl font-bold text-gray-900 mb-2">7. Contact</h2>
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">8. Contact</h2>
                             <p>
                                 For privacy inquiries: <a href="mailto:info@nitg-eg.com" className="text-[#1E7D67] underline">info@nitg-eg.com</a> | Phone: <a href="tel:+201091568240" className="text-[#1E7D67] underline">+20 109 156 8240</a>
                             </p>

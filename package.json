@@ -21,7 +21,8 @@
     "mysql:status": "prisma migrate status --schema prisma/mysql/schema.prisma",
     "mysql:studio": "prisma studio --schema prisma/mysql/schema.prisma",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "agent:eval": "vitest run --config vitest.eval.config.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
