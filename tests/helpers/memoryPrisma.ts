@@ -34,7 +34,11 @@ const eq = (a: unknown, b: unknown) => {
     return a === b;
 };
 
+// Prisma.DbNull / JsonNull / AnyNull (they expose _getName()).
+const isPrismaNull = (v: unknown) => !!v && typeof (v as { _getName?: unknown })._getName === "function";
+
 function matchField(value: unknown, cond: unknown, present: boolean): boolean {
+    if (isPrismaNull(cond)) return value == null;
     if (cond === null || typeof cond !== "object" || cond instanceof Date || Array.isArray(cond)) return eq(value, cond);
     const c = cond as Row;
     for (const [op, arg] of Object.entries(c)) {
@@ -48,6 +52,7 @@ function matchField(value: unknown, cond: unknown, present: boolean): boolean {
             case "gte": if (value == null || cmp(value, arg) < 0) return false; break;
             case "not": if (matchField(value, arg, present)) return false; break;
             case "contains": if (typeof value !== "string" || !value.includes(arg as string)) return false; break;
+            case "startsWith": if (typeof value !== "string" || !value.startsWith(arg as string)) return false; break;
             case "has": if (!Array.isArray(value) || !value.includes(arg)) return false; break;
             case "isSet": if (present !== arg) return false; break;
             case "mode": break;
@@ -78,6 +83,7 @@ export function matches(row: Row, where: Row | undefined): boolean {
 function applyData(row: Row, data: Row) {
     for (const [k, v] of Object.entries(data)) {
         if (v === undefined) continue;
+        if (isPrismaNull(v)) { row[k] = null; continue; }
         if (v && typeof v === "object" && !(v instanceof Date) && !Array.isArray(v)) {
             const op = v as Row;
             if ("increment" in op) { row[k] = ((row[k] as number) ?? 0) + (op.increment as number); continue; }

@@ -1,7 +1,7 @@
 // Page-aware prompt (FR-W10): the highest-priority enabled rule whose matcher fits
 // the page (path prefix after the locale, or "*") and whose locale fits.
 import type { PagePromptRule } from "./config";
-import { stripLocale, widgetAllowedOn } from "./http";
+import { stripLocale, widgetAllowedOn } from "./placement";
 
 export function pickPagePrompt(
     rules: PagePromptRule[],

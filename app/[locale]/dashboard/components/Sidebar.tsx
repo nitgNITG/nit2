@@ -9,12 +9,16 @@ import { Logo, MenuIcon } from '../../components/icons'
 import LocaleLink from '../../components/LocaleLink'
 import { useLocale } from 'next-intl'
 
-const Sidebar = () => {
+type NavItem = { label: string; href: string }
+
+// isAdmin: the full admin menu. Otherwise (AI-agent staff) only the agent pages
+// their permissions allow — computed server-side in the dashboard layout.
+const Sidebar = ({ isAdmin = true, agentItems = [] }: { isAdmin?: boolean; agentItems?: NavItem[] }) => {
     const { unReadContact, setUnReadContact }: any = useStore()
     const pathname = usePathname()
     const [open, setOpen] = useState(false)
     const locale = useLocale()
-    const items = [
+    const adminItems = [
         { label: 'Dashboard', href: '/dashboard' },
         { label: 'Projects', href: '/dashboard/projects' },
         { label: 'Project Types', href: '/dashboard/types' },
@@ -31,6 +35,7 @@ const Sidebar = () => {
         { label: '🔌 Integrations', href: '/dashboard/integrations' },
         { label: '⚙️ Setup & Health', href: '/dashboard/setup' },
     ]
+    const items = isAdmin ? [...adminItems, ...agentItems] : agentItems
     const eleRef = useClickOutside(() => { setOpen(false) }, open)
     const fetchContactsCount = useCallback(
         async () => {
@@ -43,8 +48,8 @@ const Sidebar = () => {
         }, [setUnReadContact]
     )
     useEffect(() => {
-        fetchContactsCount()
-    }, [fetchContactsCount])
+        if (isAdmin) fetchContactsCount() // the contacts API is admin-only
+    }, [fetchContactsCount, isAdmin])
 
     return (
         <>
@@ -59,7 +64,7 @@ const Sidebar = () => {
                         <Logo className='size-28' />
                     </LocaleLink>
                     <div className='relative flex items-center'>
-                        <div className='bg-white ml-3 z-10 px-1 text-black/40 text-sm'>Admin Interaction</div>
+                        <div className='bg-white ml-3 z-10 px-1 text-black/40 text-sm'>{isAdmin ? 'Admin Interaction' : 'AI Assistant'}</div>
                         <div className='absolute w-full h-[1px] bg-black/10' />
                     </div>
                     <div className='pt-2'>

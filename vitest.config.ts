@@ -7,9 +7,12 @@ import path from "node:path";
 export default defineConfig({
     // Mirror tsconfig's "@/*" -> repo root, without an ESM-only plugin.
     resolve: { alias: { "@": path.resolve(__dirname, ".") } },
+    // tsconfig keeps "jsx": "preserve" for Next; component tests need it compiled.
+    esbuild: { jsx: "automatic" },
     test: {
         environment: "node",
-        include: ["tests/**/*.test.ts"],
+        // Component tests (*.test.tsx) opt into jsdom with a `// @vitest-environment jsdom` header.
+        include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
         globals: true,
         // On CI also emit machine-readable reports (uploaded as an artifact by
         // ci.yml); locally keep just the readable console output.

@@ -17,19 +17,7 @@ export async function fallbackFor(locale: string) {
     return fallbackLinks(await supportWhatsapp(), locale === "en" ? "en" : "ar");
 }
 
-// FR-W1: no widget on dashboard, payment and sign-in pages.
-const EXCLUDED = [/^\/dashboard(\/|$)/, /^\/payment(\/|$)/, /^\/account(\/|$)/, /^\/forgot-password(\/|$)/, /^\/verify-email(\/|$)/];
-
-/** Path without the /ar or /en prefix. */
-export function stripLocale(path: string): string {
-    return path.replace(/^\/(ar|en)(?=\/|$)/, "") || "/";
-}
-
-export function widgetAllowedOn(path: string | null | undefined): boolean {
-    if (!path) return true;
-    const p = stripLocale(path.split("?")[0]);
-    return !EXCLUDED.some((re) => re.test(p));
-}
+export { stripLocale, widgetAllowedOn } from "./placement";
 
 /**
  * The conversation if the caller owns it — the signed agent_session cookie
