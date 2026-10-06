@@ -37,6 +37,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const r = await performHandoff({ conversationId: conv.id, mode: conv.mode, locale, config: await getAgentConfig(), reason, summary });
     if (!r.ok) return apiError(409, "already_with_person", "This conversation is already with a person.", { status: r.status });
 
-    await prisma.chatMessage.create({ data: { conversationId: conv.id, role: "assistant", content: r.nextReply } });
-    return Response.json({ status: r.status, nextReply: r.nextReply });
+    const saved = await prisma.chatMessage.create({ data: { conversationId: conv.id, role: "assistant", content: r.nextReply } });
+    // messageId lets the widget recognise this message when it later polls the history (no duplicate).
+    return Response.json({ status: r.status, nextReply: r.nextReply, messageId: saved.id });
 }

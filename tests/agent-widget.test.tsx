@@ -327,3 +327,60 @@ describe("MessageScroller", () => {
         expect(btn.getAttribute("data-active")).toBe("false");
     });
 });
+
+describe("regressions from UAT (duplicate handoff message, misplaced fallback card)", () => {
+    const id = "e".repeat(24);
+    const HANDOFF = "I've passed the conversation to an N.I.T team member — they'll reply here within a few minutes.";
+
+    it("Talk to a person + the history poll show the handoff message once, then the staff reply", async () => {
+        vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+        localStorage.setItem(STORE_KEY, JSON.stringify({ id, at: Date.now() }));
+        const visitor = { id: "1".repeat(24), role: "visitor", content: "300" };
+        const handoffRow = { id: "2".repeat(24), role: "assistant", content: HANDOFF };
+        const staff = { id: "3".repeat(24), role: "staff", content: "test" };
+        let history = [visitor];
+        routes[`GET /api/agent/conversations/${id}`] = (url) => {
+            const after = new URL(url, "http://l").searchParams.get("after");
+            const rows = after ? history.slice(history.findIndex((r) => r.id === after) + 1) : history;
+            const status = history.includes(staff) ? "human" : history.includes(handoffRow) ? "waiting_human" : "open";
+            return json({ status, messages: rows });
+        };
+        routes[`POST /api/agent/conversations/${id}/handoff`] = () => {
+            history = [visitor, handoffRow]; // the server saves the reply too
+            return json({ status: "waiting_human", nextReply: HANDOFF, messageId: handoffRow.id });
+        };
+        render(<ChatWidget locale="en" pathname="/en" />);
+        await openPanel("en");
+        expect(await screen.findByText("300")).toBeTruthy();
+        fireEvent.click(screen.getByRole("button", { name: STRINGS.en.human }));
+        expect(await screen.findByText(HANDOFF)).toBeTruthy();
+
+        await act(async () => { await vi.advanceTimersByTimeAsync(4000); }); // poll while waiting
+        history = [visitor, handoffRow, staff]; // a team member takes over and replies
+        await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
+
+        expect(await screen.findByText("test")).toBeTruthy();
+        expect(screen.getAllByText(HANDOFF)).toHaveLength(1);
+    });
+
+    it("the 'not available' card stays where it happened, above later messages", async () => {
+        routes["POST /api/agent/chat"] = (_u, init) => {
+            const msg = JSON.parse(init!.body as string).message;
+            return msg === "300"
+                ? sse([["meta", { conversationId: id, mode: "sales", status: "open" }], ["error", { code: "model_unavailable", fallback: { whatsapp: "https://wa.me/2010", contactUrl: "/en/contact" } }]])
+                : sse([["meta", { conversationId: id, mode: "sales", status: "open" }], ["delta", { text: "Later answer" }], ["done", { messageId: "4".repeat(24) }]]);
+        };
+        render(<ChatWidget locale="en" pathname="/en" />);
+        await openPanel("en");
+        const box = () => screen.getByRole("textbox", { name: STRINGS.en.placeholder });
+        fireEvent.change(box(), { target: { value: "300" } });
+        fireEvent.click(screen.getByRole("button", { name: STRINGS.en.send }));
+        const card = await screen.findByRole("alert");
+        fireEvent.change(box(), { target: { value: "hello again" } });
+        fireEvent.click(screen.getByRole("button", { name: STRINGS.en.send }));
+        const later = await screen.findByText("Later answer");
+        // DOCUMENT_POSITION_FOLLOWING (4): the later answer comes after the card in the timeline.
+        expect(card.compareDocumentPosition(later) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(screen.getAllByRole("alert")).toHaveLength(1);
+    });
+});

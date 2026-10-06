@@ -327,7 +327,11 @@ describe("history, handoff and rating endpoints", () => {
         const req = () => new Request("http://l/h", { method: "POST", headers: { cookie } });
         const first = await handoff(req(), { params: { id } });
         expect(first.status).toBe(200);
-        expect(await first.json()).toMatchObject({ status: "waiting_human" });
+        const body = await first.json();
+        expect(body).toMatchObject({ status: "waiting_human" });
+        // The stored copy's id comes back so the widget won't show it twice when it polls.
+        const stored = await mongo.chatMessage.findFirst({ where: { conversationId: id, role: "assistant", content: body.nextReply } });
+        expect(body.messageId).toBe(stored!.id);
         expect(notifyTelegram).toHaveBeenCalledTimes(1);
         expect((await handoff(req(), { params: { id } })).status).toBe(409);
         expect(notifyTelegram).toHaveBeenCalledTimes(1);

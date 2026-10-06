@@ -23,7 +23,7 @@ import { STRINGS, type Strings } from './strings'
 
 type Locale = 'ar' | 'en'
 type Action = { type: 'link'; label: string; url: string }
-type Msg = { key: string; id?: string; role: 'visitor' | 'assistant' | 'staff' | 'note'; text: string; actions?: Action[] }
+type Msg = { key: string; id?: string; role: 'visitor' | 'assistant' | 'staff' | 'note' | 'fallback'; text: string; actions?: Action[]; fallback?: Fallback }
 type Fallback = { whatsapp: string; contactUrl: string }
 type Config = {
     enabled: boolean; hidden: boolean; greeting: string; suggestions: string[]; whatsapp: string
@@ -75,7 +75,6 @@ export default function ChatWidget({ locale, pathname }: { locale: Locale; pathn
     const [input, setInput] = useState('')
     const [sending, setSending] = useState(false)
     const [status, setStatus] = useState('open')
-    const [fallback, setFallback] = useState<Fallback | null>(null)
     const [convId, setConvId] = useState<string | null>(null)
     const [prompt, setPrompt] = useState<string | null>(null)
     const [rating, setRating] = useState<0 | 1 | -1>(0)
@@ -166,6 +165,8 @@ export default function ChatWidget({ locale, pathname }: { locale: Locale; pathn
 
     const close = () => { setOpen(false); launcherRef.current?.focus() }
     const note = (text: string) => setMessages((m) => [...m, { key: key(), role: 'note', text }])
+    // The 'not available' card is a timeline entry, so it stays where it happened in the chat.
+    const showFallback = (f: Fallback) => setMessages((m) => [...m, { key: key(), role: 'fallback', text: '', fallback: f }])
 
     const send = useCallback(async (raw: string, retried = false): Promise<void> => {
         const text = raw.trim()
@@ -175,7 +176,6 @@ export default function ChatWidget({ locale, pathname }: { locale: Locale; pathn
         setInput('')
         setPrompt(null)
         setSending(true)
-        setFallback(null)
         const id = retried ? null : convId
         try {
             const res = await fetch('/api/agent/chat', {
@@ -191,7 +191,7 @@ export default function ChatWidget({ locale, pathname }: { locale: Locale; pathn
                     storage.clear(); setConvId(null); setStatus('open')
                     return send(text, true) // start over in a new conversation
                 }
-                if (res.status === 503) return setFallback(body.fallback ?? { whatsapp: waLink(cfg?.whatsapp ?? ''), contactUrl: `/${locale}/contact` })
+                if (res.status === 503) return showFallback(body.fallback ?? { whatsapp: waLink(cfg?.whatsapp ?? ''), contactUrl: `/${locale}/contact` })
                 if (res.status === 429) return note(t.tooMany)
                 if (body.error === 'conversation_busy') return note(t.busy)
                 if (res.status === 413) return note(t.tooLong)
@@ -240,7 +240,7 @@ export default function ChatWidget({ locale, pathname }: { locale: Locale; pathn
                         // messageId null: the reply was discarded (a person took over) — drop it (AC-12.3).
                     } else if (ev.event === 'error') {
                         setPending(null)
-                        setFallback(ev.data.fallback)
+                        showFallback(ev.data.fallback)
                     }
                 }
             }
@@ -252,7 +252,12 @@ export default function ChatWidget({ locale, pathname }: { locale: Locale; pathn
         if (!convId) return send(t.human)
         const r = await fetch(`/api/agent/conversations/${convId}/handoff`, { method: 'POST', credentials: 'same-origin' })
         const body = await r.json().catch(() => ({}))
-        if (r.ok) { setStatus('waiting_human'); setMessages((m) => [...m, { key: key(), role: 'assistant', text: body.nextReply }]) }
+        if (r.ok) {
+            setStatus('waiting_human')
+            // The server saved this reply too: mark its id as seen so the history poll doesn't add it again.
+            if (body.messageId) { seen.current.add(body.messageId); lastId.current = body.messageId }
+            setMessages((m) => [...m, { key: key(), id: body.messageId, role: 'assistant', text: body.nextReply }])
+        }
         else if (r.status === 409) setStatus(body.status ?? 'waiting_human')
         else note(t.error)
     }
@@ -373,21 +378,6 @@ export default function ChatWidget({ locale, pathname }: { locale: Locale; pathn
                                             {pending ? <AssistantBubble text={pending} /> : <Typing label={t.typing} />}
                                         </MessageScrollerItem>
                                     )}
-                                    {fallback && (
-                                        <div role='alert' className='rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-gray-800'>
-                                            {t.fallback}
-                                            <div className='mt-2 flex flex-wrap gap-2'>
-                                                {fallback.whatsapp && (
-                                                    <a className='inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-3 py-1.5 text-xs font-medium text-white' href={fallback.whatsapp} target='_blank' rel='noopener noreferrer'>
-                                                        <FaWhatsapp aria-hidden className='size-3.5' />{t.whatsapp}
-                                                    </a>
-                                                )}
-                                                <a className='inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs' href={fallback.contactUrl}>
-                                                    <LuMail aria-hidden className='size-3.5' />{t.contactForm}
-                                                </a>
-                                            </div>
-                                        </div>
-                                    )}
                                     {hasAssistant && !ratingDone && (
                                         <div className='flex flex-wrap items-center gap-2 pt-1 text-xs text-gray-500'>
                                             <span>{t.rateQ}</span>
@@ -491,6 +481,7 @@ function Bubble({ m, t }: { m: Msg; t: Strings }) {
     if (m.role === 'note') {
         return <div className='mx-auto w-fit max-w-[90%] rounded-full bg-gray-200/70 px-3 py-1 text-center text-xs text-gray-600'>{m.text}</div>
     }
+    if (m.role === 'fallback' && m.fallback) return <FallbackCard f={m.fallback} t={t} />
     if (m.role === 'assistant') return <AssistantBubble text={m.text} actions={m.actions} />
     if (m.role === 'staff') {
         return (
@@ -507,6 +498,24 @@ function Bubble({ m, t }: { m: Msg; t: Strings }) {
         <div className='flex justify-end'>
             <div className={clsx('max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-ee-md px-3.5 py-2.5 text-sm leading-relaxed text-white shadow-sm', BRAND)} dir='auto'>
                 {m.text}
+            </div>
+        </div>
+    )
+}
+
+function FallbackCard({ f, t }: { f: Fallback; t: Strings }) {
+    return (
+        <div role='alert' className='rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-gray-800'>
+            {t.fallback}
+            <div className='mt-2 flex flex-wrap gap-2'>
+                {f.whatsapp && (
+                    <a className='inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-3 py-1.5 text-xs font-medium text-white' href={f.whatsapp} target='_blank' rel='noopener noreferrer'>
+                        <FaWhatsapp aria-hidden className='size-3.5' />{t.whatsapp}
+                    </a>
+                )}
+                <a className='inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs' href={f.contactUrl}>
+                    <LuMail aria-hidden className='size-3.5' />{t.contactForm}
+                </a>
             </div>
         </div>
     )
