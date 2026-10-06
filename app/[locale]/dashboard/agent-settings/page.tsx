@@ -58,7 +58,9 @@ export default function AgentSettingsPage() {
         setError('')
         setIssues([])
         setSaved('')
-        const body = structuredClone(cfg)
+        const { serverStatus: _status, ...rest } = cfg // read-only info from GET, not a setting
+        void _status
+        const body = structuredClone(rest)
         for (const f of JSON_FIELDS) {
             try { body[f.key] = JSON.parse(json[f.key]) } catch {
                 setBusy(false)
@@ -91,6 +93,12 @@ export default function AgentSettingsPage() {
             {error && <div role='alert' className='bg-red-50 text-red-700 p-3 rounded text-sm'>{error}{issues.length > 0 && <ul className='list-disc ml-5 mt-1'>{issues.map((i) => <li key={i.path}><code>{i.path}</code>: {i.message}</li>)}</ul>}</div>}
             {saved && <div role='status' className='bg-green-50 text-green-800 p-3 rounded text-sm'>{saved}</div>}
 
+            {cfg.serverStatus && !cfg.serverStatus.apiKeySet && (
+                <div role='alert' className='bg-red-50 border border-red-200 text-red-800 p-3 rounded text-sm'>
+                    <b>ANTHROPIC_API_KEY is not set on the server.</b> The chat opens, but every reply falls back to WhatsApp / the contact form.
+                    Add the key to the server&apos;s <code>.env</code> and restart the app (<code>pm2 restart nit2-dev --update-env</code>).
+                </div>
+            )}
             <Section title='On / off and budget'>
                 <div className='flex flex-wrap gap-6 text-sm'>
                     <label className='flex items-center gap-2'><input type='checkbox' checked={cfg.enabled.web} onChange={(e) => set('enabled.web', e.target.checked)} /> Website chat on</label>
@@ -169,6 +177,12 @@ export default function AgentSettingsPage() {
                     ))}
                 </div>
                 <p className='text-xs text-gray-500'>New weights apply to leads when they are next updated; each lead keeps the settings version its score was computed with.</p>
+            </Section>
+
+            <Section title='Meetings'>
+                <label className='text-sm block'>Booking page (optional, https://) — shown as a button after a meeting request
+                    <input className={inputCls} value={cfg.bookingUrl ?? ''} onChange={text('bookingUrl')} placeholder='https://calendly.com/nitg/meeting' />
+                </label>
             </Section>
 
             <Section title='Limits'>

@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic";
 export async function GET() {
     const g = await guard("settings");
     if (g.res) return g.res;
-    return Response.json(await getAgentConfig());
+    // serverStatus lets the settings page warn when the server has no model key.
+    return Response.json({ ...(await getAgentConfig()), serverStatus: { apiKeySet: !!process.env.ANTHROPIC_API_KEY?.trim() } });
 }
 
 export async function PUT(req: Request) {
@@ -18,6 +19,8 @@ export async function PUT(req: Request) {
     if (g.res) return g.res;
     let json: unknown;
     try { json = await req.json(); } catch { return apiError(400, "invalid_body", "Body must be JSON."); }
+    // serverStatus is read-only info added by GET; accept it back and drop it.
+    if (json && typeof json === "object") delete (json as Record<string, unknown>).serverStatus;
     const parsed = ConfigSaveSchema.safeParse(json);
     if (!parsed.success) {
         const issues = parsed.error.issues.slice(0, 8).map((i) => ({ path: i.path.join("."), message: i.message }));

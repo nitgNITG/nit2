@@ -11,20 +11,22 @@ import fs from "node:fs";
 import path from "node:path";
 import { makeMongo, makeMysql, resetAll } from "../helpers/memoryPrisma";
 
-const { mongo, mysql } = vi.hoisted(() => ({
+const { mongo, mysql, auth } = vi.hoisted(() => ({
     mongo: {} as ReturnType<typeof import("../helpers/memoryPrisma").makeMongo>,
     mysql: {} as ReturnType<typeof import("../helpers/memoryPrisma").makeMysql>,
+    auth: { user: null as null | { id: string; email: string; name: string; role: "client" } },
 }));
 vi.mock("@/prisma/client", () => ({ default: mongo }));
 vi.mock("@/lib/prismaMysql", () => ({ default: mysql }));
-vi.mock("@/lib/auth", () => ({ getCurrentUser: async () => null }));
+// Signed out by default; support cases sign in as fixtures.EVAL_CLIENT.
+vi.mock("@/lib/auth", () => ({ getCurrentUser: async () => auth.user }));
 vi.mock("@/lib/adminAlert", () => ({ alertAdmins: async () => undefined, supportWhatsapp: async () => "+201000000000" }));
 vi.mock("@/lib/telegram", () => ({ notifyTelegram: async () => undefined }));
 
 import { POST as chat } from "@/app/api/agent/chat/route";
 import { getLlm, PROFILE_MODEL } from "@/lib/agent/llm";
 import { CASES, GROUPS, type EvalCase, type Group } from "./cases";
-import { EVAL_CONFIG, LICENSES, PRICE_RANGES, PROJECTS, SERVICE_PLANS } from "./fixtures";
+import { EVAL_CLIENT, EVAL_CONFIG, LICENSES, OTHER_CLIENT, PAYMENTS, PRICE_RANGES, PROJECTS, SERVICE_PLANS, SUBSCRIPTIONS, TENANTS } from "./fixtures";
 import { judgePrompt, parseJudge, type Transcript, type Turn, type RuleResult } from "./grade";
 
 const HAS_KEY = !!process.env.ANTHROPIC_API_KEY;
@@ -44,10 +46,15 @@ async function seed() {
     for (const p of SERVICE_PLANS) await mongo.servicePlan.create({ data: p });
     for (const r of PRICE_RANGES) await mongo.customPriceRange.create({ data: r });
     for (const p of PROJECTS) await mongo.project.create({ data: p });
+    for (const u of [EVAL_CLIENT, OTHER_CLIENT]) await mysql.user.create({ data: { ...u, password: "x" } });
+    for (const t of TENANTS) await mysql.tenant.create({ data: t });
+    for (const sub of SUBSCRIPTIONS) await mysql.subscription.create({ data: sub });
+    for (const p of PAYMENTS) await mysql.payment.create({ data: p });
 }
 
 async function runCase(c: EvalCase, ip: number): Promise<Transcript> {
     await seed();
+    auth.user = c.user === "client" ? EVAL_CLIENT : null;
     let cookie = "";
     let conversationId: string | undefined;
     const turns: Turn[] = [];

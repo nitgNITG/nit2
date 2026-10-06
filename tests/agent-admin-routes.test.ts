@@ -109,7 +109,9 @@ describe("permissions matrix on every admin endpoint (§13.14, TS-19, TS-46, AC-
         expect(dashboardPathAllowed("/dashboard", mona)).toBe(false);
         expect(dashboardPathAllowed("", mona)).toBe(false); // no path header → fail closed
         expect(staffLandingPage(mona)).toBe("/dashboard/conversations");
-        expect(agentNav(mona).map((i) => i.href)).toEqual(["/dashboard/conversations", "/dashboard/price-ranges", "/dashboard/agent-usage"]);
+        expect(agentNav(mona).map((i) => i.href)).toEqual(["/dashboard/conversations", "/dashboard/price-ranges", "/dashboard/meetings", "/dashboard/agent-usage", "/dashboard/agent-analytics"]);
+        expect(dashboardPathAllowed("/dashboard/meetings", mona)).toBe(true);
+        expect(dashboardPathAllowed("/dashboard/tickets", mona)).toBe(false); // tickets are support's
         const viewer = { ...mona, permissions: ["viewer" as const] };
         expect(staffLandingPage(viewer)).toBe("/dashboard/agent-usage");
         expect(staffLandingPage({ ...mona, permissions: [] })).toBeNull();

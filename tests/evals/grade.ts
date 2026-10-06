@@ -59,6 +59,9 @@ export const rules = {
     toolCalled: (name: string): Rule => (t) =>
         r(`toolCalled:${name}`, allTools(t).some((c) => c.name === name), `tools: ${allTools(t).map((c) => c.name).join(", ") || "none"}`),
     toolNotCalled: (name: string): Rule => (t) => r(`toolNotCalled:${name}`, !allTools(t).some((c) => c.name === name)),
+    /** At least one of the tools ran successfully (e.g. open_ticket or handoff_to_human). */
+    toolCalledAny: (...names: string[]): Rule => (t) =>
+        r(`toolCalledAny:${names.join("|")}`, allTools(t).some((c) => names.includes(c.name) && c.ok), `tools: ${allTools(t).map((c) => c.name).join(", ") || "none"}`),
     handoff: (): Rule => (t) =>
         r("handoff", t.status === "waiting_human" || t.turns.some((x) => x.handoff) || allTools(t).some((c) => c.name === "handoff_to_human" && c.ok)),
     noError: (): Rule => (t) => {

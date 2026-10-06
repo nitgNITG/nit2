@@ -62,6 +62,8 @@ const ConfigBodySchema = z.strictObject({
         company: z.string().max(500),
         services: z.record(z.string().regex(/^[a-z0-9_-]{1,40}$/), z.string().max(500)),
     }),
+    // Optional public booking page (Calendly etc.) shown after request_meeting (FR-S16).
+    bookingUrl: z.string().max(500).refine((u) => u === "" || /^https:\/\//.test(u), "must be https://"),
     limits: LimitsSchema,
 });
 export type AgentConfigBody = z.infer<typeof ConfigBodySchema>;
@@ -98,6 +100,7 @@ export const DEFAULT_CONFIG: AgentConfig = {
     })),
     scoring: DEFAULT_SCORING,
     brochures: { company: "", services: {} },
+    bookingUrl: "",
     limits: {
         maxToolCallsPerTurn: 6,
         maxModelIterationsPerTurn: 8,

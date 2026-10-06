@@ -5,6 +5,7 @@
 //     braces (and cover environments where scripts/agent-indexes.mjs never ran).
 // Kept: Contact / consent (CRM policy), tickets, meeting requests.
 import prisma from "@/prisma/client";
+import { tagPending } from "./analytics";
 import type { AgentConfig } from "./config";
 import { generateBrief } from "./runtime/brief";
 import { cairoDate } from "./runtime/budget";
@@ -31,6 +32,7 @@ const monthsAgo = (now: Date, n: number) => {
 export type MaintenanceResult = {
     closed: number;
     summarized: number;
+    tagged: number; // analytics tags written this run (FR-N1)
     deleted: number;
     deletedBy: { conversations: number; messages: number; toolAudits: number; idempotency: number; sessions: number; rateLimits: number; usageDays: number };
     drafts: number; // phase 4 (follow-up drafts)
@@ -55,6 +57,9 @@ export async function runDailyMaintenance(cfg: AgentConfig, now: Date = new Date
         }
     }
 
+    // 1b) Analytics tags for finished conversations (bounded per run; cost-capped by the budget).
+    const tagged = await tagPending(cfg, MAX_SUMMARIES_PER_RUN);
+
     // 2) Retention.
     const oldChat = monthsAgo(now, RETENTION.chatMonths);
     const expired = await prisma.conversation.findMany({ where: { lastMessageAt: { lt: oldChat } }, select: { id: true }, take: 5000 });
@@ -71,6 +76,7 @@ export async function runDailyMaintenance(cfg: AgentConfig, now: Date = new Date
     return {
         closed,
         summarized,
+        tagged,
         deleted: Object.values(deletedBy).reduce((a, b) => a + b, 0),
         deletedBy,
         drafts: 0,

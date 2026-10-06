@@ -7,11 +7,20 @@ const turn = (reply: string, extra: Partial<Turn> = {}): Turn => ({ visitor: "q"
 const tx = (turns: Turn[], extra: Partial<Transcript> = {}): Transcript => ({ turns, contacts: [], status: "open", qualification: null, ...extra });
 
 describe("eval set (SRS §9.3)", () => {
-    it("has 62 conversations, 31 Arabic and 31 English, with the documented group sizes", () => {
-        expect(CASES).toHaveLength(62);
-        expect(CASES.filter((c) => c.locale === "ar")).toHaveLength(31);
+    it("has the 62 sales conversations (31 AR / 31 EN) plus 12 support ones, with the documented group sizes", () => {
+        const support = CASES.filter((c) => c.group === "support" || c.group === "support_security");
+        const sales = CASES.filter((c) => !support.includes(c));
+        expect(sales).toHaveLength(62);
+        expect(sales.filter((c) => c.locale === "ar")).toHaveLength(31);
+        expect(support).toHaveLength(12);
         for (const [g, meta] of Object.entries(GROUPS)) expect({ g, n: CASES.filter((c) => c.group === g).length }).toEqual({ g, n: meta.expected });
-        expect(new Set(CASES.map((c) => c.id)).size).toBe(62);
+        expect(new Set(CASES.map((c) => c.id)).size).toBe(74);
+    });
+
+    it("support cases run signed in, except the one that checks signed-out access", () => {
+        const signedOut = CASES.filter((c) => c.group.startsWith("support") && c.user !== "client").map((c) => c.id);
+        expect(signedOut).toEqual(["ss-03"]);
+        expect(CASES.filter((c) => !c.group.startsWith("support")).every((c) => !c.user)).toBe(true);
     });
 
     it("every safety case is checked by a rule or a judge beyond noError", () => {

@@ -25,10 +25,14 @@ beforeEach(() => {
     resetAll(mongo, mysql);
     vi.clearAllMocks();
     process.env.CRON_SECRET = "cron-s3cret";
-    llm.complete.mockResolvedValue({
-        text: '{"summary":"Asked about academy prices.","nextAction":"WAIT_FOR_CLIENT"}', toolCalls: [], stopReason: "end",
+    // The brief (sales summary) and the analytics tagger use different prompts.
+    llm.complete.mockImplementation(async (req: { system: string }) => ({
+        text: req.system.includes("for analytics")
+            ? '{"service":"elearning","country":"sa","intent":"pricing","answeredAll":false,"questions":["academy plan prices"],"unknownQuestions":["Do you support SCORM 2004?"]}'
+            : '{"summary":"Asked about academy prices.","nextAction":"WAIT_FOR_CLIENT"}',
+        toolCalls: [], stopReason: "end",
         usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 }, model: "claude-haiku-4-5", raw: [],
-    });
+    }));
 });
 
 const call = (handler: typeof GET, secret?: string) =>
@@ -56,16 +60,20 @@ describe("daily agent cron (E18, TS-27, NFR-12)", () => {
         await mongo.chatMessage.create({ data: { conversationId: idleOpen.id, role: "visitor", content: "prices?" } });
 
         const r = await runDailyMaintenance(CFG, NOW);
-        expect(r).toMatchObject({ closed: 2, summarized: 1, drafts: 0 });
+        expect(r).toMatchObject({ closed: 2, summarized: 1, tagged: 1, drafts: 0 });
         const status = async (id: unknown) => (await mongo.conversation.findUnique({ where: { id } }))!;
         expect(await status(idleOpen.id)).toMatchObject({ status: "closed", summary: "Asked about academy prices.", stateVersion: 1 });
+        // FR-N1: tagged once, country normalised, tier from the lead (none here) — not from the model.
+        expect((await status(idleOpen.id)).tags).toMatchObject({ service: "elearning", country: "SA", intent: "pricing", answeredAll: false, tier: null, unknownQuestions: ["Do you support SCORM 2004?"] });
         expect((await status(idleHuman.id)).status).toBe("closed");
+        expect((await status(idleHuman.id)).taggedAt).toBeUndefined(); // 1 message: neither summarised nor tagged
         expect((await status(recent.id)).status).toBe("open");
         expect((await status(already.id)).stateVersion).toBe(0);
-        expect(llm.complete).toHaveBeenCalledTimes(1); // the 1-message conversation is not summarised
+        expect(llm.complete).toHaveBeenCalledTimes(2); // one summary + one tagging call
 
-        // Re-running is a no-op.
-        expect(await runDailyMaintenance(CFG, NOW)).toMatchObject({ closed: 0, summarized: 0 });
+        // Re-running is a no-op (closed and already tagged).
+        expect(await runDailyMaintenance(CFG, NOW)).toMatchObject({ closed: 0, summarized: 0, tagged: 0 });
+        expect(llm.complete).toHaveBeenCalledTimes(2);
     });
 
     it("applies retention per data type and keeps leads", async () => {

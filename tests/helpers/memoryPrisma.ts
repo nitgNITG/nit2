@@ -230,6 +230,9 @@ export function makeMysql() {
         }),
         platformSetting: makeModel({ unique: [["key"]] }),
         user: makeModel({ unique: [["email"]], defaults: { role: "client" } }),
+        tenant: makeModel({ unique: [["slug"]], defaults: { product: "academy", status: "live", tier: "demo" } }),
+        subscription: makeModel({ unique: [["tenantSlug"]], defaults: { status: "active", autoRenew: true, currency: "EGP", attemptCount: 0 } }),
+        payment: makeModel({ unique: [["orderId"]], defaults: { purpose: "new_academy", product: "academy", currency: "EGP", status: "pending", mode: "live" } }),
     };
 }
 

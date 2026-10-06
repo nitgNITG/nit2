@@ -28,11 +28,12 @@ export async function loadOwnedConversation(req: Request, id: string) {
     if (!OBJECT_ID.test(id)) return null;
     const conv = await prisma.conversation.findUnique({ where: { id } });
     if (!conv) return null;
-    const sessionId = await currentSessionId(req);
-    if (sessionId && conv.sessionId === sessionId) return conv;
+    // A conversation tied to an account (it may hold that account's data) opens
+    // only for that signed-in account — the browser session alone is not enough.
     if (conv.userId) {
         const user = await getCurrentUser();
-        if (user && user.id === conv.userId) return conv;
+        return user && user.id === conv.userId ? conv : null;
     }
-    return null;
+    const sessionId = await currentSessionId(req);
+    return sessionId && conv.sessionId === sessionId ? conv : null;
 }

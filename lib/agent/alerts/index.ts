@@ -72,6 +72,22 @@ export async function alertVisitorWaiting(conversationId: string): Promise<void>
     await notifyTelegram(`💬 New visitor message in a conversation with a person\nOpen: ${dashboardLink(conversationId)}`);
 }
 
+/** open_ticket (FR-P7): category, tenant and a masked summary — no account or payment details. */
+export async function alertTicket(input: { conversationId: string; ticketId: string; category: string; tenantSlug: string | null; summary: string }): Promise<void> {
+    await notifyTelegram([
+        `🎫 Support ticket ${input.ticketId} (${input.category})`,
+        input.tenantSlug ? `Tenant: ${input.tenantSlug}` : null,
+        `Summary: ${redactText(input.summary).slice(0, 600)}`,
+        `Open: ${dashboardLink(input.conversationId)}`,
+    ].filter(Boolean).join("\n"));
+}
+
+/** request_meeting (FR-S16). */
+export async function alertMeeting(input: { conversationId: string; preferredAt: Date; channel: string }): Promise<void> {
+    const when = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Cairo", dateStyle: "full", timeStyle: "short" }).format(input.preferredAt);
+    await alertAdmins("📅 Meeting requested via the AI assistant", `When: ${when} (Cairo)\nChannel: ${input.channel}\nOpen: ${dashboardLink(input.conversationId)}`);
+}
+
 export async function alertBudgetReached(date: string, budgetUsd: number): Promise<void> {
     await alertAdmins("⚠️ AI assistant daily budget reached", `The AI assistant used its $${budgetUsd} budget for ${date}. Visitors now see the WhatsApp / contact-form fallback until tomorrow.`);
 }

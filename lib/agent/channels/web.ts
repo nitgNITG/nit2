@@ -40,9 +40,13 @@ const SSE_HEADERS = {
     "X-Accel-Buffering": "no",
 };
 
-/** Mode is decided by the backend, never the model (FR-A2). Support mode ships in phase 2 (T2.1). */
-export function decideMode(): Mode {
-    return "sales";
+/**
+ * Mode is decided by the backend from the signed-in user on every request, never
+ * by the model (FR-A2, NFR-1): clients get support mode (their own account data),
+ * everyone else — visitors and NITG admins trying the widget — gets sales mode.
+ */
+export function decideMode(user: { role: string } | null): Mode {
+    return user?.role === "client" ? "support" : "sales";
 }
 
 function sse(run: (emit: Emit) => Promise<void>, setCookie: string | null): Response {
@@ -95,7 +99,7 @@ export async function handleChat(req: Request): Promise<Response> {
     }
 
     const user = await getCurrentUser();
-    const mode = decideMode();
+    const mode = decideMode(user);
 
     let conv;
     let setCookie: string | null = null;
@@ -103,6 +107,10 @@ export async function handleChat(req: Request): Promise<Response> {
         conv = await loadOwnedConversation(req, body.conversationId);
         if (!conv) return apiError(404, "conversation_not_found", "Conversation not found.");
         if (conv.status === "closed") return apiError(409, "conversation_closed", "This conversation is closed. Start a new one.");
+        // Informational only (inbox routing): record who is talking now.
+        if (conv.mode !== mode || (user && !conv.userId)) {
+            conv = await prisma.conversation.update({ where: { id: conv.id }, data: { mode, ...(user && !conv.userId ? { userId: user.id } : {}) } });
+        }
     } else {
         if (!(await hit(`ip:conv:${ipHash}`, LIMITS.ipNewConversations.limit, LIMITS.ipNewConversations.windowMs)).allowed) {
             return apiError(429, "rate_limited", "Too many new conversations. Please try again later.");

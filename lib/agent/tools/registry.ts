@@ -4,16 +4,20 @@
 import { z } from "zod";
 import prisma from "@/prisma/client";
 import { redact } from "../security/redaction";
+import { openTicket, requestMeeting, sendBrochure } from "./common/engage";
 import { getWorkingHours, handoffToHuman } from "./common/handoff";
 import { captureLeadTool } from "./sales/captureLead";
 import { listPlans, recommendPlan, startCheckout } from "./sales/catalog";
 import { getPriceRange, searchKnowledgeTool, searchProjects } from "./sales/knowledge";
+import { getMyTenants, getPayments, getProvisioningStatus, getRenewalLink, getSubscription } from "./support/account";
 import { fail, type Mode, type ToolContext, type ToolDef, type ToolResult } from "./types";
 
 // Fixed order → a stable tool list, so the cached prompt prefix stays valid.
 const ALL: ToolDef[] = [
     searchKnowledgeTool, searchProjects, listPlans, recommendPlan, getPriceRange,
-    startCheckout, getWorkingHours, captureLeadTool, handoffToHuman,
+    startCheckout, getWorkingHours, captureLeadTool, handoffToHuman, sendBrochure, requestMeeting,
+    // support mode only (signed-in clients)
+    getMyTenants, getSubscription, getPayments, getProvisioningStatus, getRenewalLink, openTicket,
 ] as ToolDef[];
 
 export function toolsFor(mode: Mode): ToolDef[] {

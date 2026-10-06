@@ -1,6 +1,6 @@
-// E13 — GET /api/agent/admin/usage?from=YYYY-MM-DD&to=YYYY-MM-DD (admin, sales, viewer). FR-C3.
+// E20 — GET /api/agent/admin/analytics?from=YYYY-MM-DD&to=YYYY-MM-DD (admin, sales, viewer). FR-N2.
 import { guard, parseDateRange } from "@/lib/agent/admin";
-import { usageReport } from "@/lib/agent/usage";
+import { analyticsReport } from "@/lib/agent/analytics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,5 +10,5 @@ export async function GET(req: Request) {
     if (g.res) return g.res;
     const range = parseDateRange(new URL(req.url).searchParams);
     if (range.res) return range.res;
-    return Response.json({ days: await usageReport(range.from, range.to) });
+    return Response.json(await analyticsReport(range.from, range.to));
 }

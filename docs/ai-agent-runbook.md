@@ -39,7 +39,8 @@ Run it by hand from the **Actions** tab (**Run workflow**), or:
 curl -fsS -X POST -H "x-cron-secret: $CRON_SECRET" https://dev.nitg-eg.com/api/cron/agent-daily
 ```
 
-It closes conversations idle for 24 h (with an AI summary) and applies retention: chat 12 months,
+It closes conversations idle for 24 h (with an AI summary), tags finished conversations for
+**AI Analytics** (service, country, intent, unanswered questions), and applies retention: chat 12 months,
 tool audit 180 days, idempotency 7 days, sessions 30 days, usage 24 months. Leads, tickets and
 meeting requests are kept. The JSON response lists what it closed and deleted.
 
@@ -63,9 +64,9 @@ Viewer. Staff accounts keep role `client`; they see only the agent pages their p
 
 | Permission | Can open |
 | :-- | :-- |
-| Sales | AI Inbox (sales), Price Ranges, AI Usage, lead score corrections |
-| Support | AI Inbox (support) |
-| Viewer | AI Usage |
+| Sales | AI Inbox (sales), Price Ranges, Meetings, AI Usage, AI Analytics, lead score corrections |
+| Support | AI Inbox (support), Tickets |
+| Viewer | AI Usage, AI Analytics |
 | Admin | everything, including AI Settings and AI Staff |
 
 ## 6. UAT checklist (level 5, SRS §9.4) — dev server, sign-off by QA + a sales team member
@@ -93,3 +94,14 @@ Viewer. Staff accounts keep role `client`; they see only the agent pages their p
 - [ ] Correct a WARM lead's budget to $10,000 in the inbox → score, tier and breakdown update at once (AC-35.1).
 - [ ] AI Usage shows today's conversations, leads, handoffs, tokens and cost (AC-14.1).
 - [ ] Privacy policy (AR + EN) shows the AI assistant section.
+
+### Phase 2 (account support and analytics) — UAT with 3 client accounts
+
+- [ ] Signed in as a client with 2 tenants: "when does my academy expire?" → both listed with plan and end date (AC-15.1).
+- [ ] Client whose last payment failed: "why did my payment fail?" → date, amount and a plain reason; no gateway codes; renew / update-card button (AC-16.1).
+- [ ] Tenant still being set up → current step in plain words; a failed tenant → no error trace, a ticket or a handoff (AC-17.1/17.2).
+- [ ] "I want to renew" → button to that academy's card on the account page (AC-18.1).
+- [ ] A second client asking about the first client's slug → "not on your account", nothing about it (AC-19.1). Signed out → asked to sign in (AC-19.2).
+- [ ] Reporting a bug → ticket number in the chat, the ticket in **Tickets**, a Telegram alert (AC-20.1).
+- [ ] Company profile + "meeting next Tuesday at 11:00" → profile button, request in **Meetings**, alert to sales (AC-30.1). Set the brochure links and the booking page in AI Settings first.
+- [ ] **AI Analytics** after the daily job has run: top topics, unknown questions; answering one adds it to the knowledge notes (AC-31.1).

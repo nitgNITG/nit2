@@ -75,7 +75,10 @@ describe("chat widget (FR-W1–W10)", () => {
                 ["meta", { conversationId: "c".repeat(24), mode: "sales", status: "open" }],
                 ["delta", { text: "The Standard " }], ["delta", { text: "plan fits." }],
                 ["action", { type: "link", label: "Get Standard", url: "/en/build-product?tier=standard&cycle=annual" }],
-                ["action", { type: "link", label: "Evil", url: "https://evil.example" }],
+                ["action", { type: "link", label: "Brochure", url: "https://files.nitg-eg.com/profile.pdf" }],
+                ["action", { type: "link", label: "Evil", url: "javascript:alert(1)" }],
+                ["action", { type: "link", label: "Plain", url: "http://insecure.example" }],
+                ["action", { type: "link", label: "ProtoRel", url: "//evil.example" }],
                 ["done", { messageId: "d".repeat(24) }],
             ]);
         };
@@ -87,7 +90,10 @@ describe("chat widget (FR-W1–W10)", () => {
         expect(await screen.findByText("The Standard plan fits.")).toBeTruthy();
         expect(screen.getByText("I need 200 courses")).toBeTruthy();
         expect(screen.getByRole("link", { name: "Get Standard" }).getAttribute("href")).toBe("/en/build-product?tier=standard&cycle=annual");
-        expect(screen.queryByRole("link", { name: "Evil" })).toBeNull(); // only internal links become buttons
+        const brochure = screen.getByRole("link", { name: "Brochure" });
+        expect(brochure.getAttribute("target")).toBe("_blank");
+        expect(brochure.getAttribute("rel")).toContain("noopener");
+        for (const name of ["Evil", "Plain", "ProtoRel"]) expect(screen.queryByRole("link", { name })).toBeNull(); // only internal or https
         expect(body).toMatchObject({ message: "I need 200 courses", locale: "en", page: "/en/pricing" });
         expect(body).not.toHaveProperty("conversationId");
         expect(JSON.parse(localStorage.getItem(STORE_KEY)!).id).toBe("c".repeat(24));

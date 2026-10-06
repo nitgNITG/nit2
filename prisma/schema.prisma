@@ -206,6 +206,8 @@ model Conversation {
   qualification    Json? // QualificationSession + the lead draft before a Contact exists
   knowledgeVersion Int?
   nextAction       String?
+  tags             Json? // analytics tags by the fast model (FR-N1): service, country, intent, questions, unknownQuestions…
+  taggedAt         DateTime?
   turnLockUntil    DateTime      @default(now()) // one running turn per conversation
   lastMessageAt    DateTime      @default(now())
   createdAt        DateTime      @default(now())

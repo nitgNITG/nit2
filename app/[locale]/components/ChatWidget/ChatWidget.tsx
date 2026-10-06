@@ -372,9 +372,14 @@ function Bubble({ m, team }: { m: Msg; team: string }) {
                 {m.text}
                 {!!m.actions?.length && (
                     <div className='flex flex-wrap gap-2 mt-2'>
-                        {m.actions.filter((a) => a.url.startsWith('/')).map((a) => (
-                            <a key={a.url} href={a.url} className='text-xs px-3 py-1 rounded-full bg-emerald-50 border border-emerald-600 text-emerald-800 hover:bg-emerald-100'>{a.label}</a>
-                        ))}
+                        {/* Server-built buttons only: internal paths, or https links from settings (brochures, booking). */}
+                        {m.actions.filter((a) => /^\/(?!\/)/.test(a.url) || a.url.startsWith('https://')).map((a) => {
+                            const external = a.url.startsWith('https://')
+                            return (
+                                <a key={a.url} href={a.url} {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                                    className='text-xs px-3 py-1 rounded-full bg-emerald-50 border border-emerald-600 text-emerald-800 hover:bg-emerald-100'>{a.label}</a>
+                            )
+                        })}
                     </div>
                 )}
             </div>
