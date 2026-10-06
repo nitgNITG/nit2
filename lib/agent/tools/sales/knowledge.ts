@@ -62,14 +62,19 @@ export const searchProjects = defineTool({
 export const getPriceRange = defineTool({
     name: "get_price_range",
     description:
-        "Get the sales-approved indicative price range (USD) for a custom-project category, e.g. custom_lms, lms_mobile_apps, ecommerce_app, custom_software. Quote it exactly and say the final quotation depends on scope. { available: false } means there is no approved range: give NO number, say sales will send a quotation and offer a person.",
+        "Get the sales-approved indicative price range (USD) for a custom-project category, e.g. custom_lms, lms_mobile_apps, ecommerce_app, delivery_app, restaurant_app, loyalty_app, school_management, website, custom_software. Quote it exactly and say the final quotation depends on scope. { available: false } means there is no approved range for that category: if otherCategories lists one that fits the visitor's project, call again with it; otherwise give NO number, say sales will send a quotation and offer a person.",
     modes: ["sales"],
     writes: false,
     schema: z.strictObject({ category: z.string().regex(/^[a-z0-9_]{1,60}$/) }),
     async run(ctx, { category }) {
         const r = await prisma.customPriceRange.findUnique({ where: { category } });
-        if (!r || !r.active) return ok({ available: false });
         const en = ctx.locale === "en";
+        if (!r || !r.active) {
+            // Let the model retry with a real key; only ACTIVE (sales-approved) ranges are ever listed.
+            const active = await prisma.customPriceRange.findMany({ where: { active: true }, select: { category: true, labelEn: true, labelAr: true }, orderBy: { category: "asc" } });
+            const otherCategories = active.filter((x) => x.category !== category).map((x) => ({ category: x.category, label: en ? x.labelEn : x.labelAr }));
+            return ok({ available: false, ...(otherCategories.length ? { otherCategories } : {}) });
+        }
         return ok(
             { available: true, label: en ? r.labelEn : r.labelAr, minUsd: r.minUsd, maxUsd: r.maxUsd ?? undefined, notes: (en ? r.notesEn : r.notesAr) ?? undefined },
             [{ sourceId: `price_range:${r.category}`, sourceType: "price_range", title: r.labelEn }],

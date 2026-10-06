@@ -1,0 +1,86 @@
+{
+    "_note": "SUGGESTED starting ranges (USD) for custom projects — NOT approved prices. Seeded INACTIVE: the AI assistant quotes only active ranges, word for word. Sales reviews each one in Dashboard → Price Ranges and ticks Active (or edit here and run with --activate). Category keys are what the assistant's get_price_range tool looks up.",
+    "ranges": [
+        {
+            "category": "custom_lms",
+            "labelEn": "Custom eLearning platform (LMS)",
+            "labelAr": "منصة تعليم إلكتروني مخصصة (LMS)",
+            "minUsd": 3000,
+            "maxUsd": 15000,
+            "notesEn": "Depends on the number of users, integrations (payments, video protection, SSO), custom design and hosting.",
+            "notesAr": "يعتمد على عدد المستخدمين والتكاملات (الدفع، حماية الفيديو، تسجيل الدخول الموحد) والتصميم المخصص والاستضافة."
+        },
+        {
+            "category": "lms_mobile_apps",
+            "labelEn": "Mobile apps (Android & iOS) for an eLearning platform",
+            "labelAr": "تطبيقات موبايل (أندرويد و iOS) لمنصة تعليمية",
+            "minUsd": 4000,
+            "maxUsd": 12000,
+            "notesEn": "Depends on features (offline video, payments, notifications) and whether the platform already exists.",
+            "notesAr": "يعتمد على المميزات (فيديو بدون إنترنت، الدفع، الإشعارات) وهل المنصة موجودة بالفعل."
+        },
+        {
+            "category": "ecommerce_app",
+            "labelEn": "Custom online store with mobile apps",
+            "labelAr": "متجر إلكتروني مخصص مع تطبيقات موبايل",
+            "minUsd": 3000,
+            "maxUsd": 10000,
+            "notesEn": "Depends on the number of products, payment and shipping integrations, and custom features.",
+            "notesAr": "يعتمد على عدد المنتجات وتكاملات الدفع والشحن والمميزات المخصصة."
+        },
+        {
+            "category": "delivery_app",
+            "labelEn": "Delivery app (customer, driver and admin apps)",
+            "labelAr": "تطبيق توصيل (تطبيق العميل والمندوب ولوحة الإدارة)",
+            "minUsd": 6000,
+            "maxUsd": 20000,
+            "notesEn": "Depends on live tracking, dispatch logic, payment methods and the number of apps.",
+            "notesAr": "يعتمد على التتبع المباشر وآلية توزيع الطلبات وطرق الدفع وعدد التطبيقات."
+        },
+        {
+            "category": "restaurant_app",
+            "labelEn": "Restaurant ordering app",
+            "labelAr": "تطبيق طلبات للمطاعم",
+            "minUsd": 3000,
+            "maxUsd": 10000,
+            "notesEn": "Depends on menu size, branches, delivery integration and loyalty features.",
+            "notesAr": "يعتمد على حجم المنيو وعدد الفروع والربط مع التوصيل ومميزات الولاء."
+        },
+        {
+            "category": "loyalty_app",
+            "labelEn": "Customer loyalty system and app",
+            "labelAr": "نظام وتطبيق ولاء العملاء",
+            "minUsd": 4000,
+            "maxUsd": 12000,
+            "notesEn": "Depends on points and rewards rules, POS integration and the number of branches.",
+            "notesAr": "يعتمد على قواعد النقاط والمكافآت والربط مع نقاط البيع وعدد الفروع."
+        },
+        {
+            "category": "school_management",
+            "labelEn": "School management system",
+            "labelAr": "نظام إدارة مدارس",
+            "minUsd": 5000,
+            "maxUsd": 15000,
+            "notesEn": "Depends on modules (attendance, grades, fees, parents' app) and the number of schools.",
+            "notesAr": "يعتمد على الوحدات (الحضور، الدرجات، المصروفات، تطبيق أولياء الأمور) وعدد المدارس."
+        },
+        {
+            "category": "website",
+            "labelEn": "Company website",
+            "labelAr": "موقع إلكتروني لشركة",
+            "minUsd": 800,
+            "maxUsd": 5000,
+            "notesEn": "Depends on the number of pages, languages, custom design and content management.",
+            "notesAr": "يعتمد على عدد الصفحات واللغات والتصميم المخصص ونظام إدارة المحتوى."
+        },
+        {
+            "category": "custom_software",
+            "labelEn": "Custom software system",
+            "labelAr": "نظام برمجي مخصص",
+            "minUsd": 5000,
+            "maxUsd": null,
+            "notesEn": "Starting price; the final quotation depends on scope, integrations and timeline.",
+            "notesAr": "سعر يبدأ من؛ عرض السعر النهائي يعتمد على نطاق العمل والتكاملات والمدة."
+        }
+    ]
+}

@@ -139,8 +139,13 @@ describe("get_price_range (FR-S12, AC-25.1, AC-25.2, TS-34)", () => {
         expect(await call("get_price_range", { category: "custom_lms" })).toMatchObject({
             ok: true, data: { available: true, minUsd: 8000, maxUsd: 20000, notes: "Depends on scope" },
         });
-        expect(await call("get_price_range", { category: "custom_software" })).toEqual({ ok: true, data: { available: false } });
-        expect(await call("get_price_range", { category: "ecommerce_app" })).toEqual({ ok: true, data: { available: false } });
+        // A miss lists only ACTIVE ranges the model may retry with — never the inactive ecommerce_app.
+        const lms = { category: "custom_lms", label: "Custom LMS" };
+        expect(await call("get_price_range", { category: "custom_software" })).toEqual({ ok: true, data: { available: false, otherCategories: [lms] } });
+        expect(await call("get_price_range", { category: "ecommerce_app" })).toEqual({ ok: true, data: { available: false, otherCategories: [lms] } });
+        // With no active range at all, a miss is a bare available:false.
+        await mongo.customPriceRange.updateMany({ data: { active: false } });
+        expect(await call("get_price_range", { category: "custom_lms" })).toEqual({ ok: true, data: { available: false } });
     });
 });
 

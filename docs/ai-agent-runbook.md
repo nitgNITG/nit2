@@ -28,6 +28,22 @@ dashboard pages under `app/[locale]/dashboard/{conversations,agent-*,price-range
 Rollback: switch the agent off in AI Settings, redeploy the previous build. The new
 collections and the nullable column can stay.
 
+## 2b. Seed the custom-project price ranges (optional)
+
+`scripts/data/price-ranges.json` holds **suggested** starting ranges (USD) for the standard
+categories (custom LMS, LMS apps, e-commerce, delivery, restaurant, loyalty, school
+management, website, custom software). They are estimates, not approved prices.
+
+```bash
+npm run seed:price-ranges -- --dry-run     # show what would happen
+npm run seed:price-ranges                  # insert missing categories, INACTIVE
+```
+
+The assistant quotes only **active** ranges, word for word. After seeding, sales reviews each
+range in **Dashboard → Price Ranges**, corrects the numbers and ticks **Active**. Existing ranges
+are never overwritten (sales edits win); `--force` overwrites them, `--activate` inserts the seeds
+already active — use it only after editing the JSON to the approved numbers.
+
 ## 3. Daily cron
 
 Scheduled by the GitHub Actions workflow `.github/workflows/agent-daily-cron.yml` (00:30 UTC,

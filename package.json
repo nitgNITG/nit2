@@ -22,7 +22,8 @@
     "mysql:studio": "prisma studio --schema prisma/mysql/schema.prisma",
     "test": "vitest run",
     "test:watch": "vitest",
-    "agent:eval": "vitest run --config vitest.eval.config.ts"
+    "agent:eval": "vitest run --config vitest.eval.config.ts",
+    "seed:price-ranges": "node scripts/seed-price-ranges.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
