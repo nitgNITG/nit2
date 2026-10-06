@@ -3,6 +3,7 @@
 import prisma from "@/prisma/client";
 import type { AgentConfig } from "../config";
 import { alertHandoff } from "../alerts";
+import { recordActivity } from "../crm/activity";
 import { msg } from "../messages";
 import type { Locale } from "../tools/types";
 import { formatNextOpen, workingHoursStatus } from "./hours";
@@ -40,5 +41,6 @@ export async function performHandoff(input: {
         data: { conversationId: input.conversationId, role: "system", content: `handoff: ${input.reason}`.slice(0, 500) },
     });
     await alertHandoff({ conversationId: input.conversationId, reason: input.reason, summary: input.summary, mode: input.mode });
+    await recordActivity({ event: "AI_HANDOFF", conversationId: input.conversationId, createdBy: "AI", summary: input.reason });
     return { ok: true, status: "waiting_human", nextReply };
 }

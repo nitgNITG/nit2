@@ -1,5 +1,6 @@
 'use client'
 import React, { useCallback, useEffect, useState } from 'react'
+import LeadTimeline from './agent/LeadTimeline'
 import axios from 'axios'
 import { useStore } from '@/lib/zustand'
 
@@ -265,6 +266,14 @@ function ContactModal({ contact: c, onClose, onStatusChange, onNotesChange }: {
                         <p className='text-xs font-bold uppercase text-blue-400 mb-2 tracking-wider'>Message</p>
                         <p className='text-sm text-gray-800 leading-relaxed whitespace-pre-wrap'>{c.message}</p>
                     </div>
+
+                    {/* AI assistant timeline (FR-I4) — leads that came from the chat */}
+                    {(c.sourcePage === 'chat' || c.sourcePage === 'whatsapp' || c.conversationId) && (
+                        <div className='bg-emerald-50/60 border border-emerald-100 rounded-xl p-4'>
+                            <p className='text-xs font-bold uppercase text-emerald-700 mb-3 tracking-wider'>AI Assistant Timeline</p>
+                            <LeadTimeline contactId={c.id} />
+                        </div>
+                    )}
 
                     {/* Status + Actions */}
                     <div className='flex flex-wrap items-center gap-3'>

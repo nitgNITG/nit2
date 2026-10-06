@@ -357,6 +357,24 @@ model Ticket {
   @@index([userId])
 }
 
+// CRM timeline on a lead (FR-I4, §13.12): conversation-level events only.
+model Activity {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  contactId      String   @db.ObjectId
+  type           String   @default("chat")
+  event          String // AI_CONVERSATION_STARTED | AI_LEAD_QUALIFIED | AI_HANDOFF | HUMAN_TAKEOVER | AI_FOLLOWUP_APPROVED
+  channel        String   @default("web") // web | whatsapp
+  conversationId String   @db.ObjectId
+  score          Int?
+  tier           String?
+  summary        String?
+  createdBy      String // "AI" or the staff User.id
+  createdAt      DateTime @default(now())
+
+  @@index([contactId, createdAt])
+  @@index([conversationId])
+}
+
 model WhatsAppIdentity {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   phoneE164  String   @unique

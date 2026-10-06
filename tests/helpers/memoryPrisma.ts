@@ -214,6 +214,7 @@ export function makeMongo() {
         servicePlan: makeModel({ defaults: { isActive: true, order: 0, currency: "USD" } }),
         meetingRequest: makeModel({ defaults: { status: "requested" } }),
         ticket: makeModel({ defaults: { status: "open" } }),
+        activity: makeModel({ defaults: { type: "chat", channel: "web" } }),
     };
 }
 

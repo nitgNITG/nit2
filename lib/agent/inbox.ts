@@ -2,6 +2,7 @@
 // conversation, checks the staff member may handle its mode, then acts.
 import prisma from "@/prisma/client";
 import { allowedModes } from "./admin";
+import { recordActivity } from "./crm/activity";
 import { apiError, OBJECT_ID } from "./http";
 import { release, takeOver } from "./runtime/state";
 import type { AgentStaff } from "./security/authorization";
@@ -44,6 +45,7 @@ export async function takeOverConversation(staff: AgentStaff, id: string): Promi
     const won = await takeOver(l.conv.id, staff.user.id);
     if (!won) return apiError(409, "already_taken", "Another team member already took this conversation.");
     await prisma.chatMessage.create({ data: { conversationId: l.conv.id, role: "system", content: "human_takeover", staffId: staff.user.id } });
+    await recordActivity({ event: "HUMAN_TAKEOVER", conversationId: l.conv.id, createdBy: staff.user.id, summary: staff.user.name ?? staff.user.email });
     return Response.json({ status: "human", assignedTo: staff.user.id });
 }
 

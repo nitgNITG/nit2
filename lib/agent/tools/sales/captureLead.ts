@@ -10,6 +10,7 @@ import { applyAnswers, nextQuestion, readSession, type QualificationSession } fr
 import {
     budgetBand, contactServiceFor, LeadRequirementsSchema, ORG_TYPES, serviceForProjectType,
 } from "../../qualification/schemas";
+import { recordActivity, recordLeadLinked } from "../../crm/activity";
 import { generateBrief } from "../../runtime/brief";
 import { scoreFields } from "../../scoring/recalc";
 import { defineTool, fail, ok, type ToolContext } from "../types";
@@ -129,6 +130,11 @@ export async function captureLead(ctx: ToolContext, input: Input) {
     // After the reply: brief on first save / HOT; alerts on transitions only.
     const becameHot = sf.tier === "HOT" && prev?.tier !== "HOT";
     const becameQualified = (stage === "sql" || stage === "opportunity") && !(prev?.stage === "sql" || prev?.stage === "opportunity");
+    // CRM timeline (FR-I4): the lead's first link to this chat, then qualification.
+    if (!prev) await recordLeadLinked(conv.id);
+    if (becameHot || becameQualified) {
+        await recordActivity({ event: "AI_LEAD_QUALIFIED", conversationId: conv.id, createdBy: "AI", summary: `Tier ${sf.tier} · score ${sf.score} · stage ${stage}` });
+    }
     if (!prev || becameHot || becameQualified) {
         const alertFields: LeadAlertFields = {
             conversationId: conv.id, tier: sf.tier, score: sf.score, stage, country: base.country, service: projectType ?? base.service,

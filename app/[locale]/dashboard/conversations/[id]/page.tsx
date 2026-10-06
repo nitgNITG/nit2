@@ -5,6 +5,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import LocaleLink from '../../../components/LocaleLink'
 import { api, btnGhost, btnPrimary, Card, errorText, fmtDate, inputCls, StatusBadge, TierBadge } from '../../components/agent/ui'
+import LeadTimeline from '../../components/agent/LeadTimeline'
 
 type Msg = { id: string; role: string; content: string; toolName?: string | null; createdAt: string; staffId?: string | null; model?: string | null }
 type Detail = {
@@ -241,6 +242,12 @@ export default function ConversationPage({ params }: { params: { id: string } })
                     {d.contact
                         ? <LeadPanel key={d.contact.scoredAt ?? d.contact.id} contact={d.contact} summary={d.summary} canEdit={d.viewer.canEditLead} onSaved={load} />
                         : <Card className='text-sm text-gray-500'>No lead captured yet.</Card>}
+                    {d.contact && d.viewer.canEditLead && (
+                        <Card className='space-y-2'>
+                            <h5 className='font-semibold'>Lead timeline</h5>
+                            <LeadTimeline contactId={d.contact.id} refreshKey={`${c.status}:${d.contact.tier}`} />
+                        </Card>
+                    )}
                     {c.rating != null && (
                         <Card className='text-sm'>Visitor rating: {c.rating === 1 ? '👍' : '👎'}{c.ratingComment ? <div className='text-gray-600 mt-1' dir='auto'>“{c.ratingComment}”</div> : null}</Card>
                     )}
