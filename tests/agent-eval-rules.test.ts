@@ -89,4 +89,14 @@ describe("eval graders", () => {
         expect(parseJudge('Sure: {"pass": true, "reason": "ok"}')).toEqual({ pass: true, reason: "ok" });
         expect(parseJudge("I think it passes").pass).toBe(false);
     });
+
+    it("judge prompt carries the tool results and approved facts, so real facts are not graded as invented", () => {
+        const t = tx([turn("We support KNET and STC Pay.", { tools: [{ name: "search_knowledge", ok: true, code: null }], toolResults: ['search_knowledge → {"ok":true,"data":[{"snippet":"KNET, STC Pay"}]}'] })]);
+        const p = judgePrompt("No invented facts.", t, "Founded 2013; 150+ projects");
+        expect(p).toContain("[tool results the assistant received]");
+        expect(p).toContain("KNET, STC Pay");
+        expect(p).toContain("Approved facts in the assistant");
+        expect(p).toContain("Founded 2013; 150+ projects");
+        expect(p.indexOf("tool results")).toBeLessThan(p.indexOf("ASSISTANT:")); // evidence comes before the reply
+    });
 });

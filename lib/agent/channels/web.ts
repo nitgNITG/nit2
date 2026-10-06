@@ -166,7 +166,9 @@ export async function handleChat(req: Request): Promise<Response> {
 
     await storeVisitor();
     const convId = conv.id;
-    const unlock = () => prisma.conversation.update({ where: { id: convId }, data: { turnLockUntil: new Date() } }).catch(() => undefined);
+    // Release to the epoch, not "now": the next turn needs turnLockUntil < now, and a message
+    // arriving in the same millisecond as the release would otherwise be refused as busy.
+    const unlock = () => prisma.conversation.update({ where: { id: convId }, data: { turnLockUntil: new Date(0) } }).catch(() => undefined);
 
     // Tenders / RFPs go to a person before any model call (FR-H5).
     if (isTenderRequest(text)) {

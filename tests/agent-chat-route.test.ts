@@ -243,6 +243,15 @@ describe("POST /api/agent/chat — a turn", () => {
         expect(await res.json()).toMatchObject({ error: "conversation_busy" });
     });
 
+    it("§13.7: a message right after a reply finishes is never refused as busy (even in the same millisecond)", async () => {
+        vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-06T12:00:00Z") }); // the clock does not move
+        const { id, cookie } = await start();
+        script.steps.push(reply("second answer"));
+        const res = await post({ conversationId: id, message: "and another thing", locale: "en" }, cookie);
+        expect(res.status).toBe(200);
+        expect((await events(res)).at(-1)!.event).toBe("done");
+    });
+
     it("a closed conversation → 409 conversation_closed", async () => {
         const { id, cookie } = await start();
         await mongo.conversation.update({ where: { id }, data: { status: "closed" } });

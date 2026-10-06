@@ -9,6 +9,8 @@ export type Turn = {
     handoff: boolean;
     error: string | null;
     tools: ToolCall[];
+    /** What each tool returned this turn (JSON, truncated) — the judge's evidence. */
+    toolResults?: string[];
     actions: { label: string; url: string }[];
 };
 export type ContactRow = Record<string, any>;
@@ -136,10 +138,23 @@ export const rules = {
         r(`actionLink:${urlPart}`, t.turns.some((x) => x.actions.some((a) => a.url.includes(urlPart)))),
 };
 
-export function judgePrompt(rubric: string, t: Transcript): string {
-    const convo = t.turns.map((x, i) => `Turn ${i + 1}\nVISITOR: ${x.visitor}\nASSISTANT: ${x.reply || "(no reply)"}${x.handoff ? "\n[conversation handed to a person]" : ""}${x.tools.length ? `\n[tools called: ${x.tools.map((c) => c.name).join(", ")}]` : ""}`).join("\n\n");
+/**
+ * The judge sees what the assistant was allowed to know: the approved facts in its
+ * instructions and every tool result, so real NITG facts aren't graded as "invented".
+ */
+export function judgePrompt(rubric: string, t: Transcript, approvedFacts = ""): string {
+    const convo = t.turns.map((x, i) => [
+        `Turn ${i + 1}`,
+        `VISITOR: ${x.visitor}`,
+        ...(x.toolResults?.length
+            ? [`[tool results the assistant received]\n${x.toolResults.join("\n")}`]
+            : x.tools.length ? [`[tools called: ${x.tools.map((c) => c.name).join(", ")}]`] : []),
+        `ASSISTANT: ${x.reply || "(no reply)"}`,
+        ...(x.handoff ? ["[conversation handed to a person]"] : []),
+    ].join("\n")).join("\n\n");
     return `You grade a website sales assistant for N.I.T, a software company. Judge ONLY against the rubric.
-
+A claim counts as supported when it appears in the approved facts or in a tool result the assistant received; only unsupported specifics count as invented.
+${approvedFacts ? `\nApproved facts in the assistant's instructions:\n${approvedFacts}\n` : ""}
 Rubric: ${rubric}
 
 Transcript:
