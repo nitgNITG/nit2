@@ -9,7 +9,7 @@ import { budgetLeft, cairoDate, claimBudgetAlert } from "../runtime/budget";
 import { getAgentConfig, type AgentConfig } from "../config";
 import { alertBudgetReached, alertVisitorWaiting } from "../alerts";
 import { apiError, fallbackFor, loadOwnedConversation, OBJECT_ID } from "../http";
-import { msg } from "../messages";
+import { detectLocale, msg } from "../messages";
 import { performHandoff } from "../runtime/handoff";
 import { isTenderRequest } from "../runtime/state";
 import { orderedEmitter, type Emit } from "../runtime/streaming";
@@ -88,10 +88,11 @@ export async function handleChat(req: Request): Promise<Response> {
     const text = body.message.trim();
     if (!text) return apiError(400, "invalid_body", "Message is empty.");
     if (text.length > MAX_MESSAGE) return apiError(413, "message_too_long", `Messages are limited to ${MAX_MESSAGE} characters.`);
-    const locale: Locale = body.locale;
+    // The page's language (where the widget runs) vs the language the visitor writes in.
+    const pageLocale: Locale = body.locale;
 
     const cfg: AgentConfig = await getAgentConfig();
-    if (!cfg.enabled.web) return apiError(503, "agent_disabled", "The assistant is off.", { fallback: await fallbackFor(locale) });
+    if (!cfg.enabled.web) return apiError(503, "agent_disabled", "The assistant is off.", { fallback: await fallbackFor(pageLocale) });
 
     const ipHash = hashIp(clientIp(req));
     if (!(await hit(`ip:msg:${ipHash}`, LIMITS.ipMessages.limit, LIMITS.ipMessages.windowMs)).allowed) {
@@ -119,12 +120,16 @@ export async function handleChat(req: Request): Promise<Response> {
         setCookie = s.setCookie;
         conv = await prisma.conversation.create({
             data: {
-                channel: "web", mode, status: "open", locale, userId: user?.id ?? null, sessionId: s.sessionId,
+                channel: "web", mode, status: "open", locale: detectLocale(text, pageLocale), userId: user?.id ?? null, sessionId: s.sessionId,
                 assignedTo: null, ipHash, sourcePage: body.page ?? null,
                 utmSource: body.utm?.source ?? null, utmMedium: body.utm?.medium ?? null, utmCampaign: body.utm?.campaign ?? null,
             },
         });
     }
+
+    // Replies and server texts follow the visitor's language; too short to tell → the
+    // conversation's last known language (an Arabic speaker on /en stays Arabic).
+    const locale: Locale = detectLocale(text, conv.locale === "ar" || conv.locale === "en" ? conv.locale : pageLocale);
 
     if (conv.messageCount >= cfg.limits.maxConversationMessages
         || conv.tokensIn + conv.tokensOut >= cfg.limits.maxConversationTokens) {
@@ -135,7 +140,7 @@ export async function handleChat(req: Request): Promise<Response> {
     const meta = (status: string) => ({ event: "meta" as const, data: { conversationId: conv.id, mode: conv.mode, status } });
     const storeVisitor = () => Promise.all([
         prisma.chatMessage.create({ data: { conversationId: conv.id, role: "visitor", content: text } }),
-        prisma.conversation.update({ where: { id: conv.id }, data: { messageCount: { increment: 1 }, lastMessageAt: new Date() } }),
+        prisma.conversation.update({ where: { id: conv.id }, data: { messageCount: { increment: 1 }, lastMessageAt: new Date(), locale } }),
     ]);
 
     // A person owns it: store, notify, no model call (FR-H3, TS-08).

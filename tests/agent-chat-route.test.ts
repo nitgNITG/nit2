@@ -274,6 +274,42 @@ describe("conversation ownership (NFR-20, TS-03, TS-42, AC-01.5)", () => {
     });
 });
 
+describe("reply language follows the visitor, not the page (bug: Arabic chat on /en got an English handoff)", () => {
+    it("an Arabic speaker on /en whose turn ends in a handoff gets the handoff text in Arabic", async () => {
+        const { id, cookie } = await start("ممكن نتكلم عربي", [reply("أكيد، نتكلم عربي.")]);
+        script.steps.push(reply("", [{ id: "h1", name: "handoff_to_human", input: { reason: "custom quote", summary: "Dedicated server + DRM" } }]));
+        const evs = await events(await post({ conversationId: id, message: "انا عاوز سيرفر خاص وعاوز DRM وحماية فيديوهات", locale: "en", page: "/en" }, cookie));
+        const handoff = evs.find((e) => e.event === "handoff")!;
+        expect(handoff.data.message).toMatch(/[؀-ۿ]/);
+        expect(handoff.data.message).not.toMatch(/I've passed/);
+        const saved = await mongo.chatMessage.findMany({ where: { conversationId: id, role: "assistant" }, orderBy: { createdAt: "asc" } });
+        expect(saved.at(-1)!.content).toMatch(/[؀-ۿ]/);
+        expect((await mongo.conversation.findUnique({ where: { id } }))!.locale).toBe("ar");
+    });
+
+    it("the model is told the visitor's language, and a short message keeps the conversation's language", async () => {
+        const { id, cookie } = await start("عاوز اعرف اسعار المنصات", [reply("تمام")]);
+        let ctx = "";
+        script.steps.push(async (req, onText) => { ctx = (req as unknown as { systemVolatile: string }).systemVolatile; onText("👍"); return { text: "👍", toolCalls: [], stopReason: "end", usage: USAGE, model: "m", raw: [] }; });
+        await events(await post({ conversationId: id, message: "ok 👍", locale: "en" }, cookie)); // too short to tell
+        expect(ctx).toContain("Visitor's language: Arabic");
+        expect((await mongo.conversation.findUnique({ where: { id } }))!.locale).toBe("ar");
+    });
+
+    it("\"Talk to a person\" answers in the language the visitor used", async () => {
+        const { id, cookie } = await start("عندي سؤال عن الباقات", [reply("اتفضل")]);
+        const res = await handoff(new Request("http://l/h", { method: "POST", headers: { cookie } }), { params: { id } });
+        expect((await res.json()).nextReply).toMatch(/[؀-ۿ]/);
+    });
+
+    it("an English speaker on /ar is answered in English", async () => {
+        script.steps.push(reply("", [{ id: "h2", name: "handoff_to_human", input: { reason: "asked", summary: "wants a person" } }]));
+        const res = await post({ message: "Can I talk to a real person please?", locale: "ar", page: "/ar" });
+        const handoffEv = (await events(res)).find((e) => e.event === "handoff")!;
+        expect(handoffEv.data.message).toMatch(/team/i);
+    });
+});
+
 describe("history, handoff and rating endpoints", () => {
     it("TS-18 / AC-07.1: history returns visitor-visible messages only, and only newer ones after an id", async () => {
         await mysql.license.create({ data: { key: "basic", name: "Basic", priceEgp: 1 } });

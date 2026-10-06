@@ -65,7 +65,7 @@ export function buildVolatileContext(input: {
 }): string {
     const lines = [
         `Current date: ${input.now.toISOString().slice(0, 10)}`,
-        `Page language: ${input.locale}`,
+        `Visitor's language: ${input.locale === "ar" ? "Arabic" : "English"} — reply in it unless they switch`,
         input.page ? `Visitor is on page: ${input.page}${input.topic ? ` (topic: ${input.topic})` : ""}` : null,
         `Visitor signed in: ${input.signedIn ? "yes" : "no — for account questions ask them to sign in"}`,
         `NITG team available now: ${input.workingHoursOpen ? "yes" : "no (outside working hours)"}`,

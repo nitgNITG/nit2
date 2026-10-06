@@ -30,6 +30,24 @@ const T = {
 
 export type MessageKey = keyof typeof T;
 
+// Built at runtime: tsconfig has no target, so TS rejects a /u regex literal.
+const LETTER = new RegExp("\\p{L}", "gu");
+const ARABIC = /[؀-ۿݐ-ݿ]/;
+
+/**
+ * The language the visitor actually writes in. Server-written texts (handoff,
+ * tender, limits) and the reply language follow it — not the page's language: an
+ * Arabic speaker on /en must get Arabic. Too little text to tell → `fallback`.
+ */
+export function detectLocale(text: string, fallback: Locale): Locale {
+    const letters = text.match(LETTER) ?? [];
+    if (letters.length < 2) return fallback;
+    const arabic = letters.filter((c) => ARABIC.test(c)).length / letters.length;
+    if (arabic >= 0.3) return "ar";
+    if (arabic === 0 && letters.length >= 3) return "en";
+    return fallback;
+}
+
 export function msg(key: MessageKey, locale: Locale, vars: Record<string, string> = {}): string {
     let s: string = T[key][locale];
     for (const [k, v] of Object.entries(vars)) s = s.replace(`{${k}}`, v);
