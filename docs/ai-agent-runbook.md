@@ -19,8 +19,8 @@ dashboard pages under `app/[locale]/dashboard/{conversations,agent-*,price-range
 
 1. Back up MongoDB and MySQL.
 2. `npm run mysql:deploy` — adds the nullable `User.agentPermissions` column (migration 25).
-3. `npm run mongo:push` — new collections + optional fields only; existing documents are untouched.
-4. `node scripts/agent-indexes.mjs` — TTL indexes (sessions 30 d, tool audit 180 d, idempotency 7 d, rate-limit buckets).
+3. `npm run mongo:push` — new collections + optional fields only; existing documents are untouched. It then runs `scripts/agent-indexes.mjs` itself: `prisma db push` drops indexes it doesn't know, which includes the TTL ones.
+4. (Only if you ran `npx prisma db push` directly) `node scripts/agent-indexes.mjs` — TTL indexes (sessions 30 d, tool audit 180 d, idempotency 7 d, rate-limit buckets, usage events 180 d).
 5. Deploy the build (`git pull && npm run build && <restart>`). The agent ships **off**.
 6. Schedule the daily cron (next section).
 7. Dashboard → **AI Settings**: set the daily budget, then switch **Website chat on**.
@@ -47,6 +47,12 @@ The assistant quotes only **active** ranges, word for word. After seeding, sales
 range in **Dashboard → Price Ranges**, corrects the numbers and ticks **Active**. Existing ranges
 are never overwritten (sales edits win); `--force` overwrites them, `--activate` inserts the seeds
 already active — use it only after editing the JSON to the approved numbers.
+
+## 2c. Settings worth checking after deploy
+
+- **AI Settings → Abuse protection**: messages per IP per window, new chats per IP per hour, messages per visitor per day (account, else guest browser session), max messages per conversation. The panel under it shows today's blocked requests, the IPs blocked most and the busiest visitors.
+- **AI Settings → Team notifications**: handoff emails go to the admin alert emails (Platform Settings) + staff with the sales or support permission matching the chat; the staff owner is emailed when the visitor replies. Needs SMTP (`MAIL_HOST`/`MAIL_USER`/`MAIL_PASS`). Each person can also turn on sound + desktop alerts at the bottom of the dashboard sidebar.
+- **AI Usage & Cost**: cost per model, per UTC day (compare with the Anthropic console, which uses UTC and can lag a few hours) and per visitor / IP. Per-visitor cost exists only for calls made after this update. Days before 2026-10-06 overstate Haiku calls (summaries, tagging), which were priced as Opus because the API returns the dated id `claude-haiku-4-5-20251001`.
 
 ## 3. Daily cron
 

@@ -3,6 +3,7 @@
 import prisma from "@/prisma/client";
 import { allowedModes } from "./admin";
 import { recordActivity } from "./crm/activity";
+import { relatedConversations } from "./history";
 import { apiError, OBJECT_ID } from "./http";
 import { release, takeOver } from "./runtime/state";
 import type { AgentStaff } from "./security/authorization";
@@ -22,14 +23,15 @@ export async function loadForStaff(staff: AgentStaff, id: string): Promise<Loade
 export async function conversationDetail(staff: AgentStaff, id: string): Promise<Response> {
     const l = await loadForStaff(staff, id);
     if (l.res) return l.res;
-    const [messages, contact] = await Promise.all([
+    const [messages, contact, related] = await Promise.all([
         prisma.chatMessage.findMany({ where: { conversationId: l.conv.id }, orderBy: { createdAt: "asc" }, take: 500 }),
         l.conv.contactId ? prisma.contact.findUnique({ where: { id: l.conv.contactId } }) : Promise.resolve(null),
+        relatedConversations(l.conv, allowedModes(staff)),
     ]);
     const { ipHash: _ip, sessionId: _s, qualification, ...conversation } = l.conv;
     void _ip; void _s;
     return Response.json({
-        conversation: { ...conversation, qualification }, messages, contact, summary: l.conv.summary ?? null,
+        conversation: { ...conversation, qualification }, messages, contact, summary: l.conv.summary ?? null, related,
         viewer: { userId: staff.user.id, isAdmin: staff.isAdmin, canEditLead: staff.isAdmin || staff.permissions.includes("sales") },
     });
 }
@@ -70,4 +72,25 @@ export async function staffReply(staff: AgentStaff, id: string, content: string)
     await prisma.conversation.update({ where: { id: l.conv.id }, data: { messageCount: { increment: 1 }, lastMessageAt: new Date() } });
     // Web: the widget polls E3. WhatsApp delivery arrives in phase 3 (FR-WA4).
     return Response.json({ message });
+}
+
+export type InboxSummary = {
+    waiting: number;
+    mine: number;
+    /** Newest first; the sidebar alerts on ids it has not seen yet. */
+    waitingItems: { id: string; mode: string; since: string }[];
+};
+
+/** Waiting-for-a-person conversations in this staff member's inboxes, and the ones they own. */
+export async function inboxSummary(staff: AgentStaff): Promise<InboxSummary> {
+    const modes = allowedModes(staff);
+    const [waiting, mine, rows] = await Promise.all([
+        prisma.conversation.count({ where: { status: "waiting_human", mode: { in: modes } } }),
+        prisma.conversation.count({ where: { status: "human", assignedTo: staff.user.id } }),
+        prisma.conversation.findMany({
+            where: { status: "waiting_human", mode: { in: modes } },
+            orderBy: { lastMessageAt: "desc" }, take: 20, select: { id: true, mode: true, lastMessageAt: true },
+        }),
+    ]);
+    return { waiting, mine, waitingItems: rows.map((r) => ({ id: r.id, mode: r.mode, since: r.lastMessageAt.toISOString() })) };
 }

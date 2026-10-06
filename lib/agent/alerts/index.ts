@@ -4,7 +4,9 @@
 // dashboard link is where staff see the rest.
 import { alertAdmins } from "@/lib/adminAlert";
 import { notifyTelegram } from "@/lib/telegram";
+import prisma from "@/prisma/client";
 import { redactText } from "../security/redaction";
+import { emailHandoff, emailOwnerVisitorWrote } from "./staff";
 
 export function dashboardLink(conversationId: string): string {
     const base = (process.env.NEXT_PUBLIC_BASE_URL || "https://www.nitg-eg.com").replace(/\/$/, "");
@@ -55,8 +57,10 @@ export async function alertQualifiedLead(f: LeadAlertFields): Promise<void> {
     await notifyTelegram(`🟢 Qualified lead from the AI assistant\n\n${leadAlertBody(f)}`);
 }
 
-/** Conversation handed to a person (FR-H1). The summary is masked for PII. */
-export async function alertHandoff(input: { conversationId: string; reason: string; summary: string; mode: string }): Promise<void> {
+/** Conversation handed to a person (FR-H1): Telegram + email to that inbox's team. The summary is masked for PII. */
+export async function alertHandoff(input: { conversationId: string; reason: string; summary: string; mode: string; email?: boolean }): Promise<void> {
+    // Emails go out in the background (they never throw) so SMTP can't slow the visitor's reply.
+    if (input.email !== false) void emailHandoff({ ...input, link: dashboardLink(input.conversationId) });
     await notifyTelegram(
         [
             `🙋 Conversation needs a person (${input.mode})`,
@@ -68,7 +72,11 @@ export async function alertHandoff(input: { conversationId: string; reason: stri
 }
 
 /** A visitor wrote while a person owns the conversation (AC-12.1 / TS-08). */
-export async function alertVisitorWaiting(conversationId: string): Promise<void> {
+export async function alertVisitorWaiting(conversationId: string, opts: { email?: boolean } = {}): Promise<void> {
+    if (opts.email !== false) {
+        const conv = await prisma.conversation.findUnique({ where: { id: conversationId }, select: { assignedTo: true } });
+        void emailOwnerVisitorWrote({ assignedTo: conv?.assignedTo ?? null, link: dashboardLink(conversationId) });
+    }
     await notifyTelegram(`💬 New visitor message in a conversation with a person\nOpen: ${dashboardLink(conversationId)}`);
 }
 

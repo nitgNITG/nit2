@@ -31,6 +31,7 @@ vi.mock("@/lib/agent/llm", async (orig) => ({ ...(await orig<object>()), getLlm:
 
 import { POST as chat } from "@/app/api/agent/chat/route";
 import { GET as config } from "@/app/api/agent/config/route";
+import { GET as listMine } from "@/app/api/agent/conversations/route";
 import { GET as history } from "@/app/api/agent/conversations/[id]/route";
 import { POST as handoff } from "@/app/api/agent/conversations/[id]/handoff/route";
 import { POST as rating } from "@/app/api/agent/conversations/[id]/rating/route";
@@ -137,6 +138,26 @@ describe("POST /api/agent/chat — validation and gates", () => {
             expect((await post({ message: "hi", locale: "en" }, undefined, "7.7.7.7")).status).toBe(200);
         }
         expect((await post({ message: "hi", locale: "en" }, undefined, "7.7.7.7")).status).toBe(429);
+    });
+
+    it("the limits come from AI Settings: a per-visitor daily cap follows the session across IPs, and blocks are counted", async () => {
+        await setConfig({ abuse: { ...DEFAULT_CONFIG.abuse, ipMessagesPerWindow: 3, visitorMessagesPerDay: 4 } });
+        const { id, cookie } = await start(); // message 1 for this visitor
+        await mongo.conversation.update({ where: { id }, data: { status: "human" } });
+        for (let i = 0; i < 3; i++) expect((await post({ conversationId: id, message: `m${i}`, locale: "en" }, cookie)).status).toBe(200); // fresh IP each time
+        const res = await post({ conversationId: id, message: "m5", locale: "en" }, cookie);
+        expect(res.status).toBe(429);
+        expect(await res.json()).toMatchObject({ error: "rate_limited", message: expect.stringMatching(/daily/i) });
+
+        // the configured IP limit (3) applies too
+        for (let i = 0; i < 3; i++) { script.steps.push(reply("ok")); expect((await post({ message: "hi", locale: "en" }, undefined, "8.8.8.8")).status).toBe(200); }
+        expect((await post({ message: "hi", locale: "en" }, undefined, "8.8.8.8")).status).toBe(429);
+
+        const { abuseStats } = await import("@/lib/agent/abuse");
+        const stats = await abuseStats();
+        expect(stats.blocked).toEqual({ ip_messages: 1, ip_new_conversations: 0, visitor_daily: 1 });
+        expect(stats.topBlockedIps).toHaveLength(2);
+        expect(stats.topVisitors[0]).toMatchObject({ kind: "guest", messages: 5 });
     });
 });
 
@@ -375,5 +396,46 @@ describe("GET /api/agent/config (E1)", () => {
         expect(lms.proactivePrompt).toMatchObject({ delaySec: 20 });
         const dash = await (await config(get("/api/agent/config?locale=ar&page=/ar/dashboard") as never)).json();
         expect(dash).toMatchObject({ hidden: true, proactivePrompt: null });
+    });
+});
+
+describe("previous chats (GET /api/agent/conversations + related chats for staff)", () => {
+    const list = async (cookie?: string) => (await listMine(get("/api/agent/conversations", cookie))).json();
+
+    it("a guest sees the chats from their own browser only, newest first, titled by their first message", async () => {
+        const a = await start("Need an LMS for 500 students");
+        script.steps.push(reply("Sure"));
+        await post({ message: "Second question about prices", locale: "en" }, a.cookie); // new chat, same browser session
+        const other = await start("Someone else");
+
+        const mine = await list(a.cookie);
+        expect(mine.scope).toBe("browser");
+        expect(mine.items.map((i: { title: string }) => i.title)).toEqual(["Second question about prices", "Need an LMS for 500 students"]);
+        expect((await list(other.cookie)).items).toHaveLength(1);
+        expect(await list()).toEqual({ scope: "none", items: [] });
+    });
+
+    it("a signed-in client sees their account's chats from any browser; account chats never show to the browser alone", async () => {
+        getCurrentUser.mockResolvedValue({ id: "client-1", email: "c@acme.com", name: "C", role: "client" });
+        const a = await start("My academy is down");
+        const fresh = await list(); // another browser, same account
+        expect(fresh.scope).toBe("account");
+        expect(fresh.items.map((i: { id: string }) => i.id)).toEqual([a.id]);
+
+        getCurrentUser.mockResolvedValue(null); // signed out, same browser
+        expect((await list(a.cookie)).items).toEqual([]);
+    });
+
+    it("staff see the same visitor's other chats, only in inboxes they work", async () => {
+        const { relatedConversations } = await import("@/lib/agent/history");
+        const a = await start("First sales chat");
+        script.steps.push(reply("ok"));
+        await post({ message: "Another one", locale: "en" }, a.cookie);
+        const conv = (await mongo.conversation.findUnique({ where: { id: a.id } }))!;
+        const sibling = (await mongo.conversation.findFirst({ where: { id: { not: a.id }, sessionId: conv.sessionId } }))!;
+        await mongo.conversation.update({ where: { id: sibling.id as string }, data: { mode: "support" } });
+
+        expect((await relatedConversations(conv as never, ["sales", "support"])).map((r) => r.title)).toEqual(["Another one"]);
+        expect(await relatedConversations(conv as never, ["sales"])).toEqual([]);
     });
 });

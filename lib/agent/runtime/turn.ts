@@ -127,7 +127,7 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
                     emit({ event: "delta", data: { text: delta } });
                 });
             } finally {
-                await settle(reservation, res ? costUsd(res.model, res.usage) : 0, res?.usage);
+                await settle(reservation, res ? costUsd(res.model, res.usage) : 0, res?.usage, res && { kind: "chat", model: res.model, conversationId });
             }
             lastModel = res.model;
             usage.inputTokens += res.usage.inputTokens;

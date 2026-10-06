@@ -14,7 +14,7 @@ import { performHandoff } from "../runtime/handoff";
 import { isTenderRequest } from "../runtime/state";
 import { orderedEmitter, type Emit } from "../runtime/streaming";
 import { runTurn } from "../runtime/turn";
-import { hit, LIMITS } from "../security/rate-limit";
+import { DAY_MS, hit, recordBlocked, visitorKey } from "../security/rate-limit";
 import { clientIp, ensureSession, hashIp } from "../security/visitor-session";
 import type { Locale, Mode } from "../tools/types";
 
@@ -70,10 +70,10 @@ function sse(run: (emit: Emit) => Promise<void>, setCookie: string | null): Resp
     return new Response(stream, { status: 200, headers });
 }
 
-async function notifyStaffThrottled(conversationId: string) {
+async function notifyStaffThrottled(conversationId: string, cfg: AgentConfig) {
     // At most one "visitor wrote" alert per conversation per 5 minutes.
     const { count } = await hit(`notify:${conversationId}`, 1, 5 * 60_000);
-    if (count === 1) await alertVisitorWaiting(conversationId);
+    if (count === 1) await alertVisitorWaiting(conversationId, { email: cfg.notifications.emailOwnerOnReply });
 }
 
 export async function handleChat(req: Request): Promise<Response> {
@@ -95,9 +95,18 @@ export async function handleChat(req: Request): Promise<Response> {
     if (!cfg.enabled.web) return apiError(503, "agent_disabled", "The assistant is off.", { fallback: await fallbackFor(pageLocale) });
 
     const ipHash = hashIp(clientIp(req));
-    if (!(await hit(`ip:msg:${ipHash}`, LIMITS.ipMessages.limit, LIMITS.ipMessages.windowMs)).allowed) {
+    const abuse = cfg.abuse;
+    if (!(await hit(`ip:msg:${ipHash}`, abuse.ipMessagesPerWindow, abuse.ipWindowMinutes * 60_000)).allowed) {
+        await recordBlocked("ip_messages", ipHash);
         return apiError(429, "rate_limited", "Too many messages. Please wait a few minutes.");
     }
+    // One visitor's daily cap — survives IP changes for accounts and sessions (NFR-6).
+    const visitorAllowed = async (v: { userId?: string | null; sessionId?: string | null }) => {
+        const ok = (await hit(`visitor:msg:${visitorKey({ ...v, ipHash })}`, abuse.visitorMessagesPerDay, DAY_MS)).allowed;
+        if (!ok) await recordBlocked("visitor_daily", ipHash);
+        return ok;
+    };
+    const visitorLimited = () => apiError(429, "rate_limited", "Daily message limit reached. Please try again tomorrow.");
 
     const user = await getCurrentUser();
     const mode = decideMode(user);
@@ -108,16 +117,19 @@ export async function handleChat(req: Request): Promise<Response> {
         conv = await loadOwnedConversation(req, body.conversationId);
         if (!conv) return apiError(404, "conversation_not_found", "Conversation not found.");
         if (conv.status === "closed") return apiError(409, "conversation_closed", "This conversation is closed. Start a new one.");
+        if (!(await visitorAllowed({ userId: user?.id ?? conv.userId, sessionId: conv.sessionId }))) return visitorLimited();
         // Informational only (inbox routing): record who is talking now.
         if (conv.mode !== mode || (user && !conv.userId)) {
             conv = await prisma.conversation.update({ where: { id: conv.id }, data: { mode, ...(user && !conv.userId ? { userId: user.id } : {}) } });
         }
     } else {
-        if (!(await hit(`ip:conv:${ipHash}`, LIMITS.ipNewConversations.limit, LIMITS.ipNewConversations.windowMs)).allowed) {
+        if (!(await hit(`ip:conv:${ipHash}`, abuse.ipNewConversationsPerHour, 60 * 60_000)).allowed) {
+            await recordBlocked("ip_new_conversations", ipHash);
             return apiError(429, "rate_limited", "Too many new conversations. Please try again later.");
         }
         const s = await ensureSession(req, { ipHash, userId: user?.id ?? null });
         setCookie = s.setCookie;
+        if (!(await visitorAllowed({ userId: user?.id, sessionId: s.sessionId }))) return visitorLimited();
         conv = await prisma.conversation.create({
             data: {
                 channel: "web", mode, status: "open", locale: detectLocale(text, pageLocale), userId: user?.id ?? null, sessionId: s.sessionId,
@@ -146,7 +158,7 @@ export async function handleChat(req: Request): Promise<Response> {
     // A person owns it: store, notify, no model call (FR-H3, TS-08).
     if (conv.status === "waiting_human" || conv.status === "human") {
         await storeVisitor();
-        await notifyStaffThrottled(conv.id);
+        await notifyStaffThrottled(conv.id, cfg);
         const status = conv.status;
         return sse(async (emit) => { emit(meta(status)); emit({ event: "done", data: { messageId: null } }); }, setCookie);
     }

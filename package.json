@@ -10,7 +10,7 @@
     "lint": "next lint",
     "prisma:generate": "prisma generate && prisma generate --schema prisma/mysql/schema.prisma",
     "mongo:generate": "prisma generate",
-    "mongo:push": "prisma db push",
+    "mongo:push": "prisma db push && node scripts/agent-indexes.mjs",
     "mongo:pull": "prisma db pull",
     "mongo:studio": "prisma studio",
     "mysql:generate": "prisma generate --schema prisma/mysql/schema.prisma",

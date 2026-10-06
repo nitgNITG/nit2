@@ -9,7 +9,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
-    LuArrowDown, LuArrowRight, LuArrowUpRight, LuBot, LuMail, LuMessageCircle, LuRotateCcw,
+    LuArrowDown, LuArrowRight, LuArrowUpRight, LuBot, LuChevronLeft, LuChevronRight, LuHistory, LuMail, LuRotateCcw,
     LuSendHorizontal, LuThumbsDown, LuThumbsUp, LuUserRound, LuX,
 } from 'react-icons/lu'
 import { FaWhatsapp } from 'react-icons/fa'
@@ -25,6 +25,8 @@ type Locale = 'ar' | 'en'
 type Action = { type: 'link'; label: string; url: string }
 type Msg = { key: string; id?: string; role: 'visitor' | 'assistant' | 'staff' | 'note' | 'fallback'; text: string; actions?: Action[]; fallback?: Fallback }
 type Fallback = { whatsapp: string; contactUrl: string }
+type ChatSummary = { id: string; status: string; title: string; lastMessageAt: string }
+type History = { scope: 'account' | 'browser' | 'none'; items: ChatSummary[] }
 type Config = {
     enabled: boolean; hidden: boolean; greeting: string; suggestions: string[]; whatsapp: string
     proactivePrompt: { id: string; text: string; delaySec: number } | null
@@ -80,6 +82,8 @@ export default function ChatWidget({ locale, pathname }: { locale: Locale; pathn
     const [rating, setRating] = useState<0 | 1 | -1>(0)
     const [ratingDone, setRatingDone] = useState(false)
     const [comment, setComment] = useState('')
+    const [view, setView] = useState<'chat' | 'history'>('chat')
+    const [history, setHistory] = useState<History | null>(null)
     const seen = useRef(new Set<string>())
     const lastId = useRef<string | null>(null)
     const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -274,6 +278,30 @@ export default function ChatWidget({ locale, pathname }: { locale: Locale; pathn
 
     const newChat = () => {
         storage.clear(); setConvId(null); setMessages([]); setStatus('open'); setRating(0); setRatingDone(false); seen.current.clear(); lastId.current = null
+        setView('chat')
+    }
+
+    // Previous chats: the signed-in account's, else this browser's.
+    const openHistory = async () => {
+        setView('history')
+        setHistory(null)
+        try {
+            const r = await fetch('/api/agent/conversations', { credentials: 'same-origin' })
+            setHistory(r.ok ? await r.json() : { scope: 'none', items: [] })
+        } catch { setHistory({ scope: 'none', items: [] }) }
+    }
+    const openConversation = async (id: string) => {
+        if (id === convId) return setView('chat')
+        try {
+            const h = await fetch(`/api/agent/conversations/${id}`, { credentials: 'same-origin' })
+            if (!h.ok) return
+            const data = await h.json()
+            newChat()
+            setConvId(id)
+            setStatus(data.status)
+            if (data.status !== 'closed') storage.set(id) // an ended chat is read-only: the next message starts a new one
+            addMessages(data.messages, true)
+        } catch { /* stay on the list */ }
     }
 
     if (!allowed || !cfg || cfg.hidden) return null
@@ -311,11 +339,23 @@ export default function ChatWidget({ locale, pathname }: { locale: Locale; pathn
                 aria-expanded={open}
                 onClick={() => (open ? close() : setOpen(true))}
                 className={clsx(
-                    'fixed z-[1000] flex size-14 items-center justify-center rounded-full text-white shadow-lg ring-white/40 transition-transform hover:scale-105 focus:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300',
+                    'group fixed z-[1000] flex size-14 items-center justify-center rounded-full text-white shadow-lg ring-white/40 transition-transform hover:scale-105 focus:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300',
                     BRAND, LAUNCHER_POS, open && 'max-sm:hidden',
                 )}
             >
-                {open ? <LuX aria-hidden className='size-6' /> : <LuMessageCircle aria-hidden className='size-7' />}
+                {open ? <LuX aria-hidden className='size-6' /> : <LuBot aria-hidden className='size-7' />}
+                {!open && (
+                    <span aria-hidden data-testid='ai-badge'
+                        className='absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded-full bg-white px-1.5 text-[10px] font-bold leading-4 tracking-wide text-[#1E7D67] shadow ring-1 ring-[#1E7D67]/30'>
+                        AI
+                    </span>
+                )}
+                {!open && !prompt && (
+                    <span aria-hidden dir={dir} lang={locale}
+                        className='pointer-events-none absolute right-full top-1/2 mr-3 -translate-y-1/2 whitespace-nowrap rounded-lg bg-gray-900 px-3 py-1.5 text-sm font-medium text-white opacity-0 shadow-lg transition-opacity max-sm:hidden group-hover:opacity-100 group-focus-visible:opacity-100'>
+                        {t.launcherHint}
+                    </span>
+                )}
                 {!open && prompt && <span aria-hidden className='absolute -top-0.5 -right-0.5 size-3.5 rounded-full border-2 border-white bg-red-500' />}
             </button>
 
@@ -341,6 +381,11 @@ export default function ChatWidget({ locale, pathname }: { locale: Locale; pathn
                             </div>
                             <div className='truncate text-xs text-white/80'>{statusLine}</div>
                         </div>
+                        <button type='button' aria-label={view === 'history' ? t.back : t.history} title={view === 'history' ? t.back : t.history} aria-pressed={view === 'history'}
+                            onClick={() => (view === 'history' ? setView('chat') : openHistory())}
+                            className='rounded-full p-2 hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-white'>
+                            <LuHistory aria-hidden className='size-4' />
+                        </button>
                         {messages.length > 0 && (
                             <button type='button' aria-label={t.newChat} title={t.newChat} onClick={newChat} className='rounded-full p-2 hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-white'>
                                 <LuRotateCcw aria-hidden className='size-4' />
@@ -352,88 +397,135 @@ export default function ChatWidget({ locale, pathname }: { locale: Locale; pathn
                     </div>
                     <p className='border-b border-gray-100 bg-emerald-50/60 px-4 py-1.5 text-[11px] leading-snug text-emerald-900'>{t.aiNotice}</p>
 
-                    {/* Transcript */}
-                    <MessageScrollerProvider>
-                        <MessageScroller>
-                            <MessageScrollerViewport aria-live='polite' className='bg-gray-50 px-3 py-4'>
-                                <MessageScrollerContent>
-                                    <AssistantBubble text={cfg.greeting} />
-                                    {messages.length === 0 && (
-                                        <div className='flex flex-wrap gap-2 ps-9'>
-                                            {cfg.suggestions.map((s) => (
-                                                <button key={s} onClick={() => send(s)}
-                                                    className='rounded-full border border-emerald-700/40 bg-white px-3 py-1.5 text-xs text-emerald-900 shadow-sm transition-colors hover:border-emerald-700 hover:bg-emerald-50'>
-                                                    {s}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                    {messages.map((m) => (
-                                        <MessageScrollerItem key={m.key} scrollAnchor={m.role === 'visitor'}>
-                                            <Bubble m={m} t={t} />
-                                        </MessageScrollerItem>
-                                    ))}
-                                    {pending !== null && (
-                                        <MessageScrollerItem>
-                                            {pending ? <AssistantBubble text={pending} /> : <Typing label={t.typing} />}
-                                        </MessageScrollerItem>
-                                    )}
-                                    {hasAssistant && !ratingDone && (
-                                        <div className='flex flex-wrap items-center gap-2 pt-1 text-xs text-gray-500'>
-                                            <span>{t.rateQ}</span>
-                                            <button aria-label={t.rateUp} aria-pressed={rating === 1} onClick={() => rate(1, false)}
-                                                className={clsx('rounded-full p-1.5 transition-colors hover:bg-gray-200', rating === 1 && 'bg-emerald-100 text-emerald-700')}>
-                                                <LuThumbsUp aria-hidden className='size-4' />
-                                            </button>
-                                            <button aria-label={t.rateDown} aria-pressed={rating === -1} onClick={() => rate(-1, false)}
-                                                className={clsx('rounded-full p-1.5 transition-colors hover:bg-gray-200', rating === -1 && 'bg-red-100 text-red-700')}>
-                                                <LuThumbsDown aria-hidden className='size-4' />
-                                            </button>
-                                            {rating !== 0 && (
-                                                <form className='flex w-full gap-1.5' onSubmit={(e) => { e.preventDefault(); rate(rating as 1 | -1, true) }}>
-                                                    <input aria-label={t.rateComment} placeholder={t.rateComment} maxLength={500} value={comment} onChange={(e) => setComment(e.target.value)}
-                                                        className='min-w-0 flex-1 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-base sm:text-xs' />
-                                                    <button className='rounded-full bg-gray-200 px-3 text-xs hover:bg-gray-300'>{t.send}</button>
-                                                </form>
-                                            )}
-                                        </div>
-                                    )}
-                                    {ratingDone && <div className='pt-1 text-xs text-gray-500'>{t.rateThanks}</div>}
-                                </MessageScrollerContent>
-                            </MessageScrollerViewport>
-                            <MessageScrollerButton label={t.latest}><LuArrowDown aria-hidden className='size-4' /></MessageScrollerButton>
-                        </MessageScroller>
-                    </MessageScrollerProvider>
+                    {view === 'history' && (
+                        <HistoryList history={history} t={t} locale={locale} current={convId} onOpen={openConversation} onBack={() => setView('chat')} />
+                    )}
 
-                    {/* Composer */}
-                    <div className='border-t border-gray-100 bg-white px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]'>
-                        {status === 'open' && (
-                            <button onClick={askHuman} className='mb-2 inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-50'>
-                                <LuUserRound aria-hidden className='size-3.5' />{t.human}
-                            </button>
-                        )}
-                        <form className='flex items-end gap-2' onSubmit={(e) => { e.preventDefault(); send(input) }}>
-                            <textarea
-                                ref={inputRef}
-                                aria-label={t.placeholder}
-                                placeholder={t.placeholder}
-                                dir='auto'
-                                rows={1}
-                                maxLength={MAX_LEN}
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) } }}
-                                className='max-h-32 min-h-[44px] flex-1 resize-none rounded-2xl border border-gray-300 bg-gray-50 px-4 py-2.5 text-base leading-6 focus:border-emerald-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/20 sm:text-sm'
-                            />
-                            <button aria-label={t.send} disabled={sending || !input.trim()}
-                                className={clsx('flex size-11 shrink-0 items-center justify-center rounded-full text-white shadow transition-opacity disabled:opacity-40', BRAND)}>
-                                <LuSendHorizontal aria-hidden className='size-5 rtl:-scale-x-100' />
-                            </button>
-                        </form>
-                    </div>
+                    {/* Transcript */}
+                    {view === 'chat' && (<>
+                        <MessageScrollerProvider>
+                            <MessageScroller>
+                                <MessageScrollerViewport aria-live='polite' className='bg-gray-50 px-3 py-4'>
+                                    <MessageScrollerContent>
+                                        <AssistantBubble text={cfg.greeting} />
+                                        {messages.length === 0 && (
+                                            <div className='flex flex-wrap gap-2 ps-9'>
+                                                {cfg.suggestions.map((s) => (
+                                                    <button key={s} onClick={() => send(s)}
+                                                        className='rounded-full border border-emerald-700/40 bg-white px-3 py-1.5 text-xs text-emerald-900 shadow-sm transition-colors hover:border-emerald-700 hover:bg-emerald-50'>
+                                                        {s}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {messages.map((m) => (
+                                            <MessageScrollerItem key={m.key} scrollAnchor={m.role === 'visitor'}>
+                                                <Bubble m={m} t={t} />
+                                            </MessageScrollerItem>
+                                        ))}
+                                        {pending !== null && (
+                                            <MessageScrollerItem>
+                                                {pending ? <AssistantBubble text={pending} /> : <Typing label={t.typing} />}
+                                            </MessageScrollerItem>
+                                        )}
+                                        {hasAssistant && !ratingDone && (
+                                            <div className='flex flex-wrap items-center gap-2 pt-1 text-xs text-gray-500'>
+                                                <span>{t.rateQ}</span>
+                                                <button aria-label={t.rateUp} aria-pressed={rating === 1} onClick={() => rate(1, false)}
+                                                    className={clsx('rounded-full p-1.5 transition-colors hover:bg-gray-200', rating === 1 && 'bg-emerald-100 text-emerald-700')}>
+                                                    <LuThumbsUp aria-hidden className='size-4' />
+                                                </button>
+                                                <button aria-label={t.rateDown} aria-pressed={rating === -1} onClick={() => rate(-1, false)}
+                                                    className={clsx('rounded-full p-1.5 transition-colors hover:bg-gray-200', rating === -1 && 'bg-red-100 text-red-700')}>
+                                                    <LuThumbsDown aria-hidden className='size-4' />
+                                                </button>
+                                                {rating !== 0 && (
+                                                    <form className='flex w-full gap-1.5' onSubmit={(e) => { e.preventDefault(); rate(rating as 1 | -1, true) }}>
+                                                        <input aria-label={t.rateComment} placeholder={t.rateComment} maxLength={500} value={comment} onChange={(e) => setComment(e.target.value)}
+                                                            className='min-w-0 flex-1 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-base sm:text-xs' />
+                                                        <button className='rounded-full bg-gray-200 px-3 text-xs hover:bg-gray-300'>{t.send}</button>
+                                                    </form>
+                                                )}
+                                            </div>
+                                        )}
+                                        {ratingDone && <div className='pt-1 text-xs text-gray-500'>{t.rateThanks}</div>}
+                                    </MessageScrollerContent>
+                                </MessageScrollerViewport>
+                                <MessageScrollerButton label={t.latest}><LuArrowDown aria-hidden className='size-4' /></MessageScrollerButton>
+                            </MessageScroller>
+                        </MessageScrollerProvider>
+
+                        {/* Composer */}
+                        <div className='border-t border-gray-100 bg-white px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]'>
+                            {status === 'closed' && <p role='status' className='mb-2 text-xs text-gray-500'>{t.closedNote}</p>}
+                            {status === 'open' && (
+                                <button onClick={askHuman} className='mb-2 inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-50'>
+                                    <LuUserRound aria-hidden className='size-3.5' />{t.human}
+                                </button>
+                            )}
+                            <form className='flex items-end gap-2' onSubmit={(e) => { e.preventDefault(); send(input) }}>
+                                <textarea
+                                    ref={inputRef}
+                                    aria-label={t.placeholder}
+                                    placeholder={t.placeholder}
+                                    dir='auto'
+                                    rows={1}
+                                    maxLength={MAX_LEN}
+                                    value={input}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) } }}
+                                    className='max-h-32 min-h-[44px] flex-1 resize-none rounded-2xl border border-gray-300 bg-gray-50 px-4 py-2.5 text-base leading-6 focus:border-emerald-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/20 sm:text-sm'
+                                />
+                                <button aria-label={t.send} disabled={sending || !input.trim()}
+                                    className={clsx('flex size-11 shrink-0 items-center justify-center rounded-full text-white shadow transition-opacity disabled:opacity-40', BRAND)}>
+                                    <LuSendHorizontal aria-hidden className='size-5 rtl:-scale-x-100' />
+                                </button>
+                            </form>
+                        </div>
+                    </>)}
                 </div>
             )}
         </>
+    )
+}
+
+function HistoryList({ history, t, locale, current, onOpen, onBack }: {
+    history: History | null; t: Strings; locale: Locale; current: string | null; onOpen: (id: string) => void; onBack: () => void
+}) {
+    const Back = locale === 'ar' ? LuChevronRight : LuChevronLeft
+    const label = (s: string) => (s === 'closed' ? t.stClosed : s === 'waiting_human' ? t.stWaiting : s === 'human' ? t.stHuman : t.stOpen)
+    const fmt = new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+    return (
+        <div className='flex min-h-0 flex-1 flex-col bg-gray-50'>
+            <div className='flex items-center gap-2 border-b border-gray-100 bg-white px-3 py-2'>
+                <button type='button' onClick={onBack} className='inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-50'>
+                    <Back aria-hidden className='size-4' />{t.back}
+                </button>
+            </div>
+            <div className='min-h-0 flex-1 overflow-y-auto p-3'>
+                <h3 className='text-sm font-semibold text-gray-800'>{t.history}</h3>
+                {history && history.scope !== 'none' && (
+                    <p className='mb-3 text-xs text-gray-500'>{history.scope === 'account' ? t.historyAccount : t.historyBrowser}</p>
+                )}
+                {!history && <p className='py-6 text-center text-sm text-gray-400'>{t.historyLoading}</p>}
+                {history && !history.items.length && <p className='py-6 text-center text-sm text-gray-400'>{t.historyEmpty}</p>}
+                <ul className='space-y-2'>
+                    {history?.items.map((c) => (
+                        <li key={c.id}>
+                            <button type='button' onClick={() => onOpen(c.id)} aria-current={c.id === current ? 'true' : undefined}
+                                className={clsx('w-full rounded-xl border bg-white px-3 py-2.5 text-start shadow-sm transition-colors hover:border-emerald-600',
+                                    c.id === current ? 'border-emerald-600' : 'border-gray-200')}>
+                                <div className='truncate text-sm font-medium text-gray-800' dir='auto'>{c.title || t.untitled}</div>
+                                <div className='mt-1 flex items-center justify-between gap-2 text-[11px] text-gray-500'>
+                                    <span>{fmt.format(new Date(c.lastMessageAt))}</span>
+                                    <span className={clsx('rounded-full px-2 py-0.5', c.status === 'closed' ? 'bg-gray-100 text-gray-600' : 'bg-emerald-50 text-emerald-800')}>{label(c.status)}</span>
+                                </div>
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        </div>
     )
 }
 

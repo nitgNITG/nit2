@@ -35,8 +35,13 @@ export async function reserve(estimateUsd: number, budgetUsd: number, now: Date 
     return res.count === 1 ? { date, estimateUsd } : null;
 }
 
-/** Replace the reservation with the actual cost (0 actual = call failed before usage). */
-export async function settle(r: Reservation, actualUsd: number, usage?: TokenUsage): Promise<void> {
+export type CallMeta = { kind: "chat" | "brief" | "tags"; model: string; conversationId?: string | null };
+
+/**
+ * Replace the reservation with the actual cost (0 actual = call failed before usage).
+ * With usage + meta, the call is also logged for cost per visitor / per model.
+ */
+export async function settle(r: Reservation, actualUsd: number, usage?: TokenUsage, meta?: CallMeta): Promise<void> {
     await prisma.usageDaily.updateMany({
         where: { date: r.date },
         data: {
@@ -54,6 +59,15 @@ export async function settle(r: Reservation, actualUsd: number, usage?: TokenUsa
             priceTableVersion: PRICE_TABLE_VERSION,
         },
     });
+    if (usage && meta) {
+        try {
+            await prisma.agentUsageEvent.create({
+                data: { date: r.date, kind: meta.kind, model: meta.model, conversationId: meta.conversationId ?? null, ...usage, costUsd: actualUsd },
+            });
+        } catch (e) {
+            console.error("[agent] usage event not recorded", (e as Error).message); // the daily total above is what the budget uses
+        }
+    }
 }
 
 /** Is anything left today? (cheap pre-check before a turn; reserve() is the real gate). */

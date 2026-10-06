@@ -40,7 +40,10 @@ export async function performHandoff(input: {
     await prisma.chatMessage.create({
         data: { conversationId: input.conversationId, role: "system", content: `handoff: ${input.reason}`.slice(0, 500) },
     });
-    await alertHandoff({ conversationId: input.conversationId, reason: input.reason, summary: input.summary, mode: input.mode });
+    await alertHandoff({
+        conversationId: input.conversationId, reason: input.reason, summary: input.summary, mode: input.mode,
+        email: input.config.notifications.emailOnHandoff,
+    });
     await recordActivity({ event: "AI_HANDOFF", conversationId: input.conversationId, createdBy: "AI", summary: input.reason });
     return { ok: true, status: "waiting_human", nextReply };
 }

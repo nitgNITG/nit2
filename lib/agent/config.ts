@@ -34,6 +34,16 @@ export const LimitsSchema = z.strictObject({
     turnTimeoutSeconds: z.number().int().min(5).max(120),
 });
 
+/** Abuse limits on the public chat (NFR-6). Editable in AI Settings. */
+export const AbuseSchema = z.strictObject({
+    ipMessagesPerWindow: z.number().int().min(1).max(1000),
+    ipWindowMinutes: z.number().int().min(1).max(1440),
+    ipNewConversationsPerHour: z.number().int().min(1).max(500),
+    // Per visitor = the signed-in account, else the guest's browser session.
+    visitorMessagesPerDay: z.number().int().min(1).max(5000),
+});
+export type AbuseLimits = z.infer<typeof AbuseSchema>;
+
 const ConfigBodySchema = z.strictObject({
     enabled: z.strictObject({ web: z.boolean(), whatsapp: z.boolean() }),
     greeting: Bilingual(500),
@@ -65,6 +75,10 @@ const ConfigBodySchema = z.strictObject({
     // Optional public booking page (Calendly etc.) shown after request_meeting (FR-S16).
     bookingUrl: z.string().max(500).refine((u) => u === "" || /^https:\/\//.test(u), "must be https://"),
     limits: LimitsSchema,
+    abuse: AbuseSchema,
+    // Emails on top of Telegram (SMTP must be set up): the inbox team on handoff,
+    // and the staff owner when the visitor replies.
+    notifications: z.strictObject({ emailOnHandoff: z.boolean(), emailOwnerOnReply: z.boolean() }),
 });
 export type AgentConfigBody = z.infer<typeof ConfigBodySchema>;
 export type AgentConfig = AgentConfigBody & { version: number };
@@ -110,6 +124,8 @@ export const DEFAULT_CONFIG: AgentConfig = {
         maxConversationTokens: 250_000,
         turnTimeoutSeconds: 30,
     },
+    abuse: { ipMessagesPerWindow: 20, ipWindowMinutes: 10, ipNewConversationsPerHour: 5, visitorMessagesPerDay: 150 },
+    notifications: { emailOnHandoff: true, emailOwnerOnReply: true },
 };
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {

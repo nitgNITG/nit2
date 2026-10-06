@@ -206,6 +206,7 @@ export function makeMongo() {
             unique: [["date"]],
             defaults: { reservedUsd: 0, spentUsd: 0, committedUsd: 0, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, budgetAlerted: false },
         }),
+        agentUsageEvent: makeModel(),
         rateLimitBucket: makeModel({ unique: [["key", "windowStart"]], defaults: { count: 0 } }),
         customPriceRange: makeModel({ unique: [["category"]], defaults: { active: true, version: 1 } }),
         contact: makeModel({ defaults: { score: 0, stage: "lead", status: "new", isReaded: false } }),

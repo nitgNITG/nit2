@@ -50,7 +50,7 @@ model Project {
 
 model ProjectType {
   id      String @id @default(auto()) @map("_id") @db.ObjectId
-  value   String @unique  // slug used in Project.types[] e.g. "lms", "ecommerce"
+  value   String @unique // slug used in Project.types[] e.g. "lms", "ecommerce"
   labelEn String
   labelAr String
 }
@@ -66,46 +66,46 @@ model Sponser {
 // that User.id as a plain string — no cross-database relation.)
 
 model Contact {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  id                   String    @id @default(auto()) @map("_id") @db.ObjectId
   // Core fields
-  name      String
-  email     String
-  phone     String?
-  subject   String
-  message   String
+  name                 String
+  email                String
+  phone                String?
+  subject              String
+  message              String
   // Qualifying fields
-  country   String?   // "sa" | "ae" | "qa" | "kw" | "bh" | "om" | "jo" | "eg" | "other"
-  service   String?   // "moodle" | "ecommerce" | "custom" | "other"
-  budget    String?   // "under5k" | "5to20k" | "20to50k" | "above50k" | "unknown"
-  timeline  String?   // "immediate" | "1to3months" | "3to6months" | "exploring"
-  role      String?   // "owner" | "manager" | "employee" | "other"
-  pain      String?
+  country              String? // "sa" | "ae" | "qa" | "kw" | "bh" | "om" | "jo" | "eg" | "other"
+  service              String? // "moodle" | "ecommerce" | "custom" | "other"
+  budget               String? // "under5k" | "5to20k" | "20to50k" | "above50k" | "unknown"
+  timeline             String? // "immediate" | "1to3months" | "3to6months" | "exploring"
+  role                 String? // "owner" | "manager" | "employee" | "other"
+  pain                 String?
   // Traffic tracking
-  sourcePage    String?   // page where form was submitted (/contact | /moodle-lms | /)
-  sourceRef     String?   // document.referrer (e.g. google.com)
-  utmSource     String?   // ?utm_source=
-  utmMedium     String?   // ?utm_medium=
-  utmCampaign   String?   // ?utm_campaign=
+  sourcePage           String? // page where form was submitted (/contact | /moodle-lms | /)
+  sourceRef            String? // document.referrer (e.g. google.com)
+  utmSource            String? // ?utm_source=
+  utmMedium            String? // ?utm_medium=
+  utmCampaign          String? // ?utm_campaign=
   // Auto-scored
-  score     Int      @default(0)
-  stage     String   @default("lead")   // "lead" | "mql" | "sql" | "opportunity"
+  score                Int       @default(0)
+  stage                String    @default("lead") // "lead" | "mql" | "sql" | "opportunity"
   // Admin
-  status    String   @default("new")    // "new" | "contacted" | "won" | "lost"
-  notes     String?
-  isReaded  Boolean  @default(false)
-  createdAt DateTime @default(now())
+  status               String    @default("new") // "new" | "contacted" | "won" | "lost"
+  notes                String?
+  isReaded             Boolean   @default(false)
+  createdAt            DateTime  @default(now())
   // ── AI agent (all optional so existing rows still read) ──
   company              String?
-  orgType              String?   // individual | company | government | education
+  orgType              String? // individual | company | government | education
   whatsapp             String?
-  requirements         Json?     // LeadRequirements (lib/agent/qualification/schemas.ts)
-  tier                 String?   // HOT | WARM | COLD (lead score v2)
-  scoreBreakdown       Json?     // [{ factor, points }]
-  scoreVersion         Int?      // algorithm version (v2 = 2)
-  scoringConfigVersion Int?      // settings version the score was computed with
+  requirements         Json? // LeadRequirements (lib/agent/qualification/schemas.ts)
+  tier                 String? // HOT | WARM | COLD (lead score v2)
+  scoreBreakdown       Json? // [{ factor, points }]
+  scoreVersion         Int? // algorithm version (v2 = 2)
+  scoringConfigVersion Int? // settings version the score was computed with
   scoredAt             DateTime?
-  aiSummary            String?   // AI-generated sales brief (labelled as AI in the UI)
-  nextAction           String?   // CALL_TODAY | CALL_WITHIN_24H | SEND_PROPOSAL | REQUEST_MORE_INFO | HANDOFF_TO_TECHNICAL | WAIT_FOR_CLIENT
+  aiSummary            String? // AI-generated sales brief (labelled as AI in the UI)
+  nextAction           String? // CALL_TODAY | CALL_WITHIN_24H | SEND_PROPOSAL | REQUEST_MORE_INFO | HANDOFF_TO_TECHNICAL | WAIT_FOR_CLIENT
   consentContact       Boolean?
   consentAt            DateTime?
   conversationId       String?   @db.ObjectId // conversation that captured the lead
@@ -116,53 +116,53 @@ model Contact {
 }
 
 model ServicePlan {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  service   String   // "moodle" | "ecommerce" | "mobile"
-  nameAr    String
-  nameEn    String
-  price     Int      // starting price in USD
-  currency  String   @default("USD")
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  service    String // "moodle" | "ecommerce" | "mobile"
+  nameAr     String
+  nameEn     String
+  price      Int // starting price in USD
+  currency   String   @default("USD")
   featuresAr String[] // Arabic feature list
   featuresEn String[] // English feature list
-  isActive  Boolean  @default(true)
-  order     Int      @default(0)
-  createdAt DateTime @default(now())
+  isActive   Boolean  @default(true)
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
 }
 
 model Article {
-  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
   // SEO-friendly URL slug (auto-generated from Arabic title)
-  slug              String?   @unique
+  slug        String?   @unique
   // Arabic (primary)
-  title             String
-  content           String           // intro paragraph AR
-  metaDesc          String?          // ≤160 chars for <meta description> AR
+  title       String
+  content     String // intro paragraph AR
+  metaDesc    String? // ≤160 chars for <meta description> AR
   // English
-  titleEn           String?
-  contentEn         String?          // intro paragraph EN
-  metaDescEn        String?          // ≤160 chars for <meta description> EN
+  titleEn     String?
+  contentEn   String? // intro paragraph EN
+  metaDescEn  String? // ≤160 chars for <meta description> EN
   // Media & meta
-  img               String
-  publishedAt       DateTime @default(now())
-  Section           Section[]
+  img         String
+  publishedAt DateTime  @default(now())
+  Section     Section[]
   // AI agent (search_knowledge): null/absent = visible; false hides it from the agent.
-  aiVisible         Boolean?
-  aiSummary         String?
+  aiVisible   Boolean?
+  aiSummary   String?
 
   @@index([aiVisible])
 }
 
 model Section {
-  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  id        String        @id @default(auto()) @map("_id") @db.ObjectId
   // Arabic
-  title       String
-  content     String?
+  title     String
+  content   String?
   // English
-  titleEn     String?
-  contentEn   String?
-  list        Listsection[]
-  article     Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  articleId   String        @db.ObjectId
+  titleEn   String?
+  contentEn String?
+  list      Listsection[]
+  article   Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId String        @db.ObjectId
 }
 
 type Listsection {
@@ -280,6 +280,25 @@ model IdempotencyRecord {
   createdAt  DateTime @default(now())
 
   @@index([createdAt]) // TTL 7 days
+}
+
+// One row per model call (cost per visitor, per model; reconciles with the
+// Anthropic console, which reports UTC days). The createdAt index is the TTL
+// index from scripts/agent-indexes.mjs (180 days), so Prisma declares none.
+model AgentUsageEvent {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  date             String // Africa/Cairo day, same as UsageDaily
+  kind             String // chat | brief | tags
+  model            String // as returned by the API
+  conversationId   String?  @db.ObjectId
+  inputTokens      Int
+  outputTokens     Int
+  cacheReadTokens  Int
+  cacheWriteTokens Int
+  costUsd          Float
+  createdAt        DateTime @default(now())
+
+  @@index([conversationId])
 }
 
 model UsageDaily {

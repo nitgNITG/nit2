@@ -66,7 +66,7 @@ export async function tagConversation(conversationId: string, cfg: AgentConfig):
         try {
             res = await llm.complete(req);
         } finally {
-            await settle(r, res ? costUsd(res.model, res.usage) : 0, res?.usage);
+            await settle(r, res ? costUsd(res.model, res.usage) : 0, res?.usage, res && { kind: "tags", model: res.model, conversationId });
         }
         const parsed = parseTags(res.text);
         if (!parsed) return null;

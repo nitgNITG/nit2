@@ -13,6 +13,7 @@ type Detail = {
     messages: Msg[]
     contact: any | null
     summary: string | null
+    related?: { id: string; status: string; mode: string; title: string; messageCount: number; lastMessageAt: string }[]
     viewer: { userId: string; isAdmin: boolean; canEditLead: boolean }
 }
 
@@ -248,6 +249,24 @@ export default function ConversationPage({ params }: { params: { id: string } })
                             <LeadTimeline contactId={d.contact.id} refreshKey={`${c.status}:${d.contact.tier}`} />
                         </Card>
                     )}
+                    <Card className='space-y-2'>
+                        <h5 className='font-semibold'>Visitor&apos;s other chats</h5>
+                        <p className='text-xs text-gray-500'>Same account, browser session or lead.</p>
+                        {d.related?.length ? (
+                            <ul className='divide-y text-sm'>
+                                {d.related.map((r) => (
+                                    <li key={r.id}>
+                                        <LocaleLink href={`/dashboard/conversations/${r.id}`} className='block py-2 hover:bg-gray-50 -mx-2 px-2 rounded'>
+                                            <div className='truncate text-gray-800' dir='auto'>{r.title || 'Untitled chat'}</div>
+                                            <div className='mt-0.5 flex items-center gap-2 text-xs text-gray-500'>
+                                                <StatusBadge status={r.status} /><span>{r.mode}</span><span>· {r.messageCount} msgs</span><span>· {fmtDate(r.lastMessageAt)}</span>
+                                            </div>
+                                        </LocaleLink>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : <p className='text-xs text-gray-400'>No other chats.</p>}
+                    </Card>
                     {c.rating != null && (
                         <Card className='text-sm'>Visitor rating: {c.rating === 1 ? '👍' : '👎'}{c.ratingComment ? <div className='text-gray-600 mt-1' dir='auto'>“{c.ratingComment}”</div> : null}</Card>
                     )}

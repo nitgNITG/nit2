@@ -52,7 +52,7 @@ export async function generateBrief(conversationId: string, cfg: AgentConfig): P
         try {
             res = await llm.complete(req);
         } finally {
-            await settle(r, res ? costUsd(res.model, res.usage) : 0, res?.usage);
+            await settle(r, res ? costUsd(res.model, res.usage) : 0, res?.usage, res && { kind: "brief", model: res.model, conversationId });
         }
         const brief = parseBrief(res.text);
         if (!brief) return null;

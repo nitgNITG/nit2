@@ -1,6 +1,7 @@
 // Staff-side helpers for the /api/agent/admin/** routes and the dashboard
 // (FR-I1–I5, FR-C3, FR-C4, §13.14). Route files stay thin; decisions live here.
 import { apiError } from "./http";
+import type { NavItem } from "@/lib/dashboard/nav";
 import { can, requireCapability, type AgentStaff, type Capability } from "./security/authorization";
 
 /** Conversation modes a staff member may see. Empty = none. */
@@ -55,19 +56,17 @@ export function staffLandingPage(staff: AgentStaff): string | null {
     return PAGES.find((p) => p.caps.some((c) => can(staff, c)))?.prefix ?? null;
 }
 
-export type NavItem = { label: string; href: string };
-
-/** Agent links for the sidebar, filtered by capability. */
+/** The AI-agent pages this staff member may open, for the grouped dashboard sidebar. */
 export function agentNav(staff: AgentStaff): NavItem[] {
     const items: (NavItem & { caps: Capability[] })[] = [
-        { label: "💬 AI Inbox", href: "/dashboard/conversations", caps: ["conversations:sales", "conversations:support"] },
-        { label: "💵 Price Ranges", href: "/dashboard/price-ranges", caps: ["price_ranges"] },
-        { label: "🎫 Tickets", href: "/dashboard/tickets", caps: ["tickets"] },
-        { label: "📅 Meetings", href: "/dashboard/meetings", caps: ["meetings"] },
-        { label: "📈 AI Usage", href: "/dashboard/agent-usage", caps: ["analytics"] },
-        { label: "🔎 AI Analytics", href: "/dashboard/agent-analytics", caps: ["analytics"] },
-        { label: "🤖 AI Settings", href: "/dashboard/agent-settings", caps: ["settings"] },
-        { label: "👥 AI Staff", href: "/dashboard/agent-staff", caps: ["staff"] },
+        { label: "AI Inbox", href: "/dashboard/conversations", group: "sales", icon: "inbox", badge: "inbox", caps: ["conversations:sales", "conversations:support"] },
+        { label: "Price Ranges", href: "/dashboard/price-ranges", group: "sales", icon: "priceRanges", caps: ["price_ranges"] },
+        { label: "Tickets", href: "/dashboard/tickets", group: "customers", icon: "tickets", caps: ["tickets"] },
+        { label: "Meetings", href: "/dashboard/meetings", group: "sales", icon: "meetings", caps: ["meetings"] },
+        { label: "AI Usage & Cost", href: "/dashboard/agent-usage", group: "ai", icon: "usage", caps: ["analytics"] },
+        { label: "AI Analytics", href: "/dashboard/agent-analytics", group: "ai", icon: "analytics", caps: ["analytics"] },
+        { label: "AI Settings", href: "/dashboard/agent-settings", group: "ai", icon: "aiSettings", caps: ["settings"] },
+        { label: "AI Staff", href: "/dashboard/agent-staff", group: "ai", icon: "staff", caps: ["staff"] },
     ];
-    return items.filter((i) => i.caps.some((c) => can(staff, c))).map(({ label, href }) => ({ label, href }));
+    return items.filter((i) => i.caps.some((c) => can(staff, c))).map(({ caps: _caps, ...item }) => item);
 }

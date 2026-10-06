@@ -116,6 +116,22 @@ describe("permissions matrix on every admin endpoint (§13.14, TS-19, TS-46, AC-
         expect(staffLandingPage(viewer)).toBe("/dashboard/agent-usage");
         expect(staffLandingPage({ ...mona, permissions: [] })).toBeNull();
     });
+
+    it("the sidebar groups pages by topic; staff only get the groups their pages are in", async () => {
+        const { ADMIN_NAV, groupNav, isActive } = await import("@/lib/dashboard/nav");
+        const admin = { user: { id: "a", email: "", name: null, role: "admin" as const }, isAdmin: true, permissions: [] };
+        const all = groupNav([...ADMIN_NAV, ...agentNav(admin)]);
+        expect(all.map((g) => g.label)).toEqual(["Overview", "Sales & CRM", "Customers & Support", "Billing", "Website Content", "AI Assistant", "System"]);
+        expect(all.find((g) => g.key === "sales")!.items.map((i) => i.label)).toEqual(["AI Inbox", "Contacts", "Meetings", "Price Ranges"]);
+        expect(all.flatMap((g) => g.items).every((i) => i.icon)).toBe(true);
+
+        const mona = { ...admin, user: { ...admin.user, role: "client" as const }, isAdmin: false, permissions: ["sales" as const] };
+        expect(groupNav(agentNav(mona)).map((g) => [g.key, g.items.length])).toEqual([["sales", 3], ["ai", 2]]);
+
+        expect(isActive("/en/dashboard/conversations/abc", "en", "/dashboard/conversations")).toBe(true);
+        expect(isActive("/en/dashboard/conversations", "en", "/dashboard")).toBe(false);
+        expect(isActive("/ar/dashboard", "ar", "/dashboard")).toBe(true);
+    });
 });
 
 describe("inbox actions (FR-I3, AC-12.x)", () => {

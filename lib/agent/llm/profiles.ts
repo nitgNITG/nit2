@@ -11,7 +11,7 @@ export const PROFILE_MODEL: Record<ModelProfile, string> = {
     complex: "claude-opus-5-5",
 };
 
-export const PRICE_TABLE_VERSION = "2026-10-05";
+export const PRICE_TABLE_VERSION = "2026-10-06";
 
 type Price = { in: number; out: number; cacheRead: number; cacheWrite: number };
 const M = 1_000_000;
@@ -29,10 +29,24 @@ export type TokenUsage = {
     cacheWriteTokens: number;
 };
 
+/**
+ * The price-table key for a model id. The API answers with the full id
+ * (Haiku 4.5 comes back as "claude-haiku-4-5-20251001"), so a trailing date
+ * snapshot is dropped before the lookup. null = not in the table.
+ */
+export function priceModel(model: string): string | null {
+    if (PRICES[model]) return model;
+    const base = model.replace(/-\d{8}$/, "");
+    if (PRICES[base]) return base;
+    return Object.keys(PRICES).find((k) => model.startsWith(`${k}-`)) ?? null;
+}
+
 /** §13.17: cost = in·priceIn + out·priceOut + cacheRead·priceCacheRead + cacheWrite·priceCacheWrite. */
 export function costUsd(model: string, u: TokenUsage): number {
     // Unknown model → price it as the most expensive one, so the budget errs safe.
-    const p = PRICES[model] ?? PRICES["claude-opus-5-5"];
+    const key = priceModel(model);
+    if (!key) console.warn("[agent] no price for model", model, "- priced as Opus");
+    const p = PRICES[key ?? "claude-opus-5-5"];
     return (
         u.inputTokens * p.in +
         u.outputTokens * p.out +

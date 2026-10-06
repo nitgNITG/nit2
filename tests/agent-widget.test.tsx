@@ -178,6 +178,36 @@ describe("chat widget (FR-W1–W10)", () => {
         expect(screen.getByText(STRINGS.en.waiting)).toBeTruthy();
     });
 
+    it("the closed launcher shows it is AI: bot icon, an 'AI' badge and the hover label in the page language", async () => {
+        render(<ChatWidget locale="ar" pathname="/ar" />);
+        const launcher = await screen.findByRole("button", { name: STRINGS.ar.open });
+        expect(within(launcher).getByTestId("ai-badge").textContent).toBe("AI");
+        expect(within(launcher).getByText("AI المساعد الشخصي").getAttribute("dir")).toBe("rtl");
+        fireEvent.click(launcher);
+        expect(within(screen.getByRole("button", { name: STRINGS.ar.close, expanded: true })).queryByTestId("ai-badge")).toBeNull();
+    });
+
+    it("previous chats: the list opens from the header; an ended chat shows read-only and is not resumed on reload", async () => {
+        const open = "a".repeat(24), ended = "b".repeat(24);
+        routes["GET /api/agent/conversations"] = () => json({
+            scope: "browser", items: [
+                { id: open, status: "open", title: "Prices for 500 students", lastMessageAt: "2026-10-06T10:00:00Z" },
+                { id: ended, status: "closed", title: "Moodle hosting", lastMessageAt: "2026-10-01T10:00:00Z" },
+            ],
+        });
+        routes[`GET /api/agent/conversations/${ended}`] = () => json({ status: "closed", messages: [{ id: "1".repeat(24), role: "visitor", content: "Moodle hosting?" }, { id: "2".repeat(24), role: "assistant", content: "Yes, we host Moodle." }] });
+        render(<ChatWidget locale="en" pathname="/en" />);
+        const dialog = await openPanel("en");
+        fireEvent.click(within(dialog).getByRole("button", { name: STRINGS.en.history }));
+        expect(await within(dialog).findByText("Chats from this browser (last 30 days)")).toBeTruthy();
+        expect(within(dialog).getByText(STRINGS.en.stClosed)).toBeTruthy();
+
+        fireEvent.click(within(dialog).getByText("Moodle hosting"));
+        expect(await within(dialog).findByText("Yes, we host Moodle.")).toBeTruthy();
+        expect(within(dialog).getByText(STRINGS.en.closedNote)).toBeTruthy();
+        expect(localStorage.getItem(STORE_KEY)).toBeNull();
+    });
+
     it("AC-26.1: the page prompt appears after its delay, once per session", async () => {
         vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
         routes["GET /api/agent/config"] = () => json({ ...CFG, proactivePrompt: { id: "lms", text: "تبحث عن منصة تعليم إلكتروني؟", delaySec: 20 } });

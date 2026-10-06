@@ -1,6 +1,6 @@
 // Creates the MongoDB TTL indexes the AI agent relies on (SRS §13.3, §13.16).
-// Prisma can't declare TTL indexes, so run this once per environment AFTER
-// `npm run mongo:push`. Idempotent: re-running keeps existing indexes.
+// Prisma can't declare TTL indexes, and `prisma db push` DROPS indexes it doesn't
+// know — so `npm run mongo:push` runs this right after the push. Idempotent.
 //
 //   node scripts/agent-indexes.mjs
 import { PrismaClient } from "@prisma/client";
@@ -11,6 +11,7 @@ const TTL = [
     { collection: "ToolAudit", key: { createdAt: 1 }, name: "ttl_createdAt_180d", expireAfterSeconds: 180 * DAY },
     { collection: "IdempotencyRecord", key: { createdAt: 1 }, name: "ttl_createdAt_7d", expireAfterSeconds: 7 * DAY },
     { collection: "RateLimitBucket", key: { expiresAt: 1 }, name: "ttl_expiresAt", expireAfterSeconds: 0 },
+    { collection: "AgentUsageEvent", key: { createdAt: 1 }, name: "ttl_createdAt_180d", expireAfterSeconds: 180 * DAY },
 ];
 
 const prisma = new PrismaClient();

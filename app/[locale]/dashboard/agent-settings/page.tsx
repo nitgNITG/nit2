@@ -4,6 +4,7 @@
 // saved meanwhile the server answers 409 and nothing is overwritten.
 import React, { useCallback, useEffect, useState } from 'react'
 import { api, btnGhost, btnPrimary, Card, errorText, inputCls, PageHeader } from '../components/agent/ui'
+import AbuseSection from '../components/agent/AbuseSection'
 
 type Config = any
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -185,9 +186,22 @@ export default function AgentSettingsPage() {
                 </label>
             </Section>
 
-            <Section title='Limits'>
+            <Section title='Team notifications'>
+                <p className='text-xs text-gray-500'>Telegram alerts always go out (if Telegram is set up). Emails need SMTP and go one per person; they carry no visitor contact details, only a link to the conversation.</p>
+                <label className='flex items-center gap-2 text-sm'><input type='checkbox' checked={cfg.notifications.emailOnHandoff} onChange={(e) => set('notifications.emailOnHandoff', e.target.checked)} />
+                    Email the team when a conversation is handed to a person (sales chats → sales staff, support chats → support staff, plus the admin alert emails)</label>
+                <label className='flex items-center gap-2 text-sm'><input type='checkbox' checked={cfg.notifications.emailOwnerOnReply} onChange={(e) => set('notifications.emailOwnerOnReply', e.target.checked)} />
+                    Email the staff member who took over when the visitor replies (at most every 5 minutes)</label>
+                <p className='text-xs text-gray-500'>In the dashboard, the AI Inbox badge updates live; each person can turn on sound + desktop alerts at the bottom of the sidebar.</p>
+            </Section>
+
+            <Section title='Abuse protection (rate limits)'>
+                <AbuseSection cfg={cfg} num={num} />
+            </Section>
+
+            <Section title='Model limits'>
                 <div className='grid grid-cols-2 md:grid-cols-4 gap-3 text-xs'>
-                    {Object.keys(cfg.limits).map((k) => (
+                    {Object.keys(cfg.limits).filter((k) => k !== 'maxConversationMessages').map((k) => (
                         <label key={k}>{k.replace(/([A-Z])/g, ' $1').toLowerCase()}<input type='number' className={inputCls} value={cfg.limits[k]} onChange={num(`limits.${k}`)} /></label>
                     ))}
                 </div>
