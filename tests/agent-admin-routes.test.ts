@@ -255,7 +255,7 @@ describe("price ranges E19 (FR-S12, TS-35, AC-28.1, TS-55)", () => {
             conversationId: salesConv, turnId: "t", mode: "sales" as const, channel: "web" as const, locale: "en" as const, userId: null, sessionId: null,
             config: DEFAULT_CONFIG, now: new Date(), actions: [], handoff: null, afterTurn: [],
         };
-        expect(await executeTool(ctx, "get_price_range", { category: "custom_lms" }, "tu1")).toMatchObject({ ok: true, data: { available: true, minUsd: 8000, maxUsd: 20000 } });
+        expect(await executeTool(ctx, "get_price_range", { category: "custom_lms" }, "tu1")).toMatchObject({ ok: true, data: { available: true, currency: "USD", min: 8000, max: 20000 } });
     });
 
     it("a stale edit → 409 and the stored range is unchanged; max below min → 400", async () => {
@@ -267,6 +267,21 @@ describe("price ranges E19 (FR-S12, TS-35, AC-28.1, TS-55)", () => {
         expect(await mongo.customPriceRange.findUnique({ where: { category: "custom_lms" } })).toMatchObject({ minUsd: 9000, version: 2 });
         expect((await putRange(req("/x", "PUT", { ...body, minUsd: 5000, maxUsd: 100 }), { params: { category: "x_y" } })).status).toBe(400);
         expect((await putRange(req("/x", "PUT", body), { params: { category: "Bad Category" } })).status).toBe(400);
+    });
+
+    it("saves an optional EGP range next to USD and validates it", async () => {
+        as("sales");
+        const res = await putRange(req("/x", "PUT", { ...body, minEgp: 400000, maxEgp: 1000000 }), { params: { category: "custom_lms" } });
+        expect((await res.json()).range).toMatchObject({ minUsd: 8000, maxUsd: 20000, minEgp: 400000, maxEgp: 1000000 });
+        expect((await putRange(req("/x", "PUT", { ...body, minEgp: 500000, maxEgp: 100 }), { params: { category: "x_a" } })).status).toBe(400);
+        expect((await putRange(req("/x", "PUT", { ...body, maxEgp: 100 }), { params: { category: "x_b" } })).status).toBe(400); // "to" without "from"
+        // Clearing EGP (empty) goes back to USD only.
+        const cleared = await putRange(req("/x", "PUT", { ...body, version: 1, minEgp: null, maxEgp: null }), { params: { category: "custom_lms" } });
+        expect((await cleared.json()).range).toMatchObject({ minEgp: null, maxEgp: null, version: 2 });
+        // PUT replaces the whole range: a save that leaves the EGP fields out also clears them.
+        await putRange(req("/x", "PUT", { ...body, version: 2, minEgp: 300000 }), { params: { category: "custom_lms" } });
+        const omitted = await putRange(req("/x", "PUT", { ...body, version: 3 }), { params: { category: "custom_lms" } });
+        expect((await omitted.json()).range).toMatchObject({ minEgp: null, maxEgp: null, version: 4 });
     });
 });
 

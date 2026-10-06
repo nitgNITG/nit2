@@ -1,6 +1,8 @@
 // Seed the AI assistant's custom-project price ranges (CustomPriceRange, Mongo)
 // from scripts/data/price-ranges.json.
 //
+// EGP amounts are optional (null = quote USD only) and are never converted from USD.
+//
 //   node scripts/seed-price-ranges.mjs              insert missing categories, INACTIVE
 //   node scripts/seed-price-ranges.mjs --activate   insert them active (the assistant quotes them)
 //   node scripts/seed-price-ranges.mjs --force      also overwrite existing ones (sales edits are lost!)
@@ -22,6 +24,9 @@ export function validateSeed(r) {
     for (const k of ['labelAr', 'labelEn']) if (typeof r[k] !== 'string' || !r[k].trim() || r[k].length > 120) return `${r.category}: ${k} is required (≤ 120 chars)`
     if (!Number.isInteger(r.minUsd) || r.minUsd < 0) return `${r.category}: minUsd must be a whole number ≥ 0`
     if (r.maxUsd != null && (!Number.isInteger(r.maxUsd) || r.maxUsd < r.minUsd)) return `${r.category}: maxUsd must be ≥ minUsd (or null for "from")`
+    if (r.minEgp != null && (!Number.isInteger(r.minEgp) || r.minEgp < 0)) return `${r.category}: minEgp must be a whole number ≥ 0 (or null)`
+    if (r.maxEgp != null && r.minEgp == null) return `${r.category}: set minEgp before maxEgp`
+    if (r.maxEgp != null && (!Number.isInteger(r.maxEgp) || r.maxEgp < r.minEgp)) return `${r.category}: maxEgp must be ≥ minEgp (or null for "from")`
     for (const k of ['notesAr', 'notesEn']) if (r[k] != null && (typeof r[k] !== 'string' || r[k].length > 500)) return `${r.category}: ${k} must be ≤ 500 chars`
     return null
 }
@@ -35,6 +40,7 @@ export function planSeed(seeds, existing, { activate = false, force = false } = 
         const data = {
             category: r.category, labelAr: r.labelAr.trim(), labelEn: r.labelEn.trim(),
             minUsd: r.minUsd, maxUsd: r.maxUsd ?? null,
+            minEgp: r.minEgp ?? null, maxEgp: r.minEgp == null ? null : r.maxEgp ?? null,
             notesAr: r.notesAr?.trim() || null, notesEn: r.notesEn?.trim() || null,
             active: activate,
         }
@@ -68,7 +74,8 @@ async function main() {
         const plan = planSeed(seeds, new Map(rows.map((r) => [r.category, r])), opts)
         let changed = 0
         for (const step of plan) {
-            const range = `${step.data.minUsd}${step.data.maxUsd == null ? '+' : `–${step.data.maxUsd}`} USD`
+            const fmt = (min, max, cur) => `${min}${max == null ? '+' : `–${max}`} ${cur}`
+            const range = fmt(step.data.minUsd, step.data.maxUsd, 'USD') + (step.data.minEgp == null ? '' : ` / ${fmt(step.data.minEgp, step.data.maxEgp, 'EGP')}`)
             console.log(`${step.action.padEnd(6)} ${step.category.padEnd(18)} ${range}${step.action === 'skip' ? ' (exists — sales edits kept; --force to overwrite)' : step.data.active ? ' [ACTIVE]' : ' [inactive]'}`)
             if (opts.dryRun || step.action === 'skip') continue
             if (step.action === 'create') {

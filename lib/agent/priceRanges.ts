@@ -12,11 +12,16 @@ export const PriceRangeSchema = z
         labelEn: z.string().trim().min(1).max(120),
         minUsd: z.number().int().min(0).max(100_000_000),
         maxUsd: z.number().int().min(0).max(100_000_000).nullable().optional(),
+        // Optional EGP range (sales-entered, never converted). Empty = quote USD only.
+        minEgp: z.number().int().min(0).max(10_000_000_000).nullable().optional(),
+        maxEgp: z.number().int().min(0).max(10_000_000_000).nullable().optional(),
         notesAr: z.string().trim().max(500).nullable().optional(),
         notesEn: z.string().trim().max(500).nullable().optional(),
         active: z.boolean(),
     })
-    .refine((r) => r.maxUsd == null || r.maxUsd >= r.minUsd, { message: "maxUsd must be at least minUsd" });
+    .refine((r) => r.maxUsd == null || r.maxUsd >= r.minUsd, { message: "maxUsd must be at least minUsd" })
+    .refine((r) => r.maxEgp == null || r.minEgp != null, { message: "Set the EGP 'from' amount before the 'to' amount" })
+    .refine((r) => r.maxEgp == null || r.minEgp == null || r.maxEgp >= r.minEgp, { message: "maxEgp must be at least minEgp" });
 export type PriceRangeInput = z.infer<typeof PriceRangeSchema>;
 
 export async function savePriceRange(category: string, input: PriceRangeInput, userId: string) {
@@ -24,6 +29,8 @@ export async function savePriceRange(category: string, input: PriceRangeInput, u
     const data = {
         ...fields,
         maxUsd: fields.maxUsd ?? null,
+        minEgp: fields.minEgp ?? null,
+        maxEgp: fields.minEgp == null ? null : fields.maxEgp ?? null,
         notesAr: fields.notesAr || null,
         notesEn: fields.notesEn || null,
         updatedBy: userId,

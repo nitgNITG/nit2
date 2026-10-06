@@ -59,14 +59,38 @@ export const searchProjects = defineTool({
     },
 });
 
+/** The visitor's country if they told us (lead draft, requirements or saved lead), as ISO-2. */
+async function visitorCountry(conversationId: string): Promise<string | null> {
+    const conv = await prisma.conversation.findUnique({ where: { id: conversationId }, select: { qualification: true, contactId: true } });
+    const q = (conv?.qualification ?? {}) as { requirements?: { country?: string }; lead?: { country?: string } };
+    let country = q.requirements?.country ?? q.lead?.country ?? null;
+    if (!country && conv?.contactId) {
+        country = (await prisma.contact.findUnique({ where: { id: conv.contactId }, select: { country: true } }))?.country ?? null;
+    }
+    return country && /^[a-z]{2}$/i.test(country) ? country.toUpperCase() : null;
+}
+
+/**
+ * Which currency to quote — decided by the SERVER: the visitor's stated country
+ * first (Egypt → EGP, elsewhere → USD), else the model's hint, else USD; and only
+ * a currency sales actually filled in. Amounts are never converted.
+ */
+export function quoteCurrency(country: string | null, hint: "EGP" | "USD" | undefined, hasEgp: boolean): "EGP" | "USD" {
+    const wanted = country ? (country === "EG" ? "EGP" : "USD") : hint ?? "USD";
+    return wanted === "EGP" && hasEgp ? "EGP" : "USD";
+}
+
 export const getPriceRange = defineTool({
     name: "get_price_range",
     description:
-        "Get the sales-approved indicative price range (USD) for a custom-project category, e.g. custom_lms, lms_mobile_apps, ecommerce_app, delivery_app, restaurant_app, loyalty_app, school_management, website, custom_software. Quote it exactly and say the final quotation depends on scope. { available: false } means there is no approved range for that category: if otherCategories lists one that fits the visitor's project, call again with it; otherwise give NO number, say sales will send a quotation and offer a person.",
+        "Get the sales-approved indicative price range for a custom-project category, e.g. custom_lms, lms_mobile_apps, ecommerce_app, delivery_app, restaurant_app, loyalty_app, school_management, website, custom_software. Set currency to EGP when the visitor seems to be in Egypt (Egyptian dialect, mentions Egypt or Egyptian pounds), otherwise leave it out; the server decides the final currency. Quote min/max EXACTLY in the returned currency (no conversion) and say the final quotation depends on scope. { available: false } means there is no approved range for that category: if otherCategories lists one that fits the visitor's project, call again with it; otherwise give NO number, say sales will send a quotation and offer a person.",
     modes: ["sales"],
     writes: false,
-    schema: z.strictObject({ category: z.string().regex(/^[a-z0-9_]{1,60}$/) }),
-    async run(ctx, { category }) {
+    schema: z.strictObject({
+        category: z.string().regex(/^[a-z0-9_]{1,60}$/),
+        currency: z.enum(["EGP", "USD"]).optional(), // a hint only
+    }),
+    async run(ctx, { category, currency: hint }) {
         const r = await prisma.customPriceRange.findUnique({ where: { category } });
         const en = ctx.locale === "en";
         if (!r || !r.active) {
@@ -75,8 +99,15 @@ export const getPriceRange = defineTool({
             const otherCategories = active.filter((x) => x.category !== category).map((x) => ({ category: x.category, label: en ? x.labelEn : x.labelAr }));
             return ok({ available: false, ...(otherCategories.length ? { otherCategories } : {}) });
         }
+        const currency = quoteCurrency(await visitorCountry(ctx.conversationId), hint, r.minEgp != null);
+        const min = currency === "EGP" ? r.minEgp! : r.minUsd;
+        const max = currency === "EGP" ? r.maxEgp : r.maxUsd;
         return ok(
-            { available: true, label: en ? r.labelEn : r.labelAr, minUsd: r.minUsd, maxUsd: r.maxUsd ?? undefined, notes: (en ? r.notesEn : r.notesAr) ?? undefined },
+            {
+                available: true, label: en ? r.labelEn : r.labelAr, currency, min,
+                ...(max != null ? { max } : { startingFrom: true }),
+                notes: (en ? r.notesEn : r.notesAr) ?? undefined,
+            },
             [{ sourceId: `price_range:${r.category}`, sourceType: "price_range", title: r.labelEn }],
         );
     },

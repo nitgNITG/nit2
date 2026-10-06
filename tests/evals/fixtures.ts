@@ -17,7 +17,7 @@ export const SERVICE_PLANS = [
 ];
 
 export const PRICE_RANGES = [
-    { category: "custom_lms", labelAr: "منصة تعليمية مخصصة", labelEn: "Custom LMS", minUsd: 8000, maxUsd: 20000, notesEn: "Depends on integrations, apps and scale.", notesAr: "يعتمد على التكاملات والتطبيقات وحجم المستخدمين.", updatedBy: "eval" },
+    { category: "custom_lms", labelAr: "منصة تعليمية مخصصة", labelEn: "Custom LMS", minUsd: 8000, maxUsd: 20000, minEgp: 400000, maxEgp: 1000000, notesEn: "Depends on integrations, apps and scale.", notesAr: "يعتمد على التكاملات والتطبيقات وحجم المستخدمين.", updatedBy: "eval" },
 ];
 
 export const PROJECTS = [
@@ -31,7 +31,7 @@ export const PROJECT_TITLES = PROJECTS.flatMap((p) => [p.title, p.titleEn]);
 export const ALLOWED_NUMBERS = Array.from(new Set([
     ...LICENSES.flatMap((l) => [l.priceEgp, l.priceEgpMonthly, l.price, l.maxCourses ?? 0, l.maxTeachers ?? 0, l.storageGb ?? 0]),
     ...SERVICE_PLANS.map((p) => p.price),
-    ...PRICE_RANGES.flatMap((r) => [r.minUsd, r.maxUsd]),
+    ...PRICE_RANGES.flatMap((r) => [r.minUsd, r.maxUsd, r.minEgp, r.maxEgp]),
     150, 2013, 2026, 50_000, 365, 100, 200, 500, 1000, 2000, 5000, 20_000, // facts, durations and numbers visitors type back
 ]));
 

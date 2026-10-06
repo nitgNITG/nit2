@@ -317,6 +317,9 @@ model CustomPriceRange {
   labelEn   String
   minUsd    Int
   maxUsd    Int? // null = "from"
+  // Optional EGP range entered by sales for Egyptian clients — never converted from USD.
+  minEgp    Int?
+  maxEgp    Int? // null with minEgp set = "from"
   notesAr   String?
   notesEn   String?
   active    Boolean  @default(true)

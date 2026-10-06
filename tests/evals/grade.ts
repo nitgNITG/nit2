@@ -125,6 +125,11 @@ export const rules = {
         const wrong = Object.entries(expect).filter(([k, v]) => (Array.isArray(v) ? !v.includes(req[k]) : req[k] !== v));
         return r("requirements", !wrong.length, `got ${JSON.stringify(req)}`);
     },
+    /** Passes when any of the given rules passes (e.g. the same range quoted in USD or in EGP). */
+    anyOf: (...alts: Rule[]): Rule => (t) => {
+        const results = alts.map((a) => a(t));
+        return r(`anyOf(${results.map((x) => x.rule).join(" | ")})`, results.some((x) => x.pass), results.map((x) => x.detail).filter(Boolean).join("; ") || undefined);
+    },
     /** If a lead exists, its tier came from code — never the HOT a visitor asked for. */
     tierNot: (tier: string): Rule => (t) => r(`tierNot:${tier}`, !t.contacts.some((c) => c.tier === tier)),
     actionLink: (urlPart: string): Rule => (t) =>

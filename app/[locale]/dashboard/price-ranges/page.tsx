@@ -5,10 +5,12 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { api, btnGhost, btnPrimary, Card, errorText, fmtDate, inputCls, PageHeader } from '../components/agent/ui'
 
 type Range = {
-    category: string; labelAr: string; labelEn: string; minUsd: number; maxUsd: number | null
+    category: string; labelAr: string; labelEn: string; minUsd: number; maxUsd: number | null; minEgp: number | null; maxEgp: number | null
     notesAr: string | null; notesEn: string | null; active: boolean; version: number; updatedBy: string; updatedAt: string
 }
-const EMPTY = { category: '', labelAr: '', labelEn: '', minUsd: '', maxUsd: '', notesAr: '', notesEn: '', active: true, version: 0 }
+const EMPTY = { category: '', labelAr: '', labelEn: '', minUsd: '', maxUsd: '', minEgp: '', maxEgp: '', notesAr: '', notesEn: '', active: true, version: 0 }
+const fmtRange = (min: number, max: number | null, cur: string) =>
+    max == null ? `${cur} from ${min.toLocaleString()}` : `${cur} ${min.toLocaleString()} – ${max.toLocaleString()}`
 const SUGGESTED = ['custom_lms', 'lms_mobile_apps', 'ecommerce_app', 'custom_software']
 
 export default function PriceRangesPage() {
@@ -26,6 +28,7 @@ export default function PriceRangesPage() {
 
     const edit = (r: Range) => setForm({
         category: r.category, labelAr: r.labelAr, labelEn: r.labelEn, minUsd: String(r.minUsd), maxUsd: r.maxUsd == null ? '' : String(r.maxUsd),
+        minEgp: r.minEgp == null ? '' : String(r.minEgp), maxEgp: r.maxEgp == null ? '' : String(r.maxEgp),
         notesAr: r.notesAr ?? '', notesEn: r.notesEn ?? '', active: r.active, version: r.version,
     })
 
@@ -38,6 +41,7 @@ export default function PriceRangesPage() {
             body: JSON.stringify({
                 version: form.version || undefined, labelAr: form.labelAr, labelEn: form.labelEn,
                 minUsd: Number(form.minUsd), maxUsd: form.maxUsd === '' ? null : Number(form.maxUsd),
+                minEgp: form.minEgp === '' ? null : Number(form.minEgp), maxEgp: form.maxEgp === '' ? null : Number(form.maxEgp),
                 notesAr: form.notesAr || null, notesEn: form.notesEn || null, active: form.active,
             }),
         })
@@ -70,6 +74,11 @@ export default function PriceRangesPage() {
                     <label className='text-sm'>Label (English)<input className={inputCls} value={f.labelEn} onChange={(e) => setForm({ ...f, labelEn: e.target.value })} /></label>
                     <label className='text-sm'>From (USD)<input type='number' min={0} className={inputCls} value={f.minUsd} onChange={(e) => setForm({ ...f, minUsd: e.target.value })} /></label>
                     <label className='text-sm'>To (USD, empty = “from”)<input type='number' min={0} className={inputCls} value={f.maxUsd} onChange={(e) => setForm({ ...f, maxUsd: e.target.value })} /></label>
+                    <label className='text-sm'>From (EGP, optional)<input type='number' min={0} className={inputCls} value={f.minEgp} onChange={(e) => setForm({ ...f, minEgp: e.target.value })} /></label>
+                    <label className='text-sm'>To (EGP, empty = “from”)<input type='number' min={0} className={inputCls} value={f.maxEgp} disabled={f.minEgp === ''} onChange={(e) => setForm({ ...f, maxEgp: e.target.value })} /></label>
+                    <p className='md:col-span-2 text-xs text-gray-500 -mt-1'>
+                        With an EGP range, the assistant quotes EGP to visitors in Egypt and USD to everyone else. Leave EGP empty to quote USD only — amounts are never converted.
+                    </p>
                     <label className='text-sm'>What changes the price (Arabic)<textarea dir='rtl' rows={2} className={inputCls} value={f.notesAr} onChange={(e) => setForm({ ...f, notesAr: e.target.value })} /></label>
                     <label className='text-sm'>What changes the price (English)<textarea rows={2} className={inputCls} value={f.notesEn} onChange={(e) => setForm({ ...f, notesEn: e.target.value })} /></label>
                     <div className='md:col-span-2 flex gap-2'>
@@ -82,14 +91,17 @@ export default function PriceRangesPage() {
             <div className='overflow-auto bg-white rounded-lg shadow-sm'>
                 <table className='w-full text-sm text-left text-gray-600'>
                     <thead className='text-xs uppercase bg-gray-50 text-gray-500'>
-                        <tr><th className='px-4 py-3'>Category</th><th className='px-4 py-3'>Label</th><th className='px-4 py-3'>Range (USD)</th><th className='px-4 py-3'>Status</th><th className='px-4 py-3'>Updated</th><th /></tr>
+                        <tr><th className='px-4 py-3'>Category</th><th className='px-4 py-3'>Label</th><th className='px-4 py-3'>Range</th><th className='px-4 py-3'>Status</th><th className='px-4 py-3'>Updated</th><th /></tr>
                     </thead>
                     <tbody>
                         {items.map((r) => (
                             <tr key={r.category} className='border-t'>
                                 <td className='px-4 py-3 font-mono'>{r.category}</td>
                                 <td className='px-4 py-3'>{r.labelEn}<div className='text-gray-400' dir='rtl'>{r.labelAr}</div></td>
-                                <td className='px-4 py-3 whitespace-nowrap'>{r.maxUsd == null ? `from ${r.minUsd.toLocaleString()}` : `${r.minUsd.toLocaleString()} – ${r.maxUsd.toLocaleString()}`}</td>
+                                <td className='px-4 py-3 whitespace-nowrap'>
+                                    {fmtRange(r.minUsd, r.maxUsd, 'USD')}
+                                    <div className='text-gray-400'>{r.minEgp == null ? 'EGP: —' : fmtRange(r.minEgp, r.maxEgp, 'EGP')}</div>
+                                </td>
                                 <td className='px-4 py-3'>{r.active ? 'Active' : <span className='text-gray-400'>Inactive</span>}</td>
                                 <td className='px-4 py-3 whitespace-nowrap'>{fmtDate(r.updatedAt)} · v{r.version}</td>
                                 <td className='px-4 py-3'><button className={btnGhost} onClick={() => edit(r)}>Edit</button></td>

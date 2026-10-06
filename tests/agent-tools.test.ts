@@ -137,7 +137,7 @@ describe("get_price_range (FR-S12, AC-25.1, AC-25.2, TS-34)", () => {
         await mongo.customPriceRange.create({ data: { category: "custom_lms", labelAr: "منصة مخصصة", labelEn: "Custom LMS", minUsd: 8000, maxUsd: 20000, notesEn: "Depends on scope", updatedBy: "u" } });
         await mongo.customPriceRange.create({ data: { category: "ecommerce_app", labelAr: "x", labelEn: "x", minUsd: 1, active: false, updatedBy: "u" } });
         expect(await call("get_price_range", { category: "custom_lms" })).toMatchObject({
-            ok: true, data: { available: true, minUsd: 8000, maxUsd: 20000, notes: "Depends on scope" },
+            ok: true, data: { available: true, currency: "USD", min: 8000, max: 20000, notes: "Depends on scope" },
         });
         // A miss lists only ACTIVE ranges the model may retry with — never the inactive ecommerce_app.
         const lms = { category: "custom_lms", label: "Custom LMS" };
@@ -146,6 +146,45 @@ describe("get_price_range (FR-S12, AC-25.1, AC-25.2, TS-34)", () => {
         // With no active range at all, a miss is a bare available:false.
         await mongo.customPriceRange.updateMany({ data: { active: false } });
         expect(await call("get_price_range", { category: "custom_lms" })).toEqual({ ok: true, data: { available: false } });
+    });
+});
+
+describe("get_price_range currency (USD + optional EGP, decided by the server)", () => {
+    beforeEach(async () => {
+        await mongo.customPriceRange.create({ data: { category: "custom_lms", labelAr: "منصة", labelEn: "Custom LMS", minUsd: 8000, maxUsd: 20000, minEgp: 400000, maxEgp: 1000000, updatedBy: "u" } });
+        await mongo.customPriceRange.create({ data: { category: "website", labelAr: "موقع", labelEn: "Website", minUsd: 800, maxUsd: 5000, updatedBy: "u" } });
+        await mongo.customPriceRange.create({ data: { category: "custom_software", labelAr: "نظام", labelEn: "Custom software", minUsd: 5000, minEgp: 250000, updatedBy: "u" } });
+    });
+    const setCountry = (country: string) => mongo.conversation.update({ where: { id: convId }, data: { qualification: { requirements: { country } } } });
+
+    it("a visitor in Egypt gets the EGP range — exactly as entered, never converted", async () => {
+        await setCountry("EG");
+        expect(await call("get_price_range", { category: "custom_lms" })).toMatchObject({ ok: true, data: { currency: "EGP", min: 400000, max: 1000000 } });
+    });
+
+    it("a stated country outside Egypt gets USD, even if the model hints EGP", async () => {
+        await setCountry("SA");
+        expect(await call("get_price_range", { category: "custom_lms", currency: "EGP" })).toMatchObject({ data: { currency: "USD", min: 8000, max: 20000 } });
+    });
+
+    it("unknown country: the model's hint decides; no hint → USD", async () => {
+        expect(await call("get_price_range", { category: "custom_lms", currency: "EGP" })).toMatchObject({ data: { currency: "EGP", min: 400000 } });
+        expect(await call("get_price_range", { category: "custom_lms" })).toMatchObject({ data: { currency: "USD", min: 8000 } });
+    });
+
+    it("the saved lead's country counts too (lowercase in Contact)", async () => {
+        const c = await mongo.contact.create({ data: { name: "L", email: "", subject: "s", message: "m", country: "eg" } });
+        await mongo.conversation.update({ where: { id: convId }, data: { contactId: c.id } });
+        expect(await call("get_price_range", { category: "custom_lms" })).toMatchObject({ data: { currency: "EGP" } });
+    });
+
+    it("falls back to USD when sales entered no EGP range; 'from' ranges say so", async () => {
+        await setCountry("EG");
+        const web = await call("get_price_range", { category: "website" });
+        expect(web).toMatchObject({ data: { currency: "USD", min: 800, max: 5000 } });
+        expect(JSON.stringify(web)).not.toMatch(/Egp|EGP/);
+        expect(await call("get_price_range", { category: "custom_software" })).toMatchObject({ data: { currency: "EGP", min: 250000, startingFrom: true } });
+        expect(await call("get_price_range", { category: "custom_lms", currency: "EUR" })).toMatchObject({ ok: false, code: "invalid_input" });
     });
 });
 

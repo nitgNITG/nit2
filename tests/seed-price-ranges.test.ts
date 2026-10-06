@@ -31,6 +31,9 @@ describe("price-range seed data", () => {
         expect(validateSeed({ ...ok, maxUsd: 50 })).toMatch(/maxUsd/);
         expect(validateSeed({ ...ok, labelEn: " " })).toMatch(/labelEn/);
         expect(validateSeed({ ...ok, minUsd: -1 })).toMatch(/minUsd/);
+        expect(validateSeed({ ...ok, minEgp: 1000, maxEgp: 10 })).toMatch(/maxEgp/);
+        expect(validateSeed({ ...ok, maxEgp: 10 })).toMatch(/minEgp before maxEgp/);
+        expect(validateSeed({ ...ok, minEgp: 50000, maxEgp: null })).toBeNull();
     });
 });
 
@@ -44,7 +47,7 @@ describe("planSeed", () => {
     it("by default creates only missing categories, INACTIVE, and never touches a range sales already set", () => {
         const plan = planSeed(two, sales);
         expect(plan.map((p: { action: string; category: string }) => [p.action, p.category])).toEqual([["skip", "custom_lms"], ["create", "website"]]);
-        expect(plan[1].data).toEqual({ category: "website", labelAr: "موقع", labelEn: "Website", minUsd: 800, maxUsd: null, notesAr: null, notesEn: null, active: false });
+        expect(plan[1].data).toEqual({ category: "website", labelAr: "موقع", labelEn: "Website", minUsd: 800, maxUsd: null, minEgp: null, maxEgp: null, notesAr: null, notesEn: null, active: false });
     });
 
     it("--activate creates them active; --force overwrites existing ones", () => {

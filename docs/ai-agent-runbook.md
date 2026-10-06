@@ -30,7 +30,11 @@ collections and the nullable column can stay.
 
 ## 2b. Seed the custom-project price ranges (optional)
 
-`scripts/data/price-ranges.json` holds **suggested** starting ranges (USD) for the standard
+Each range has a USD amount and an **optional EGP amount** that sales enters (never converted).
+The assistant quotes EGP to visitors in Egypt (stated country, or Egyptian dialect / pounds) and
+USD to everyone else; with no EGP amount it always quotes USD.
+
+`scripts/data/price-ranges.json` holds **suggested** starting ranges (USD; EGP left empty) for the standard
 categories (custom LMS, LMS apps, e-commerce, delivery, restaurant, loyalty, school
 management, website, custom software). They are estimates, not approved prices.
 
