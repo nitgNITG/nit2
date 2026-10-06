@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import path from "node:path";
 import { readFileSync } from "node:fs";
-// @ts-expect-error — plain .mjs script (no type declarations); its pure helpers are tested here.
 import { loadSeeds, planSeed, validateSeed } from "../scripts/seed-price-ranges.mjs";
 import { PriceRangeSchema } from "@/lib/agent/priceRanges";
 
