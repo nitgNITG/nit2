@@ -30,15 +30,18 @@ collections and the nullable column can stay.
 
 ## 3. Daily cron
 
-Once a day (e.g. 03:00 Cairo), next to the existing `/api/cron/expiry`:
+Scheduled by the GitHub Actions workflow `.github/workflows/agent-daily-cron.yml` (00:30 UTC,
+03:30 Cairo), next to `expiry-cron.yml`. It uses the same repo settings: the `NIT_BASE_URL`
+variable and the `CRON_SECRET` secret, which must equal `CRON_SECRET` in the server's `.env`.
+Run it by hand from the **Actions** tab (**Run workflow**), or:
 
 ```bash
-curl -fsS -H "x-cron-secret: $CRON_SECRET" https://www.nitg-eg.com/api/cron/agent-daily
+curl -fsS -X POST -H "x-cron-secret: $CRON_SECRET" https://dev.nitg-eg.com/api/cron/agent-daily
 ```
 
 It closes conversations idle for 24 h (with an AI summary) and applies retention: chat 12 months,
 tool audit 180 days, idempotency 7 days, sessions 30 days, usage 24 months. Leads, tickets and
-meeting requests are kept.
+meeting requests are kept. The JSON response lists what it closed and deleted.
 
 ## 4. Evals before UAT (level 4)
 
