@@ -2,10 +2,24 @@
 // Website chat widget (FR-W1–W10, NFR-11, NFR-13–15). Talks only to /api/agent/**.
 // The browser keeps just the conversation id (localStorage, 24 h); access to the
 // conversation rides on the HttpOnly agent_session cookie set by the server.
+//
+// Layout: the launcher sits in the site's right-hand floating column, above the
+// share button (desktop) / above the sign-language icon (mobile). The panel opens
+// beside the column on desktop and as a full-screen sheet on phones.
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import clsx from 'clsx'
+import {
+    LuArrowDown, LuArrowRight, LuArrowUpRight, LuBot, LuMail, LuMessageCircle, LuRotateCcw,
+    LuSendHorizontal, LuThumbsDown, LuThumbsUp, LuUserRound, LuX,
+} from 'react-icons/lu'
+import { FaWhatsapp } from 'react-icons/fa'
 import { widgetAllowedOn } from '@/lib/agent/placement'
+import {
+    MessageScroller, MessageScrollerButton, MessageScrollerContent, MessageScrollerItem, MessageScrollerProvider, MessageScrollerViewport,
+} from './MessageScroller'
+import RichText from './RichText'
 import { createSseParser } from './sse'
-import { STRINGS } from './strings'
+import { STRINGS, type Strings } from './strings'
 
 type Locale = 'ar' | 'en'
 type Action = { type: 'link'; label: string; url: string }
@@ -20,6 +34,15 @@ export const STORE_KEY = 'nit_agent_conv'
 const TTL_MS = 24 * 3600_000
 const POLL_MS = 4000
 const MAX_LEN = 2000
+
+// Right-hand floating column: share sits at bottom-20 (sm) / bottom-24 (md), 56px tall.
+const LAUNCHER_POS = 'right-4 bottom-24 sm:right-7 sm:bottom-[148px] md:bottom-[164px]'
+const PROMPT_POS = 'right-4 bottom-[172px] sm:right-[100px] sm:bottom-[148px] md:bottom-[164px]'
+const PANEL_POS = 'inset-0 sm:inset-auto sm:right-[100px] sm:bottom-5 sm:w-[400px] sm:h-[min(640px,calc(100dvh-7rem))] sm:rounded-2xl sm:border sm:border-gray-200'
+const BRAND = 'bg-gradient-to-br from-[#1E7D67] to-[#0B2923]'
+// Above the site's fixed header (z 99999) and the Isharat sign-language button
+// (z 1e9): on phones the panel is a full-screen sheet and must cover both.
+const PANEL_Z = 'z-[2147483000]'
 
 const storage = {
     get(): string | null {
@@ -43,14 +66,6 @@ const waLink = (n: string) => (n.replace(/\D/g, '') ? `https://wa.me/${n.replace
 let seq = 0
 const key = () => `m${++seq}`
 
-function ChatIcon() {
-    return (
-        <svg aria-hidden='true' viewBox='0 0 24 24' className='size-7 fill-none stroke-white' strokeWidth={2} strokeLinecap='round' strokeLinejoin='round'>
-            <path d='M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z' />
-        </svg>
-    )
-}
-
 export default function ChatWidget({ locale, pathname }: { locale: Locale; pathname: string }) {
     const t = STRINGS[locale]
     const [cfg, setCfg] = useState<Config | null>(null)
@@ -69,7 +84,7 @@ export default function ChatWidget({ locale, pathname }: { locale: Locale; pathn
     const seen = useRef(new Set<string>())
     const lastId = useRef<string | null>(null)
     const inputRef = useRef<HTMLTextAreaElement>(null)
-    const listRef = useRef<HTMLDivElement>(null)
+    const launcherRef = useRef<HTMLButtonElement>(null)
     const allowed = widgetAllowedOn(pathname)
 
     const addMessages = useCallback((rows: { id: string; role: string; content: string }[], includeVisitor: boolean) => {
@@ -129,14 +144,27 @@ export default function ChatWidget({ locale, pathname }: { locale: Locale; pathn
         return () => clearInterval(timer)
     }, [open, convId, status, addMessages])
 
+    // Focus the composer on open; on phones the panel is a full-screen sheet, so
+    // the page behind must not scroll.
     useEffect(() => {
-        listRef.current?.scrollTo?.({ top: listRef.current.scrollHeight })
-    }, [messages, pending])
-
-    useEffect(() => {
-        if (open) inputRef.current?.focus()
+        if (!open) return
+        inputRef.current?.focus()
+        const phone = typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 639px)').matches
+        if (!phone) return
+        const prev = document.body.style.overflow
+        document.body.style.overflow = 'hidden'
+        return () => { document.body.style.overflow = prev }
     }, [open])
 
+    // Grow the composer with its text (up to ~5 lines).
+    useEffect(() => {
+        const el = inputRef.current
+        if (!el) return
+        el.style.height = 'auto'
+        el.style.height = `${Math.min(el.scrollHeight, 128)}px`
+    }, [input])
+
+    const close = () => { setOpen(false); launcherRef.current?.focus() }
     const note = (text: string) => setMessages((m) => [...m, { key: key(), role: 'note', text }])
 
     const send = useCallback(async (raw: string, retried = false): Promise<void> => {
@@ -245,7 +273,6 @@ export default function ChatWidget({ locale, pathname }: { locale: Locale; pathn
 
     if (!allowed || !cfg || cfg.hidden) return null
     const dir = locale === 'ar' ? 'rtl' : 'ltr'
-    const side = 'left-4 sm:left-5'
 
     // Agent off or out of budget → the WhatsApp button instead (FR-W8).
     if (!cfg.enabled) {
@@ -253,94 +280,149 @@ export default function ChatWidget({ locale, pathname }: { locale: Locale; pathn
         if (!href) return null
         return (
             <a href={href} target='_blank' rel='noopener noreferrer' aria-label={t.chatWhatsapp}
-                className={`fixed bottom-5 ${side} z-[1000] size-14 rounded-full bg-[#25D366] shadow-lg flex items-center justify-center focus:outline-none focus-visible:ring-4 focus-visible:ring-green-300`}>
-                <ChatIcon />
+                className={clsx('fixed z-[1000] flex size-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition-transform hover:scale-105 focus:outline-none focus-visible:ring-4 focus-visible:ring-green-300', LAUNCHER_POS)}>
+                <FaWhatsapp aria-hidden className='size-7' />
             </a>
         )
     }
 
     const hasAssistant = messages.some((m) => m.role === 'assistant')
+    const statusLine = status === 'waiting_human' ? t.waiting : status === 'human' ? t.withPerson : t.online
+
     return (
-        <div dir={dir} lang={locale} className='text-start'>
+        <>
             {!open && prompt && (
-                <div role='status' className={`fixed bottom-24 ${side} z-[1000] max-w-[260px] bg-white text-gray-800 text-sm rounded-xl shadow-xl border p-3`}>
-                    <button className='block text-start' onClick={() => { setOpen(true); setPrompt(null) }}>{prompt}</button>
+                <div role='status' dir={dir} lang={locale}
+                    className={clsx('fixed z-[1000] w-[min(280px,calc(100vw-6rem))] rounded-2xl border border-gray-200 bg-white p-3 text-start text-sm text-gray-800 shadow-xl', PROMPT_POS)}>
+                    <button className='block text-start leading-relaxed' onClick={() => { setOpen(true); setPrompt(null) }}>{prompt}</button>
                     <button className='mt-2 text-xs text-gray-500 underline' onClick={() => setPrompt(null)}>{t.promptClose}</button>
                 </div>
             )}
+
             <button
+                ref={launcherRef}
                 type='button'
                 aria-label={open ? t.close : t.open}
                 aria-expanded={open}
-                onClick={() => setOpen((o) => !o)}
-                className={`fixed bottom-5 ${side} z-[1000] size-14 rounded-full bg-gradient-to-l from-[#1E7D67] to-[#0B2923] shadow-lg flex items-center justify-center focus:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300`}
+                onClick={() => (open ? close() : setOpen(true))}
+                className={clsx(
+                    'fixed z-[1000] flex size-14 items-center justify-center rounded-full text-white shadow-lg ring-white/40 transition-transform hover:scale-105 focus:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300',
+                    BRAND, LAUNCHER_POS, open && 'max-sm:hidden',
+                )}
             >
-                {open ? <span aria-hidden='true' className='text-white text-2xl leading-none'>×</span> : <ChatIcon />}
+                {open ? <LuX aria-hidden className='size-6' /> : <LuMessageCircle aria-hidden className='size-7' />}
+                {!open && prompt && <span aria-hidden className='absolute -top-0.5 -right-0.5 size-3.5 rounded-full border-2 border-white bg-red-500' />}
             </button>
 
             {open && (
                 <div
                     role='dialog'
                     aria-label={t.title}
-                    onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }}
-                    className={`fixed bottom-24 ${side} z-[1000] w-[calc(100vw-2rem)] sm:w-[380px] h-[min(600px,calc(100svh-8rem))] bg-white rounded-2xl shadow-2xl border flex flex-col overflow-hidden`}
+                    dir={dir}
+                    lang={locale}
+                    onKeyDown={(e) => { if (e.key === 'Escape') close() }}
+                    className={clsx('fixed flex flex-col overflow-hidden bg-white text-start shadow-2xl', PANEL_Z, PANEL_POS)}
                 >
-                    <div className='bg-gradient-to-l from-[#1E7D67] to-[#0B2923] text-white px-4 py-3'>
-                        <div className='flex items-center justify-between gap-2'>
-                            <div className='font-semibold'>{t.title}</div>
-                            <div className='flex gap-2 items-center'>
-                                {messages.length > 0 && <button className='text-xs underline opacity-90' onClick={newChat}>{t.newChat}</button>}
-                                <button aria-label={t.close} className='text-xl leading-none px-1' onClick={() => setOpen(false)}>×</button>
-                            </div>
+                    {/* Header */}
+                    <div className={clsx('flex items-center gap-3 px-4 py-3 text-white pt-[max(0.75rem,env(safe-area-inset-top))]', BRAND)}>
+                        <div className='relative flex size-10 shrink-0 items-center justify-center rounded-full bg-white/15'>
+                            <LuBot aria-hidden className='size-5' />
+                            <span aria-hidden className='absolute bottom-0 end-0 size-2.5 rounded-full border-2 border-[#0B2923] bg-emerald-400' />
                         </div>
-                        <p className='text-[11px] opacity-90 mt-0.5'>{t.aiNotice}</p>
+                        <div className='min-w-0 flex-1'>
+                            <div className='flex items-center gap-2'>
+                                <span className='truncate font-semibold'>{t.title}</span>
+                                <span className='rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide'>{t.aiBadge}</span>
+                            </div>
+                            <div className='truncate text-xs text-white/80'>{statusLine}</div>
+                        </div>
+                        {messages.length > 0 && (
+                            <button type='button' aria-label={t.newChat} title={t.newChat} onClick={newChat} className='rounded-full p-2 hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-white'>
+                                <LuRotateCcw aria-hidden className='size-4' />
+                            </button>
+                        )}
+                        <button type='button' aria-label={t.close} onClick={close} className='rounded-full p-2 hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-white'>
+                            <LuX aria-hidden className='size-5' />
+                        </button>
                     </div>
+                    <p className='border-b border-gray-100 bg-emerald-50/60 px-4 py-1.5 text-[11px] leading-snug text-emerald-900'>{t.aiNotice}</p>
 
-                    <div ref={listRef} aria-live='polite' className='flex-1 overflow-y-auto px-3 py-3 space-y-2 bg-gray-50'>
-                        <div className='bg-white border rounded-xl px-3 py-2 text-sm text-gray-800 max-w-[85%] whitespace-pre-wrap'>{cfg.greeting}</div>
-                        {messages.length === 0 && (
-                            <div className='flex flex-wrap gap-2 pt-1'>
-                                {cfg.suggestions.map((s) => (
-                                    <button key={s} onClick={() => send(s)} className='text-xs border border-emerald-700 text-emerald-800 rounded-full px-3 py-1 hover:bg-emerald-50'>{s}</button>
-                                ))}
-                            </div>
-                        )}
-                        {messages.map((m) => <Bubble key={m.key} m={m} team={t.team} />)}
-                        {pending !== null && (pending
-                            ? <Bubble m={{ key: 'pending', role: 'assistant', text: pending }} team={t.team} />
-                            : <div className='text-xs text-gray-500'>{t.typing}</div>)}
-                        {status === 'waiting_human' && <div className='text-xs text-center text-orange-700'>{t.waiting}</div>}
-                        {status === 'human' && <div className='text-xs text-center text-purple-700'>{t.withPerson}</div>}
-                        {fallback && (
-                            <div role='alert' className='bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-gray-800'>
-                                {t.fallback}
-                                <div className='flex gap-2 mt-2'>
-                                    {fallback.whatsapp && <a className='px-3 py-1 rounded bg-[#25D366] text-white text-xs' href={fallback.whatsapp} target='_blank' rel='noopener noreferrer'>{t.whatsapp}</a>}
-                                    <a className='px-3 py-1 rounded border text-xs' href={fallback.contactUrl}>{t.contactForm}</a>
-                                </div>
-                            </div>
-                        )}
-                        {hasAssistant && !ratingDone && (
-                            <div className='pt-2 text-xs text-gray-600'>
-                                <span>{t.rateQ}</span>{' '}
-                                <button aria-label={t.rateUp} aria-pressed={rating === 1} onClick={() => rate(1, false)} className={rating === 1 ? 'opacity-100' : 'opacity-60'}>👍</button>{' '}
-                                <button aria-label={t.rateDown} aria-pressed={rating === -1} onClick={() => rate(-1, false)} className={rating === -1 ? 'opacity-100' : 'opacity-60'}>👎</button>
-                                {rating !== 0 && (
-                                    <form className='flex gap-1 mt-1' onSubmit={(e) => { e.preventDefault(); rate(rating as 1 | -1, true) }}>
-                                        <input aria-label={t.rateComment} placeholder={t.rateComment} maxLength={500} value={comment} onChange={(e) => setComment(e.target.value)} className='flex-1 border rounded px-2 py-1' />
-                                        <button className='px-2 rounded bg-gray-200'>{t.send}</button>
-                                    </form>
-                                )}
-                            </div>
-                        )}
-                        {ratingDone && <div className='pt-2 text-xs text-gray-500'>{t.rateThanks}</div>}
-                    </div>
+                    {/* Transcript */}
+                    <MessageScrollerProvider>
+                        <MessageScroller>
+                            <MessageScrollerViewport aria-live='polite' className='bg-gray-50 px-3 py-4'>
+                                <MessageScrollerContent>
+                                    <AssistantBubble text={cfg.greeting} />
+                                    {messages.length === 0 && (
+                                        <div className='flex flex-wrap gap-2 ps-9'>
+                                            {cfg.suggestions.map((s) => (
+                                                <button key={s} onClick={() => send(s)}
+                                                    className='rounded-full border border-emerald-700/40 bg-white px-3 py-1.5 text-xs text-emerald-900 shadow-sm transition-colors hover:border-emerald-700 hover:bg-emerald-50'>
+                                                    {s}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {messages.map((m) => (
+                                        <MessageScrollerItem key={m.key} scrollAnchor={m.role === 'visitor'}>
+                                            <Bubble m={m} t={t} />
+                                        </MessageScrollerItem>
+                                    ))}
+                                    {pending !== null && (
+                                        <MessageScrollerItem>
+                                            {pending ? <AssistantBubble text={pending} /> : <Typing label={t.typing} />}
+                                        </MessageScrollerItem>
+                                    )}
+                                    {fallback && (
+                                        <div role='alert' className='rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-gray-800'>
+                                            {t.fallback}
+                                            <div className='mt-2 flex flex-wrap gap-2'>
+                                                {fallback.whatsapp && (
+                                                    <a className='inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-3 py-1.5 text-xs font-medium text-white' href={fallback.whatsapp} target='_blank' rel='noopener noreferrer'>
+                                                        <FaWhatsapp aria-hidden className='size-3.5' />{t.whatsapp}
+                                                    </a>
+                                                )}
+                                                <a className='inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs' href={fallback.contactUrl}>
+                                                    <LuMail aria-hidden className='size-3.5' />{t.contactForm}
+                                                </a>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {hasAssistant && !ratingDone && (
+                                        <div className='flex flex-wrap items-center gap-2 pt-1 text-xs text-gray-500'>
+                                            <span>{t.rateQ}</span>
+                                            <button aria-label={t.rateUp} aria-pressed={rating === 1} onClick={() => rate(1, false)}
+                                                className={clsx('rounded-full p-1.5 transition-colors hover:bg-gray-200', rating === 1 && 'bg-emerald-100 text-emerald-700')}>
+                                                <LuThumbsUp aria-hidden className='size-4' />
+                                            </button>
+                                            <button aria-label={t.rateDown} aria-pressed={rating === -1} onClick={() => rate(-1, false)}
+                                                className={clsx('rounded-full p-1.5 transition-colors hover:bg-gray-200', rating === -1 && 'bg-red-100 text-red-700')}>
+                                                <LuThumbsDown aria-hidden className='size-4' />
+                                            </button>
+                                            {rating !== 0 && (
+                                                <form className='flex w-full gap-1.5' onSubmit={(e) => { e.preventDefault(); rate(rating as 1 | -1, true) }}>
+                                                    <input aria-label={t.rateComment} placeholder={t.rateComment} maxLength={500} value={comment} onChange={(e) => setComment(e.target.value)}
+                                                        className='min-w-0 flex-1 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-base sm:text-xs' />
+                                                    <button className='rounded-full bg-gray-200 px-3 text-xs hover:bg-gray-300'>{t.send}</button>
+                                                </form>
+                                            )}
+                                        </div>
+                                    )}
+                                    {ratingDone && <div className='pt-1 text-xs text-gray-500'>{t.rateThanks}</div>}
+                                </MessageScrollerContent>
+                            </MessageScrollerViewport>
+                            <MessageScrollerButton label={t.latest}><LuArrowDown aria-hidden className='size-4' /></MessageScrollerButton>
+                        </MessageScroller>
+                    </MessageScrollerProvider>
 
-                    <div className='border-t p-2 space-y-2 bg-white'>
+                    {/* Composer */}
+                    <div className='border-t border-gray-100 bg-white px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]'>
                         {status === 'open' && (
-                            <button onClick={askHuman} className='text-xs text-emerald-800 underline'>{t.human}</button>
+                            <button onClick={askHuman} className='mb-2 inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-50'>
+                                <LuUserRound aria-hidden className='size-3.5' />{t.human}
+                            </button>
                         )}
-                        <form className='flex gap-2 items-end' onSubmit={(e) => { e.preventDefault(); send(input) }}>
+                        <form className='flex items-end gap-2' onSubmit={(e) => { e.preventDefault(); send(input) }}>
                             <textarea
                                 ref={inputRef}
                                 aria-label={t.placeholder}
@@ -351,37 +433,91 @@ export default function ChatWidget({ locale, pathname }: { locale: Locale; pathn
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) } }}
-                                className='flex-1 resize-none border rounded-lg px-3 py-2 text-sm max-h-28 focus:outline-none focus:ring-2 focus:ring-emerald-600'
+                                className='max-h-32 min-h-[44px] flex-1 resize-none rounded-2xl border border-gray-300 bg-gray-50 px-4 py-2.5 text-base leading-6 focus:border-emerald-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/20 sm:text-sm'
                             />
-                            <button disabled={sending || !input.trim()} className='px-3 py-2 rounded-lg bg-[#1E7D67] text-white text-sm disabled:opacity-50'>{t.send}</button>
+                            <button aria-label={t.send} disabled={sending || !input.trim()}
+                                className={clsx('flex size-11 shrink-0 items-center justify-center rounded-full text-white shadow transition-opacity disabled:opacity-40', BRAND)}>
+                                <LuSendHorizontal aria-hidden className='size-5 rtl:-scale-x-100' />
+                            </button>
                         </form>
                     </div>
                 </div>
             )}
+        </>
+    )
+}
+
+function Avatar({ staff = false }: { staff?: boolean }) {
+    return (
+        <div aria-hidden className={clsx('flex size-7 shrink-0 items-center justify-center rounded-full text-white', staff ? 'bg-purple-600' : BRAND)}>
+            {staff ? <LuUserRound className='size-4' /> : <LuBot className='size-4' />}
         </div>
     )
 }
 
-function Bubble({ m, team }: { m: Msg; team: string }) {
-    if (m.role === 'note') return <div className='text-xs text-center text-gray-500'>{m.text}</div>
-    const visitor = m.role === 'visitor'
+function AssistantBubble({ text, actions }: { text: string; actions?: Action[] }) {
     return (
-        <div className={`flex ${visitor ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${visitor ? 'bg-[#1E7D67] text-white' : m.role === 'staff' ? 'bg-purple-50 border border-purple-200 text-gray-800' : 'bg-white border text-gray-800'}`} dir='auto'>
-                {m.role === 'staff' && <div className='text-[10px] text-purple-700 mb-0.5'>{team}</div>}
+        <div className='flex items-end gap-2'>
+            <Avatar />
+            <div className='max-w-[85%] rounded-2xl rounded-es-md border border-gray-200 bg-white px-3.5 py-2.5 text-sm leading-relaxed text-gray-800 shadow-sm' dir='auto'>
+                <RichText text={text} />
+                <Actions actions={actions} />
+            </div>
+        </div>
+    )
+}
+
+function Actions({ actions }: { actions?: Action[] }) {
+    // Server-built buttons only: internal paths, or https links from settings (brochures, booking).
+    const safe = (actions ?? []).filter((a) => /^\/(?!\/)/.test(a.url) || a.url.startsWith('https://'))
+    if (!safe.length) return null
+    return (
+        <div className='mt-2.5 flex flex-wrap gap-2'>
+            {safe.map((a) => {
+                const external = a.url.startsWith('https://')
+                return (
+                    <a key={a.url} href={a.url} {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                        className='inline-flex items-center gap-1 rounded-full border border-emerald-600 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800 transition-colors hover:bg-emerald-100'>
+                        {a.label}
+                        {external ? <LuArrowUpRight aria-hidden className='size-3.5' /> : <LuArrowRight aria-hidden className='size-3.5 rtl:-scale-x-100' />}
+                    </a>
+                )
+            })}
+        </div>
+    )
+}
+
+function Bubble({ m, t }: { m: Msg; t: Strings }) {
+    if (m.role === 'note') {
+        return <div className='mx-auto w-fit max-w-[90%] rounded-full bg-gray-200/70 px-3 py-1 text-center text-xs text-gray-600'>{m.text}</div>
+    }
+    if (m.role === 'assistant') return <AssistantBubble text={m.text} actions={m.actions} />
+    if (m.role === 'staff') {
+        return (
+            <div className='flex items-end gap-2'>
+                <Avatar staff />
+                <div className='max-w-[85%] rounded-2xl rounded-es-md border border-purple-200 bg-purple-50 px-3.5 py-2.5 text-sm leading-relaxed text-gray-800' dir='auto'>
+                    <div className='mb-0.5 text-[10px] font-semibold text-purple-700'>{t.team}</div>
+                    <span className='whitespace-pre-wrap'>{m.text}</span>
+                </div>
+            </div>
+        )
+    }
+    return (
+        <div className='flex justify-end'>
+            <div className={clsx('max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-ee-md px-3.5 py-2.5 text-sm leading-relaxed text-white shadow-sm', BRAND)} dir='auto'>
                 {m.text}
-                {!!m.actions?.length && (
-                    <div className='flex flex-wrap gap-2 mt-2'>
-                        {/* Server-built buttons only: internal paths, or https links from settings (brochures, booking). */}
-                        {m.actions.filter((a) => /^\/(?!\/)/.test(a.url) || a.url.startsWith('https://')).map((a) => {
-                            const external = a.url.startsWith('https://')
-                            return (
-                                <a key={a.url} href={a.url} {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                                    className='text-xs px-3 py-1 rounded-full bg-emerald-50 border border-emerald-600 text-emerald-800 hover:bg-emerald-100'>{a.label}</a>
-                            )
-                        })}
-                    </div>
-                )}
+            </div>
+        </div>
+    )
+}
+
+function Typing({ label }: { label: string }) {
+    return (
+        <div className='flex items-end gap-2'>
+            <Avatar />
+            <div role='status' aria-label={label} className='flex gap-1 rounded-2xl rounded-es-md border border-gray-200 bg-white px-4 py-3 shadow-sm'>
+                {[0, 150, 300].map((d) => <span key={d} className='size-1.5 animate-bounce rounded-full bg-gray-400' style={{ animationDelay: `${d}ms` }} />)}
             </div>
         </div>
     )

@@ -28,6 +28,9 @@ export const STRINGS = {
         team: 'فريق N.I.T',
         newChat: 'محادثة جديدة',
         chatWhatsapp: 'تواصل معنا على واتساب',
+        latest: 'الانتقال لآخر رسالة',
+        online: 'يرد فوراً · مساعد آلي',
+        aiBadge: 'ذكاء اصطناعي',
     },
     en: {
         open: 'Open chat with the AI assistant',
@@ -56,6 +59,9 @@ export const STRINGS = {
         team: 'N.I.T team',
         newChat: 'New conversation',
         chatWhatsapp: 'Chat with us on WhatsApp',
+        latest: 'Jump to the latest message',
+        online: 'Replies instantly · AI assistant',
+        aiBadge: 'AI',
     },
 } as const;
 

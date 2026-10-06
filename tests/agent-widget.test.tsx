@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor, act, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act, cleanup, within } from "@testing-library/react";
 import ChatWidget, { STORE_KEY } from "@/app/[locale]/components/ChatWidget/ChatWidget";
 import { createSseParser } from "@/app/[locale]/components/ChatWidget/sse";
+import { MessageScroller, MessageScrollerButton, MessageScrollerContent, MessageScrollerProvider, MessageScrollerViewport } from "@/app/[locale]/components/ChatWidget/MessageScroller";
 import { STRINGS } from "@/app/[locale]/components/ChatWidget/strings";
 
 const CFG = {
@@ -230,5 +231,99 @@ describe("SSE parser", () => {
         const out = [] as ReturnType<typeof p.push>;
         for (const ch of text) out.push(...p.push(ch));
         expect(out).toEqual([{ event: "meta", data: { a: 1 } }, { event: "delta", data: { text: "hé" } }]);
+    });
+});
+
+describe("chat widget — new UI", () => {
+    const openWith = async (reply: string) => {
+        routes["POST /api/agent/chat"] = () => sse([
+            ["meta", { conversationId: "c".repeat(24), mode: "sales", status: "open" }],
+            ["delta", { text: reply }],
+            ["done", { messageId: "d".repeat(24) }],
+        ]);
+        render(<ChatWidget locale="ar" pathname="/ar" />);
+        await openPanel("ar");
+        fireEvent.change(screen.getByRole("textbox", { name: STRINGS.ar.placeholder }), { target: { value: "الأسعار؟" } });
+        fireEvent.click(screen.getByRole("button", { name: STRINGS.ar.send }));
+    };
+
+    it("renders the assistant's **bold** and bullet lists as formatting, not raw markdown", async () => {
+        await openWith("دي الباقات:\n\n**Basic – 5,000 جنيه**\n- 3 كورسات\n- تطبيق موبايل");
+        const strong = await screen.findByText("Basic – 5,000 جنيه");
+        expect(strong.tagName).toBe("STRONG");
+        expect(screen.getAllByRole("listitem").map((li) => li.textContent)).toEqual(["3 كورسات", "تطبيق موبايل"]);
+        expect(document.body.textContent).not.toContain("**");
+    });
+
+    it("never turns reply text into HTML", async () => {
+        await openWith('<img src=x onerror="alert(1)"> **<b>hi</b>**');
+        expect(await screen.findByText(/<img src=x/)).toBeTruthy();
+        expect(document.querySelector("img[src='x']")).toBeNull();
+        expect(document.querySelector("b")).toBeNull();
+    });
+
+    it("the header close button closes the panel; New conversation clears it", async () => {
+        await openWith("أهلاً");
+        await screen.findByText("أهلاً");
+        fireEvent.click(screen.getByRole("button", { name: STRINGS.ar.newChat }));
+        expect(screen.queryByText("أهلاً")).toBeNull();
+        expect(localStorage.getItem(STORE_KEY)).toBeNull();
+        const dialog = screen.getByRole("dialog");
+        fireEvent.click(within(dialog).getByRole("button", { name: STRINGS.ar.close }));
+        await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    });
+
+    it("shows a typing indicator until the first words arrive", async () => {
+        let release!: () => void;
+        routes["POST /api/agent/chat"] = () => new Response(new ReadableStream({
+            async start(c) {
+                const enc = new TextEncoder();
+                c.enqueue(enc.encode(`event: meta\ndata: ${JSON.stringify({ conversationId: "c".repeat(24), mode: "sales", status: "open" })}\n\n`));
+                await new Promise<void>((r) => { release = r; });
+                c.enqueue(enc.encode(`event: delta\ndata: {"text":"Hello"}\n\nevent: done\ndata: {"messageId":"${"d".repeat(24)}"}\n\n`));
+                c.close();
+            },
+        }), { headers: { "Content-Type": "text/event-stream" } });
+        render(<ChatWidget locale="en" pathname="/en" />);
+        await openPanel("en");
+        fireEvent.change(screen.getByRole("textbox"), { target: { value: "hi" } });
+        fireEvent.click(screen.getByRole("button", { name: STRINGS.en.send }));
+        expect(await screen.findByRole("status", { name: STRINGS.en.typing })).toBeTruthy();
+        release();
+        expect(await screen.findByText("Hello")).toBeTruthy();
+        expect(screen.queryByRole("status", { name: STRINGS.en.typing })).toBeNull();
+    });
+});
+
+describe("MessageScroller", () => {
+    it("shows the jump-to-latest button only after the reader scrolls up, and the button scrolls back to the end", () => {
+        render(
+            <MessageScrollerProvider>
+                <MessageScroller>
+                    <MessageScrollerViewport data-testid="vp"><MessageScrollerContent><p>row</p></MessageScrollerContent></MessageScrollerViewport>
+                    <MessageScrollerButton label="Latest">↓</MessageScrollerButton>
+                </MessageScroller>
+            </MessageScrollerProvider>,
+        );
+        const vp = screen.getByTestId("vp");
+        const scrollTo = vi.fn();
+        Object.assign(vp, { scrollTo });
+        Object.defineProperty(vp, "scrollHeight", { configurable: true, value: 1000 });
+        Object.defineProperty(vp, "clientHeight", { configurable: true, value: 400 });
+        const btn = document.querySelector<HTMLButtonElement>("button[aria-label='Latest']")!; // aria-hidden until useful
+        expect(btn.getAttribute("data-active")).toBe("false");
+
+        Object.defineProperty(vp, "scrollTop", { configurable: true, writable: true, value: 100 }); // 500px above the end
+        fireEvent.scroll(vp);
+        expect(btn.getAttribute("data-active")).toBe("true");
+        expect(screen.getByRole("button", { name: "Latest" })).toBe(btn); // now exposed to assistive tech
+
+        fireEvent.click(btn);
+        expect(scrollTo).toHaveBeenCalledWith({ top: 1000, behavior: "smooth" });
+        expect(btn.getAttribute("data-active")).toBe("false");
+
+        vp.scrollTop = 590; // within the end slack again
+        fireEvent.scroll(vp);
+        expect(btn.getAttribute("data-active")).toBe("false");
     });
 });
