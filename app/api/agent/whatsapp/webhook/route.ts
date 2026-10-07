@@ -13,20 +13,26 @@ export async function GET(req: Request) {
     const q = new URL(req.url).searchParams;
     const expected = process.env.WHATSAPP_VERIFY_TOKEN;
     if (q.get("hub.mode") === "subscribe" && expected && q.get("hub.verify_token") === expected) {
+        console.log("[agent] whatsapp webhook verified by Meta");
         return new Response(q.get("hub.challenge") ?? "", { status: 200, headers: { "Content-Type": "text/plain" } });
     }
+    console.warn("[agent] whatsapp webhook verify failed: hub.verify_token does not match WHATSAPP_VERIFY_TOKEN");
     return new Response("Forbidden", { status: 403 });
 }
 
 export async function POST(req: Request) {
     const raw = await req.text();
-    if (!verifySignature(raw, req.headers.get("x-hub-signature-256"))) return new Response("Invalid signature", { status: 401 });
+    if (!verifySignature(raw, req.headers.get("x-hub-signature-256"))) {
+        console.warn("[agent] whatsapp webhook rejected: bad or missing signature (check WHATSAPP_APP_SECRET = Meta app → Basic → App secret)");
+        return new Response("Invalid signature", { status: 401 });
+    }
     let body: unknown;
     try { body = JSON.parse(raw); } catch { return new Response("Bad JSON", { status: 400 }); }
 
     const { messages, failedStatuses } = parseWebhook(body);
     for (const s of failedStatuses) console.error("[agent] whatsapp delivery failed", s.id, s.error);
     const cfg = await getWaConfig();
+    if (messages.length) console.log(`[agent] whatsapp webhook: ${messages.length} message(s)`);
     for (const m of messages) {
         // Only our number (a WhatsApp account can hold several).
         if (cfg?.phoneNumberId && m.phoneNumberId && m.phoneNumberId !== cfg.phoneNumberId) continue;
