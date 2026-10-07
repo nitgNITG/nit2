@@ -58,6 +58,10 @@ already active — use it only after editing the JSON to the approved numbers.
 - **AI Settings → Team notifications**: handoff emails go to the admin alert emails (Platform Settings) + staff with the sales or support permission matching the chat; the staff owner is emailed when the visitor replies. Needs SMTP (`MAIL_HOST`/`MAIL_USER`/`MAIL_PASS`). Each person can also turn on sound + desktop alerts at the bottom of the dashboard sidebar.
 - **AI Usage & Cost**: cost per model, per UTC day (compare with the Anthropic console, which uses UTC and can lag a few hours) and per visitor / IP. Per-visitor cost exists only for calls made after this update. Days before 2026-10-06 overstate Haiku calls (summaries, tagging), which were priced as Opus because the API returns the dated id `claude-haiku-4-5-20251001`.
 
+## 2e. Telegram alerts for the AI Inbox (optional)
+
+AI alerts (handoffs, HOT leads, tickets, meetings, budget, errors) use the shared SaaS bot (`TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`) until **AI Settings → Telegram alerts** is set: @BotFather → `/newbot` → add the bot to a group → send a message there → paste the token → **Find chat ID** → Save → Send test. Stored encrypted (needs `CREDENTIAL_SECRET`); clear both fields to go back to the shared bot. No GitHub Actions change: the workflows don't send AI alerts.
+
 ## 2d. WhatsApp (phase 3)
 
 1. Meta Business Settings → **System users** → Add (role Admin) → **Assign assets**: the app (Full control → Manage app) and the WhatsApp account (Full control → Manage WhatsApp Business accounts).
