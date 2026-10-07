@@ -29,11 +29,12 @@ export async function supportWhatsapp(): Promise<string> {
     return setting(WHATSAPP_KEY, "SUPPORT_WHATSAPP");
 }
 
-/** Send an admin alert to Telegram + email. Best-effort; each channel independent. */
-export async function alertAdmins(subject: string, body: string): Promise<void> {
+/** Send an admin alert to Telegram + email. Best-effort; each channel independent.
+ *  `telegram` overrides the shared bot (the AI assistant has its own chat). */
+export async function alertAdmins(subject: string, body: string, opts: { telegram?: (text: string) => Promise<void> } = {}): Promise<void> {
     // Telegram: subject as a bold-ish first line + body.
     try {
-        await notifyTelegram(`${subject}\n\n${body}`);
+        await (opts.telegram ?? notifyTelegram)(`${subject}\n\n${body}`);
     } catch (e) {
         console.error("[adminAlert] telegram failed", e);
     }

@@ -3,7 +3,7 @@
 // phone, email, full conversation, payment, tenant or error details; the
 // dashboard link is where staff see the rest.
 import { alertAdmins } from "@/lib/adminAlert";
-import { notifyTelegram } from "@/lib/telegram";
+import { agentTelegram } from "./telegram";
 import prisma from "@/prisma/client";
 import { redactText } from "../security/redaction";
 import { emailHandoff, emailOwnerVisitorWrote } from "./staff";
@@ -49,19 +49,19 @@ export function leadAlertBody(f: LeadAlertFields): string {
 
 /** HOT lead → Telegram + email (FR-S8). */
 export async function alertHotLead(f: LeadAlertFields): Promise<void> {
-    await alertAdmins("🔥 HOT lead from the AI assistant", leadAlertBody(f));
+    await alertAdmins("🔥 HOT lead from the AI assistant", leadAlertBody(f), { telegram: agentTelegram });
 }
 
 /** Lead reached stage sql / opportunity (AC-10.1) → Telegram. */
 export async function alertQualifiedLead(f: LeadAlertFields): Promise<void> {
-    await notifyTelegram(`🟢 Qualified lead from the AI assistant\n\n${leadAlertBody(f)}`);
+    await agentTelegram(`🟢 Qualified lead from the AI assistant\n\n${leadAlertBody(f)}`);
 }
 
 /** Conversation handed to a person (FR-H1): Telegram + email to that inbox's team. The summary is masked for PII. */
 export async function alertHandoff(input: { conversationId: string; reason: string; summary: string; mode: string; email?: boolean }): Promise<void> {
     // Emails go out in the background (they never throw) so SMTP can't slow the visitor's reply.
     if (input.email !== false) void emailHandoff({ ...input, link: dashboardLink(input.conversationId) });
-    await notifyTelegram(
+    await agentTelegram(
         [
             `🙋 Conversation needs a person (${input.mode})`,
             `Reason: ${redactText(input.reason).slice(0, 200)}`,
@@ -77,12 +77,12 @@ export async function alertVisitorWaiting(conversationId: string, opts: { email?
         const conv = await prisma.conversation.findUnique({ where: { id: conversationId }, select: { assignedTo: true } });
         void emailOwnerVisitorWrote({ assignedTo: conv?.assignedTo ?? null, link: dashboardLink(conversationId) });
     }
-    await notifyTelegram(`💬 New visitor message in a conversation with a person\nOpen: ${dashboardLink(conversationId)}`);
+    await agentTelegram(`💬 New visitor message in a conversation with a person\nOpen: ${dashboardLink(conversationId)}`);
 }
 
 /** open_ticket (FR-P7): category, tenant and a masked summary — no account or payment details. */
 export async function alertTicket(input: { conversationId: string; ticketId: string; category: string; tenantSlug: string | null; summary: string }): Promise<void> {
-    await notifyTelegram([
+    await agentTelegram([
         `🎫 Support ticket ${input.ticketId} (${input.category})`,
         input.tenantSlug ? `Tenant: ${input.tenantSlug}` : null,
         `Summary: ${redactText(input.summary).slice(0, 600)}`,
@@ -93,13 +93,13 @@ export async function alertTicket(input: { conversationId: string; ticketId: str
 /** request_meeting (FR-S16). */
 export async function alertMeeting(input: { conversationId: string; preferredAt: Date; channel: string }): Promise<void> {
     const when = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Cairo", dateStyle: "full", timeStyle: "short" }).format(input.preferredAt);
-    await alertAdmins("📅 Meeting requested via the AI assistant", `When: ${when} (Cairo)\nChannel: ${input.channel}\nOpen: ${dashboardLink(input.conversationId)}`);
+    await alertAdmins("📅 Meeting requested via the AI assistant", `When: ${when} (Cairo)\nChannel: ${input.channel}\nOpen: ${dashboardLink(input.conversationId)}`, { telegram: agentTelegram });
 }
 
 export async function alertBudgetReached(date: string, budgetUsd: number): Promise<void> {
-    await alertAdmins("⚠️ AI assistant daily budget reached", `The AI assistant used its $${budgetUsd} budget for ${date}. Visitors now see the WhatsApp / contact-form fallback until tomorrow.`);
+    await alertAdmins("⚠️ AI assistant daily budget reached", `The AI assistant used its $${budgetUsd} budget for ${date}. Visitors now see the WhatsApp / contact-form fallback until tomorrow.`, { telegram: agentTelegram });
 }
 
 export async function alertErrorBurst(count: number): Promise<void> {
-    await notifyTelegram(`🚨 AI assistant: ${count} errors in the last 10 minutes. Check the server logs.`);
+    await agentTelegram(`🚨 AI assistant: ${count} errors in the last 10 minutes. Check the server logs.`);
 }

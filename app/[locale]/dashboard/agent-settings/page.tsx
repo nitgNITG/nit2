@@ -6,6 +6,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { api, btnGhost, btnPrimary, Card, errorText, inputCls, PageHeader } from '../components/agent/ui'
 import AbuseSection from '../components/agent/AbuseSection'
 import WhatsAppSection from '../components/agent/WhatsAppSection'
+import TelegramSection from '../components/agent/TelegramSection'
 
 type Config = any
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -199,6 +200,10 @@ export default function AgentSettingsPage() {
                 <label className='flex items-center gap-2 text-sm'><input type='checkbox' checked={cfg.notifications.emailOwnerOnReply} onChange={(e) => set('notifications.emailOwnerOnReply', e.target.checked)} />
                     Email the staff member who took over when the visitor replies (at most every 5 minutes)</label>
                 <p className='text-xs text-gray-500'>In the dashboard, the AI Inbox badge updates live; each person can turn on sound + desktop alerts at the bottom of the sidebar.</p>
+            </Section>
+
+            <Section title='Telegram alerts (AI Inbox)'>
+                <TelegramSection />
             </Section>
 
             <Section title='Abuse protection (rate limits)'>
