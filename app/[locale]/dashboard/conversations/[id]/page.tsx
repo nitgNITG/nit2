@@ -7,13 +7,14 @@ import LocaleLink from '../../../components/LocaleLink'
 import { api, btnGhost, btnPrimary, Card, errorText, fmtDate, inputCls, StatusBadge, TierBadge } from '../../components/agent/ui'
 import LeadTimeline from '../../components/agent/LeadTimeline'
 
-type Msg = { id: string; role: string; content: string; toolName?: string | null; createdAt: string; staffId?: string | null; model?: string | null }
+type Msg = { id: string; role: string; content: string; toolName?: string | null; createdAt: string; staffId?: string | null; model?: string | null; status?: string }
 type Detail = {
     conversation: any
     messages: Msg[]
     contact: any | null
     summary: string | null
     related?: { id: string; status: string; mode: string; title: string; messageCount: number; lastMessageAt: string }[]
+    waWindow?: { open: boolean; closesAt: string | null } | null
     viewer: { userId: string; isAdmin: boolean; canEditLead: boolean }
 }
 
@@ -45,6 +46,7 @@ function Bubble({ m }: { m: Msg }) {
             <div className={`max-w-[80%] rounded-lg px-3 py-2 ${color}`}>
                 <div className='text-[11px] text-gray-500 mb-1'>{who} · {fmtDate(m.createdAt)}{m.model ? ` · ${m.model}` : ''}</div>
                 <div className='whitespace-pre-wrap text-sm text-gray-800' dir='auto'>{m.content}</div>
+                {m.status === 'failed' && <div className='mt-1 text-[11px] font-medium text-red-600'>Not delivered on WhatsApp</div>}
             </div>
         </div>
     )
@@ -206,6 +208,15 @@ export default function ConversationPage({ params }: { params: { id: string } })
                         <StatusBadge status={c.status} />
                         <span className='text-sm text-gray-500'>{c.mode} · {c.channel} · {c.locale} · started {fmtDate(c.createdAt)}{c.sourcePage ? ` on ${c.sourcePage}` : ''}</span>
                     </div>
+                    {c.channel === 'whatsapp' && (
+                        <div className='flex flex-wrap items-center gap-2 text-sm'>
+                            <span className='rounded bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800'>WhatsApp</span>
+                            <span className='font-mono text-gray-700' dir='ltr'>{c.phoneE164}</span>
+                            {d.waWindow && (d.waWindow.open
+                                ? <span className='text-xs text-gray-500'>Reply window open until {fmtDate(d.waWindow.closesAt)}</span>
+                                : <span className='text-xs text-amber-700'>24-hour reply window closed — wait for the customer to write again</span>)}
+                        </div>
+                    )}
                 </div>
                 <div className='flex gap-2'>
                     {(c.status === 'open' || c.status === 'waiting_human') && <button className={btnPrimary} disabled={busy} onClick={() => act('takeover')}>Take over</button>}
@@ -231,8 +242,9 @@ export default function ConversationPage({ params }: { params: { id: string } })
                                 if (await act('messages', { content: reply.trim() })) setReply('')
                             }}
                         >
-                            <textarea aria-label='Reply to the visitor' dir='auto' rows={2} maxLength={4000} className={inputCls} value={reply} onChange={(e) => setReply(e.target.value)} placeholder='Write to the visitor…' />
-                            <button className={btnPrimary} disabled={busy || !reply.trim()}>Send</button>
+                            <textarea aria-label='Reply to the visitor' dir='auto' rows={2} maxLength={4000} className={inputCls} value={reply} onChange={(e) => setReply(e.target.value)}
+                                placeholder={c.channel === 'whatsapp' ? 'Reply on WhatsApp…' : 'Write to the visitor…'} disabled={c.channel === 'whatsapp' && d.waWindow?.open === false} />
+                            <button className={btnPrimary} disabled={busy || !reply.trim() || (c.channel === 'whatsapp' && d.waWindow?.open === false)}>Send</button>
                         </form>
                     ) : (
                         <div className='border-t pt-3 text-sm text-gray-500'>Take over to reply. While a person handles it, the AI does not answer.</div>

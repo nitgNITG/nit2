@@ -70,7 +70,7 @@ function sse(run: (emit: Emit) => Promise<void>, setCookie: string | null): Resp
     return new Response(stream, { status: 200, headers });
 }
 
-async function notifyStaffThrottled(conversationId: string, cfg: AgentConfig) {
+export async function notifyStaffThrottled(conversationId: string, cfg: AgentConfig) {
     // At most one "visitor wrote" alert per conversation per 5 minutes.
     const { count } = await hit(`notify:${conversationId}`, 1, 5 * 60_000);
     if (count === 1) await alertVisitorWaiting(conversationId, { email: cfg.notifications.emailOwnerOnReply });

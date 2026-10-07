@@ -216,6 +216,7 @@ export function makeMongo() {
         meetingRequest: makeModel({ defaults: { status: "requested" } }),
         ticket: makeModel({ defaults: { status: "open" } }),
         activity: makeModel({ defaults: { type: "chat", channel: "web" } }),
+        whatsAppIdentity: makeModel({ unique: [["phoneE164"]] }),
     };
 }
 
@@ -232,6 +233,7 @@ export function makeMysql() {
         }),
         platformSetting: makeModel({ unique: [["key"]] }),
         user: makeModel({ unique: [["email"]], defaults: { role: "client" } }),
+        emailOtp: makeModel({ defaults: { consumed: false, attempts: 0 } }),
         tenant: makeModel({ unique: [["slug"]], defaults: { product: "academy", status: "live", tier: "demo" } }),
         subscription: makeModel({ unique: [["tenantSlug"]], defaults: { status: "active", autoRenew: true, currency: "EGP", attemptCount: 0 } }),
         payment: makeModel({ unique: [["orderId"]], defaults: { purpose: "new_academy", product: "academy", currency: "EGP", status: "pending", mode: "live" } }),

@@ -13,7 +13,7 @@ import { msg } from "../messages";
 import { readSession } from "../qualification/engine";
 import { redact } from "../security/redaction";
 import { executeTool, llmToolDefs } from "../tools/registry";
-import type { Locale, Mode, ToolContext } from "../tools/types";
+import type { Channel, Locale, Mode, ToolContext } from "../tools/types";
 import { reserve, settle } from "./budget";
 import { workingHoursStatus } from "./hours";
 import { logTurn, recordError } from "./monitor";
@@ -25,6 +25,8 @@ const PARAGRAPH = "\n\n";
 export type TurnInput = {
     conversationId: string;
     mode: Mode;
+    /** Defaults to web. */
+    channel?: Channel;
     locale: Locale;
     page: string | null;
     userId: string | null;
@@ -64,6 +66,7 @@ function qualificationLine(raw: unknown, cfg: AgentConfig, locale: Locale): stri
 
 export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
     const { conversationId, config: cfg, emit, locale, mode } = input;
+    const channel: Channel = input.channel ?? "web";
     const now = input.now ?? new Date();
     const started = Date.now();
     const turnId = randomUUID();
@@ -81,14 +84,14 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
     const system = buildCorePrompt(cfg, mode, locale, knowledgeVersion);
     const systemVolatile = buildVolatileContext({
         now, locale, page: input.page ?? conv.sourcePage, topic: pageTopic(input.page ?? conv.sourcePage),
-        signedIn: !!input.userId, workingHoursOpen: workingHoursStatus(cfg.workingHours, now).open,
+        channel, signedIn: !!input.userId, workingHoursOpen: workingHoursStatus(cfg.workingHours, now).open,
         qualification: qualificationLine(conv.qualification, cfg, locale),
     }) + (conv.summary && conv.messageCount > HISTORY_LIMIT ? `\nEarlier conversation summary: ${conv.summary}` : "");
-    const tools = llmToolDefs(mode);
+    const tools = llmToolDefs(mode, channel);
     const messages = await loadHistory(conversationId);
 
     const ctx: ToolContext = {
-        conversationId, turnId, mode, channel: "web", locale, userId: input.userId, sessionId: input.sessionId,
+        conversationId, turnId, mode, channel, locale, userId: input.userId, sessionId: input.sessionId,
         config: cfg, now, actions: [], handoff: null, afterTurn: [],
     };
 

@@ -3,6 +3,7 @@
 import prisma from "@/prisma/client";
 import { allowedModes } from "./admin";
 import { recordActivity } from "./crm/activity";
+import { sendWaText } from "./channels/whatsapp/cloud";
 import { relatedConversations } from "./history";
 import { apiError, OBJECT_ID } from "./http";
 import { release, takeOver } from "./runtime/state";
@@ -28,10 +29,11 @@ export async function conversationDetail(staff: AgentStaff, id: string): Promise
         l.conv.contactId ? prisma.contact.findUnique({ where: { id: l.conv.contactId } }) : Promise.resolve(null),
         relatedConversations(l.conv, allowedModes(staff)),
     ]);
+    const waWindow = l.conv.channel === "whatsapp" ? await whatsappWindow(l.conv.id) : null;
     const { ipHash: _ip, sessionId: _s, qualification, ...conversation } = l.conv;
     void _ip; void _s;
     return Response.json({
-        conversation: { ...conversation, qualification }, messages, contact, summary: l.conv.summary ?? null, related,
+        conversation: { ...conversation, qualification }, messages, contact, summary: l.conv.summary ?? null, related, waWindow,
         viewer: { userId: staff.user.id, isAdmin: staff.isAdmin, canEditLead: staff.isAdmin || staff.permissions.includes("sales") },
     });
 }
@@ -68,10 +70,37 @@ export async function staffReply(staff: AgentStaff, id: string, content: string)
     if (l.res) return l.res;
     if (l.conv.status !== "human") return apiError(409, "take_over_first", "Take over the conversation before replying.");
     if (!staff.isAdmin && l.conv.assignedTo !== staff.user.id) return apiError(403, "forbidden", "Another team member owns this conversation.");
+    // WhatsApp (FR-WA3): free-form replies only within 24 h of the customer's last message.
+    if (l.conv.channel === "whatsapp") {
+        const window = await whatsappWindow(l.conv.id);
+        if (!window.open) {
+            return apiError(409, "whatsapp_window_closed", "WhatsApp only allows replies within 24 hours of the customer's last message. Wait for them to write, or contact them another way.");
+        }
+    }
     const message = await prisma.chatMessage.create({ data: { conversationId: l.conv.id, role: "staff", content, staffId: staff.user.id } });
     await prisma.conversation.update({ where: { id: l.conv.id }, data: { messageCount: { increment: 1 }, lastMessageAt: new Date() } });
-    // Web: the widget polls E3. WhatsApp delivery arrives in phase 3 (FR-WA4).
+    // Web: the widget polls E3. WhatsApp: sent now (FR-WA4).
+    if (l.conv.channel === "whatsapp" && l.conv.phoneE164) {
+        try {
+            await sendWaText(l.conv.phoneE164, content);
+        } catch (e) {
+            const failed = await prisma.chatMessage.update({ where: { id: message.id }, data: { status: "failed" } });
+            return apiError(502, "whatsapp_send_failed", `Saved, but WhatsApp did not accept it: ${(e as Error).message}`, { message: failed });
+        }
+    }
     return Response.json({ message });
+}
+
+const WINDOW_MS = 24 * 3600_000;
+
+/** The WhatsApp customer-service window: open until 24 h after the customer's last message. */
+export async function whatsappWindow(conversationId: string, now: Date = new Date()): Promise<{ open: boolean; closesAt: string | null }> {
+    const last = await prisma.chatMessage.findFirst({
+        where: { conversationId, role: "visitor" }, orderBy: { createdAt: "desc" }, select: { createdAt: true },
+    });
+    if (!last) return { open: false, closesAt: null };
+    const closes = new Date(last.createdAt.getTime() + WINDOW_MS);
+    return { open: closes > now, closesAt: closes.toISOString() };
 }
 
 export type InboxSummary = {

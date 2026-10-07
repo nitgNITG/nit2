@@ -8,7 +8,7 @@ export type AbuseStats = {
     since: string; // start of the current UTC day
     blocked: Record<AbuseRule, number>;
     topBlockedIps: { ip: string; count: number }[];
-    topVisitors: { visitor: string; kind: "user" | "guest" | "ip"; messages: number }[];
+    topVisitors: { visitor: string; kind: "user" | "guest" | "ip" | "whatsapp"; messages: number }[];
 };
 
 /** Today's (UTC) rejected requests per rule, the IPs blocked most, and the busiest visitors. */
@@ -23,7 +23,10 @@ export async function abuseStats(now: Date = new Date()): Promise<AbuseStats> {
         .filter((b) => b.key.startsWith("blocked:ip:"))
         .sort((a, b) => b.count - a.count)
         .slice(0, 10)
-        .map((b) => ({ ip: `#${b.key.slice("blocked:ip:".length, "blocked:ip:".length + 8)}`, count: b.count }));
+        .map((b) => {
+            const k = b.key.slice("blocked:ip:".length);
+            return { ip: k.startsWith("wa:") ? `WhatsApp ${k.slice(3)}` : `#${k.slice(0, 8)}`, count: b.count };
+        });
     const userIds = visitorRows.map((v) => v.key.slice("visitor:msg:".length)).filter((k) => k.startsWith("u:")).map((k) => k.slice(2));
     const users = userIds.length ? await mysql.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true, email: true } }) : [];
     const topVisitors = visitorRows.map((v) => {
@@ -34,6 +37,7 @@ export async function abuseStats(now: Date = new Date()): Promise<AbuseStats> {
             return { visitor: u?.name || u?.email || "Signed-in user", kind: "user" as const, messages: v.count };
         }
         if (k.startsWith("s:")) return { visitor: `Guest #${id.slice(-6)}`, kind: "guest" as const, messages: v.count };
+        if (k.startsWith("wa:")) return { visitor: id, kind: "whatsapp" as const, messages: v.count };
         return { visitor: `IP #${id.slice(0, 8)}`, kind: "ip" as const, messages: v.count };
     });
     return { since: windowStart.toISOString(), blocked, topBlockedIps, topVisitors };

@@ -65,6 +65,8 @@ export async function captureLead(ctx: ToolContext, input: Input) {
     for (const [k, v] of Object.entries(fields)) if (v !== undefined) (lead as Record<string, unknown>)[k] = v;
     if (lead.phone) lead.phone = normalizePhone(lead.phone) ?? lead.phone;
     if (lead.whatsapp) lead.whatsapp = normalizePhone(lead.whatsapp) ?? lead.whatsapp;
+    // WhatsApp: the sender's number is known from Meta, never from the model (A-02).
+    if (ctx.channel === "whatsapp" && conv.phoneE164 && !lead.whatsapp) lead.whatsapp = conv.phoneE164;
     if (input.consentContact !== undefined) lead.consentAt = ctx.now.toISOString();
 
     // Top-level orgType / country also feed the requirements.
@@ -120,7 +122,7 @@ export async function captureLead(ctx: ToolContext, input: Input) {
                 ...data,
                 subject: "AI chat",
                 message: base.pain || "Lead captured by the AI assistant",
-                sourcePage: "chat",
+                sourcePage: ctx.channel === "whatsapp" ? "whatsapp" : "chat",
                 utmSource: conv.utmSource, utmMedium: conv.utmMedium, utmCampaign: conv.utmCampaign,
                 conversationId: conv.id,
             },

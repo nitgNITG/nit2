@@ -8,7 +8,7 @@ type Stats = {
     since: string
     blocked: Record<'ip_messages' | 'ip_new_conversations' | 'visitor_daily', number>
     topBlockedIps: { ip: string; count: number }[]
-    topVisitors: { visitor: string; kind: 'user' | 'guest' | 'ip'; messages: number }[]
+    topVisitors: { visitor: string; kind: 'user' | 'guest' | 'ip' | 'whatsapp'; messages: number }[]
 }
 
 type Field = { path: string; label: string; min: number; max: number; help: string }
@@ -35,7 +35,7 @@ const FIELDS: Field[] = [
 const RULE_LABEL: Record<keyof Stats['blocked'], string> = {
     ip_messages: 'IP message limit', ip_new_conversations: 'IP new-chat limit', visitor_daily: 'Visitor daily limit',
 }
-const KIND = { user: 'Signed in', guest: 'Guest', ip: 'IP' } as const
+const KIND = { user: 'Signed in', guest: 'Guest', ip: 'IP', whatsapp: 'WhatsApp' } as const
 
 export default function AbuseSection({ cfg, num }: { cfg: any; num: (path: string) => (e: React.ChangeEvent<HTMLInputElement>) => void }) {
     const [stats, setStats] = useState<Stats | null>(null)

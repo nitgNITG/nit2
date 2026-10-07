@@ -22,6 +22,22 @@ const T = {
         ar: "وصلت هذه المحادثة للحد الأقصى. سأحولك لأحد أعضاء الفريق لمتابعة طلبك.",
         en: "This conversation has reached its limit. I'll pass you to a team member to continue.",
     },
+    waTextOnly: {
+        ar: "أستطيع قراءة الرسائل النصية فقط حالياً. من فضلك اكتب سؤالك.",
+        en: "I can only read text messages for now. Please type your question.",
+    },
+    waVerified: {
+        ar: "تم ربط رقم واتساب بحسابك لمدة 90 يوماً. تفضل، اسأل عن أكاديميتك أو متجرك.",
+        en: "Your WhatsApp number is now linked to your account for 90 days. Go ahead and ask about your academy or store.",
+    },
+    waWrongCode: {
+        ar: "الرمز غير صحيح. تأكد منه وأعد كتابته.",
+        en: "That code isn't right. Please check it and type it again.",
+    },
+    waCodeExpired: {
+        ar: "انتهت صلاحية الرمز أو تم تجاوز عدد المحاولات. أرسل بريد حسابك مرة أخرى لأرسل رمزاً جديداً.",
+        en: "The code has expired or there were too many attempts. Send your account email again and I'll send a new code.",
+    },
     turnLimit: {
         ar: "عذراً، لم أستطع إكمال الرد. هل تحب أن أحولك لأحد أعضاء الفريق؟",
         en: "Sorry, I couldn't complete that answer. Would you like me to connect you with a team member?",

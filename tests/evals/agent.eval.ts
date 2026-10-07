@@ -1,4 +1,4 @@
-// Level-4 agent evals (SRS §9.3): the 62 conversations in cases.ts run against the
+// Level-4 agent evals (SRS §9.3): the 81 conversations in cases.ts (incl. 6 over WhatsApp) run against the
 // REAL model through the real chat endpoint, with the databases replaced by the
 // in-memory fake seeded from fixtures.ts (nothing touches a real DB, no alerts are
 // sent). Graded by rules + a Haiku judge; the report goes to tests/evals/report.md.
@@ -11,7 +11,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { makeMongo, makeMysql, resetAll } from "../helpers/memoryPrisma";
 
-const { mongo, mysql, auth, toolLog } = vi.hoisted(() => ({
+const { mongo, mysql, auth, toolLog, waSent } = vi.hoisted(() => ({
+    waSent: [] as string[],
     mongo: {} as ReturnType<typeof import("../helpers/memoryPrisma").makeMongo>,
     mysql: {} as ReturnType<typeof import("../helpers/memoryPrisma").makeMysql>,
     auth: { user: null as null | { id: string; email: string; name: string; role: "client" } },
@@ -35,11 +36,15 @@ vi.mock("@/lib/prismaMysql", () => ({ default: mysql }));
 vi.mock("@/lib/auth", () => ({ getCurrentUser: async () => auth.user }));
 vi.mock("@/lib/adminAlert", () => ({ alertAdmins: async () => undefined, supportWhatsapp: async () => "+201000000000" }));
 vi.mock("@/lib/telegram", () => ({ notifyTelegram: async () => undefined }));
+vi.mock("@/lib/mailer", () => ({ mailerConfigured: () => true, sendEmail: async () => undefined }));
 
+import crypto from "node:crypto";
 import { POST as chat } from "@/app/api/agent/chat/route";
+import { POST as waHook } from "@/app/api/agent/whatsapp/webhook/route";
+import { inboundIdle } from "@/lib/agent/channels/whatsapp/inbound";
 import { getLlm, PROFILE_MODEL } from "@/lib/agent/llm";
 import { CASES, GROUPS, type EvalCase, type Group } from "./cases";
-import { EVAL_CLIENT, EVAL_CONFIG, LICENSES, OTHER_CLIENT, PAYMENTS, PRICE_RANGES, PROJECTS, SERVICE_PLANS, SUBSCRIPTIONS, TENANTS } from "./fixtures";
+import { WA_PHONE, EVAL_CLIENT, EVAL_CONFIG, LICENSES, OTHER_CLIENT, PAYMENTS, PRICE_RANGES, PROJECTS, SERVICE_PLANS, SUBSCRIPTIONS, TENANTS } from "./fixtures";
 import { judgePrompt, parseJudge, type Transcript, type Turn, type RuleResult } from "./grade";
 import { yearsOfExperience } from "@/lib/agent/config";
 import { servicesSummary } from "@/lib/agent/knowledge/sources";
@@ -67,8 +72,52 @@ async function seed() {
     for (const p of PAYMENTS) await mysql.payment.create({ data: p });
 }
 
+// WhatsApp cases: Graph API calls are captured; everything else (the Anthropic API) goes out for real.
+const realFetch = globalThis.fetch;
+globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input instanceof Request ? input.url : input);
+    if (!url.startsWith("https://graph.facebook.com/")) return realFetch(input, init);
+    const body = JSON.parse(String(init?.body ?? "{}"));
+    if (body.text?.body) waSent.push(body.text.body);
+    return new Response(JSON.stringify({ messages: [{ id: `wamid.eval${waSent.length}` }] }));
+}) as typeof fetch;
+const WA_SECRET = "eval-wa-secret";
+
+async function runWhatsAppCase(c: EvalCase): Promise<Transcript> {
+    Object.assign(process.env, { WHATSAPP_APP_SECRET: WA_SECRET, WHATSAPP_PHONE_NUMBER_ID: "1111", WHATSAPP_ACCESS_TOKEN: "eval" });
+    await mysql.platformSetting.update({ where: { key: "ai_agent_config" }, data: { value: JSON.stringify({ ...EVAL_CONFIG, enabled: { ...EVAL_CONFIG.enabled, whatsapp: true } }) } });
+    const turns: Turn[] = [];
+    let i = 0;
+    for (const visitor of c.turns) {
+        const auditsBefore = mongo.toolAudit.rows.length;
+        const logBefore = toolLog.length;
+        const sentBefore = waSent.length;
+        const raw = JSON.stringify({ object: "whatsapp_business_account", entry: [{ changes: [{ field: "messages", value: {
+            metadata: { phone_number_id: "1111" }, contacts: [{ wa_id: WA_PHONE.slice(1), profile: { name: "Customer" } }],
+            messages: [{ id: `wamid.${c.id}.${++i}`, from: WA_PHONE.slice(1), timestamp: String(Math.floor(Date.now() / 1000)), type: "text", text: { body: visitor } }],
+        } }] }] });
+        const res = await waHook(new Request("http://localhost/api/agent/whatsapp/webhook", {
+            method: "POST", body: raw,
+            headers: { "Content-Type": "application/json", "x-hub-signature-256": `sha256=${crypto.createHmac("sha256", WA_SECRET).update(raw).digest("hex")}` },
+        }));
+        await inboundIdle();
+        const conv = await mongo.conversation.findFirst({ where: { channel: "whatsapp" }, orderBy: { lastMessageAt: "desc" } });
+        // On WhatsApp a model failure becomes a handoff; count it as the error it is.
+        const modelDown = mongo.chatMessage.rows.some((m) => m.role === "system" && m.content === "handoff: model_unavailable");
+        turns.push({
+            visitor, reply: waSent.slice(sentBefore).join("\n\n"), events: [], actions: [],
+            handoff: conv?.status === "waiting_human", error: res.status !== 200 ? `HTTP ${res.status}` : modelDown ? "model_unavailable" : null,
+            tools: mongo.toolAudit.rows.slice(auditsBefore).map((a) => ({ name: a.tool as string, ok: a.status === "ok", code: (a.errorCode as string) ?? null })),
+            toolResults: toolLog.slice(logBefore).map((x) => `${x.name} → ${JSON.stringify(x.result).slice(0, 2500)}`),
+        });
+    }
+    const conv = await mongo.conversation.findFirst({ where: { channel: "whatsapp" } });
+    return { turns, contacts: await mongo.contact.findMany(), status: (conv?.status as string) ?? "none", qualification: (conv?.qualification as Record<string, any>) ?? null };
+}
+
 async function runCase(c: EvalCase, ip: number): Promise<Transcript> {
     await seed();
+    if (c.channel === "whatsapp") { auth.user = null; return runWhatsAppCase(c); }
     auth.user = c.user === "client" ? EVAL_CLIENT : null;
     let cookie = "";
     let conversationId: string | undefined;

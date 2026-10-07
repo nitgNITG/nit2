@@ -14,12 +14,12 @@ type Breakdown = {
     models: { model: string; calls: number; tokensIn: number; tokensOut: number; costUsd: number }[]
     utcDays: { date: string; costUsd: number }[]
     visitors: {
-        key: string; kind: 'user' | 'guest' | 'ip'; label: string; detail: string | null; conversations: number; messages: number
+        key: string; kind: 'user' | 'guest' | 'ip' | 'whatsapp'; label: string; detail: string | null; conversations: number; messages: number
         tokensIn: number; tokensOut: number; costUsd: number; lastSeen: string; latestConversationId: string
     }[]
     unattributedUsd: number; totalUsd: number
 }
-const KIND_LABEL = { user: 'Signed in', guest: 'Guest', ip: 'IP' } as const
+const KIND_LABEL = { user: 'Signed in', guest: 'Guest', ip: 'IP', whatsapp: 'WhatsApp' } as const
 const th = 'px-4 py-3'
 const td = 'px-4 py-2'
 

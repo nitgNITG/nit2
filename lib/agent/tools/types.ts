@@ -52,6 +52,8 @@ export type ToolDef<S extends z.ZodType = z.ZodType> = {
     name: string;
     description: string;
     modes: Mode[];
+    /** Channels it exists on; omitted = every channel. */
+    channels?: Channel[];
     schema: S;
     /** Tools that write are refused once a person owns the conversation (§13.5). */
     writes: boolean;

@@ -5,6 +5,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { api, btnGhost, btnPrimary, Card, errorText, inputCls, PageHeader } from '../components/agent/ui'
 import AbuseSection from '../components/agent/AbuseSection'
+import WhatsAppSection from '../components/agent/WhatsAppSection'
 
 type Config = any
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -103,7 +104,7 @@ export default function AgentSettingsPage() {
             <Section title='On / off and budget'>
                 <div className='flex flex-wrap gap-6 text-sm'>
                     <label className='flex items-center gap-2'><input type='checkbox' checked={cfg.enabled.web} onChange={(e) => set('enabled.web', e.target.checked)} /> Website chat on</label>
-                    <label className='flex items-center gap-2'><input type='checkbox' checked={cfg.enabled.whatsapp} onChange={(e) => set('enabled.whatsapp', e.target.checked)} /> WhatsApp on (phase 3)</label>
+                    <label className='flex items-center gap-2'><input type='checkbox' checked={cfg.enabled.whatsapp} onChange={(e) => set('enabled.whatsapp', e.target.checked)} /> AI answers on WhatsApp</label>
                     <label className='flex items-center gap-2'>Daily budget (USD)<input type='number' min={0} step='0.5' className={`${inputCls} w-28`} value={cfg.dailyBudgetUsd} onChange={num('dailyBudgetUsd')} /></label>
                 </div>
                 <p className='text-xs text-gray-500'>When off, or when the day&apos;s budget is used, visitors see the WhatsApp button and the contact form instead. A budget of 0 keeps the assistant off.</p>
@@ -184,6 +185,11 @@ export default function AgentSettingsPage() {
                 <label className='text-sm block'>Booking page (optional, https://) — shown as a button after a meeting request
                     <input className={inputCls} value={cfg.bookingUrl ?? ''} onChange={text('bookingUrl')} placeholder='https://calendly.com/nitg/meeting' />
                 </label>
+            </Section>
+
+            <Section title='WhatsApp (Cloud API)'>
+                <p className='text-xs text-gray-500'>Saved separately from the settings below. The &quot;WhatsApp on&quot; switch above decides whether the AI answers; when it is off, WhatsApp messages go straight to the AI Inbox for the team.</p>
+                <WhatsAppSection />
             </Section>
 
             <Section title='Team notifications'>

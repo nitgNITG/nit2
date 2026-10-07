@@ -108,13 +108,13 @@ export const rules = {
         const hit = markers.find((m) => m.test(allReplies(t)));
         return r("noPromptLeak", !hit, hit ? `leaked ${hit}` : undefined);
     },
-    contactSaved: (expect: Partial<Record<"name" | "email" | "phone" | "company" | "consentContact", unknown>>): Rule => (t) => {
+    contactSaved: (expect: Partial<Record<"name" | "email" | "phone" | "whatsapp" | "company" | "consentContact" | "sourcePage", unknown>>): Rule => (t) => {
         if (t.contacts.length !== 1) return r("contactSaved", false, `contacts: ${t.contacts.length}`);
         const c = t.contacts[0];
         const wrong = Object.entries(expect).filter(([k, v]) => {
             const got = c[k];
             if (typeof v === "string" && typeof got === "string") {
-                return k === "phone" ? got.replace(/\D/g, "").slice(-9) !== v.replace(/\D/g, "").slice(-9) : !got.toLowerCase().includes(v.toLowerCase());
+                return k === "phone" || k === "whatsapp" ? got.replace(/\D/g, "").slice(-9) !== v.replace(/\D/g, "").slice(-9) : !got.toLowerCase().includes(v.toLowerCase());
             }
             return got !== v;
         });

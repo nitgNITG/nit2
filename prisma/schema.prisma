@@ -204,6 +204,7 @@ model Conversation {
   messageCount     Int           @default(0)
   stateVersion     Int           @default(0) // bumped on every status transition
   qualification    Json? // QualificationSession + the lead draft before a Contact exists
+  verification     Json? // WhatsApp: pending account verification { email, at } (FR-WA5)
   knowledgeVersion Int?
   nextAction       String?
   tags             Json? // analytics tags by the fast model (FR-N1): service, country, intent, questions, unknownQuestions…

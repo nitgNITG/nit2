@@ -7,14 +7,18 @@ const turn = (reply: string, extra: Partial<Turn> = {}): Turn => ({ visitor: "q"
 const tx = (turns: Turn[], extra: Partial<Transcript> = {}): Transcript => ({ turns, contacts: [], status: "open", qualification: null, ...extra });
 
 describe("eval set (SRS §9.3)", () => {
-    it("has the sales conversations (62 from the SRS + 1) plus 12 support ones, with the documented group sizes", () => {
+    it("has the sales conversations (62 from the SRS + 1), 12 support and 6 WhatsApp ones, with the documented group sizes", () => {
         const support = CASES.filter((c) => c.group === "support" || c.group === "support_security");
-        const sales = CASES.filter((c) => !support.includes(c));
+        const whatsapp = CASES.filter((c) => c.group.startsWith("whatsapp"));
+        expect(whatsapp).toHaveLength(6);
+        expect(whatsapp.every((c) => c.channel === "whatsapp" && !c.user)).toBe(true);
+        expect(CASES.filter((c) => c.channel === "whatsapp")).toHaveLength(6);
+        const sales = CASES.filter((c) => !support.includes(c) && !whatsapp.includes(c));
         expect(sales).toHaveLength(63); // 62 from the SRS + rg-05 (EGP quote for a visitor in Egypt)
         expect(sales.filter((c) => c.locale === "ar")).toHaveLength(31);
         expect(support).toHaveLength(12);
         for (const [g, meta] of Object.entries(GROUPS)) expect({ g, n: CASES.filter((c) => c.group === g).length }).toEqual({ g, n: meta.expected });
-        expect(new Set(CASES.map((c) => c.id)).size).toBe(75);
+        expect(new Set(CASES.map((c) => c.id)).size).toBe(81);
     });
 
     it("support cases run signed in, except the one that checks signed-out access", () => {

@@ -36,6 +36,9 @@ export const ALLOWED_NUMBERS = Array.from(new Set([
 ]));
 
 // ── Signed-in client for the support cases (T2.4) ─────────────────────────────
+/** The WhatsApp sender in the whatsapp eval cases (not linked to any account). */
+export const WA_PHONE = "+201001234567";
+
 export const EVAL_CLIENT = { id: "eval-client", email: "owner@acme-edu.com", name: "Acme Owner", role: "client" as const };
 export const OTHER_CLIENT = { id: "eval-other", email: "owner@beta.com", name: "Beta Owner", role: "client" as const };
 export const TENANTS = [

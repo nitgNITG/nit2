@@ -71,7 +71,7 @@ export async function usageReport(from: string, to: string): Promise<UsageDay[]>
 
 export type ModelCost = { model: string; calls: number; tokensIn: number; tokensOut: number; costUsd: number };
 export type VisitorCost = {
-    key: string; kind: "user" | "guest" | "ip"; label: string; detail: string | null;
+    key: string; kind: "user" | "guest" | "ip" | "whatsapp"; label: string; detail: string | null;
     conversations: number; messages: number; tokensIn: number; tokensOut: number; costUsd: number;
     lastSeen: string; latestConversationId: string;
 };
@@ -122,16 +122,19 @@ export async function costBreakdown(from: string, to: string, by: "visitor" | "i
     const convs = perConv.size
         ? await prisma.conversation.findMany({
             where: { id: { in: Array.from(perConv.keys()) } },
-            select: { id: true, userId: true, sessionId: true, ipHash: true, contactId: true, messageCount: true, lastMessageAt: true },
+            select: { id: true, userId: true, sessionId: true, ipHash: true, phoneE164: true, contactId: true, messageCount: true, lastMessageAt: true },
         })
         : [];
     const groups = new Map<string, VisitorCost & { contactIds: Set<string>; userId: string | null }>();
     for (const c of convs) {
         const cost = perConv.get(c.id)!;
-        const key = by === "ip"
-            ? `ip:${c.ipHash ?? "unknown"}`
-            : c.userId ? `user:${c.userId}` : c.sessionId ? `guest:${c.sessionId}` : `ip:${c.ipHash ?? "unknown"}`;
-        const kind: VisitorCost["kind"] = key.startsWith("user:") ? "user" : key.startsWith("guest:") ? "guest" : "ip";
+        // WhatsApp chats have no IP or browser: they group by number either way.
+        const key = c.phoneE164 && (by === "ip" || !c.userId)
+            ? `wa:${c.phoneE164}`
+            : by === "ip"
+                ? `ip:${c.ipHash ?? "unknown"}`
+                : c.userId ? `user:${c.userId}` : c.sessionId ? `guest:${c.sessionId}` : `ip:${c.ipHash ?? "unknown"}`;
+        const kind: VisitorCost["kind"] = key.startsWith("user:") ? "user" : key.startsWith("guest:") ? "guest" : key.startsWith("wa:") ? "whatsapp" : "ip";
         const g = groups.get(key) ?? {
             key, kind, label: "", detail: null, conversations: 0, messages: 0, tokensIn: 0, tokensOut: 0, costUsd: 0,
             lastSeen: c.lastMessageAt.toISOString(), latestConversationId: c.id, contactIds: new Set<string>(), userId: c.userId ?? null,
@@ -154,12 +157,12 @@ export async function costBreakdown(from: string, to: string, by: "visitor" | "i
     const visitors: VisitorCost[] = top.map(({ contactIds: ids, userId, ...g }) => {
         const u = userId ? users.find((x) => x.id === userId) : undefined;
         const lead = contacts.find((x) => ids.has(x.id));
-        const hash = g.key.split(":")[1];
-        const fallback = g.kind === "ip" ? `IP #${hash.slice(0, 8)}` : g.kind === "guest" ? `Guest #${hash.slice(-6)}` : "Signed-in user";
+        const hash = g.key.slice(g.key.indexOf(":") + 1);
+        const fallback = g.kind === "ip" ? `IP #${hash.slice(0, 8)}` : g.kind === "guest" ? `Guest #${hash.slice(-6)}` : g.kind === "whatsapp" ? `WhatsApp ${hash}` : "Signed-in user";
         return {
             ...g,
             label: u?.name || u?.email || lead?.name || fallback,
-            detail: u?.email ?? lead?.email ?? (g.kind === "ip" ? null : fallback),
+            detail: g.kind === "whatsapp" ? fallback : u?.email ?? lead?.email ?? (g.kind === "ip" ? null : fallback),
             costUsd: round4(g.costUsd),
         };
     });

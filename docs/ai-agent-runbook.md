@@ -11,6 +11,10 @@ dashboard pages under `app/[locale]/dashboard/{conversations,agent-*,price-range
 | `ANTHROPIC_API_KEY` | console.anthropic.com → API Keys (one key per environment; set a monthly spend limit there as a backstop) |
 | `AGENT_IP_SALT` | any long random string: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 | `CRON_SECRET`, `TELEGRAM_*`, SMTP | already set for the existing crons and alerts |
+| `WHATSAPP_APP_SECRET` | Phase 3. Meta app → App settings → Basic → App secret (checks the webhook signature) |
+| `WHATSAPP_VERIFY_TOKEN` | Phase 3. Any long random string; the same value goes into Meta → WhatsApp → Configuration |
+| `CREDENTIAL_SECRET` | Already used for academy passwords; also encrypts the WhatsApp access token saved in AI Settings |
+| `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_WABA_ID` | Optional env fallback; normally entered in AI Settings → WhatsApp instead |
 
 ## 2. Deploy order (SRS §13.4)
 
@@ -53,6 +57,16 @@ already active — use it only after editing the JSON to the approved numbers.
 - **AI Settings → Abuse protection**: messages per IP per window, new chats per IP per hour, messages per visitor per day (account, else guest browser session), max messages per conversation. The panel under it shows today's blocked requests, the IPs blocked most and the busiest visitors.
 - **AI Settings → Team notifications**: handoff emails go to the admin alert emails (Platform Settings) + staff with the sales or support permission matching the chat; the staff owner is emailed when the visitor replies. Needs SMTP (`MAIL_HOST`/`MAIL_USER`/`MAIL_PASS`). Each person can also turn on sound + desktop alerts at the bottom of the dashboard sidebar.
 - **AI Usage & Cost**: cost per model, per UTC day (compare with the Anthropic console, which uses UTC and can lag a few hours) and per visitor / IP. Per-visitor cost exists only for calls made after this update. Days before 2026-10-06 overstate Haiku calls (summaries, tagging), which were priced as Opus because the API returns the dated id `claude-haiku-4-5-20251001`.
+
+## 2d. WhatsApp (phase 3)
+
+1. Meta Business Settings → **System users** → Add (role Admin) → **Assign assets**: the app (Full control → Manage app) and the WhatsApp account (Full control → Manage WhatsApp Business accounts).
+2. Same system user → **Generate token** → pick the app → permissions `business_management`, `whatsapp_business_messaging`, `whatsapp_business_management` → copy the token (choose "Never" for expiry if offered).
+3. Meta app → WhatsApp → **API Setup**: copy the **Phone number ID** and **WhatsApp Business Account ID**.
+4. Server `.env`: `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` (and `CREDENTIAL_SECRET` if missing) → `pm2 restart nit2-dev --update-env`.
+5. Dashboard → **AI Settings → WhatsApp**: paste the number id, account id and token → Save. All checks should be ✓. "Send test" sends Meta's `hello_world` template (with the test number, add the recipient under API Setup → To first).
+6. Meta app → WhatsApp → **Configuration** → Webhook: callback URL from the settings card (`…/api/agent/whatsapp/webhook`), verify token = `WHATSAPP_VERIFY_TOKEN` → Verify and save → **Manage** → subscribe to `messages`.
+7. Tick **AI answers on WhatsApp** in AI Settings → Save. Unticked, WhatsApp messages still arrive and go straight to the AI Inbox for the team.
 
 ## 3. Daily cron
 
@@ -131,3 +145,15 @@ Viewer. Staff accounts keep role `client`; they see only the agent pages their p
 - [ ] Reporting a bug → ticket number in the chat, the ticket in **Tickets**, a Telegram alert (AC-20.1).
 - [ ] Company profile + "meeting next Tuesday at 11:00" → profile button, request in **Meetings**, alert to sales (AC-30.1). Set the brochure links and the booking page in AI Settings first.
 - [ ] **AI Analytics** after the daily job has run: top topics, unknown questions; answering one adds it to the knowledge notes (AC-31.1).
+
+### Phase 3 (WhatsApp) — UAT on the real number
+
+- [ ] First message from a new number → the assistant replies on WhatsApp; the chat shows in the AI Inbox as **WhatsApp** with the number (AC-21.1).
+- [ ] Give a name → the lead in Contacts has that WhatsApp number and source `whatsapp`; the assistant never asks for the number.
+- [ ] A photo or voice note → "text only" reply.
+- [ ] "When does my academy expire?" from an unlinked number → asked for the account email; an unknown email gets the same answer as a real one (AC-34.1).
+- [ ] Real account email → code by email → typing it links the number (no code visible in the AI Inbox) → the next account question is answered (AC-34.2). 5 wrong codes → must start again.
+- [ ] Take over in the AI Inbox → the AI stops; your reply arrives on WhatsApp; the customer's next message shows in the inbox and alerts you (FR-WA4).
+- [ ] A conversation whose last customer message is older than 24 h → the reply box is disabled with the reason (FR-WA3).
+- [ ] Untick "AI answers on WhatsApp" → a new message goes straight to "waiting for a person", no auto-reply.
+

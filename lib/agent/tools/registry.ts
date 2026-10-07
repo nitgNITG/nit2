@@ -9,8 +9,9 @@ import { getWorkingHours, handoffToHuman } from "./common/handoff";
 import { captureLeadTool } from "./sales/captureLead";
 import { listPlans, recommendPlan, startCheckout } from "./sales/catalog";
 import { getPriceRange, searchKnowledgeTool, searchProjects } from "./sales/knowledge";
+import { startAccountVerification } from "./whatsapp/verification";
 import { getMyTenants, getPayments, getProvisioningStatus, getRenewalLink, getSubscription } from "./support/account";
-import { fail, type Mode, type ToolContext, type ToolDef, type ToolResult } from "./types";
+import { fail, type Channel, type Mode, type ToolContext, type ToolDef, type ToolResult } from "./types";
 
 // Fixed order → a stable tool list, so the cached prompt prefix stays valid.
 const ALL: ToolDef[] = [
@@ -18,14 +19,16 @@ const ALL: ToolDef[] = [
     startCheckout, getWorkingHours, captureLeadTool, handoffToHuman, sendBrochure, requestMeeting,
     // support mode only (signed-in clients)
     getMyTenants, getSubscription, getPayments, getProvisioningStatus, getRenewalLink, openTicket,
+    // WhatsApp only: link the phone to an account by email code (FR-WA5)
+    startAccountVerification,
 ] as ToolDef[];
 
-export function toolsFor(mode: Mode): ToolDef[] {
-    return ALL.filter((t) => t.modes.includes(mode));
+export function toolsFor(mode: Mode, channel: Channel = "web"): ToolDef[] {
+    return ALL.filter((t) => t.modes.includes(mode) && (!t.channels || t.channels.includes(channel)));
 }
 
-export function llmToolDefs(mode: Mode) {
-    return toolsFor(mode).map((t) => {
+export function llmToolDefs(mode: Mode, channel: Channel = "web") {
+    return toolsFor(mode, channel).map((t) => {
         const schema = z.toJSONSchema(t.schema, { io: "input" }) as Record<string, unknown>;
         delete schema.$schema;
         return { name: t.name, description: t.description, inputSchema: schema };
@@ -64,7 +67,9 @@ export async function executeTool(ctx: ToolContext, name: string, rawInput: unkn
     };
 
     const tool = getTool(name);
-    if (!tool || !tool.modes.includes(ctx.mode)) return done(fail("not_authorized", "This tool is not available here."));
+    if (!tool || !tool.modes.includes(ctx.mode) || (tool.channels && !tool.channels.includes(ctx.channel))) {
+        return done(fail("not_authorized", "This tool is not available here."));
+    }
 
     const parsed = tool.schema.safeParse(rawInput ?? {});
     if (!parsed.success) {

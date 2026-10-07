@@ -2,7 +2,7 @@
 // knowledgeVersion, config version) and cached; per-turn context (date, page,
 // qualification state, working hours) goes in the volatile block after it.
 import { yearsOfExperience, type AgentConfig } from "../config";
-import type { Locale, Mode } from "../tools/types";
+import type { Channel, Locale, Mode } from "../tools/types";
 import { servicesSummary } from "./sources";
 
 export function buildCorePrompt(cfg: AgentConfig, mode: Mode, locale: Locale, knowledgeVersion: number): string {
@@ -61,6 +61,7 @@ export function buildVolatileContext(input: {
     locale: Locale;
     page: string | null;
     topic: string | null;
+    channel?: Channel;
     signedIn: boolean;
     workingHoursOpen: boolean;
     qualification: string | null;
@@ -69,7 +70,12 @@ export function buildVolatileContext(input: {
         `Current date: ${input.now.toISOString().slice(0, 10)}`,
         `Visitor's language: ${input.locale === "ar" ? "Arabic" : "English"} — reply in it unless they switch`,
         input.page ? `Visitor is on page: ${input.page}${input.topic ? ` (topic: ${input.topic})` : ""}` : null,
-        `Visitor signed in: ${input.signedIn ? "yes" : "no — for account questions ask them to sign in"}`,
+        input.channel === "whatsapp"
+            ? "Channel: WhatsApp. Plain text only (no markdown headings or tables; *bold* is fine); keep replies short. Their WhatsApp number is already known — never ask for it; ask only for their name (and email if useful) when saving the lead."
+            : null,
+        input.channel === "whatsapp"
+            ? `Account linked to this WhatsApp number: ${input.signedIn ? "yes (verified by email code)" : "no — for questions about their own academy, store, subscription or payments, ask for their N.I.T account email and call start_account_verification"}`
+            : `Visitor signed in: ${input.signedIn ? "yes" : "no — for account questions ask them to sign in"}`,
         `NITG team available now: ${input.workingHoursOpen ? "yes" : "no (outside working hours)"}`,
         input.qualification ? `Qualification state: ${input.qualification}` : null,
     ];
