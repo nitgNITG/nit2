@@ -114,6 +114,9 @@ async function handOff(conv: Conv, cfg: AgentConfig, locale: Locale, reason: str
     if (send && r.ok) await reply(conv, r.nextReply);
 }
 
+/** One line per message so the server log shows what happened (number masked). */
+const trace = (m: WaInbound, outcome: string) => console.log(`[agent] whatsapp …${m.from.slice(-4)}: ${outcome}`);
+
 export async function processInbound(m: WaInbound): Promise<void> {
     const cfg = await getAgentConfig();
     const abuse = cfg.abuse;
@@ -121,11 +124,11 @@ export async function processInbound(m: WaInbound): Promise<void> {
     // Same limits as the website, per number instead of per IP / browser.
     if (!(await hit(`ip:msg:${key}`, abuse.ipMessagesPerWindow, abuse.ipWindowMinutes * 60_000)).allowed) {
         await recordBlocked("ip_messages", key);
-        return;
+        return trace(m, "blocked (too many messages in the window)");
     }
     if (!(await hit(`visitor:msg:${key}`, abuse.visitorMessagesPerDay, DAY_MS)).allowed) {
         await recordBlocked("visitor_daily", key);
-        return;
+        return trace(m, "blocked (daily message limit)");
     }
 
     void markWaRead(m.id, await getWaConfig());
@@ -139,9 +142,9 @@ export async function processInbound(m: WaInbound): Promise<void> {
     // Media, stickers, locations…: text only for now.
     if (m.text === null || !text) {
         await saveVisitor(conv.id, `[${m.type}]`, locale);
-        if (withPerson) return notifyStaffThrottled(conv.id, cfg);
+        if (withPerson) { trace(m, `${m.type} stored for the person handling it`); return notifyStaffThrottled(conv.id, cfg); }
         if (cfg.enabled.whatsapp) await reply(conv, msg("waTextOnly", locale));
-        return;
+        return trace(m, `${m.type} → text-only notice`);
     }
 
     // FR-WA5: a typed verification code is checked here and never stored or shown to the model.
@@ -151,29 +154,33 @@ export async function processInbound(m: WaInbound): Promise<void> {
         await saveVisitor(conv.id, "[verification code]", locale);
         const outcome = await confirmCode({ conversationId: conv.id, phoneE164: m.from, pending, code });
         await reply(conv, msg(outcome === "verified" ? "waVerified" : outcome === "wrong_code" ? "waWrongCode" : "waCodeExpired", locale));
-        return;
+        return trace(m, `verification code → ${outcome}`);
     }
 
     // A person owns it: store, tell them, no model call (FR-H3).
     if (withPerson) {
         await saveVisitor(conv.id, text, locale);
+        trace(m, `stored for the person handling it (${conv.status})`);
         return notifyStaffThrottled(conv.id, cfg);
     }
 
     // AI off for WhatsApp: the team answers from the inbox.
     if (!cfg.enabled.whatsapp) {
         await saveVisitor(conv.id, text, locale);
+        trace(m, "AI answers on WhatsApp is OFF → sent to the AI Inbox, no auto-reply");
         return handOff(conv, cfg, locale, "whatsapp_ai_off", text.slice(0, 500), false);
     }
 
     if (conv.messageCount >= cfg.limits.maxConversationMessages || conv.tokensIn + conv.tokensOut >= cfg.limits.maxConversationTokens) {
         await saveVisitor(conv.id, text, locale);
+        trace(m, "conversation limit reached → handed to the team");
         return handOff(conv, cfg, locale, "conversation_limit", text.slice(0, 500), true);
     }
 
     if (!(await budgetLeft(cfg.dailyBudgetUsd))) {
         if (await claimBudgetAlert()) await alertBudgetReached(cairoDate(), cfg.dailyBudgetUsd);
         await saveVisitor(conv.id, text, locale);
+        trace(m, "daily AI budget used up (or 0) → handed to the team");
         return handOff(conv, cfg, locale, "budget_exhausted", text.slice(0, 500), true);
     }
 
@@ -190,7 +197,7 @@ export async function processInbound(m: WaInbound): Promise<void> {
         if (!live || live.status !== "open" || Date.now() > deadline) {
             await saveVisitor(conv.id, text, locale);
             if (live && live.status !== "open") await notifyStaffThrottled(conv.id, cfg);
-            return;
+            return trace(m, "stored without a reply (another reply was still running)");
         }
         await sleep(1000);
     }
@@ -202,6 +209,7 @@ export async function processInbound(m: WaInbound): Promise<void> {
 
         if (isTenderRequest(text)) {
             const r = await performHandoff({ conversationId: conv.id, mode: conv.mode, locale, config: cfg, reason: "tender_or_rfp", summary: text.slice(0, 500) });
+            trace(m, "tender / RFP → handed to sales");
             return reply(conv, r.ok ? msg("tender", locale) + r.nextReply : msg("handoffOpen", locale));
         }
 
@@ -225,11 +233,13 @@ export async function processInbound(m: WaInbound): Promise<void> {
 
         if (failed) {
             // The model is down or out of budget: a person takes it from here.
+            trace(m, "AI model failed → handed to the team (see the error above)");
             return handOff(conv, cfg, locale, "model_unavailable", text.slice(0, 500), true);
         }
-        if (!messageId) return; // discarded: a person took over while the model was writing
+        if (!messageId) return trace(m, "reply discarded: a person took over while the AI was writing");
         const body = [replyText.trim() || handoffText, ...links.map((l) => `${l.label}: ${absolute(l.url)}`)].filter(Boolean).join("\n\n");
-        await deliver(m.from, messageId, body);
+        const delivered = await deliver(m.from, messageId, body);
+        trace(m, delivered ? `AI replied (${conv.mode})` : "AI reply NOT delivered (see 'whatsapp send failed' above)");
     } finally {
         await unlock();
     }

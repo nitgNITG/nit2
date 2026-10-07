@@ -35,8 +35,11 @@ export async function POST(req: Request) {
     if (messages.length) console.log(`[agent] whatsapp webhook: ${messages.length} message(s)`);
     for (const m of messages) {
         // Only our number (a WhatsApp account can hold several).
-        if (cfg?.phoneNumberId && m.phoneNumberId && m.phoneNumberId !== cfg.phoneNumberId) continue;
-        if (!(await claimInbound(m.id))) continue;
+        if (cfg?.phoneNumberId && m.phoneNumberId && m.phoneNumberId !== cfg.phoneNumberId) {
+            console.log(`[agent] whatsapp: ignored a message for another number id (${m.phoneNumberId}; ours is ${cfg.phoneNumberId}) — Meta's "Test" sample looks like this`);
+            continue;
+        }
+        if (!(await claimInbound(m.id))) { console.log("[agent] whatsapp: duplicate delivery ignored"); continue; }
         void enqueueInbound(m);
     }
     return new Response("OK", { status: 200 });
