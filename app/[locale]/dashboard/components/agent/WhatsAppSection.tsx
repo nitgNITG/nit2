@@ -1,7 +1,7 @@
 'use client'
 // AI Settings → WhatsApp (phase 3): Cloud API number id, account id and access
 // token (stored encrypted, never shown again), the webhook values to paste into
-// Meta, and a test send. The AI on/off switch is "WhatsApp on" under General.
+// Meta, and a test send. The AI on/off switch is "AI answers on WhatsApp" at the top.
 import React, { useEffect, useState } from 'react'
 import { api, btnGhost, btnPrimary, errorText, inputCls } from './ui'
 

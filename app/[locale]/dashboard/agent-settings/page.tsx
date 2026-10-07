@@ -188,7 +188,7 @@ export default function AgentSettingsPage() {
             </Section>
 
             <Section title='WhatsApp (Cloud API)'>
-                <p className='text-xs text-gray-500'>Saved separately from the settings below. The &quot;WhatsApp on&quot; switch above decides whether the AI answers; when it is off, WhatsApp messages go straight to the AI Inbox for the team.</p>
+                <p className='text-xs text-gray-500'>Saved separately from the settings below. The &quot;AI answers on WhatsApp&quot; switch at the top decides whether the AI answers; when it is off, WhatsApp messages go straight to the AI Inbox for the team.</p>
                 <WhatsAppSection />
             </Section>
 
