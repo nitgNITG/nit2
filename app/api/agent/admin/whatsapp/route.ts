@@ -1,10 +1,11 @@
 // /api/agent/admin/whatsapp (admin) — WhatsApp Cloud API settings for AI Settings.
 // GET: status (never the token); PUT: save number id / account id / token
-// (encrypted); POST: send Meta's hello_world template to a number as a test.
+// (encrypted); POST: send Meta's hello_world template to a number as a test,
+// or { action: "subscribe" } to link the app to the WhatsApp account.
 import { z } from "zod";
 import { apiError } from "@/lib/agent";
 import { guard } from "@/lib/agent/admin";
-import { saveWaSettings, sendWaTemplate, waStatus, WaSendError } from "@/lib/agent/channels/whatsapp/cloud";
+import { saveWaSettings, sendWaTemplate, subscribeWaba, waStatus, wabaSubscription, WaSendError } from "@/lib/agent/channels/whatsapp/cloud";
 import { normalizePhone } from "@/lib/spamRules";
 
 export const runtime = "nodejs";
@@ -15,7 +16,8 @@ const webhookUrl = () => `${(process.env.NEXT_PUBLIC_BASE_URL || "https://www.ni
 export async function GET() {
     const g = await guard("settings");
     if (g.res) return g.res;
-    return Response.json({ ...(await waStatus()), webhookUrl: webhookUrl() });
+    const status = await waStatus();
+    return Response.json({ ...status, webhookUrl: webhookUrl(), subscription: status.tokenSet ? await wabaSubscription() : null });
 }
 
 const SaveSchema = z.strictObject({
@@ -40,7 +42,13 @@ export async function PUT(req: Request) {
 export async function POST(req: Request) {
     const g = await guard("settings");
     if (g.res) return g.res;
-    const body = (await req.json().catch(() => null)) as { to?: string } | null;
+    const body = (await req.json().catch(() => null)) as { to?: string; action?: string } | null;
+    // Link this app to the WhatsApp account so Meta delivers its messages to our webhook.
+    if (body?.action === "subscribe") {
+        const r = await subscribeWaba();
+        if (!r.ok) return apiError(502, "whatsapp_subscribe_failed", r.error);
+        return Response.json({ subscribed: true, subscription: await wabaSubscription() });
+    }
     const to = normalizePhone(body?.to ?? "");
     if (!to || !to.startsWith("+")) return apiError(400, "validation_failed", "Use the full number with country code, e.g. +201001234567.");
     try {

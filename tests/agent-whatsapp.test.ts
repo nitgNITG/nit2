@@ -288,3 +288,28 @@ describe("a person on WhatsApp (FR-WA4, FR-H3)", () => {
         expect(sent).toEqual([]);
     });
 });
+
+describe("linking the app to the WhatsApp account (settings card)", () => {
+    it("shows which apps the account delivers to and links ours with one click (admin only)", async () => {
+        const { GET: status, POST: action } = await import("@/app/api/agent/admin/whatsapp/route");
+        process.env.WHATSAPP_WABA_ID = "2222";
+        let subscribed = false;
+        const calls: string[] = [];
+        vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+            calls.push(`${init?.method ?? "GET"} ${url}`);
+            if (url.endsWith("/2222/subscribed_apps") && init?.method === "POST") { subscribed = true; return new Response(JSON.stringify({ success: true })); }
+            if (url.endsWith("/2222/subscribed_apps")) return new Response(JSON.stringify({ data: subscribed ? [{ whatsapp_business_api_data: { id: "285", name: "WA_nit" } }] : [] }));
+            throw new Error(`unexpected ${url}`);
+        }));
+        getCurrentUser.mockResolvedValue({ id: "adm", email: "a@x", name: "A", role: "admin" });
+        expect((await (await status()).json()).subscription).toEqual({ ok: true, apps: [] });
+
+        const r = await action(new Request("http://l/x", { method: "POST", body: JSON.stringify({ action: "subscribe" }) }));
+        expect(await r.json()).toMatchObject({ subscribed: true, subscription: { ok: true, apps: [{ name: "WA_nit" }] } });
+        expect(calls).toContain("POST https://graph.facebook.com/v23.0/2222/subscribed_apps");
+
+        getCurrentUser.mockResolvedValue({ id: "c1", email: "c@x", name: null, role: "client" });
+        expect((await action(new Request("http://l/x", { method: "POST", body: JSON.stringify({ action: "subscribe" }) }))).status).toBe(403);
+        delete process.env.WHATSAPP_WABA_ID;
+    });
+});

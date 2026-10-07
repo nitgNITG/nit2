@@ -8,6 +8,7 @@ import { api, btnGhost, btnPrimary, errorText, inputCls } from './ui'
 type Status = {
     phoneNumberId: string; wabaId: string; graphVersion: string; tokenSet: boolean; tokenSource: 'dashboard' | 'env' | null
     appSecretSet: boolean; verifyTokenSet: boolean; encryptionReady: boolean; webhookUrl: string
+    subscription: { ok: true; apps: { id: string; name: string }[] } | { ok: false; error: string } | null
 }
 
 function Check({ ok, label, fix }: { ok: boolean; label: string; fix: string }) {
@@ -40,6 +41,15 @@ export default function WhatsAppSection() {
         apply(r.data)
         setMsg({ ok: true, text: 'WhatsApp settings saved.' })
     }
+    const link = async () => {
+        setBusy(true); setMsg(null)
+        const r = await api('/api/agent/admin/whatsapp', { method: 'POST', body: JSON.stringify({ action: 'subscribe' }) })
+        setBusy(false)
+        if (!r.ok) return setMsg({ ok: false, text: errorText(r) })
+        const g = await api<Status>('/api/agent/admin/whatsapp')
+        if (g.ok) apply(g.data)
+        setMsg({ ok: true, text: 'Linked. Send a WhatsApp message to the business number to test.' })
+    }
     const test = async () => {
         setBusy(true); setMsg(null)
         const r = await api<{ id: string }>('/api/agent/admin/whatsapp', { method: 'POST', body: JSON.stringify({ to }) })
@@ -58,6 +68,20 @@ export default function WhatsAppSection() {
                 <Check ok={s.appSecretSet} label='WHATSAPP_APP_SECRET on the server' fix='Meta app → App settings → Basic → App secret, into the server .env, then restart.' />
                 <Check ok={s.verifyTokenSet} label='WHATSAPP_VERIFY_TOKEN on the server' fix='Any long random string, in the server .env and in Meta → WhatsApp → Configuration.' />
                 <Check ok={s.encryptionReady} label='CREDENTIAL_SECRET on the server (encrypts the token)' fix='Needed before the token can be saved here.' />
+                {s.subscription && (
+                    <li className='flex flex-wrap items-center gap-2 text-sm'>
+                        {s.subscription.ok && s.subscription.apps.length > 0 ? (
+                            <><span aria-hidden className='text-emerald-600'>✓</span>
+                                <span>WhatsApp account delivers messages to: {s.subscription.apps.map((a) => a.name || a.id).join(', ')}
+                                    <span className='block text-xs text-gray-500'>This must include your app (e.g. WA_nit). If it doesn&apos;t, click Link.</span></span></>
+                        ) : (
+                            <><span aria-hidden className='text-red-600'>✗</span>
+                                <span>App linked to the WhatsApp account
+                                    <span className='block text-xs text-gray-500'>{s.subscription.ok ? 'No app is subscribed, so Meta sends incoming messages nowhere.' : s.subscription.error}</span></span></>
+                        )}
+                        <button type='button' className={btnGhost} disabled={busy} onClick={link}>Link app to WhatsApp account</button>
+                    </li>
+                )}
             </ul>
 
             <div className='rounded-lg bg-gray-50 p-3 text-xs text-gray-600 space-y-1'>

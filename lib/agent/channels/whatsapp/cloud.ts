@@ -134,6 +134,41 @@ export async function sendWaTemplate(toE164Phone: string, name: string, language
     return r.messages?.[0]?.id ?? null;
 }
 
+/**
+ * Meta only delivers a WhatsApp account's messages to the apps subscribed to
+ * it (POST /{waba}/subscribed_apps) — the app's webhook settings alone are not
+ * enough. Lists the subscribed apps; subscribe() links the token's app.
+ */
+export async function wabaSubscription(cfg?: WaCloudConfig | null): Promise<{ ok: true; apps: { id: string; name: string }[] } | { ok: false; error: string }> {
+    const c = cfg ?? (await getWaConfig());
+    if (!c?.wabaId) return { ok: false, error: "Set the WhatsApp Business Account ID first." };
+    try {
+        const res = await fetch(`${GRAPH}/${c.graphVersion}/${c.wabaId}/subscribed_apps`, {
+            headers: { Authorization: `Bearer ${c.accessToken}` }, signal: AbortSignal.timeout(15_000),
+        });
+        const json = (await res.json().catch(() => ({}))) as { data?: { whatsapp_business_api_data?: { id?: string; name?: string } }[]; error?: { message?: string } };
+        if (!res.ok || json.error) return { ok: false, error: json.error?.message ?? `HTTP ${res.status}` };
+        return { ok: true, apps: (json.data ?? []).map((d) => ({ id: d.whatsapp_business_api_data?.id ?? "", name: d.whatsapp_business_api_data?.name ?? "" })) };
+    } catch (e) {
+        return { ok: false, error: (e as Error).message };
+    }
+}
+
+export async function subscribeWaba(cfg?: WaCloudConfig | null): Promise<{ ok: true } | { ok: false; error: string }> {
+    const c = cfg ?? (await getWaConfig());
+    if (!c?.wabaId) return { ok: false, error: "Set the WhatsApp Business Account ID first." };
+    try {
+        const res = await fetch(`${GRAPH}/${c.graphVersion}/${c.wabaId}/subscribed_apps`, {
+            method: "POST", headers: { Authorization: `Bearer ${c.accessToken}` }, signal: AbortSignal.timeout(15_000),
+        });
+        const json = (await res.json().catch(() => ({}))) as { success?: boolean; error?: { message?: string } };
+        if (!res.ok || json.error || json.success === false) return { ok: false, error: json.error?.message ?? `HTTP ${res.status}` };
+        return { ok: true };
+    } catch (e) {
+        return { ok: false, error: (e as Error).message };
+    }
+}
+
 /** Blue ticks on the customer's message. Best-effort. */
 export async function markWaRead(messageId: string, cfg?: WaCloudConfig | null): Promise<void> {
     try {
