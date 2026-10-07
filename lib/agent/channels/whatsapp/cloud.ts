@@ -51,6 +51,25 @@ export async function waStatus() {
     };
 }
 
+/**
+ * Ask Meta whether the token works for this number (expired temporary tokens
+ * are the usual failure). Returns the number and its display name when it does.
+ */
+export async function checkWaToken(cfg?: WaCloudConfig | null): Promise<{ ok: true; number: string; name: string } | { ok: false; error: string }> {
+    const c = cfg ?? (await getWaConfig());
+    if (!c) return { ok: false, error: "No token or phone number ID yet." };
+    try {
+        const res = await fetch(`${GRAPH}/${c.graphVersion}/${c.phoneNumberId}?fields=display_phone_number,verified_name`, {
+            headers: { Authorization: `Bearer ${c.accessToken}` }, signal: AbortSignal.timeout(15_000),
+        });
+        const json = (await res.json().catch(() => ({}))) as { display_phone_number?: string; verified_name?: string; error?: { message?: string } };
+        if (!res.ok || json.error) return { ok: false, error: json.error?.message ?? `HTTP ${res.status}` };
+        return { ok: true, number: json.display_phone_number ?? "", name: json.verified_name ?? "" };
+    } catch (e) {
+        return { ok: false, error: (e as Error).message };
+    }
+}
+
 /** Save from the dashboard. An empty token keeps the stored one. */
 export async function saveWaSettings(input: { phoneNumberId: string; wabaId: string; accessToken?: string; graphVersion?: string }): Promise<{ ok: true } | { ok: false; error: string }> {
     const prev = await readStored();

@@ -294,15 +294,26 @@ describe("linking the app to the WhatsApp account (settings card)", () => {
         const { GET: status, POST: action } = await import("@/app/api/agent/admin/whatsapp/route");
         process.env.WHATSAPP_WABA_ID = "2222";
         let subscribed = false;
+        let expired = false;
         const calls: string[] = [];
         vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
             calls.push(`${init?.method ?? "GET"} ${url}`);
             if (url.endsWith("/2222/subscribed_apps") && init?.method === "POST") { subscribed = true; return new Response(JSON.stringify({ success: true })); }
             if (url.endsWith("/2222/subscribed_apps")) return new Response(JSON.stringify({ data: subscribed ? [{ whatsapp_business_api_data: { id: "285", name: "WA_nit" } }] : [] }));
+            if (url.includes("/1111?fields=")) {
+                return expired
+                    ? new Response(JSON.stringify({ error: { message: "Error validating access token: Session has expired" } }), { status: 400 })
+                    : new Response(JSON.stringify({ display_phone_number: "+1 555-630-5467", verified_name: "Test Number" }));
+            }
             throw new Error(`unexpected ${url}`);
         }));
         getCurrentUser.mockResolvedValue({ id: "adm", email: "a@x", name: "A", role: "admin" });
-        expect((await (await status()).json()).subscription).toEqual({ ok: true, apps: [] });
+        const first = await (await status()).json();
+        expect(first.subscription).toEqual({ ok: true, apps: [] });
+        expect(first.token).toEqual({ ok: true, number: "+1 555-630-5467", name: "Test Number" });
+        expired = true;
+        expect((await (await status()).json()).token).toMatchObject({ ok: false, error: expect.stringMatching(/expired/) });
+        expired = false;
 
         const r = await action(new Request("http://l/x", { method: "POST", body: JSON.stringify({ action: "subscribe" }) }));
         expect(await r.json()).toMatchObject({ subscribed: true, subscription: { ok: true, apps: [{ name: "WA_nit" }] } });

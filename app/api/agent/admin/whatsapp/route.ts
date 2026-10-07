@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { apiError } from "@/lib/agent";
 import { guard } from "@/lib/agent/admin";
-import { saveWaSettings, sendWaTemplate, subscribeWaba, waStatus, wabaSubscription, WaSendError } from "@/lib/agent/channels/whatsapp/cloud";
+import { checkWaToken, saveWaSettings, sendWaTemplate, subscribeWaba, waStatus, wabaSubscription, WaSendError } from "@/lib/agent/channels/whatsapp/cloud";
 import { normalizePhone } from "@/lib/spamRules";
 
 export const runtime = "nodejs";
@@ -17,7 +17,8 @@ export async function GET() {
     const g = await guard("settings");
     if (g.res) return g.res;
     const status = await waStatus();
-    return Response.json({ ...status, webhookUrl: webhookUrl(), subscription: status.tokenSet ? await wabaSubscription() : null });
+    const [token, subscription] = status.tokenSet ? await Promise.all([checkWaToken(), wabaSubscription()]) : [null, null];
+    return Response.json({ ...status, webhookUrl: webhookUrl(), token, subscription });
 }
 
 const SaveSchema = z.strictObject({
@@ -36,7 +37,9 @@ export async function PUT(req: Request) {
     }
     const r = await saveWaSettings(parsed.data);
     if (!r.ok) return apiError(400, "not_saved", r.error);
-    return Response.json({ ...(await waStatus()), webhookUrl: webhookUrl() });
+    const status = await waStatus();
+    const [token, subscription] = status.tokenSet ? await Promise.all([checkWaToken(), wabaSubscription()]) : [null, null];
+    return Response.json({ ...status, webhookUrl: webhookUrl(), token, subscription });
 }
 
 export async function POST(req: Request) {

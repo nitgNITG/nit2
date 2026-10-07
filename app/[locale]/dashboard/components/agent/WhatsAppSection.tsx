@@ -9,6 +9,7 @@ type Status = {
     phoneNumberId: string; wabaId: string; graphVersion: string; tokenSet: boolean; tokenSource: 'dashboard' | 'env' | null
     appSecretSet: boolean; verifyTokenSet: boolean; encryptionReady: boolean; webhookUrl: string
     subscription: { ok: true; apps: { id: string; name: string }[] } | { ok: false; error: string } | null
+    token: { ok: true; number: string; name: string } | { ok: false; error: string } | null
 }
 
 function Check({ ok, label, fix }: { ok: boolean; label: string; fix: string }) {
@@ -63,7 +64,11 @@ export default function WhatsAppSection() {
     return (
         <div className='space-y-4'>
             <ul className='space-y-1'>
-                <Check ok={s.tokenSet} label={`Access token${s.tokenSource ? ` (from ${s.tokenSource})` : ''}`} fix='Paste the permanent System User token below.' />
+                <Check ok={s.tokenSet && !!s.token?.ok}
+                    label={s.token?.ok ? `Access token works — ${s.token.name || 'number'} ${s.token.number}` : `Access token${s.tokenSource ? ` (from ${s.tokenSource})` : ''}`}
+                    fix={s.token && !s.token.ok
+                        ? `Meta refused it: ${s.token.error} — use a permanent System User token (the one on API Setup expires after ~24 h).`
+                        : 'Paste the permanent System User token below.'} />
                 <Check ok={!!s.phoneNumberId} label='Phone number ID' fix='WhatsApp → API Setup in the Meta app.' />
                 <Check ok={s.appSecretSet} label='WHATSAPP_APP_SECRET on the server' fix='Meta app → App settings → Basic → App secret, into the server .env, then restart.' />
                 <Check ok={s.verifyTokenSet} label='WHATSAPP_VERIFY_TOKEN on the server' fix='Any long random string, in the server .env and in Meta → WhatsApp → Configuration.' />
