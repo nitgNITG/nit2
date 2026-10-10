@@ -23,7 +23,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "agent:eval": "vitest run --config vitest.eval.config.ts",
-    "seed:price-ranges": "node scripts/seed-price-ranges.mjs"
+    "seed:price-ranges": "node scripts/seed-price-ranges.mjs",
+    "seed:followup-test": "node scripts/seed-followup-test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
