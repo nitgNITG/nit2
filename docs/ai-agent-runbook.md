@@ -72,6 +72,17 @@ AI alerts (handoffs, HOT leads, tickets, meetings, budget, errors) use the share
 6. Meta app → WhatsApp → **Configuration** → Webhook: callback URL from the settings card (`…/api/agent/whatsapp/webhook`), verify token = `WHATSAPP_VERIFY_TOKEN` → Verify and save → **Manage** → subscribe to `messages`.
 7. Tick **AI answers on WhatsApp** in AI Settings → Save. Unticked, WhatsApp messages still arrive and go straight to the AI Inbox for the team.
 
+## 2f. Follow-ups (phase 4)
+
+The daily job (E18) drafts follow-ups into **Dashboard → Follow-ups**; nothing is sent until someone with the sales permission (or an admin) clicks **Approve & send**. Three kinds, each switchable in **AI Settings → Follow-ups**:
+- **Follow-up date today** — set **Next follow-up** on a lead (AI Inbox lead panel or the Contacts popup).
+- **Checkout not paid** — a checkout link given in chat, no paid payment after 48 h (by the signed-in account or an account with the lead's email).
+- **Didn't come back** — a chat lead who left a phone / WhatsApp number, said yes to being contacted, and hasn't written for 24 h (skipped if a person already handled the chat).
+
+Consent: chat / WhatsApp leads need an explicit yes; contact-form leads asked to be contacted; a "no" is never contacted (re-checked when sending).
+
+Sending: WhatsApp first (as plain text if the customer wrote in the last 24 h, else through the approved template), else email (SMTP). Create the template in WhatsApp Manager → Message templates: name `nit_followup`, category **Marketing**, languages Arabic + English, body with two variables, e.g. `Hello {{1}}, this is the N.I.T team. {{2}} Reply here if you'd like to continue.` ({{1}} = first name, {{2}} = the approved text). Put the name and language codes in AI Settings → Follow-ups.
+
 ## 3. Daily cron
 
 Scheduled by the GitHub Actions workflow `.github/workflows/agent-daily-cron.yml` (00:30 UTC,
@@ -160,4 +171,12 @@ Viewer. Staff accounts keep role `client`; they see only the agent pages their p
 - [ ] Take over in the AI Inbox → the AI stops; your reply arrives on WhatsApp; the customer's next message shows in the inbox and alerts you (FR-WA4).
 - [ ] A conversation whose last customer message is older than 24 h → the reply box is disabled with the reason (FR-WA3).
 - [ ] Untick "AI answers on WhatsApp" → a new message goes straight to "waiting for a person", no auto-reply.
+
+### Phase 4 (follow-ups) — UAT
+
+- [ ] Set **Next follow-up = today** on a test lead → run the daily job (GitHub → Actions → agent-daily-cron → Run workflow) → a draft appears in **Follow-ups**, nothing is sent, one Telegram note (AC-22.1).
+- [ ] Edit the draft → **Approve & send** → it arrives (WhatsApp template or email); the lead becomes "contacted"; **AI Follow-up approved** shows on the lead timeline (AC-22.2). Clicking Send again is refused (TS-28).
+- [ ] Chat as a visitor, leave a phone number and say **no** to being contacted; another time say **yes**; wait 24 h (or set the hours to 1 in settings) → only the "yes" chat gets a draft (AC-32.1).
+- [ ] Get a checkout button in chat, don't pay → after 48 h (or 1 h in settings) a "Checkout not paid" draft; pay first → no draft.
+- [ ] **Discard** a draft → it is never sent and shows under Discarded.
 

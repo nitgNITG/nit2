@@ -8,7 +8,7 @@ import type { IconType } from 'react-icons'
 import {
     LuBadgeDollarSign, LuBell, LuBellOff, LuBot, LuCalendarClock, LuChartColumn, LuChartLine, LuContact, LuCreditCard,
     LuFolderKanban, LuGlobe, LuGraduationCap, LuHandshake, LuHeartPulse, LuInbox, LuKeyRound, LuLayoutDashboard,
-    LuMenu, LuNewspaper, LuPlug, LuReceipt, LuSparkles, LuStore, LuTags, LuTicket, LuUserCog, LuX,
+    LuMailCheck, LuMenu, LuNewspaper, LuPlug, LuReceipt, LuSparkles, LuStore, LuTags, LuTicket, LuUserCog, LuX,
 } from 'react-icons/lu'
 import useClickOutside from '../../hook/useClickOutSide'
 import { Logo } from '../../components/icons'
@@ -22,7 +22,7 @@ const ICONS: Record<NavIcon, IconType> = {
     blog: LuNewspaper, plans: LuBadgeDollarSign, academies: LuGraduationCap, stores: LuStore, payments: LuCreditCard,
     revenue: LuChartLine, licenses: LuKeyRound, platform: LuGlobe, integrations: LuPlug, health: LuHeartPulse,
     inbox: LuInbox, priceRanges: LuReceipt, tickets: LuTicket, meetings: LuCalendarClock, usage: LuChartColumn,
-    analytics: LuSparkles, aiSettings: LuBot, staff: LuUserCog,
+    analytics: LuSparkles, aiSettings: LuBot, staff: LuUserCog, followups: LuMailCheck,
 }
 
 function Badge({ n, tone = 'red', title }: { n: number; tone?: 'red' | 'amber'; title?: string }) {
@@ -102,6 +102,7 @@ const Sidebar = ({ isAdmin = true, agentItems = [] }: { isAdmin?: boolean; agent
                                                     <Icon aria-hidden className={clsx('size-[18px] shrink-0', active ? 'text-emerald-600' : 'text-gray-400 group-hover:text-gray-600')} />
                                                     <span className='truncate'>{item.label}</span>
                                                     {item.badge === 'contacts' && <Badge n={Number(unReadContact) || 0} title='Unread contacts' />}
+                                                    {item.badge === 'drafts' && <Badge n={inbox.drafts} tone='amber' title='Follow-up drafts waiting for approval' />}
                                                     {item.badge === 'inbox' && (
                                                         <span className='ms-auto flex gap-1'>
                                                             <Badge n={inbox.waiting} title='Waiting for a person' />

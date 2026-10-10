@@ -193,6 +193,30 @@ export default function AgentSettingsPage() {
                 <WhatsAppSection />
             </Section>
 
+            <Section title='Follow-ups (drafted by the AI, sent after approval)'>
+                <p className='text-xs text-gray-500'>Each morning the AI drafts follow-ups in <b>Follow-ups</b>. Nothing is sent until someone approves it. Chat leads are only contacted if they agreed; a &quot;no&quot; is never contacted.</p>
+                <div className='flex flex-wrap gap-4 text-sm'>
+                    <label className='flex items-center gap-2'><input type='checkbox' checked={cfg.followups.dueLeads} onChange={(e) => set('followups.dueLeads', e.target.checked)} /> Leads whose follow-up date is today</label>
+                    <label className='flex items-center gap-2'><input type='checkbox' checked={cfg.followups.unpaidCheckouts} onChange={(e) => set('followups.unpaidCheckouts', e.target.checked)} /> Checkouts started in chat but not paid</label>
+                    <label className='flex items-center gap-2'><input type='checkbox' checked={cfg.followups.abandoned} onChange={(e) => set('followups.abandoned', e.target.checked)} /> Visitors who left a number and didn&apos;t come back</label>
+                </div>
+                <div className='grid grid-cols-1 gap-3 text-sm md:grid-cols-3'>
+                    <label>Checkout reminder after (hours)<input type='number' min={1} max={168} className={inputCls} value={cfg.followups.checkoutAfterHours} onChange={num('followups.checkoutAfterHours')} /></label>
+                    <label>&quot;Didn&apos;t come back&quot; after (hours)<input type='number' min={1} max={144} className={inputCls} value={cfg.followups.abandonedAfterHours} onChange={num('followups.abandonedAfterHours')} /></label>
+                    <label>Max drafts per day<input type='number' min={1} max={200} className={inputCls} value={cfg.followups.maxPerRun} onChange={num('followups.maxPerRun')} /></label>
+                </div>
+                <div className='rounded-lg bg-gray-50 p-3 text-xs text-gray-600 space-y-1'>
+                    <div><b>WhatsApp template</b> — used when the customer hasn&apos;t written on WhatsApp in the last 24 h (Meta&apos;s rule). Create it in WhatsApp Manager → Message templates, category <b>Marketing</b>, in Arabic and English, with exactly two variables:</div>
+                    <div className='font-mono'>Hello {'{{1}}'}, this is the N.I.T team. {'{{2}}'} Reply here if you&apos;d like to continue.</div>
+                    <div>{'{{1}}'} = first name, {'{{2}}'} = the approved message. Leave the name empty to send follow-ups only by email or inside the 24-hour window.</div>
+                </div>
+                <div className='grid grid-cols-1 gap-3 text-sm md:grid-cols-3'>
+                    <label>Template name<input className={inputCls} dir='ltr' value={cfg.followups.whatsappTemplate.name} onChange={text('followups.whatsappTemplate.name')} placeholder='nit_followup' /></label>
+                    <label>Arabic language code<input className={inputCls} dir='ltr' value={cfg.followups.whatsappTemplate.languageAr} onChange={text('followups.whatsappTemplate.languageAr')} placeholder='ar' /></label>
+                    <label>English language code<input className={inputCls} dir='ltr' value={cfg.followups.whatsappTemplate.languageEn} onChange={text('followups.whatsappTemplate.languageEn')} placeholder='en' /></label>
+                </div>
+            </Section>
+
             <Section title='Team notifications'>
                 <p className='text-xs text-gray-500'>Telegram alerts always go out (if Telegram is set up). Emails need SMTP and go one per person; they carry no visitor contact details, only a link to the conversation.</p>
                 <label className='flex items-center gap-2 text-sm'><input type='checkbox' checked={cfg.notifications.emailOnHandoff} onChange={(e) => set('notifications.emailOnHandoff', e.target.checked)} />

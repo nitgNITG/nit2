@@ -44,6 +44,24 @@ export const AbuseSchema = z.strictObject({
 });
 export type AbuseLimits = z.infer<typeof AbuseSchema>;
 
+/** Phase 4: AI-drafted follow-ups, sent only after a person approves (FR-F1–F4). */
+export const FollowUpsSchema = z.strictObject({
+    dueLeads: z.boolean(), // FR-F1: leads whose next follow-up date is today
+    unpaidCheckouts: z.boolean(), // FR-F2: checkout links from chat not paid
+    abandoned: z.boolean(), // FR-F4: consented visitors who did not come back
+    checkoutAfterHours: z.number().int().min(1).max(168),
+    abandonedAfterHours: z.number().int().min(1).max(144),
+    maxPerRun: z.number().int().min(1).max(200),
+    // Approved WhatsApp template for messages outside the 24-hour window. Body
+    // must have {{1}} = name and {{2}} = the approved message text.
+    whatsappTemplate: z.strictObject({
+        name: z.string().regex(/^[a-z0-9_]{0,512}$/, "lowercase letters, digits and _"),
+        languageAr: z.string().regex(/^[a-z]{2}(_[A-Z]{2})?$/),
+        languageEn: z.string().regex(/^[a-z]{2}(_[A-Z]{2})?$/),
+    }),
+});
+export type FollowUpsConfig = z.infer<typeof FollowUpsSchema>;
+
 const ConfigBodySchema = z.strictObject({
     enabled: z.strictObject({ web: z.boolean(), whatsapp: z.boolean() }),
     greeting: Bilingual(500),
@@ -79,6 +97,7 @@ const ConfigBodySchema = z.strictObject({
     // Emails on top of Telegram (SMTP must be set up): the inbox team on handoff,
     // and the staff owner when the visitor replies.
     notifications: z.strictObject({ emailOnHandoff: z.boolean(), emailOwnerOnReply: z.boolean() }),
+    followups: FollowUpsSchema,
 });
 export type AgentConfigBody = z.infer<typeof ConfigBodySchema>;
 export type AgentConfig = AgentConfigBody & { version: number };
@@ -126,6 +145,11 @@ export const DEFAULT_CONFIG: AgentConfig = {
     },
     abuse: { ipMessagesPerWindow: 20, ipWindowMinutes: 10, ipNewConversationsPerHour: 5, visitorMessagesPerDay: 150 },
     notifications: { emailOnHandoff: true, emailOwnerOnReply: true },
+    followups: {
+        dueLeads: true, unpaidCheckouts: true, abandoned: true,
+        checkoutAfterHours: 48, abandonedAfterHours: 24, maxPerRun: 30,
+        whatsappTemplate: { name: "nit_followup", languageAr: "ar", languageEn: "en" },
+    },
 };
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {

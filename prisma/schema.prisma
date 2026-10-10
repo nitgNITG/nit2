@@ -109,8 +109,10 @@ model Contact {
   consentContact       Boolean?
   consentAt            DateTime?
   conversationId       String?   @db.ObjectId // conversation that captured the lead
+  nextFollowUpAt       DateTime? // sales sets it; the daily job drafts a follow-up that day (FR-F1)
 
   @@index([tier, createdAt])
+  @@index([nextFollowUpAt])
   @@index([whatsapp])
   @@index([email])
 }
@@ -232,7 +234,7 @@ model ChatMessage {
   role           String // visitor | assistant | staff | tool | system
   content        String // text shown to the person, or redacted JSON for tool rows
   toolName       String?
-  status         String       @default("sent") // sent | draft | failed
+  status         String       @default("sent") // sent | draft | discarded | failed
   staffId        String?
   model          String?
   tokensIn       Int?
@@ -241,10 +243,13 @@ model ChatMessage {
   turnId         String?
   toolUseId      String?
   idempotencyKey String? // uniqueness is enforced by IdempotencyRecord, not here (Mongo unique + missing field = collisions)
+  // Phase 4 follow-up (status draft → sent | discarded): { kind, channel, to, locale, contactId, … }
+  followup       Json?
   createdAt      DateTime     @default(now())
 
   @@index([conversationId, createdAt])
   @@index([idempotencyKey])
+  @@index([status, createdAt])
 }
 
 model AgentSession {
@@ -289,7 +294,7 @@ model IdempotencyRecord {
 model AgentUsageEvent {
   id               String   @id @default(auto()) @map("_id") @db.ObjectId
   date             String // Africa/Cairo day, same as UsageDaily
-  kind             String // chat | brief | tags
+  kind             String // chat | brief | tags | followup
   model            String // as returned by the API
   conversationId   String?  @db.ObjectId
   inputTokens      Int

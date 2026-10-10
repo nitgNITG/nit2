@@ -7,7 +7,8 @@ import { sendWaText } from "./channels/whatsapp/cloud";
 import { relatedConversations } from "./history";
 import { apiError, OBJECT_ID } from "./http";
 import { release, takeOver } from "./runtime/state";
-import type { AgentStaff } from "./security/authorization";
+import { countDrafts } from "./followups";
+import { can, type AgentStaff } from "./security/authorization";
 
 type Loaded = { conv: NonNullable<Awaited<ReturnType<typeof prisma.conversation.findUnique>>>; res?: never } | { conv?: never; res: Response };
 
@@ -106,6 +107,8 @@ export async function whatsappWindow(conversationId: string, now: Date = new Dat
 export type InboxSummary = {
     waiting: number;
     mine: number;
+    /** Follow-up drafts waiting for approval (staff who may approve them). */
+    drafts: number;
     /** Newest first; the sidebar alerts on ids it has not seen yet. */
     waitingItems: { id: string; mode: string; since: string }[];
 };
@@ -113,13 +116,14 @@ export type InboxSummary = {
 /** Waiting-for-a-person conversations in this staff member's inboxes, and the ones they own. */
 export async function inboxSummary(staff: AgentStaff): Promise<InboxSummary> {
     const modes = allowedModes(staff);
-    const [waiting, mine, rows] = await Promise.all([
+    const [waiting, mine, rows, drafts] = await Promise.all([
         prisma.conversation.count({ where: { status: "waiting_human", mode: { in: modes } } }),
         prisma.conversation.count({ where: { status: "human", assignedTo: staff.user.id } }),
         prisma.conversation.findMany({
             where: { status: "waiting_human", mode: { in: modes } },
             orderBy: { lastMessageAt: "desc" }, take: 20, select: { id: true, mode: true, lastMessageAt: true },
         }),
+        can(staff, "drafts") ? countDrafts() : Promise.resolve(0),
     ]);
-    return { waiting, mine, waitingItems: rows.map((r) => ({ id: r.id, mode: r.mode, since: r.lastMessageAt.toISOString() })) };
+    return { waiting, mine, drafts, waitingItems: rows.map((r) => ({ id: r.id, mode: r.mode, since: r.lastMessageAt.toISOString() })) };
 }

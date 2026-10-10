@@ -16,9 +16,9 @@ export type NavGroup = (typeof NAV_GROUPS)[number]['key']
 export type NavIcon =
     | 'dashboard' | 'projects' | 'types' | 'sponsors' | 'contacts' | 'blog' | 'plans' | 'academies' | 'stores'
     | 'payments' | 'revenue' | 'licenses' | 'platform' | 'integrations' | 'health' | 'inbox' | 'priceRanges'
-    | 'tickets' | 'meetings' | 'usage' | 'analytics' | 'aiSettings' | 'staff'
+    | 'tickets' | 'meetings' | 'usage' | 'analytics' | 'aiSettings' | 'staff' | 'followups'
 
-export type NavItem = { label: string; href: string; group: NavGroup; icon: NavIcon; badge?: 'contacts' | 'inbox' }
+export type NavItem = { label: string; href: string; group: NavGroup; icon: NavIcon; badge?: 'contacts' | 'inbox' | 'drafts' }
 
 /** The admin-only pages. The AI-agent pages come from agentNav() (lib/agent/admin.ts). */
 export const ADMIN_NAV: NavItem[] = [
@@ -42,7 +42,7 @@ export const ADMIN_NAV: NavItem[] = [
 /** Order inside a group (admin and AI-agent items interleave); unknown pages go last. */
 const ORDER = [
     '/dashboard',
-    '/dashboard/conversations', '/dashboard/contacts', '/dashboard/meetings', '/dashboard/price-ranges',
+    '/dashboard/conversations', '/dashboard/contacts', '/dashboard/follow-ups', '/dashboard/meetings', '/dashboard/price-ranges',
     '/dashboard/academies', '/dashboard/stores', '/dashboard/tickets',
     '/dashboard/plans', '/dashboard/licenses', '/dashboard/payments', '/dashboard/revenue',
     '/dashboard/projects', '/dashboard/types', '/dashboard/sponsers', '/dashboard/blog',

@@ -4,7 +4,14 @@ import { z } from "zod";
 import prisma from "@/prisma/client";
 import { getAgentConfig } from "./config";
 import { budgetBand, LeadRequirementsSchema, ORG_TYPES, TIMELINES } from "./qualification/schemas";
+import { zonedToUtc } from "./runtime/hours";
 import { scoreFields } from "./scoring/recalc";
+
+/** A follow-up day → 09:00 Cairo that day (the daily job matches the whole Cairo day). */
+const followUpDay = (ymd: string) => {
+    const [y, m, d] = ymd.split("-").map(Number);
+    return zonedToUtc(y, m, d, 9, 0, "Africa/Cairo");
+};
 
 export const LeadEditSchema = z.strictObject({
     country: z.string().regex(/^[A-Za-z]{2}$/).nullable().optional(),
@@ -15,6 +22,8 @@ export const LeadEditSchema = z.strictObject({
     status: z.enum(["new", "contacted", "won", "lost"]).optional(),
     notes: z.string().max(5000).nullable().optional(),
     requirements: LeadRequirementsSchema.optional(),
+    // FR-F1: the day the AI drafts a follow-up (Cairo date); null clears it.
+    nextFollowUpAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD").nullable().optional(),
 });
 export type LeadEdit = z.infer<typeof LeadEditSchema>;
 
@@ -37,6 +46,7 @@ export async function updateLead(id: string, edit: LeadEdit) {
         ...(edit.company !== undefined ? { company: edit.company } : {}),
         ...(edit.status !== undefined ? { status: edit.status } : {}),
         ...(edit.notes !== undefined ? { notes: edit.notes } : {}),
+        ...(edit.nextFollowUpAt !== undefined ? { nextFollowUpAt: edit.nextFollowUpAt ? followUpDay(edit.nextFollowUpAt) : null } : {}),
         budget: budgetBand((req.budgetMinUsd ?? req.budgetMaxUsd) as number | undefined) ?? c.budget ?? null,
         requirements: req as object,
     };

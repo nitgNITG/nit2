@@ -1,6 +1,7 @@
 'use client'
 import React, { useCallback, useEffect, useState } from 'react'
 import LeadTimeline from './agent/LeadTimeline'
+import FollowUpDate from './agent/FollowUpDate'
 import axios from 'axios'
 import { useStore } from '@/lib/zustand'
 
@@ -265,6 +266,11 @@ function ContactModal({ contact: c, onClose, onStatusChange, onNotesChange }: {
                     <div className='bg-blue-50 border border-blue-100 rounded-xl p-4'>
                         <p className='text-xs font-bold uppercase text-blue-400 mb-2 tracking-wider'>Message</p>
                         <p className='text-sm text-gray-800 leading-relaxed whitespace-pre-wrap'>{c.message}</p>
+                    </div>
+
+                    {/* Next follow-up (FR-F1): the AI drafts a message that day for approval */}
+                    <div className='rounded-xl border border-gray-200 p-4'>
+                        <FollowUpDate key={c.id} contactId={c.id} value={c.nextFollowUpAt} />
                     </div>
 
                     {/* AI assistant timeline (FR-I4) — leads that came from the chat */}

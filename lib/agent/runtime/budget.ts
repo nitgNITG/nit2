@@ -35,7 +35,7 @@ export async function reserve(estimateUsd: number, budgetUsd: number, now: Date 
     return res.count === 1 ? { date, estimateUsd } : null;
 }
 
-export type CallMeta = { kind: "chat" | "brief" | "tags"; model: string; conversationId?: string | null };
+export type CallMeta = { kind: "chat" | "brief" | "tags" | "followup"; model: string; conversationId?: string | null };
 
 /**
  * Replace the reservation with the actual cost (0 actual = call failed before usage).

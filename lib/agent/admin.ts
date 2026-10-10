@@ -42,6 +42,7 @@ const PAGES: { prefix: string; caps: Capability[] }[] = [
     { prefix: "/dashboard/agent-analytics", caps: ["analytics"] },
     { prefix: "/dashboard/tickets", caps: ["tickets"] },
     { prefix: "/dashboard/meetings", caps: ["meetings"] },
+    { prefix: "/dashboard/follow-ups", caps: ["drafts"] },
 ];
 
 /** Is this dashboard path (locale already stripped) open to the staff member? Unknown paths: admins only. */
@@ -63,6 +64,7 @@ export function agentNav(staff: AgentStaff): NavItem[] {
         { label: "Price Ranges", href: "/dashboard/price-ranges", group: "sales", icon: "priceRanges", caps: ["price_ranges"] },
         { label: "Tickets", href: "/dashboard/tickets", group: "customers", icon: "tickets", caps: ["tickets"] },
         { label: "Meetings", href: "/dashboard/meetings", group: "sales", icon: "meetings", caps: ["meetings"] },
+        { label: "Follow-ups", href: "/dashboard/follow-ups", group: "sales", icon: "followups", badge: "drafts", caps: ["drafts"] },
         { label: "AI Usage & Cost", href: "/dashboard/agent-usage", group: "ai", icon: "usage", caps: ["analytics"] },
         { label: "AI Analytics", href: "/dashboard/agent-analytics", group: "ai", icon: "analytics", caps: ["analytics"] },
         { label: "AI Settings", href: "/dashboard/agent-settings", group: "ai", icon: "aiSettings", caps: ["settings"] },

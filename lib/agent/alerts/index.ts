@@ -96,6 +96,12 @@ export async function alertMeeting(input: { conversationId: string; preferredAt:
     await alertAdmins("📅 Meeting requested via the AI assistant", `When: ${when} (Cairo)\nChannel: ${input.channel}\nOpen: ${dashboardLink(input.conversationId)}`, { telegram: agentTelegram });
 }
 
+/** Daily job created follow-up drafts (FR-F3: they wait for approval). */
+export async function alertFollowUpDrafts(count: number): Promise<void> {
+    const base = (process.env.NEXT_PUBLIC_BASE_URL || "https://www.nitg-eg.com").replace(/\/$/, "");
+    await agentTelegram(`📝 ${count} follow-up draft${count === 1 ? "" : "s"} waiting for approval\nNothing is sent until someone approves.\nOpen: ${base}/en/dashboard/follow-ups`);
+}
+
 export async function alertBudgetReached(date: string, budgetUsd: number): Promise<void> {
     await alertAdmins("⚠️ AI assistant daily budget reached", `The AI assistant used its $${budgetUsd} budget for ${date}. Visitors now see the WhatsApp / contact-form fallback until tomorrow.`, { telegram: agentTelegram });
 }

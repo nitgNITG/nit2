@@ -5,8 +5,10 @@
 //     braces (and cover environments where scripts/agent-indexes.mjs never ran).
 // Kept: Contact / consent (CRM policy), tickets, meeting requests.
 import prisma from "@/prisma/client";
+import { alertFollowUpDrafts } from "./alerts";
 import { tagPending } from "./analytics";
 import type { AgentConfig } from "./config";
+import { createFollowUpDrafts, type DraftRunResult } from "./followups";
 import { generateBrief } from "./runtime/brief";
 import { cairoDate } from "./runtime/budget";
 import { transition } from "./runtime/state";
@@ -35,7 +37,8 @@ export type MaintenanceResult = {
     tagged: number; // analytics tags written this run (FR-N1)
     deleted: number;
     deletedBy: { conversations: number; messages: number; toolAudits: number; idempotency: number; sessions: number; rateLimits: number; usageDays: number };
-    drafts: number; // phase 4 (follow-up drafts)
+    drafts: number; // phase 4: follow-up drafts created this run (FR-F1, F2, F4)
+    draftsBy: DraftRunResult;
 };
 
 export async function runDailyMaintenance(cfg: AgentConfig, now: Date = new Date()): Promise<MaintenanceResult> {
@@ -60,6 +63,16 @@ export async function runDailyMaintenance(cfg: AgentConfig, now: Date = new Date
     // 1b) Analytics tags for finished conversations (bounded per run; cost-capped by the budget).
     const tagged = await tagPending(cfg, MAX_SUMMARIES_PER_RUN);
 
+    // 1c) Follow-up drafts (phase 4). Drafts only — staff approve before anything is sent (FR-F3).
+    let draftsBy: DraftRunResult = { due: 0, checkout: 0, abandoned: 0, skipped: 0 };
+    try {
+        draftsBy = await createFollowUpDrafts(cfg, now);
+    } catch (e) {
+        console.error("[agent] follow-up drafts failed", (e as Error).message);
+    }
+    const drafts = draftsBy.due + draftsBy.checkout + draftsBy.abandoned;
+    if (drafts > 0) await alertFollowUpDrafts(drafts);
+
     // 2) Retention.
     const oldChat = monthsAgo(now, RETENTION.chatMonths);
     const expired = await prisma.conversation.findMany({ where: { lastMessageAt: { lt: oldChat } }, select: { id: true }, take: 5000 });
@@ -79,6 +92,7 @@ export async function runDailyMaintenance(cfg: AgentConfig, now: Date = new Date
         tagged,
         deleted: Object.values(deletedBy).reduce((a, b) => a + b, 0),
         deletedBy,
-        drafts: 0,
+        drafts,
+        draftsBy,
     };
 }

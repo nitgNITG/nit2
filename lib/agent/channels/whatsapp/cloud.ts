@@ -143,12 +143,17 @@ export async function sendWaText(toE164Phone: string, text: string, cfg?: WaClou
 }
 
 /** An approved template (needed outside the 24-hour window). Meta's sample `hello_world` exists on every account. */
-export async function sendWaTemplate(toE164Phone: string, name: string, languageCode: string, cfg?: WaCloudConfig | null): Promise<string | null> {
+export async function sendWaTemplate(toE164Phone: string, name: string, languageCode: string, cfg?: WaCloudConfig | null, bodyParams: string[] = []): Promise<string | null> {
     const c = cfg ?? (await getWaConfig());
     if (!c) throw new WaSendError("WhatsApp is not configured (phone number id / access token).", null);
+    // Meta rejects template parameters with new lines, tabs or 4+ spaces in a row.
+    const params = bodyParams.map((p) => p.replace(/\s+/g, " ").trim().slice(0, 1000));
     const r = await graphPost(c, {
         messaging_product: "whatsapp", to: toE164Phone.replace(/^\+/, ""), type: "template",
-        template: { name, language: { code: languageCode } },
+        template: {
+            name, language: { code: languageCode },
+            ...(params.length ? { components: [{ type: "body", parameters: params.map((text) => ({ type: "text", text })) }] } : {}),
+        },
     });
     return r.messages?.[0]?.id ?? null;
 }

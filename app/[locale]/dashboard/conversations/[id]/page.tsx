@@ -6,6 +6,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import LocaleLink from '../../../components/LocaleLink'
 import { api, btnGhost, btnPrimary, Card, errorText, fmtDate, inputCls, StatusBadge, TierBadge } from '../../components/agent/ui'
 import LeadTimeline from '../../components/agent/LeadTimeline'
+import FollowUpDate from '../../components/agent/FollowUpDate'
 
 type Msg = { id: string; role: string; content: string; toolName?: string | null; createdAt: string; staffId?: string | null; model?: string | null; status?: string }
 type Detail = {
@@ -39,7 +40,8 @@ function Bubble({ m }: { m: Msg }) {
         return <div className='text-center text-xs text-gray-400'>— {m.content.replace(/_/g, ' ')} · {fmtDate(m.createdAt)} —</div>
     }
     const mine = m.role !== 'visitor'
-    const color = m.role === 'visitor' ? 'bg-white border' : m.role === 'staff' ? 'bg-purple-50 border border-purple-200' : 'bg-blue-50 border border-blue-100'
+    const color = m.status === 'draft' || m.status === 'discarded' ? 'bg-amber-50/60 border border-dashed border-amber-300 opacity-90'
+        : m.role === 'visitor' ? 'bg-white border' : m.role === 'staff' ? 'bg-purple-50 border border-purple-200' : 'bg-blue-50 border border-blue-100'
     const who = m.role === 'visitor' ? 'Visitor' : m.role === 'staff' ? 'Team member' : 'AI assistant'
     return (
         <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
@@ -47,6 +49,8 @@ function Bubble({ m }: { m: Msg }) {
                 <div className='text-[11px] text-gray-500 mb-1'>{who} · {fmtDate(m.createdAt)}{m.model ? ` · ${m.model}` : ''}</div>
                 <div className='whitespace-pre-wrap text-sm text-gray-800' dir='auto'>{m.content}</div>
                 {m.status === 'failed' && <div className='mt-1 text-[11px] font-medium text-red-600'>Not delivered on WhatsApp</div>}
+                {m.status === 'draft' && <LocaleLink href='/dashboard/follow-ups' className='mt-1 block text-[11px] font-medium text-amber-700 hover:underline'>Follow-up draft — not sent. Review in Follow-ups →</LocaleLink>}
+                {m.status === 'discarded' && <div className='mt-1 text-[11px] text-gray-500'>Follow-up draft discarded — never sent</div>}
             </div>
         </div>
     )
@@ -258,6 +262,7 @@ export default function ConversationPage({ params }: { params: { id: string } })
                     {d.contact && d.viewer.canEditLead && (
                         <Card className='space-y-2'>
                             <h5 className='font-semibold'>Lead timeline</h5>
+                            <FollowUpDate key={d.contact.id} contactId={d.contact.id} value={d.contact.nextFollowUpAt} />
                             <LeadTimeline contactId={d.contact.id} refreshKey={`${c.status}:${d.contact.tier}`} />
                         </Card>
                     )}

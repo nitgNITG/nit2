@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocale } from 'next-intl'
 
-type Summary = { waiting: number; mine: number; waitingItems: { id: string; mode: string; since: string }[] }
+type Summary = { waiting: number; mine: number; drafts?: number; waitingItems: { id: string; mode: string; since: string }[] }
 
 export const ALERTS_KEY = 'nit:handoffAlerts'
 const POLL_MS = 20_000
@@ -36,7 +36,7 @@ const writePref = (on: boolean) => { try { localStorage.setItem(ALERTS_KEY, on ?
 
 export function useInboxAlerts(enabled: boolean) {
     const locale = useLocale()
-    const [summary, setSummary] = useState<Summary>({ waiting: 0, mine: 0, waitingItems: [] })
+    const [summary, setSummary] = useState<Summary>({ waiting: 0, mine: 0, drafts: 0, waitingItems: [] })
     const [desktop, setDesktop] = useState(false)
     const [blocked, setBlocked] = useState(false)
     const [supported, setSupported] = useState(false)
@@ -106,5 +106,5 @@ export function useInboxAlerts(enabled: boolean) {
         if (on) chime() // confirms sound works (and unlocks audio after this click)
     }, [])
 
-    return { ...summary, desktop, blocked, supported, toggleDesktop }
+    return { ...summary, drafts: summary.drafts ?? 0, desktop, blocked, supported, toggleDesktop }
 }

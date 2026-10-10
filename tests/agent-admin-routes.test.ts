@@ -109,7 +109,8 @@ describe("permissions matrix on every admin endpoint (§13.14, TS-19, TS-46, AC-
         expect(dashboardPathAllowed("/dashboard", mona)).toBe(false);
         expect(dashboardPathAllowed("", mona)).toBe(false); // no path header → fail closed
         expect(staffLandingPage(mona)).toBe("/dashboard/conversations");
-        expect(agentNav(mona).map((i) => i.href)).toEqual(["/dashboard/conversations", "/dashboard/price-ranges", "/dashboard/meetings", "/dashboard/agent-usage", "/dashboard/agent-analytics"]);
+        expect(agentNav(mona).map((i) => i.href)).toEqual(["/dashboard/conversations", "/dashboard/price-ranges", "/dashboard/meetings", "/dashboard/follow-ups", "/dashboard/agent-usage", "/dashboard/agent-analytics"]);
+        expect(dashboardPathAllowed("/dashboard/follow-ups", mona)).toBe(true);
         expect(dashboardPathAllowed("/dashboard/meetings", mona)).toBe(true);
         expect(dashboardPathAllowed("/dashboard/tickets", mona)).toBe(false); // tickets are support's
         const viewer = { ...mona, permissions: ["viewer" as const] };
@@ -122,11 +123,11 @@ describe("permissions matrix on every admin endpoint (§13.14, TS-19, TS-46, AC-
         const admin = { user: { id: "a", email: "", name: null, role: "admin" as const }, isAdmin: true, permissions: [] };
         const all = groupNav([...ADMIN_NAV, ...agentNav(admin)]);
         expect(all.map((g) => g.label)).toEqual(["Overview", "Sales & CRM", "Customers & Support", "Billing", "Website Content", "AI Assistant", "System"]);
-        expect(all.find((g) => g.key === "sales")!.items.map((i) => i.label)).toEqual(["AI Inbox", "Contacts", "Meetings", "Price Ranges"]);
+        expect(all.find((g) => g.key === "sales")!.items.map((i) => i.label)).toEqual(["AI Inbox", "Contacts", "Follow-ups", "Meetings", "Price Ranges"]);
         expect(all.flatMap((g) => g.items).every((i) => i.icon)).toBe(true);
 
         const mona = { ...admin, user: { ...admin.user, role: "client" as const }, isAdmin: false, permissions: ["sales" as const] };
-        expect(groupNav(agentNav(mona)).map((g) => [g.key, g.items.length])).toEqual([["sales", 3], ["ai", 2]]);
+        expect(groupNav(agentNav(mona)).map((g) => [g.key, g.items.length])).toEqual([["sales", 4], ["ai", 2]]);
 
         expect(isActive("/en/dashboard/conversations/abc", "en", "/dashboard/conversations")).toBe(true);
         expect(isActive("/en/dashboard/conversations", "en", "/dashboard")).toBe(false);
