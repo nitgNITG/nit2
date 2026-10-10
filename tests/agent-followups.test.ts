@@ -186,6 +186,14 @@ describe("approve & send / discard (E17, FR-F3, TS-28, AC-22.2)", () => {
         expect(graph[0]).toMatchObject({ type: "text", to: "201003333333" });
     });
 
+    it("the window belongs to the number: a recent message in another WhatsApp chat allows plain text", async () => {
+        const { draft } = await oneDraft(); // draft lives on a web chat
+        const wa = await mongo.conversation.create({ data: { channel: "whatsapp", phoneE164: "+201003333333", mode: "sales", status: "open", locale: "en" } });
+        await mongo.chatMessage.create({ data: { conversationId: wa.id, role: "visitor", content: "hi", createdAt: new Date(NOW.getTime() - 3 * H) } });
+        await patch(draft.id as string, { action: "send" });
+        expect(graph[0]).toMatchObject({ type: "text", to: "201003333333" });
+    });
+
     it("discard never sends; two people clicking at once → only one wins", async () => {
         const { draft } = await oneDraft();
         const [a, b] = await Promise.all([patch(draft.id as string, { action: "send" }), patch(draft.id as string, { action: "discard" })]);

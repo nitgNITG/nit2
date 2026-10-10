@@ -257,8 +257,13 @@ export type DecideResult =
 
 const fail = (status: number, code: string, message: string): DecideResult => ({ ok: false, status, code, message });
 
-async function whatsappWindowOpen(conversationId: string, now: Date): Promise<boolean> {
-    const last = await prisma.chatMessage.findFirst({ where: { conversationId, role: "visitor" }, orderBy: { createdAt: "desc" }, select: { createdAt: true } });
+/** Meta's 24-hour window belongs to the number: any WhatsApp chat where it wrote in the last 24 h. */
+async function whatsappWindowOpen(phoneE164: string, now: Date): Promise<boolean> {
+    const convs = await prisma.conversation.findMany({ where: { channel: "whatsapp", phoneE164 }, select: { id: true }, take: 50 });
+    if (!convs.length) return false;
+    const last = await prisma.chatMessage.findFirst({
+        where: { conversationId: { in: convs.map((c) => c.id) }, role: "visitor" }, orderBy: { createdAt: "desc" }, select: { createdAt: true },
+    });
     return !!last && now.getTime() - last.createdAt.getTime() < DAY;
 }
 
@@ -292,7 +297,7 @@ export async function decideDraft(input: {
     let via: "text" | "template" = "text";
     try {
         if (meta.channel === "whatsapp") {
-            if (await whatsappWindowOpen(msg.conversationId, now)) {
+            if (await whatsappWindowOpen(meta.to, now)) {
                 await sendWaText(meta.to, content);
             } else {
                 const t = input.cfg.followups.whatsappTemplate;
