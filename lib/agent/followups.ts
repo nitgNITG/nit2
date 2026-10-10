@@ -30,6 +30,7 @@ const LOOKBACK_MS = 6 * DAY; // inside the 7-day idempotency TTL, so a record ne
 const RECENT_CONTACT_MS = 3 * DAY; // no second follow-up to the same lead within 3 days
 const MAX_TEXT = 600;
 const CHAT_SOURCES = ["chat", "whatsapp"];
+const KINDS: FollowUpKind[] = ["due", "checkout", "abandoned"];
 
 type Contact = NonNullable<Awaited<ReturnType<typeof prisma.contact.findUnique>>>;
 type Conv = NonNullable<Awaited<ReturnType<typeof prisma.conversation.findUnique>>>;
@@ -134,14 +135,14 @@ async function claim(key: string): Promise<boolean> {
 /** Skip a lead that already has a draft waiting, or got a follow-up in the last 3 days. */
 async function busyLead(contactId: string, now: Date): Promise<boolean> {
     const rows = await prisma.chatMessage.findMany({
-        where: { status: { in: ["draft", "sent"] }, createdAt: { gt: new Date(now.getTime() - 30 * DAY) }, followup: { isSet: true } },
+        where: { followupContactId: contactId, status: { in: ["draft", "sending", "sent"] }, createdAt: { gt: new Date(now.getTime() - 30 * DAY) } },
         select: { status: true, followup: true, createdAt: true },
-        take: 500,
+        take: 50,
     });
     return rows.some((r) => {
         const f = r.followup as FollowUpMeta | null;
-        if (f?.contactId !== contactId) return false;
-        if (r.status === "draft") return true;
+        if (r.status !== "sent") return true; // a draft is waiting (or being sent)
+        if (!f) return false;
         return !!f.sentAt && now.getTime() - Date.parse(f.sentAt) < RECENT_CONTACT_MS;
     });
 }
@@ -170,7 +171,10 @@ async function createDraft(input: {
     const body = await draftText({ kind: input.kind, locale, contact: c, plan: input.plan, conversationId: thread.id, cfg: input.cfg });
     const meta: FollowUpMeta = { kind: input.kind, channel: target.channel, to: target.to, locale, contactId: c.id, ref: input.ref, ...(input.plan ? { plan: input.plan } : {}) };
     await prisma.chatMessage.create({
-        data: { conversationId: thread.id, role: "assistant", status: "draft", content: `${greeting(c.name, locale)} ${body}`, followup: meta },
+        data: {
+            conversationId: thread.id, role: "assistant", status: "draft", content: `${greeting(c.name, locale)} ${body}`,
+            followup: meta, followupKind: meta.kind, followupContactId: c.id,
+        },
     });
     return true;
 }
@@ -326,7 +330,7 @@ export async function decideDraft(input: {
 
 export async function listFollowUps(status: "draft" | "sent" | "discarded", take = 100) {
     const rows = await prisma.chatMessage.findMany({
-        where: { status, followup: { isSet: true } }, orderBy: { createdAt: "desc" }, take,
+        where: { status, followupKind: { in: KINDS } }, orderBy: { createdAt: "desc" }, take,
     });
     const metas = rows.map((r) => r.followup as FollowUpMeta);
     const contacts = metas.length ? await prisma.contact.findMany({ where: { id: { in: Array.from(new Set(metas.map((m) => m.contactId))) } }, select: { id: true, name: true, tier: true, score: true, status: true, consentContact: true } }) : [];
@@ -339,5 +343,5 @@ export async function listFollowUps(status: "draft" | "sent" | "discarded", take
 }
 
 export async function countDrafts(): Promise<number> {
-    return prisma.chatMessage.count({ where: { status: "draft", followup: { isSet: true } } });
+    return prisma.chatMessage.count({ where: { status: "draft", followupKind: { in: KINDS } } });
 }

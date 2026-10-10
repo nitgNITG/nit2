@@ -228,28 +228,33 @@ model Conversation {
 }
 
 model ChatMessage {
-  id             String       @id @default(auto()) @map("_id") @db.ObjectId
-  conversationId String       @db.ObjectId
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  role           String // visitor | assistant | staff | tool | system
-  content        String // text shown to the person, or redacted JSON for tool rows
-  toolName       String?
-  status         String       @default("sent") // sent | draft | discarded | failed
-  staffId        String?
-  model          String?
-  tokensIn       Int?
-  tokensOut      Int?
-  latencyMs      Int?
-  turnId         String?
-  toolUseId      String?
-  idempotencyKey String? // uniqueness is enforced by IdempotencyRecord, not here (Mongo unique + missing field = collisions)
+  id                String       @id @default(auto()) @map("_id") @db.ObjectId
+  conversationId    String       @db.ObjectId
+  conversation      Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role              String // visitor | assistant | staff | tool | system
+  content           String // text shown to the person, or redacted JSON for tool rows
+  toolName          String?
+  status            String       @default("sent") // sent | draft | discarded | failed
+  staffId           String?
+  model             String?
+  tokensIn          Int?
+  tokensOut         Int?
+  latencyMs         Int?
+  turnId            String?
+  toolUseId         String?
+  idempotencyKey    String? // uniqueness is enforced by IdempotencyRecord, not here (Mongo unique + missing field = collisions)
   // Phase 4 follow-up (status draft → sent | discarded): { kind, channel, to, locale, contactId, … }
-  followup       Json?
-  createdAt      DateTime     @default(now())
+  followup          Json?
+  // Queryable copies (Prisma/Mongo can't filter a Json field by "is set").
+  followupKind      String? // due | checkout | abandoned
+  followupContactId String?      @db.ObjectId
+  createdAt         DateTime     @default(now())
 
   @@index([conversationId, createdAt])
   @@index([idempotencyKey])
   @@index([status, createdAt])
+  @@index([followupContactId])
+  @@index([followupKind, status])
 }
 
 model AgentSession {

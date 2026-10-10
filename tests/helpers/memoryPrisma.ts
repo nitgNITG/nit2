@@ -62,10 +62,16 @@ function matchField(value: unknown, cond: unknown, present: boolean): boolean {
     return true;
 }
 
+/** Json fields of the Mongo models: Prisma rejects `isSet` on them (P2019), so the fake does too. */
+const JSON_FIELDS = new Set(["followup", "qualification", "tags", "verification", "requirements", "scoreBreakdown", "argsRedacted", "authContext", "resultJson", "agentPermissions"]);
+
 export function matches(row: Row, where: Row | undefined): boolean {
     if (!where) return true;
     for (const [k, cond] of Object.entries(where)) {
         if (cond === undefined) continue;
+        if (JSON_FIELDS.has(k) && cond && typeof cond === "object" && "isSet" in (cond as Row)) {
+            throw new Error(`memoryPrisma: isSet is not a valid scalar filter operation (Json field "${k}") — Prisma P2019`);
+        }
         if (k === "OR") { if (!(cond as Row[]).some((w) => matches(row, w))) return false; continue; }
         if (k === "AND") { if (!(Array.isArray(cond) ? cond : [cond]).every((w) => matches(row, w as Row))) return false; continue; }
         if (k === "NOT") { if ((Array.isArray(cond) ? cond : [cond]).some((w) => matches(row, w as Row))) return false; continue; }
