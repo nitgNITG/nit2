@@ -32,7 +32,17 @@
       ],
       "featuredOrder": 2,
       "categoryEn": "Point of sale",
-      "categoryAr": "نقاط البيع"
+      "categoryAr": "نقاط البيع",
+      "promo": {
+        "videoUrl": "https://res.cloudinary.com/dlrkykxr9/video/upload/v1791983427/nit-promos/pos.mp4",
+        "publicId": "nit-promos/pos",
+        "durationSec": 60,
+        "teaserStart": 4,
+        "posterAt": null,
+        "uploadDate": "2026-10-14T13:10:27Z",
+        "captionsEn": null,
+        "captionsAr": null
+      }
     },
     {
       "match": "Buzz",
@@ -54,7 +64,17 @@
         "ios-app"
       ],
       "categoryEn": "Loyalty platform",
-      "categoryAr": "منصة ولاء"
+      "categoryAr": "منصة ولاء",
+      "promo": {
+        "videoUrl": "https://res.cloudinary.com/dlrkykxr9/video/upload/v1791983632/nit-promos/paypoins.mp4",
+        "publicId": "nit-promos/paypoins",
+        "durationSec": 127.5,
+        "teaserStart": 4,
+        "posterAt": null,
+        "uploadDate": "2026-10-14T13:13:52Z",
+        "captionsEn": null,
+        "captionsAr": null
+      }
     },
     {
       "match": "Loghat",
