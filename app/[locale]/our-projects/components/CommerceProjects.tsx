@@ -1,9 +1,9 @@
 'use client'
 import axios from 'axios';
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import LoadingCard from '../../dashboard/components/LoadingCard';
 import { useLocale, useTranslations } from 'next-intl';
-import ProjectCardMedia from './ProjectCardMedia';
+import ProjectCardMedia, { promoPlaylist } from './ProjectCardMedia';
 
 const CommerceProjects = () => {
     const [projects, setProjects] = useState([]);
@@ -23,6 +23,7 @@ const CommerceProjects = () => {
     }, [locale])
 
     useEffect(() => { fetchProjects() }, [fetchProjects])
+    const playlist = useMemo(() => promoPlaylist(projects, locale), [projects, locale])
 
     return (
         <section className='bg-[#F2F3FA] p-container py-10 lg:py-16'>
@@ -46,7 +47,7 @@ const CommerceProjects = () => {
                         <div key={project.id} className='col-span-12 md:col-span-6 lg:col-span-4 flex'>
                             <div className='flex flex-col w-full border rounded-3xl overflow-hidden bg-white group hover:shadow-lg transition-shadow duration-200'>
                                 {/* Fixed-height image — all cards share the same image row; promo badge + hover preview when the project has a video */}
-                                <ProjectCardMedia project={project} locale={locale} />
+                                <ProjectCardMedia project={project} locale={locale} playlist={playlist} />
                                 {/* Content flex-col: title + description grow, buttons pinned to bottom */}
                                 <div className='flex flex-col flex-1 px-4 pt-4 pb-5'>
                                     <h3 className='font-bold text-xl'>{locale === 'en' ? project.titleEn : project.title}</h3>

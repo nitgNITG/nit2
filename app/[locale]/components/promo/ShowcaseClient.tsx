@@ -19,7 +19,8 @@ type Props = {
 
 /**
  * The interactive part of the "Built by N.I.T" section:
- *   multi  → player + details + switcher (promo projects); others in "Also built by us"
+ *   multi  → player + details + switcher (promo projects; each teaser plays once, then
+ *            the next one); others in "Also built by us"
  *   single → the promo project leads; the rest in "Also built by us"
  *   static → screenshot frame instead of a player (no play button); switcher if 2+
  */
@@ -30,6 +31,12 @@ export default function ShowcaseClient({ projects, state, kind, fallbackCategory
     const others = state === 'static' ? [] : projects.filter((p) => (state === 'multi' ? !p.promo : p !== projects[0]))
     const [activeId, setActiveId] = useState((switchable[0] ?? projects[0]).id)
     const active = projects.find((p) => p.id === activeId) ?? projects[0]
+    // Every promo in this section, for the lightbox's previous/next.
+    const playlist = projects.filter((p) => p.promo)
+    // 2+ promos: when a teaser finishes, the switcher moves on to the next project.
+    const playNext = state === 'multi'
+        ? () => setActiveId(switchable[(switchable.indexOf(active) + 1) % switchable.length].id)
+        : undefined
 
     return (
         <div className='flex flex-col gap-10 md:gap-12'>
@@ -37,9 +44,9 @@ export default function ShowcaseClient({ projects, state, kind, fallbackCategory
                 <div className='flex-[1_1_600px] min-w-0 flex flex-col gap-3.5'>
                     {active.promo ? (
                         <>
-                            <PromoPlayer key={active.id} project={active} locale={locale} page={page} />
+                            <PromoPlayer key={active.id} project={active} locale={locale} page={page} onEnded={playNext} playlist={playlist} />
                             <div className='flex flex-wrap justify-between items-center gap-3'>
-                                <button type='button' onClick={(e) => lightbox.open(active, page, e.currentTarget)}
+                                <button type='button' onClick={(e) => lightbox.open(active, page, e.currentTarget, playlist)}
                                     className='inline-flex items-center gap-2.5 min-h-11 px-1 text-white text-base font-bold hover:text-[#00FFCD]'>
                                     <PlayCircleIcon className='size-[22px]' />
                                     {copy.watchFull}

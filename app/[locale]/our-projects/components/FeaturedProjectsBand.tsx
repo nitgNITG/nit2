@@ -11,8 +11,9 @@ const PAGE = 'our-projects'
 /**
  * Featured band under the Our Projects hero (spec §6). The page only renders it
  * when there is at least one featured project with a promo:
- *   1   → player + that project's details
- *   2–3 → player + vertical tabs (number · label · name · progress) + CTA
+ *   1   → player (looping teaser) + that project's details
+ *   2–3 → player + vertical tabs (number · label · name · progress) + CTA; each
+ *         teaser plays once and the band moves on to the next project
  */
 export default function FeaturedProjectsBand({ projects, locale }: { projects: ShowcaseProject[]; locale: string }) {
     const copy = promoCopy(locale)
@@ -21,6 +22,9 @@ export default function FeaturedProjectsBand({ projects, locale }: { projects: S
     const active = projects.find((p) => p.id === activeId) ?? projects[0]
     if (!active) return null
     const many = projects.length > 1
+    const select = (id: string) => { setActiveId(id); setProgress(0) }
+    // 2-3 projects: when a teaser finishes, move on to the next tab (wrapping around).
+    const playNext = () => select(projects[(projects.indexOf(active) + 1) % projects.length].id)
 
     return (
         <section aria-labelledby='featured-title' className='relative z-10 px-4 sm:px-6 pb-16 md:pb-20'>
@@ -32,12 +36,12 @@ export default function FeaturedProjectsBand({ projects, locale }: { projects: S
                             {many ? copy.featuredTitleMany(projects.length) : copy.featuredTitleOne}
                         </h2>
                     </div>
-                    <span className='text-sm text-[#46524F]'>{copy.featuredHint}</span>
                 </div>
 
                 <div className='flex flex-wrap gap-6 items-stretch'>
                     <div className='flex-[1_1_640px] min-w-0'>
-                        <PromoPlayer key={active.id} project={active} locale={locale} page={PAGE} priority rounded='rounded-2xl' onProgress={setProgress} />
+                        <PromoPlayer key={active.id} project={active} locale={locale} page={PAGE} priority rounded='rounded-2xl'
+                            onProgress={setProgress} onEnded={many ? playNext : undefined} playlist={projects} />
                     </div>
 
                     {many ? (
@@ -46,7 +50,7 @@ export default function FeaturedProjectsBand({ projects, locale }: { projects: S
                                 const on = p.id === active.id
                                 return (
                                     <button key={p.id} type='button' role='tab' aria-selected={on}
-                                        onClick={() => { setActiveId(p.id); setProgress(0) }}
+                                        onClick={() => select(p.id)}
                                         className={`flex-1 flex flex-col justify-center gap-1 min-h-[88px] px-[18px] py-3.5 rounded-[14px] border-2 text-start ${on ? 'border-[#00997A] bg-[#F0FBF8]' : 'border-[#E3E8EE] bg-white hover:border-[#00997A]/50'}`}>
                                         <span className='text-xs font-bold tracking-[.08em] text-[#00795F]'>
                                             {String(i + 1).padStart(2, '0')}{p.category ? ` · ${p.category}` : ''}

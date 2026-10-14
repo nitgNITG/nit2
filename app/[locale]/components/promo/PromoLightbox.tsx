@@ -3,10 +3,11 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { ShowcaseProject } from '@/lib/promo'
 import { contactHref, promoCopy } from './promoCopy'
 import { trackPromo, type PromoEvent } from './promoAnalytics'
-import { CloseXIcon } from './icons'
+import { ChevronBackIcon, ChevronForwardIcon, CloseXIcon } from './icons'
 import { suspendTeaser } from './teaser'
 
-type Ctx = { open: (project: ShowcaseProject, page: string, opener?: HTMLElement | null) => void }
+/** playlist: the projects previous/next moves through (defaults to just this one). */
+type Ctx = { open: (project: ShowcaseProject, page: string, opener?: HTMLElement | null, playlist?: ShowcaseProject[]) => void }
 
 const LightboxContext = createContext<Ctx>({ open: () => {} })
 
@@ -23,24 +24,43 @@ export function progressEvents(fraction: number, sent: Set<PromoEvent>): PromoEv
     return out
 }
 
+/** Next/previous index in a playlist, wrapping around at both ends. */
+export function stepPlaylist(length: number, index: number, dir: 1 | -1): number {
+    return length ? (index + dir + length) % length : 0
+}
+
 type CaptionLang = 'en' | 'ar' | 'off'
+
+/** The caption track to show first: the page's language when that track exists (spec §7). */
+function defaultLang(p: ShowcaseProject, locale: string): CaptionLang {
+    const { captionsEn: en, captionsAr: ar } = p.promo!
+    return locale === 'ar' ? (ar ? 'ar' : en ? 'en' : 'off') : (en ? 'en' : ar ? 'ar' : 'off')
+}
 
 /**
  * One lightbox per page (spec §4). Wrap the page section(s) in this provider;
- * players and cards call usePromoLightbox().open(project, page, openerElement).
+ * players and cards call usePromoLightbox().open(project, page, openerElement, playlist).
+ * With a playlist of 2+, the dialog has previous/next buttons that switch the video
+ * in place (the dialog stays open).
  */
 export function PromoLightboxProvider({ locale, children }: { locale: string; children: React.ReactNode }) {
-    const [state, setState] = useState<{ project: ShowcaseProject; page: string } | null>(null)
+    const [state, setState] = useState<{ list: ShowcaseProject[]; index: number; page: string } | null>(null)
     const opener = useRef<HTMLElement | null>(null)
 
-    const open = useCallback<Ctx['open']>((project, page, el) => {
+    const open = useCallback<Ctx['open']>((project, page, el, playlist) => {
         if (!project.promo) return
         opener.current = el ?? (document.activeElement as HTMLElement | null)
-        setState({ project, page })
+        const list = (playlist ?? []).filter((p) => p.promo)
+        const index = list.findIndex((p) => p.id === project.id)
+        setState(index >= 0 ? { list, index, page } : { list: [project], index: 0, page })
         trackPromo('promo_open', project.slug, page)
     }, [])
 
     const close = useCallback(() => setState(null), [])
+
+    const step = useCallback((dir: 1 | -1) => {
+        setState((s) => (!s || s.list.length < 2 ? s : { ...s, index: stepPlaylist(s.list.length, s.index, dir) }))
+    }, [])
 
     // Return focus to whatever opened the dialog, once it has unmounted. (Not rAF:
     // that never fires in a background tab.)
@@ -57,25 +77,30 @@ export function PromoLightboxProvider({ locale, children }: { locale: string; ch
     return (
         <LightboxContext.Provider value={value}>
             {children}
-            {state && <LightboxDialog key={state.project.id} project={state.project} page={state.page} locale={locale} onClose={close} />}
+            {state && <LightboxDialog list={state.list} index={state.index} page={state.page} locale={locale} onClose={close} onStep={step} />}
         </LightboxContext.Provider>
     )
 }
 
-function LightboxDialog({ project, page, locale, onClose }: { project: ShowcaseProject; page: string; locale: string; onClose: () => void }) {
+type DialogProps = { list: ShowcaseProject[]; index: number; page: string; locale: string; onClose: () => void; onStep: (dir: 1 | -1) => void }
+
+function LightboxDialog({ list, index, page, locale, onClose, onStep }: DialogProps) {
+    const project = list[index]
     const promo = project.promo!
     const copy = promoCopy(locale)
     const dialogRef = useRef<HTMLDivElement>(null)
     const videoRef = useRef<HTMLVideoElement>(null)
     const sent = useRef(new Set<PromoEvent>())
     const hasCaptions = !!(promo.captionsEn || promo.captionsAr)
-    // Default to the page locale when that track exists (spec §7).
-    const [lang, setLang] = useState<CaptionLang>(() =>
-        locale === 'ar' ? (promo.captionsAr ? 'ar' : promo.captionsEn ? 'en' : 'off') : (promo.captionsEn ? 'en' : promo.captionsAr ? 'ar' : 'off'))
+    const [lang, setLang] = useState<CaptionLang>(() => defaultLang(project, locale))
+    const many = list.length > 1
+    const prev = list[stepPlaylist(list.length, index, -1)]
+    const next = list[stepPlaylist(list.length, index, 1)]
 
-    // Page behind doesn't scroll; Esc closes; Tab stays inside.
+    // While open: the page behind doesn't scroll, Esc closes, Tab stays inside, and
+    // only the promo plays (the teaser behind it resumes on close).
     useEffect(() => {
-        const prev = document.body.style.overflow
+        const prevOverflow = document.body.style.overflow
         document.body.style.overflow = 'hidden'
         dialogRef.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus()
         const onKey = (e: KeyboardEvent) => {
@@ -89,26 +114,37 @@ function LightboxDialog({ project, page, locale, onClose }: { project: ShowcaseP
             else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
         }
         document.addEventListener('keydown', onKey)
-        // Only the promo plays while the dialog is open; the teaser behind it resumes on close.
         const resumeTeaser = suspendTeaser()
         const video = videoRef.current
-        // Start with sound right away (the click that opened us is the user gesture).
-        video?.play()?.catch(() => { /* blocked → the native controls are there */ })
         return () => {
             document.removeEventListener('keydown', onKey)
-            document.body.style.overflow = prev
+            document.body.style.overflow = prevOverflow
             // Pause and reset on close.
             if (video) { video.pause(); video.currentTime = 0 }
             resumeTeaser()
         }
     }, [onClose])
 
+    // Each project (on open and on previous/next): fresh analytics milestones, its own
+    // default captions, and start with sound right away (the click is the user gesture).
+    const projectId = project.id
+    // promo_open for the first project is sent by open(); later ones by this effect.
+    const openedAt = useRef(index)
+    useEffect(() => {
+        sent.current = new Set()
+        setLang(defaultLang(list[index], locale))
+        if (index !== openedAt.current) trackPromo('promo_open', list[index].slug, page)
+        openedAt.current = -1
+        videoRef.current?.play()?.catch(() => { /* blocked → the native controls are there */ })
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- run only when the shown project changes
+    }, [projectId])
+
     // Show only the chosen caption track.
     useEffect(() => {
         const tracks = videoRef.current?.textTracks
         if (!tracks) return
         for (let i = 0; i < tracks.length; i++) tracks[i].mode = tracks[i].language === lang ? 'showing' : 'disabled'
-    }, [lang])
+    }, [lang, projectId])
 
     const onTime = () => {
         const v = videoRef.current
@@ -124,18 +160,21 @@ function LightboxDialog({ project, page, locale, onClose }: { project: ShowcaseP
         trackPromo('promo_complete', project.slug, page)
     }
 
-    const titleId = `promo-dialog-${project.id}`
+    const titleId = 'promo-dialog-title'
     return (
+        // Scrolls (and centres with m-auto, not items-center) so the close button stays
+        // reachable on short screens; the width is capped so the 16:9 video fits the height.
         <div
-            className='fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(4,16,14,.92)] p-4'
+            className='fixed inset-0 z-[2147483100] flex overflow-y-auto bg-[rgba(4,16,14,.92)] p-4'
             onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
         >
             <div ref={dialogRef} role='dialog' aria-modal='true' aria-labelledby={titleId} dir={locale === 'ar' ? 'rtl' : 'ltr'}
-                className='w-full max-w-[980px] flex flex-col gap-4 text-white'>
+                className='m-auto w-full max-w-[min(980px,calc((100svh_-_13rem)*16/9))] min-w-[min(100%,280px)] flex flex-col gap-3 md:gap-4 text-white'>
                 <div className='flex justify-between items-center gap-4'>
                     <div className='flex flex-col min-w-0'>
                         {project.category && <span className='text-[13px] font-bold tracking-[.1em] text-[#00FFCD] uppercase'>{project.category}</span>}
                         <span id={titleId} className='text-xl md:text-2xl font-extrabold'>{project.title} — {copy.fullPromo}</span>
+                        {many && <span className='text-sm text-white/60 tabular-nums' aria-live='polite'>{index + 1} / {list.length}</span>}
                     </div>
                     <button type='button' data-autofocus aria-label={copy.close} onClick={onClose}
                         className='shrink-0 size-12 rounded-full border border-white/30 flex items-center justify-center hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00FFCD]'>
@@ -158,9 +197,19 @@ function LightboxDialog({ project, page, locale, onClose }: { project: ShowcaseP
                         onEnded={onEnded}
                         className='absolute inset-0 w-full h-full object-contain'
                     >
-                        {promo.captionsEn && <track kind='captions' srcLang='en' label='English' src={promo.captionsEn} default={lang === 'en'} />}
-                        {promo.captionsAr && <track kind='captions' srcLang='ar' label='العربية' src={promo.captionsAr} default={lang === 'ar'} />}
+                        {promo.captionsEn && <track key={`${projectId}-en`} kind='captions' srcLang='en' label='English' src={promo.captionsEn} default={lang === 'en'} />}
+                        {promo.captionsAr && <track key={`${projectId}-ar`} kind='captions' srcLang='ar' label='العربية' src={promo.captionsAr} default={lang === 'ar'} />}
                     </video>
+                    {many && (
+                        <>
+                            <StepButton side='start' label={copy.prevProject(prev.title)} onClick={() => onStep(-1)}>
+                                <ChevronBackIcon className='size-6' />
+                            </StepButton>
+                            <StepButton side='end' label={copy.nextProject(next.title)} onClick={() => onStep(1)}>
+                                <ChevronForwardIcon className='size-6' />
+                            </StepButton>
+                        </>
+                    )}
                 </div>
 
                 <div className='flex flex-wrap justify-between items-center gap-3'>
@@ -184,6 +233,16 @@ function LightboxDialog({ project, page, locale, onClose }: { project: ShowcaseP
                 </div>
             </div>
         </div>
+    )
+}
+
+/** Previous / next project, on the sides of the video. */
+function StepButton({ side, label, onClick, children }: { side: 'start' | 'end'; label: string; onClick: () => void; children: React.ReactNode }) {
+    return (
+        <button type='button' aria-label={label} title={label} onClick={onClick}
+            className={`absolute top-1/2 -translate-y-1/2 ${side === 'start' ? 'start-3' : 'end-3'} size-12 rounded-full bg-black/55 border border-white/30 text-white flex items-center justify-center hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00FFCD]`}>
+            {children}
+        </button>
     )
 }
 

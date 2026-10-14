@@ -4,7 +4,7 @@ import { render, screen, fireEvent, cleanup, within } from "@testing-library/rea
 import { toShowcaseProject, type ShowcaseProject, type StoredProject } from "@/lib/promo";
 import ShowcaseClient from "@/app/[locale]/components/promo/ShowcaseClient";
 import PromoPlayer from "@/app/[locale]/components/promo/PromoPlayer";
-import { PromoLightboxProvider, progressEvents } from "@/app/[locale]/components/promo/PromoLightbox";
+import { PromoLightboxProvider, progressEvents, stepPlaylist } from "@/app/[locale]/components/promo/PromoLightbox";
 import FeaturedProjectsBand from "@/app/[locale]/our-projects/components/FeaturedProjectsBand";
 import { autoplayAllowed } from "@/app/[locale]/components/promo/teaser";
 
@@ -180,5 +180,78 @@ describe("Our Projects Featured band", () => {
         expect(screen.queryByRole("tablist")).toBeNull();
         expect((screen.getByRole("heading", { level: 3 })).textContent).toContain("Tawreedat Go");
         expect(screen.getByRole("link", { name: "Start a project like this" })).toBeTruthy();
+    });
+});
+
+describe("Multiple projects: auto-advance and previous/next", () => {
+    const three = () => [make("a", "Tawreedat Go", true), make("b", "Eerad POS", true), make("c", "PayPoins", true)];
+    const renderBand = (projects: ShowcaseProject[]) =>
+        render(<PromoLightboxProvider locale="en"><FeaturedProjectsBand projects={projects} locale="en" /></PromoLightboxProvider>);
+
+    it("the band has no 'Muted preview' hint text", () => {
+        renderBand(three());
+        expect(document.body.textContent).not.toMatch(/Muted preview/);
+    });
+
+    it("band: each teaser plays once, then the next tab starts (and wraps to the first)", () => {
+        reducedMotion = false;
+        const { container } = renderBand(three());
+        const tabs = screen.getAllByRole("tab");
+        const teaser = () => container.querySelector("video")!;
+        expect(teaser().loop).toBe(false);
+        fireEvent.ended(teaser());
+        expect(tabs[1].getAttribute("aria-selected")).toBe("true");
+        fireEvent.ended(teaser());
+        expect(tabs[2].getAttribute("aria-selected")).toBe("true");
+        fireEvent.ended(teaser());
+        expect(tabs[0].getAttribute("aria-selected")).toBe("true");
+    });
+
+    it("a single featured project keeps looping its teaser", () => {
+        reducedMotion = false;
+        const { container } = renderBand([make("a", "Tawreedat Go", true)]);
+        expect(container.querySelector("video")!.loop).toBe(true);
+    });
+
+    it("service section with 2+ promos: when the teaser ends the switcher moves on", () => {
+        reducedMotion = false;
+        const { container } = renderShowcase([make("a", "Tawreedat Go", true), make("b", "Eerad POS", true)], "multi");
+        const buttons = within(screen.getByRole("group", { name: "Choose a project" })).getAllByRole("button");
+        fireEvent.ended(container.querySelector("video")!);
+        expect(buttons[1].getAttribute("aria-pressed")).toBe("true");
+        expect(screen.getByRole("heading", { level: 3 }).textContent).toContain("Eerad POS");
+    });
+
+    it("lightbox: next/previous switch the video in place and wrap around", () => {
+        renderBand(three());
+        fireEvent.click(screen.getByRole("button", { name: "Play the full promo with sound" }));
+        const dialog = screen.getByRole("dialog");
+        const src = () => dialog.querySelector("video")!.getAttribute("src");
+        expect(within(dialog).getByText("1 / 3")).toBeTruthy();
+        expect(src()).toContain("/nit-promos/a.mp4");
+
+        fireEvent.click(within(dialog).getByRole("button", { name: "Next project: Eerad POS" }));
+        expect(within(dialog).getByText("2 / 3")).toBeTruthy();
+        expect(dialog.textContent).toContain("Eerad POS — full promo");
+        expect(src()).toContain("/nit-promos/b.mp4");
+        expect(screen.getByRole("dialog")).toBe(dialog); // same dialog, still open
+
+        fireEvent.click(within(dialog).getByRole("button", { name: "Previous project: Tawreedat Go" }));
+        fireEvent.click(within(dialog).getByRole("button", { name: "Previous project: PayPoins" }));
+        expect(within(dialog).getByText("3 / 3")).toBeTruthy();
+        expect(src()).toContain("/nit-promos/c.mp4");
+    });
+
+    it("lightbox: no previous/next for a single promo", () => {
+        renderShowcase([make("a", "Tawreedat Go", true), make("c", "PayPoins", false)], "single");
+        fireEvent.click(screen.getByRole("button", { name: "Play the full promo with sound" }));
+        expect(screen.queryByRole("button", { name: /Next project/ })).toBeNull();
+        expect(screen.queryByText("1 / 1")).toBeNull();
+    });
+
+    it("stepPlaylist wraps at both ends", () => {
+        expect(stepPlaylist(3, 2, 1)).toBe(0);
+        expect(stepPlaylist(3, 0, -1)).toBe(2);
+        expect(stepPlaylist(0, 0, 1)).toBe(0);
     });
 });

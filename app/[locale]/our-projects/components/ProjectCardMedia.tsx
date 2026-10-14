@@ -2,11 +2,19 @@
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { cloudinaryOptimized, skipOptimization } from '@/utils/cloudinaryUrl'
-import { toShowcaseProject, type StoredProject } from '@/lib/promo'
+import { toShowcaseProject, type ShowcaseProject, type StoredProject } from '@/lib/promo'
 import { usePromoLightbox } from '../../components/promo/PromoLightbox'
 import { promoCopy } from '../../components/promo/promoCopy'
 import { playExclusive, releaseTeaser, useTeaserAllowed } from '../../components/promo/teaser'
 import { PlayIcon } from '../../components/promo/icons'
+
+/** The section's projects that have a promo, for the lightbox's previous/next. */
+export function promoPlaylist(projects: StoredProject[], locale: string): ShowcaseProject[] {
+    return projects
+        .filter((p) => p.promo?.videoUrl)
+        .map((p) => toShowcaseProject({ ...p, title: p.title ?? p.titleEn ?? '', description: p.description ?? p.descriptionEn ?? '' }, locale))
+        .filter((p) => p.promo)
+}
 
 const PAGE = 'our-projects'
 const HOVER_DELAY = 150
@@ -16,7 +24,7 @@ const HOVER_DELAY = 150
  * before. With a promo: a "Watch promo" pill, a desktop hover preview (muted
  * teaser after ~150 ms, reverts on leave) and click/tap → lightbox.
  */
-export default function ProjectCardMedia({ project, locale }: { project: StoredProject; locale: string }) {
+export default function ProjectCardMedia({ project, locale, playlist }: { project: StoredProject; locale: string; playlist?: ShowcaseProject[] }) {
     const title = (locale === 'en' ? project.titleEn : project.title) || project.title || project.titleEn || ''
     const image = (
         <Image
@@ -30,10 +38,10 @@ export default function ProjectCardMedia({ project, locale }: { project: StoredP
         />
     )
     if (!project.promo?.videoUrl) return <div className='overflow-hidden bg-gray-100 h-56 flex-shrink-0'>{image}</div>
-    return <PromoCardMedia project={project} locale={locale} title={title} image={image} />
+    return <PromoCardMedia project={project} locale={locale} title={title} image={image} playlist={playlist} />
 }
 
-function PromoCardMedia({ project, locale, title, image }: { project: StoredProject; locale: string; title: string; image: React.ReactNode }) {
+function PromoCardMedia({ project, locale, title, image, playlist }: { project: StoredProject; locale: string; title: string; image: React.ReactNode; playlist?: ShowcaseProject[] }) {
     const copy = promoCopy(locale)
     const lightbox = usePromoLightbox()
     const allowed = useTeaserAllowed()
@@ -76,7 +84,7 @@ function PromoCardMedia({ project, locale, title, image }: { project: StoredProj
     return (
         <button
             type='button'
-            onClick={(e) => lightbox.open(view, PAGE, e.currentTarget)}
+            onClick={(e) => lightbox.open(view, PAGE, e.currentTarget, playlist)}
             onMouseEnter={enter}
             onMouseLeave={leave}
             aria-label={`${copy.watchPromo}: ${title}`}

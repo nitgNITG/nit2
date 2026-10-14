@@ -26,3 +26,16 @@ export const CloseXIcon = ({ className }: P) => (
         <path d='M18 6L6 18M6 6l12 12' />
     </svg>
 )
+
+/** Points "back" in the reading direction (left in LTR, right in RTL). */
+export const ChevronBackIcon = ({ className }: P) => (
+    <svg className={`${className ?? ''} rtl:-scale-x-100`} viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round' aria-hidden='true'>
+        <path d='M15 18l-6-6 6-6' />
+    </svg>
+)
+
+export const ChevronForwardIcon = ({ className }: P) => (
+    <svg className={`${className ?? ''} rtl:-scale-x-100`} viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round' aria-hidden='true'>
+        <path d='M9 18l6-6-6-6' />
+    </svg>
+)

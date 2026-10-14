@@ -28,9 +28,10 @@ const COPY = {
         featuredEyebrow: 'FEATURED WORK · WATCH',
         featuredTitleMany: (n: number) => (n === 2 ? 'Two projects, in their own words' : 'Three projects, in their own words'),
         featuredTitleOne: 'See one of our projects in action',
-        featuredHint: 'Muted preview · tap play for sound',
         featuredTabs: 'Featured projects',
         switcher: 'Choose a project',
+        prevProject: (name: string) => `Previous project: ${name}`,
+        nextProject: (name: string) => `Next project: ${name}`,
     },
     ar: {
         previewChip: 'معاينة · بدون صوت',
@@ -59,9 +60,10 @@ const COPY = {
         featuredEyebrow: 'أعمال مميزة · شاهد',
         featuredTitleMany: (n: number) => (n === 2 ? 'مشروعان يتحدثان عن نفسيهما' : 'ثلاثة مشاريع تتحدث عن نفسها'),
         featuredTitleOne: 'شاهد أحد مشاريعنا وهو يعمل',
-        featuredHint: 'معاينة بدون صوت · اضغط تشغيل للصوت',
         featuredTabs: 'مشاريع مميزة',
         switcher: 'اختر مشروعاً',
+        prevProject: (name: string) => `المشروع السابق: ${name}`,
+        nextProject: (name: string) => `المشروع التالي: ${name}`,
     },
 } as const;
 

@@ -18,13 +18,18 @@ type Props = {
     rounded?: string
     /** Teaser progress 0–1, e.g. for the Featured band's active tab. */
     onProgress?: (p: number) => void
+    /** Set when there are several projects: the teaser plays once, then this moves on (no loop). */
+    onEnded?: () => void
+    /** The projects the lightbox's previous/next buttons move through. */
+    playlist?: ShowcaseProject[]
 }
 
 /**
- * Poster → muted teaser loop (starts at ≥ 50 % visible, pauses off-screen, one at
- * a time) + big play button that opens the full promo with sound in the lightbox.
+ * Poster → muted teaser (starts at ≥ 50 % visible, pauses off-screen, one at a time;
+ * loops unless onEnded is set) + big play button that opens the full promo with sound
+ * in the lightbox.
  */
-export default function PromoPlayer({ project, locale, page, priority, rounded = 'rounded-[18px]', onProgress }: Props) {
+export default function PromoPlayer({ project, locale, page, priority, rounded = 'rounded-[18px]', onProgress, onEnded, playlist }: Props) {
     const promo = project.promo!
     const copy = promoCopy(locale)
     const allowed = useTeaserAllowed()
@@ -81,7 +86,8 @@ export default function PromoPlayer({ project, locale, page, priority, rounded =
                 <video
                     ref={videoRef}
                     muted
-                    loop
+                    loop={!onEnded}
+                    onEnded={onEnded}
                     playsInline
                     preload='none'
                     poster={promo.poster}
@@ -108,7 +114,7 @@ export default function PromoPlayer({ project, locale, page, priority, rounded =
                 <button
                     type='button'
                     aria-label={copy.playFull}
-                    onClick={(e) => lightbox.open(project, page, e.currentTarget)}
+                    onClick={(e) => lightbox.open(project, page, e.currentTarget, playlist)}
                     className='pointer-events-auto size-16 md:size-20 rounded-full border-[6px] border-[rgba(0,255,205,.25)] bg-[#00FFCD] bg-clip-padding flex items-center justify-center shadow-[0_10px_30px_rgba(0,0,0,.35)] hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white transition-transform'
                 >
                     <PlayIcon className='size-6 md:size-7' />
