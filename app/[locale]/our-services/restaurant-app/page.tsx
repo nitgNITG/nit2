@@ -6,6 +6,7 @@ import RestaurantHeader from './components/RestaurantHeader'
 import RestaurantFeatures from './components/RestaurantFeatures'
 import RestaurantMarkets from './components/RestaurantMarkets'
 import ServiceOfferings from '../../components/ServiceOfferings'
+import ProjectShowcaseSection from '../../components/promo/ProjectShowcaseSection'
 import RestaurantProcess from './components/RestaurantProcess'
 import RestaurantPricing from './components/RestaurantPricing'
 import Contact from '../../components/Contact'
@@ -23,6 +24,7 @@ export default function RestaurantPage() {
             <ScrollReveal><RestaurantFeatures /></ScrollReveal>
             <ScrollReveal><RestaurantMarkets /></ScrollReveal>
             <ScrollReveal><ServiceOfferings service="restaurant" /></ScrollReveal>
+            <ProjectShowcaseSection service='restaurant-app' />
             <ScrollReveal><RestaurantProcess /></ScrollReveal>
             <ScrollReveal><RestaurantPricing /></ScrollReveal>
             <ScrollReveal><FAQSection page="restaurant" /></ScrollReveal>

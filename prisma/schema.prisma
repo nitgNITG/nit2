@@ -30,6 +30,32 @@ type ProjectLink {
   link     String
 }
 
+// Promo video (docs/promo-videos-dev-spec.md). The full promo lives on Cloudinary;
+// the muted teaser and the poster are derived from it by URL transforms
+// (lib/promo.ts), so a project "has a promo" when videoUrl is set.
+type ProjectPromo {
+  videoUrl    String // Cloudinary secure_url of the full promo (with sound)
+  publicId    String? // Cloudinary public_id — lets the dashboard delete it
+  durationSec Float?
+  teaserStart Float     @default(0) // where the 8 s muted loop starts
+  posterAt    Float? // poster frame (seconds); defaults to teaserStart + 1
+  uploadDate  DateTime?
+  captionsEn  String? // Cloudinary raw .vtt URLs (only when captions aren't burned in)
+  captionsAr  String?
+}
+
+type ProjectFeature {
+  en String
+  ar String
+}
+
+// "Real numbers only" — hidden when empty.
+type ProjectKeyResult {
+  value   String
+  labelEn String
+  labelAr String
+}
+
 model Project {
   id            String        @id @default(auto()) @map("_id") @db.ObjectId
   img           String
@@ -41,6 +67,14 @@ model Project {
   types         String[]
   links         ProjectLink[]
   order         Int           @default(0)
+  // Promo videos / "Built by N.I.T" showcase (lib/promo.ts)
+  promo         ProjectPromo?
+  featuredOrder Int? // 1–3 = Featured band on Our Projects
+  services      String[] // service page slugs, e.g. "ecommerce-app"
+  categoryEn    String? // short label, e.g. "Delivery app · Egypt"
+  categoryAr    String?
+  features      ProjectFeature[]
+  keyResults    ProjectKeyResult[]
   // AI agent (search_projects): null/absent = visible; false hides it from the agent.
   aiVisible     Boolean?
   aiSummary     String?

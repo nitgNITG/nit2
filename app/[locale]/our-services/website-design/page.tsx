@@ -5,6 +5,7 @@ import BreadcrumbsJsonLd from '../../components/BreadcrumbsJsonLd'
 import WebHeader from './components/WebHeader'
 import WebFeatures from './components/WebFeatures'
 import ServiceOfferings from '../../components/ServiceOfferings'
+import ProjectShowcaseSection from '../../components/promo/ProjectShowcaseSection'
 import WebMarkets from './components/WebMarkets'
 import WebProcess from './components/WebProcess'
 import WebPricing from './components/WebPricing'
@@ -23,6 +24,7 @@ export default function WebsiteDesignPage() {
             <ScrollReveal><WebFeatures /></ScrollReveal>
             <ScrollReveal><WebMarkets /></ScrollReveal>
             <ScrollReveal><ServiceOfferings service="web" /></ScrollReveal>
+            <ProjectShowcaseSection service='website-design' />
             <ScrollReveal><WebProcess /></ScrollReveal>
             <ScrollReveal><WebPricing /></ScrollReveal>
             <ScrollReveal><FAQSection page="web" /></ScrollReveal>

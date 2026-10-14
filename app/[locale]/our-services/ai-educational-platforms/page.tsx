@@ -8,6 +8,7 @@ import SocialMedia from '../../components/SocialMedia'
 import DownSide from '../../components/DownSide'
 import ScrollReveal from '../../components/ScrollReveal'
 import ServiceOfferings from '../../components/ServiceOfferings'
+import ProjectShowcaseSection from '../../components/promo/ProjectShowcaseSection'
 import AIEduHeader from './components/AIEduHeader'
 import AIEduFeatures from './components/AIEduFeatures'
 import AIEduMarkets from './components/AIEduMarkets'
@@ -23,6 +24,7 @@ export default function AIEducationalPlatformsPage() {
             <ScrollReveal><AIEduFeatures /></ScrollReveal>
             <ScrollReveal><AIEduMarkets /></ScrollReveal>
             <ScrollReveal><ServiceOfferings service="aiEdu" /></ScrollReveal>
+            <ProjectShowcaseSection service='ai-educational-platforms' />
             <ScrollReveal><AIEduProcess /></ScrollReveal>
             <ScrollReveal><AIEduPricing /></ScrollReveal>
             <ScrollReveal><FAQSection page="aiEdu" /></ScrollReveal>

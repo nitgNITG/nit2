@@ -1,0 +1,74 @@
+// UI copy for the promo components (EN / AR). Kept in one place so the Arabic
+// labels the spec asks for (§8) are easy to review.
+const COPY = {
+    en: {
+        previewChip: 'Preview · muted loop',
+        playFull: 'Play the full promo with sound',
+        watchFull: 'Watch the full promo (with sound)',
+        watchPromo: 'Watch promo',
+        nowShowing: 'NOW SHOWING',
+        alsoBuilt: 'ALSO BUILT BY US',
+        startSimilar: 'Start a similar project',
+        startLikeThis: 'Start a project like this',
+        screensApp: 'Screens from the live app',
+        screensWeb: 'From the live platform',
+        close: 'Close video',
+        fullPromo: 'full promo',
+        captions: 'Captions',
+        captionsOff: 'Off',
+        wantLike: (name: string) => `Want something like ${name}? We can scope it with you this week.`,
+        eyebrowApp: 'BUILT BY N.I.T · LIVE ON THE STORES',
+        eyebrowWeb: 'BUILT BY N.I.T · LIVE PLATFORMS',
+        seeItRunning: 'See it running —',
+        builtBy: 'Built by N.I.T —',
+        subPromoApp: 'Real apps, built by our team and used every day. Watch a short tour, then start a project like it.',
+        subPromoWeb: 'Real platforms, built by our team and used every day. Watch a short tour, then start a project like it.',
+        subStaticApp: 'Real apps built by our team, live on the stores and used every day.',
+        subStaticWeb: 'Real platforms built by our team, live and used every day.',
+        featuredEyebrow: 'FEATURED WORK · WATCH',
+        featuredTitleMany: (n: number) => (n === 2 ? 'Two projects, in their own words' : 'Three projects, in their own words'),
+        featuredTitleOne: 'See one of our projects in action',
+        featuredHint: 'Muted preview · tap play for sound',
+        featuredTabs: 'Featured projects',
+        switcher: 'Choose a project',
+    },
+    ar: {
+        previewChip: 'معاينة · بدون صوت',
+        playFull: 'شغّل الفيديو التعريفي كاملاً بالصوت',
+        watchFull: 'شاهد الفيديو التعريفي كاملاً (بالصوت)',
+        watchPromo: 'شاهد الفيديو',
+        nowShowing: 'يُعرض الآن',
+        alsoBuilt: 'من أعمالنا أيضاً',
+        startSimilar: 'ابدأ مشروعاً مشابهاً',
+        startLikeThis: 'ابدأ مشروعاً مثله',
+        screensApp: 'لقطات من التطبيق الفعلي',
+        screensWeb: 'من المنصة الفعلية',
+        close: 'إغلاق الفيديو',
+        fullPromo: 'الفيديو التعريفي',
+        captions: 'الترجمة',
+        captionsOff: 'إيقاف',
+        wantLike: (name: string) => `تريد مشروعاً مثل ${name}؟ نحدد معك نطاق العمل هذا الأسبوع.`,
+        eyebrowApp: 'من تنفيذ N.I.T · متاحة على المتاجر',
+        eyebrowWeb: 'من تنفيذ N.I.T · منصات تعمل الآن',
+        seeItRunning: 'شاهدها تعمل —',
+        builtBy: 'من تنفيذ N.I.T —',
+        subPromoApp: 'تطبيقات حقيقية نفّذها فريقنا وتُستخدم كل يوم. شاهد جولة قصيرة، ثم ابدأ مشروعاً مثلها.',
+        subPromoWeb: 'منصات حقيقية نفّذها فريقنا وتُستخدم كل يوم. شاهد جولة قصيرة، ثم ابدأ مشروعاً مثلها.',
+        subStaticApp: 'تطبيقات حقيقية نفّذها فريقنا، متاحة على المتاجر وتُستخدم كل يوم.',
+        subStaticWeb: 'منصات حقيقية نفّذها فريقنا، تعمل الآن وتُستخدم كل يوم.',
+        featuredEyebrow: 'أعمال مميزة · شاهد',
+        featuredTitleMany: (n: number) => (n === 2 ? 'مشروعان يتحدثان عن نفسيهما' : 'ثلاثة مشاريع تتحدث عن نفسها'),
+        featuredTitleOne: 'شاهد أحد مشاريعنا وهو يعمل',
+        featuredHint: 'معاينة بدون صوت · اضغط تشغيل للصوت',
+        featuredTabs: 'مشاريع مميزة',
+        switcher: 'اختر مشروعاً',
+    },
+} as const;
+
+export type PromoCopy = (typeof COPY)['en'] | (typeof COPY)['ar'];
+
+export const promoCopy = (locale: string): PromoCopy => (locale === 'ar' ? COPY.ar : COPY.en);
+
+/** "Start a similar project" → contact form with the project prefilled (ContactForm reads ?project=). */
+export const contactHref = (locale: string, projectTitle: string) =>
+    `/${locale === 'ar' ? 'ar' : 'en'}/contact?project=${encodeURIComponent(projectTitle)}`;

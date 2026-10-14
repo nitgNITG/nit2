@@ -2,6 +2,10 @@ import { deleteImage, uploadImage } from "@/utils/cloudinary";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/prisma/client'
 import { authAdmin } from "@/lib/predict";
+import { revalidateTag } from "next/cache";
+import { parseShowcaseForm } from "@/lib/promo";
+import { destroyPromoVideo, promoCloudName } from "@/lib/promoCloudinary";
+import { PROJECTS_TAG } from "@/lib/projectShowcase";
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
     try {
@@ -20,6 +24,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         const descriptionEn = body.get('descriptionEn')
         const typesRaw = body.get('types') as string | null;
         const linksRaw = body.get('links') as string | null;
+
+        const showcase = parseShowcaseForm(body, promoCloudName())
+        if (!showcase.ok) return NextResponse.json({ message: showcase.error }, { status: 400 })
+        Object.assign(data, showcase.data)
+        // A replaced/removed promo video is deleted from Cloudinary after the save.
+        const before = 'promo' in showcase.data
+            ? await prisma.project.findUnique({ where: { id }, select: { promo: true } })
+            : null
 
         if (img && img != 'undefined') {
             await deleteImage(oldImg as string)
@@ -50,6 +62,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
             where: { id: id },
             data
         })
+        const oldVideo = before?.promo?.publicId
+        if (oldVideo && oldVideo !== project.promo?.publicId) await destroyPromoVideo(oldVideo)
+        revalidateTag(PROJECTS_TAG)
         return NextResponse.json({ project, message: "Successfully updated" }, { status: 200 })
     } catch (error: any) {
         return NextResponse.json({ error: error.message, message: "There is error in server!!" }, { status: 400 })
@@ -64,6 +79,8 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
         const { id } = params;
         const project = await prisma.project.delete({ where: { id } });
         await deleteImage(project.img as string)
+        await destroyPromoVideo(project.promo?.publicId)
+        revalidateTag(PROJECTS_TAG)
         return NextResponse.json({ message: "Successfully deleted" }, { status: 200 })
     } catch (error: any) {
         return NextResponse.json({ error: error.message, message: "There is error in server!!" }, { status: 400 })

@@ -60,8 +60,18 @@ const ContactForm = () => {
     // Prefill subject + message when arrived from a "Contact us" plan card
     // (/contact?plan=<key>), so sales sees which plan the lead wanted. Read from
     // the URL in an effect (client-only) to avoid a useSearchParams Suspense wrap.
+    // Same for "Start a similar project" on a promo (/contact?project=<name>).
     useEffect(() => {
-        const plan = new URLSearchParams(window.location.search).get('plan');
+        const params = new URLSearchParams(window.location.search);
+        const project = params.get('project')?.trim().slice(0, 80);
+        if (project) {
+            setValue('subject', isAr ? `مشروع مشابه لـ ${project}` : `A project like ${project}`);
+            setValue('message', isAr
+                ? `مرحباً، شاهدت ${project} وأريد مشروعاً مشابهاً. برجاء التواصل معي.`
+                : `Hi, I saw ${project} and I'd like a similar project. Please get in touch.`);
+            return;
+        }
+        const plan = params.get('plan');
         if (!plan) return;
         const nice = plan.replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim();
         setValue('subject', isAr ? `استفسار عن باقة ${nice}` : `${nice} plan — enquiry`);

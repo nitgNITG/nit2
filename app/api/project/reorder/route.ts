@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/prisma/client';
 import { authAdmin } from '@/lib/predict';
+import { revalidateTag } from 'next/cache';
+import { PROJECTS_TAG } from '@/lib/projectShowcase';
 
 export async function PATCH(req: NextRequest) {
     try {
@@ -42,6 +44,7 @@ export async function PATCH(req: NextRequest) {
             )
         );
 
+        revalidateTag(PROJECTS_TAG);
         return NextResponse.json({ message: 'Reordered successfully' }, { status: 200 });
     } catch (error: any) {
         console.error('[PATCH /api/project/reorder] ❌', error.message);

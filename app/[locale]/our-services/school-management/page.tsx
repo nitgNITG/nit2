@@ -8,6 +8,7 @@ import SocialMedia from '../../components/SocialMedia'
 import DownSide from '../../components/DownSide'
 import ScrollReveal from '../../components/ScrollReveal'
 import ServiceOfferings from '../../components/ServiceOfferings'
+import ProjectShowcaseSection from '../../components/promo/ProjectShowcaseSection'
 import SchoolHeader from './components/SchoolHeader'
 import SchoolFeatures from './components/SchoolFeatures'
 import SchoolMarkets from './components/SchoolMarkets'
@@ -23,6 +24,7 @@ export default function SchoolManagementPage() {
             <ScrollReveal><SchoolFeatures /></ScrollReveal>
             <ScrollReveal><SchoolMarkets /></ScrollReveal>
             <ScrollReveal><ServiceOfferings service="school" /></ScrollReveal>
+            <ProjectShowcaseSection service='school-management' />
             <ScrollReveal><SchoolProcess /></ScrollReveal>
             <ScrollReveal><SchoolPricing /></ScrollReveal>
             <ScrollReveal><FAQSection page="school" /></ScrollReveal>

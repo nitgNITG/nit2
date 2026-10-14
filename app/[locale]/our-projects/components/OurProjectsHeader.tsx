@@ -2,7 +2,8 @@ import React from 'react'
 import Navbar from '../../components/Navbar'
 import { useLocale } from 'next-intl'
 
-const OurProjectsHeader = () => {
+/** withFeatured: the Featured promo band overlaps the hero's bottom, so leave room for it. */
+const OurProjectsHeader = ({ withFeatured = false }: { withFeatured?: boolean }) => {
     const locale = useLocale()
 
     return (
@@ -31,7 +32,7 @@ const OurProjectsHeader = () => {
                 </div>
 
                 {/* Hero content */}
-                <div className='flex-1 flex items-center justify-center relative z-10 pb-20'>
+                <div className={`flex-1 flex items-center justify-center relative z-10 ${withFeatured ? 'pb-[200px]' : 'pb-20'}`}>
                     <div className='text-center space-y-6 max-w-3xl px-4'>
 
                         <div className='flex justify-center'>

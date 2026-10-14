@@ -6,6 +6,7 @@ import DeliveryHeader from './components/DeliveryHeader'
 import DeliveryFeatures from './components/DeliveryFeatures'
 import DeliveryMarkets from './components/DeliveryMarkets'
 import ServiceOfferings from '../../components/ServiceOfferings'
+import ProjectShowcaseSection from '../../components/promo/ProjectShowcaseSection'
 import DeliveryProcess from './components/DeliveryProcess'
 import DeliveryPricing from './components/DeliveryPricing'
 import Contact from '../../components/Contact'
@@ -23,6 +24,7 @@ export default function DeliveryPage() {
             <ScrollReveal><DeliveryFeatures /></ScrollReveal>
             <ScrollReveal><DeliveryMarkets /></ScrollReveal>
             <ScrollReveal><ServiceOfferings service="delivery" /></ScrollReveal>
+            <ProjectShowcaseSection service='delivery-app' />
             <ScrollReveal><DeliveryProcess /></ScrollReveal>
             <ScrollReveal><DeliveryPricing /></ScrollReveal>
             <ScrollReveal><FAQSection page="delivery" /></ScrollReveal>
