@@ -1,0 +1,106 @@
+{
+  "_help": "Applied by `node scripts/promo-apply.mjs`. match = the project's English title (or id). Only the keys you write are changed. services: ecommerce-app, delivery-app, restaurant-app, loyalty-app, android-app, ios-app, educational-platforms, ai-educational-platforms, moodle-lms, website-design, school-management. featuredOrder 1-3 = Our Projects band (needs a promo). promo is filled by `node scripts/promo-upload-video.mjs`. keyResults: real numbers only.",
+  "projects": [
+    {
+      "match": "Tawreedat Go",
+      "note": "Video: Tawreedat + sales-rep (mandoob) apps",
+      "services": [
+        "ecommerce-app",
+        "delivery-app",
+        "android-app",
+        "ios-app"
+      ],
+      "featuredOrder": 1,
+      "categoryEn": "Supplies & sales-rep apps · Egypt",
+      "categoryAr": "تطبيقات توريدات ومندوبين · مصر",
+      "promo": {
+        "videoUrl": "https://res.cloudinary.com/dlrkykxr9/video/upload/v1791981796/nit-promos/tawreedat-go.mp4",
+        "publicId": "nit-promos/tawreedat-go",
+        "durationSec": 136.8,
+        "teaserStart": 4,
+        "posterAt": null,
+        "uploadDate": "2026-10-14T12:43:16Z",
+        "captionsEn": null,
+        "captionsAr": null
+      }
+    },
+    {
+      "match": "POS",
+      "note": "Video: POS. Create the project in the dashboard first, then fix match if its English title differs.",
+      "services": [
+        "ecommerce-app"
+      ],
+      "featuredOrder": 2,
+      "categoryEn": "Point of sale",
+      "categoryAr": "نقاط البيع"
+    },
+    {
+      "match": "Buzz",
+      "services": [
+        "ecommerce-app",
+        "delivery-app",
+        "restaurant-app",
+        "android-app",
+        "ios-app"
+      ],
+      "categoryEn": "Food delivery · Saudi Arabia",
+      "categoryAr": "توصيل طعام · السعودية"
+    },
+    {
+      "match": "PayPoins",
+      "services": [
+        "loyalty-app",
+        "android-app",
+        "ios-app"
+      ],
+      "categoryEn": "Loyalty platform",
+      "categoryAr": "منصة ولاء"
+    },
+    {
+      "match": "Loghat",
+      "services": [
+        "educational-platforms",
+        "ai-educational-platforms",
+        "android-app",
+        "ios-app"
+      ],
+      "categoryEn": "AI English learning app",
+      "categoryAr": "تطبيق تعلم الإنجليزية بالذكاء الاصطناعي"
+    },
+    {
+      "match": "Step to English",
+      "services": [
+        "educational-platforms",
+        "android-app",
+        "ios-app"
+      ],
+      "categoryEn": "Video lessons app",
+      "categoryAr": "تطبيق دروس فيديو"
+    },
+    {
+      "match": "Academy of Excellence",
+      "services": [
+        "educational-platforms",
+        "moodle-lms"
+      ]
+    },
+    {
+      "match": "3alemny",
+      "services": [
+        "educational-platforms"
+      ]
+    },
+    {
+      "match": "Vocational Training Academy",
+      "services": [
+        "moodle-lms"
+      ]
+    },
+    {
+      "match": "PM LOUNGE",
+      "services": [
+        "moodle-lms"
+      ]
+    }
+  ]
+}
