@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { SERVICE_SLUGS, loadEnv, parseArgs, readPromos } from "../scripts/promo-common.mjs";
 import { promoFromUpload, slugName, upsertPromo } from "../scripts/promo-upload-video.mjs";
-import { planApply, toFormFields, validateEntry } from "../scripts/promo-apply.mjs";
+import { planApply, posterUrl, toCreateFields, toFormFields, validateEntry } from "../scripts/promo-apply.mjs";
 import { PROMO_SERVICE_SLUGS, parseShowcaseForm } from "@/lib/promo";
 
 const CLOUD = "nitcloud";
@@ -91,6 +91,45 @@ describe("promo-apply", () => {
             '"Tawreedat Go" is featured but has no promo video — it won\'t show in the band until it has one',
             'featuredOrder 1 is used by both "Tawreedat Go" and "Buzz"',
         ]);
+    });
+});
+
+describe("promo-apply — creating a missing project", () => {
+    const promo = { videoUrl: `https://res.cloudinary.com/${CLOUD}/video/upload/v9/nit-promos/pos.mp4`, teaserStart: 6, posterAt: 3 };
+    const entry = {
+        match: "Eerad POS", promo, services: ["restaurant-app"], featuredOrder: 2,
+        create: { titleEn: "Eerad POS", title: "إيراد POS", descriptionEn: " One cashier system ", description: "نظام كاشير", image: "poster" },
+    };
+
+    it("plans a create (not 'missing') when the entry has a create block", () => {
+        const plan = planApply([entry], live);
+        expect(plan.missing).toEqual([]);
+        expect(plan.steps).toHaveLength(1);
+        expect(plan.steps[0].action).toBe("create");
+        expect(plan.steps[0].fields).toMatchObject({ titleEn: "Eerad POS", descriptionEn: "One cashier system", types: '["ecommerce"]', links: "[]", important: "false" });
+    });
+
+    it("once the project exists, the same entry updates it instead of creating a duplicate", () => {
+        const plan = planApply([entry], [...live, { id: "p9", titleEn: "Eerad POS", important: false }]);
+        expect(plan.steps.map((s) => [s.action, s.project.id])).toEqual([["update", "p9"]]);
+    });
+
+    it("the create fields carry the showcase data the API stores", () => {
+        const form = new FormData();
+        for (const [k, v] of Object.entries(toCreateFields(entry))) form.append(k, v);
+        const parsed = parseShowcaseForm(form, CLOUD);
+        expect(parsed.ok && parsed.data).toMatchObject({ services: ["restaurant-app"], featuredOrder: 2, promo: { videoUrl: promo.videoUrl, posterAt: 3 } });
+    });
+
+    it("uses the promo's poster frame as the card image", () => {
+        expect(posterUrl(promo)).toBe(`https://res.cloudinary.com/${CLOUD}/video/upload/so_3,w_1280,h_720,c_limit,q_auto/v9/nit-promos/pos.jpg`);
+        expect(posterUrl({ ...promo, posterAt: null })).toContain("/so_7,");
+    });
+
+    it("rejects an incomplete create block", () => {
+        expect(validateEntry({ match: "X", create: { titleEn: "X", image: "a.png" } }).join(" ")).toMatch(/create\.title is required/);
+        expect(validateEntry({ match: "X", create: { ...entry.create } }).join(" ")).toMatch(/"poster" needs a promo video/);
+        expect(validateEntry(entry)).toEqual([]);
     });
 });
 

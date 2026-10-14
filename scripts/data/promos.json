@@ -25,20 +25,47 @@
       }
     },
     {
-      "match": "POS",
-      "note": "Video: POS. Create the project in the dashboard first, then fix match if its English title differs.",
+      "match": "Eerad POS",
+      "note": "Source: Eerad POS user guide v1.10.3 + eerad-promo-ar.mp4. Created by promo-apply if missing.",
+      "create": {
+        "titleEn": "Eerad POS",
+        "title": "إيراد POS",
+        "descriptionEn": "One cashier system for every business — cafés, restaurants, shops, salons and gaming lounges — that keeps selling even without internet. Runs on Windows, with Android phones and Sunmi devices as extra counters.",
+        "description": "نظام كاشير واحد لكل نشاط — كافيهات ومطاعم ومحلات وصالونات وصالات ألعاب — يواصل البيع حتى بدون إنترنت. يعمل على ويندوز، مع هواتف أندرويد وأجهزة Sunmi ككاشير إضافي.",
+        "types": [
+          "ecommerce"
+        ],
+        "links": [],
+        "image": "poster"
+      },
       "services": [
-        "ecommerce-app"
+        "restaurant-app",
+        "ecommerce-app",
+        "android-app"
       ],
       "featuredOrder": 2,
-      "categoryEn": "Point of sale",
-      "categoryAr": "نقاط البيع",
+      "categoryEn": "Point of sale · Windows & Android",
+      "categoryAr": "نظام كاشير · ويندوز وأندرويد",
+      "features": [
+        {
+          "en": "Works without internet",
+          "ar": "يعمل بدون إنترنت"
+        },
+        {
+          "en": "Tables, kitchen & split bill",
+          "ar": "طاولات ومطبخ وتقسيم الفاتورة"
+        },
+        {
+          "en": "Extra counters on Android & Sunmi",
+          "ar": "كاشير إضافي على أندرويد وSunmi"
+        }
+      ],
       "promo": {
         "videoUrl": "https://res.cloudinary.com/dlrkykxr9/video/upload/v1791983427/nit-promos/pos.mp4",
         "publicId": "nit-promos/pos",
         "durationSec": 60,
-        "teaserStart": 4,
-        "posterAt": null,
+        "teaserStart": 6,
+        "posterAt": 3,
         "uploadDate": "2026-10-14T13:10:27Z",
         "captionsEn": null,
         "captionsAr": null
@@ -74,7 +101,8 @@
         "uploadDate": "2026-10-14T13:13:52Z",
         "captionsEn": null,
         "captionsAr": null
-      }
+      },
+      "featuredOrder": 3
     },
     {
       "match": "Loghat",
