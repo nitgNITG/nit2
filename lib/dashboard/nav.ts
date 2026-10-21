@@ -14,7 +14,7 @@ export const NAV_GROUPS = [
 export type NavGroup = (typeof NAV_GROUPS)[number]['key']
 
 export type NavIcon =
-    | 'dashboard' | 'projects' | 'types' | 'sponsors' | 'contacts' | 'blog' | 'plans' | 'academies' | 'stores'
+    | 'dashboard' | 'projects' | 'types' | 'sponsors' | 'contacts' | 'blog' | 'videos' | 'plans' | 'academies' | 'stores'
     | 'payments' | 'revenue' | 'licenses' | 'platform' | 'integrations' | 'health' | 'inbox' | 'priceRanges'
     | 'tickets' | 'meetings' | 'usage' | 'analytics' | 'aiSettings' | 'staff' | 'followups'
 
@@ -34,6 +34,7 @@ export const ADMIN_NAV: NavItem[] = [
     { label: 'Project Types', href: '/dashboard/types', group: 'content', icon: 'types' },
     { label: 'Sponsors', href: '/dashboard/sponsers', group: 'content', icon: 'sponsors' },
     { label: 'Blog', href: '/dashboard/blog', group: 'content', icon: 'blog' },
+    { label: 'Videos', href: '/dashboard/videos', group: 'content', icon: 'videos' },
     { label: 'Platform Settings', href: '/dashboard/platform-settings', group: 'system', icon: 'platform' },
     { label: 'Integrations', href: '/dashboard/integrations', group: 'system', icon: 'integrations' },
     { label: 'Setup & Health', href: '/dashboard/setup', group: 'system', icon: 'health' },
@@ -45,7 +46,7 @@ const ORDER = [
     '/dashboard/conversations', '/dashboard/contacts', '/dashboard/follow-ups', '/dashboard/meetings', '/dashboard/price-ranges',
     '/dashboard/academies', '/dashboard/stores', '/dashboard/tickets',
     '/dashboard/plans', '/dashboard/licenses', '/dashboard/payments', '/dashboard/revenue',
-    '/dashboard/projects', '/dashboard/types', '/dashboard/sponsers', '/dashboard/blog',
+    '/dashboard/projects', '/dashboard/types', '/dashboard/sponsers', '/dashboard/blog', '/dashboard/videos',
     '/dashboard/agent-usage', '/dashboard/agent-analytics', '/dashboard/agent-settings', '/dashboard/agent-staff',
     '/dashboard/platform-settings', '/dashboard/integrations', '/dashboard/setup',
 ]

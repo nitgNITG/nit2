@@ -448,3 +448,27 @@ model WhatsAppIdentity {
 
   @@index([expiresAt])
 }
+
+model Video {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  title         String    // Arabic title
+  titleEn       String?   // English title
+  description   String?   // Arabic description
+  descriptionEn String?   // English description
+  videoUrl      String    // Cloudinary URL, uploaded mp4, YouTube, Vimeo, etc.
+  thumbnailUrl  String?   // Poster/thumbnail image URL
+  duration      String?   // Display duration e.g. "02:15"
+  durationSec   Float?    // Seconds
+  category      String?   @default("showcase") // showcase | promo | tutorial | review | other
+  categoryAr    String?
+  categoryEn    String?
+  publicId      String?   // Cloudinary publicId if stored on Cloudinary
+  order         Int       @default(0)
+  isFeatured    Boolean   @default(false)
+  views         Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([order])
+  @@index([createdAt])
+}

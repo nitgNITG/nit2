@@ -8,7 +8,7 @@ import type { IconType } from 'react-icons'
 import {
     LuBadgeDollarSign, LuBell, LuBellOff, LuBot, LuCalendarClock, LuChartColumn, LuChartLine, LuContact, LuCreditCard,
     LuFolderKanban, LuGlobe, LuGraduationCap, LuHandshake, LuHeartPulse, LuInbox, LuKeyRound, LuLayoutDashboard,
-    LuMailCheck, LuMenu, LuNewspaper, LuPlug, LuReceipt, LuSparkles, LuStore, LuTags, LuTicket, LuUserCog, LuX,
+    LuMailCheck, LuMenu, LuNewspaper, LuPlug, LuReceipt, LuSparkles, LuStore, LuTags, LuTicket, LuUserCog, LuVideo, LuX,
 } from 'react-icons/lu'
 import useClickOutside from '../../hook/useClickOutSide'
 import { Logo } from '../../components/icons'
@@ -19,7 +19,7 @@ import { useInboxAlerts } from './useInboxAlerts'
 
 const ICONS: Record<NavIcon, IconType> = {
     dashboard: LuLayoutDashboard, projects: LuFolderKanban, types: LuTags, sponsors: LuHandshake, contacts: LuContact,
-    blog: LuNewspaper, plans: LuBadgeDollarSign, academies: LuGraduationCap, stores: LuStore, payments: LuCreditCard,
+    blog: LuNewspaper, videos: LuVideo, plans: LuBadgeDollarSign, academies: LuGraduationCap, stores: LuStore, payments: LuCreditCard,
     revenue: LuChartLine, licenses: LuKeyRound, platform: LuGlobe, integrations: LuPlug, health: LuHeartPulse,
     inbox: LuInbox, priceRanges: LuReceipt, tickets: LuTicket, meetings: LuCalendarClock, usage: LuChartColumn,
     analytics: LuSparkles, aiSettings: LuBot, staff: LuUserCog, followups: LuMailCheck,

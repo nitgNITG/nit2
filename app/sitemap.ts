@@ -19,6 +19,7 @@ const staticPages = [
     { path: "/our-services/ios-app", priority: 0.9, changeFrequency: "monthly" as const },
     { path: "/our-services/website-design", priority: 0.9, changeFrequency: "monthly" as const },
     { path: "/blog", priority: 0.8, changeFrequency: "daily" as const },
+    { path: "/videos", priority: 0.8, changeFrequency: "weekly" as const },
     { path: "/who-us", priority: 0.7, changeFrequency: "monthly" as const },
     { path: "/contact", priority: 0.7, changeFrequency: "monthly" as const },
     { path: "/get-quote", priority: 0.8, changeFrequency: "monthly" as const },

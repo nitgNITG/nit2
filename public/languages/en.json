@@ -133,6 +133,7 @@
         "item2": "About Us",
         "item3": "Our Projects",
         "item4": "Blog",
+        "item_videos": "Videos",
         "item5": "Contact Us",
         "btn": "Start Your Project",
         "item6": "Moodle LMS",
@@ -391,5 +392,18 @@
         "stat2": "Projects delivered",
         "stat3": "Response time",
         "stat4": "Client satisfaction"
+    },
+    "videos": {
+        "badge": "Media & Software Showcase",
+        "heading": "Watch Our Apps & Platforms in Action",
+        "subheading": "Explore live walk-throughs, promos, and system demos of mobile apps, LMS platforms, and e-commerce solutions built by N.I.T.",
+        "all": "All",
+        "watch": "Watch Video",
+        "featured": "Featured in Spotlight",
+        "noVideos": "No videos found in this category yet",
+        "startProject": "Start a Similar Project",
+        "contactCta": "Get in touch to discuss your idea",
+        "searchPlaceholder": "Search by video title or description...",
+        "duration": "Duration"
     }
 }

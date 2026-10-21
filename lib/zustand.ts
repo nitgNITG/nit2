@@ -69,4 +69,17 @@ export const useStore = create((set) => ({
     deleteSponser: (id: any) => set((state: any) => ({
         sponsers: state.sponsers.filter((s: any) => s.id !== id)
     })),
+
+    // Videos
+    videos: [],
+    editVideo: null,
+    setVideos: (videos: any) => set(() => ({ videos })),
+    setEditVideo: (video: any) => set(() => ({ editVideo: video })),
+    addVideo: (video: any) => set((state: any) => ({ videos: [video, ...state.videos] })),
+    updateVideo: (video: any) => set((state: any) => ({
+        videos: state.videos.map((v: any) => v.id === video.id ? video : v)
+    })),
+    deleteVideo: (id: any) => set((state: any) => ({
+        videos: state.videos.filter((v: any) => v.id !== id)
+    })),
 }))
