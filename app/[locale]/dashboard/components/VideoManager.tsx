@@ -8,9 +8,10 @@ import {
     LuExternalLink, LuClock, LuEye, LuLayers, LuFilm, LuX
 } from 'react-icons/lu'
 import { useStore } from '@/lib/zustand'
-import { parseVideoUrl, VIDEO_CATEGORIES } from '@/lib/videos'
+import { parseVideoUrl, DEFAULT_VIDEO_CATEGORIES, type CategoryItem } from '@/lib/videos'
 import AddEditVideo from './AddEditVideo'
 import DailogDelete from './DailogDelete'
+import ManageCategoriesModal from './ManageCategoriesModal'
 
 export interface VideoItem {
     id: string
@@ -34,8 +35,9 @@ export interface VideoItem {
 export default function VideoManager() {
     const { videos, setVideos, setEditVideo, deleteVideo, updateVideo }: any = useStore()
     const [loading, setLoading] = useState(true)
+    const [categories, setCategories] = useState<CategoryItem[]>(DEFAULT_VIDEO_CATEGORIES)
+    const [showCategoriesModal, setShowCategoriesModal] = useState(false)
     const [showForm, setShowForm] = useState(false)
-    const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null)
     const [deleteId, setDeleteId] = useState<string | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
@@ -57,8 +59,20 @@ export default function VideoManager() {
         }
     }
 
+    const fetchCategories = async () => {
+        try {
+            const { data } = await axios.get('/api/video-categories')
+            if (data?.categories?.length) {
+                setCategories(data.categories)
+            }
+        } catch (error: any) {
+            console.error('Failed to load categories:', error)
+        }
+    }
+
     useEffect(() => {
         fetchVideos()
+        fetchCategories()
     }, [])
 
     const handleDelete = async () => {
@@ -121,16 +135,27 @@ export default function VideoManager() {
                     </div>
                 </div>
 
-                <button
-                    onClick={() => {
-                        setEditVideo(null)
-                        setShowForm(true)
-                    }}
-                    className='inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm px-5 py-2.5 rounded-xl transition-colors shadow-sm'
-                >
-                    <LuPlus className='size-4' />
-                    Add Video / إضافة فيديو
-                </button>
+                <div className='flex items-center gap-2.5'>
+                    <button
+                        onClick={() => setShowCategoriesModal(true)}
+                        className='inline-flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-sm px-4 py-2.5 rounded-xl transition-colors border border-gray-200'
+                        title='إدارة تصنيفات الفيديوهات'
+                    >
+                        <LuLayers className='size-4 text-emerald-600' />
+                        <span>Categories / إدارة التصنيفات</span>
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            setEditVideo(null)
+                            setShowForm(true)
+                        }}
+                        className='inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm px-5 py-2.5 rounded-xl transition-colors shadow-sm'
+                    >
+                        <LuPlus className='size-4' />
+                        Add Video / إضافة فيديو
+                    </button>
+                </div>
             </div>
 
             {/* Quick Stats */}
@@ -158,7 +183,7 @@ export default function VideoManager() {
                 <div className='bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between'>
                     <div>
                         <p className='text-xs text-gray-500 font-medium'>Active Categories</p>
-                        <p className='text-2xl font-bold text-blue-600 mt-1'>{VIDEO_CATEGORIES.length}</p>
+                        <p className='text-2xl font-bold text-blue-600 mt-1'>{categories.length}</p>
                     </div>
                     <div className='p-2.5 bg-blue-50 text-blue-600 rounded-lg'>
                         <LuLayers className='size-5' />
@@ -188,11 +213,11 @@ export default function VideoManager() {
                     >
                         All / الكل
                     </button>
-                    {VIDEO_CATEGORIES.map((c) => (
+                    {categories.map((c) => (
                         <button
-                            key={c.key}
-                            onClick={() => setCategoryFilter(c.key)}
-                            className={`text-xs px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${categoryFilter === c.key ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                            key={c.value}
+                            onClick={() => setCategoryFilter(c.value)}
+                            className={`text-xs px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${categoryFilter === c.value ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                         >
                             {c.labelEn}
                         </button>
@@ -229,7 +254,7 @@ export default function VideoManager() {
                 <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5'>
                     {filteredVideos.map((video) => {
                         const parsed = parseVideoUrl(video.videoUrl)
-                        const categoryObj = VIDEO_CATEGORIES.find((c) => c.key === video.category)
+                        const categoryObj = categories.find((c) => c.value === video.category)
                         const thumb = video.thumbnailUrl || parsed.thumbnailUrl || '/assets/default_thumb.jpg'
 
                         return (
@@ -237,7 +262,7 @@ export default function VideoManager() {
                                 key={video.id}
                                 className='bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col group hover:shadow-md transition-shadow'
                             >
-                                {/* Thumbnail / Media Player Area */}
+                                {/* Thumbnail Area */}
                                 <div className='relative aspect-video bg-black overflow-hidden'>
                                     <img
                                         src={thumb}
@@ -340,11 +365,24 @@ export default function VideoManager() {
             {/* Add / Edit Video Modal */}
             {showForm && (
                 <AddEditVideo
+                    categories={categories}
+                    onOpenCategories={() => setShowCategoriesModal(true)}
                     close={() => {
                         setShowForm(false)
                         setEditVideo(null)
                     }}
                     onSuccess={fetchVideos}
+                />
+            )}
+
+            {/* Manage Categories Modal */}
+            {showCategoriesModal && (
+                <ManageCategoriesModal
+                    categories={categories}
+                    close={() => setShowCategoriesModal(false)}
+                    onUpdated={() => {
+                        fetchCategories()
+                    }}
                 />
             )}
 

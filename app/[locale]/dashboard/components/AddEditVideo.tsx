@@ -8,15 +8,17 @@ import { LuUpload, LuLink, LuVideo, LuImage, LuCheck, LuX, LuSparkles, LuPlay } 
 import { CloseIcon, LoadingIcon } from '../../components/icons'
 import useClickOutside from '../../hook/useClickOutSide'
 import { useStore } from '@/lib/zustand'
-import { parseVideoUrl, VIDEO_CATEGORIES } from '@/lib/videos'
+import { parseVideoUrl, DEFAULT_VIDEO_CATEGORIES, type CategoryItem } from '@/lib/videos'
 import { uploadPromoFile } from './promoUpload'
 
 interface AddEditVideoProps {
     close: () => void
     onSuccess?: () => void
+    categories?: CategoryItem[]
+    onOpenCategories?: () => void
 }
 
-export default function AddEditVideo({ close, onSuccess }: AddEditVideoProps) {
+export default function AddEditVideo({ close, onSuccess, categories = DEFAULT_VIDEO_CATEGORIES, onOpenCategories }: AddEditVideoProps) {
     const { editVideo, setEditVideo, addVideo, updateVideo }: any = useStore()
     const [videoMode, setVideoMode] = useState<'url' | 'upload'>('url')
     const [videoUrl, setVideoUrl] = useState(editVideo?.videoUrl || '')
@@ -379,13 +381,24 @@ export default function AddEditVideo({ close, onSuccess }: AddEditVideoProps) {
                     <div className='grid grid-cols-1 sm:grid-cols-3 gap-3'>
                         {/* Category */}
                         <div>
-                            <label className='block text-xs font-medium text-gray-600 mb-1'>Category / التصنيف</label>
+                            <div className='flex items-center justify-between mb-1'>
+                                <label className='block text-xs font-medium text-gray-600'>Category / التصنيف</label>
+                                {onOpenCategories && (
+                                    <button
+                                        type='button'
+                                        onClick={onOpenCategories}
+                                        className='text-[11px] text-emerald-600 hover:underline font-semibold'
+                                    >
+                                        + Manage / إدارة
+                                    </button>
+                                )}
+                            </div>
                             <select
                                 {...register('category')}
                                 className='w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm outline-none focus:border-emerald-500'
                             >
-                                {VIDEO_CATEGORIES.map((c) => (
-                                    <option key={c.key} value={c.key}>
+                                {categories.map((c) => (
+                                    <option key={c.value} value={c.value}>
                                         {c.labelEn} — {c.labelAr}
                                     </option>
                                 ))}

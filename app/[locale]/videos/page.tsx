@@ -6,6 +6,7 @@ import VideosShowcase, { type VideoData } from './components/VideosShowcase'
 import VideoSchema from './components/VideoSchema'
 import Footer from '../components/Footer'
 import ScrollReveal from '../components/ScrollReveal'
+import { DEFAULT_VIDEO_CATEGORIES, type CategoryItem } from '@/lib/videos'
 
 export const revalidate = 60 // regenerate every minute
 
@@ -44,10 +45,24 @@ async function getVideos(): Promise<VideoData[]> {
     }
 }
 
+async function getCategories(): Promise<CategoryItem[]> {
+    try {
+        const categories = await prisma.videoCategory.findMany({
+            orderBy: { order: 'asc' },
+        })
+        if (!categories || categories.length === 0) {
+            return DEFAULT_VIDEO_CATEGORIES
+        }
+        return JSON.parse(JSON.stringify(categories))
+    } catch {
+        return DEFAULT_VIDEO_CATEGORIES
+    }
+}
+
 export default async function VideosPage({ params }: { params: { locale: string } }) {
     const locale = params?.locale || 'ar'
     const isAr = locale === 'ar'
-    const videos = await getVideos()
+    const [videos, categories] = await Promise.all([getVideos(), getCategories()])
 
     return (
         <div className='min-h-screen flex flex-col bg-white'>
@@ -75,7 +90,7 @@ export default async function VideosPage({ params }: { params: { locale: string 
             {/* Main Showcase Section */}
             <main className='flex-1'>
                 <ScrollReveal>
-                    <VideosShowcase initialVideos={videos} />
+                    <VideosShowcase initialVideos={videos} initialCategories={categories} />
                 </ScrollReveal>
             </main>
 

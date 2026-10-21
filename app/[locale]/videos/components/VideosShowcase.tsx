@@ -1,12 +1,13 @@
 /* eslint-disable @next/next/no-img-element */
 'use client'
 import React, { useMemo, useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslations, useLocale } from 'next-intl'
 import {
     LuPlay, LuClock, LuSearch, LuSparkles, LuX, LuShare2, LuArrowRight,
     LuArrowLeft, LuCheck, LuLayers, LuFilm
 } from 'react-icons/lu'
-import { parseVideoUrl, VIDEO_CATEGORIES } from '@/lib/videos'
+import { parseVideoUrl, DEFAULT_VIDEO_CATEGORIES, type CategoryItem } from '@/lib/videos'
 import LocaleLink from '../../components/LocaleLink'
 
 export interface VideoData {
@@ -25,15 +26,26 @@ export interface VideoData {
     createdAt: string | Date
 }
 
-export default function VideosShowcase({ initialVideos }: { initialVideos: VideoData[] }) {
+interface VideosShowcaseProps {
+    initialVideos: VideoData[]
+    initialCategories?: CategoryItem[]
+}
+
+export default function VideosShowcase({ initialVideos, initialCategories = DEFAULT_VIDEO_CATEGORIES }: VideosShowcaseProps) {
     const t = useTranslations('videos')
     const locale = useLocale()
     const isAr = locale === 'ar'
 
+    const [mounted, setMounted] = useState(false)
+    const [categories, setCategories] = useState<CategoryItem[]>(initialCategories)
     const [selectedCategory, setSelectedCategory] = useState<string>('all')
     const [searchQuery, setSearchQuery] = useState('')
     const [activeVideo, setActiveVideo] = useState<VideoData | null>(null)
     const [copied, setCopied] = useState(false)
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
 
     // Close modal on Escape key
     useEffect(() => {
@@ -47,14 +59,13 @@ export default function VideosShowcase({ initialVideos }: { initialVideos: Video
     // Prevent body scrolling when video modal is open
     useEffect(() => {
         if (activeVideo) {
+            const originalOverflow = document.body.style.overflow
             document.body.style.overflow = 'hidden'
-        } else {
-            document.body.style.overflow = 'auto'
+            return () => { document.body.style.overflow = originalOverflow }
         }
-        return () => { document.body.style.overflow = 'auto' }
     }, [activeVideo])
 
-    // Find featured spotlight video (first featured one, or first overall if none marked featured)
+    // Find featured spotlight video
     const spotlightVideo = useMemo(() => {
         return initialVideos.find((v) => v.isFeatured) || initialVideos[0] || null
     }, [initialVideos])
@@ -94,7 +105,7 @@ export default function VideosShowcase({ initialVideos }: { initialVideos: Video
     return (
         <section className='p-container py-12 lg:py-16' dir={isAr ? 'rtl' : 'ltr'}>
             
-            {/* ── 1. Featured Spotlight Video Banner (when available & no search active) ── */}
+            {/* ── 1. Featured Spotlight Video Banner ── */}
             {spotlightVideo && !searchQuery && selectedCategory === 'all' && (
                 <div className='mb-14'>
                     <div className='relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#0F1922] via-[#14232C] to-[#0D281E] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.3)]'>
@@ -105,7 +116,7 @@ export default function VideosShowcase({ initialVideos }: { initialVideos: Video
 
                         <div className='grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 p-6 sm:p-8 lg:p-10 items-center relative z-10'>
                             
-                            {/* Left/Right Text Info */}
+                            {/* Text Info */}
                             <div className='lg:col-span-5 space-y-4'>
                                 <div className='inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[#00FFB2] text-xs font-bold uppercase tracking-wider'>
                                     <LuSparkles className='size-3.5' />
@@ -130,7 +141,7 @@ export default function VideosShowcase({ initialVideos }: { initialVideos: Video
                                         </span>
                                     )}
                                     <span className='capitalize bg-white/10 px-3 py-1.5 rounded-lg'>
-                                        {VIDEO_CATEGORIES.find((c) => c.key === spotlightVideo.category)?.[isAr ? 'labelAr' : 'labelEn'] || spotlightVideo.category}
+                                        {categories.find((c) => c.value === spotlightVideo.category)?.[isAr ? 'labelAr' : 'labelEn'] || spotlightVideo.category}
                                     </span>
                                 </div>
 
@@ -145,7 +156,7 @@ export default function VideosShowcase({ initialVideos }: { initialVideos: Video
                                 </div>
                             </div>
 
-                            {/* Video Preview Card with Pulsing Play Ring */}
+                            {/* Video Preview Card */}
                             <div className='lg:col-span-7'>
                                 <div
                                     onClick={() => setActiveVideo(spotlightVideo)}
@@ -157,10 +168,8 @@ export default function VideosShowcase({ initialVideos }: { initialVideos: Video
                                         className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-500'
                                     />
                                     
-                                    {/* Dark Gradient Overlay */}
                                     <div className='absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent group-hover:from-black/60 transition-colors' />
 
-                                    {/* Big Glowing Play Button with Pulse Effect */}
                                     <div className='absolute inset-0 flex items-center justify-center'>
                                         <div className='relative flex items-center justify-center'>
                                             <div className='absolute size-20 rounded-full bg-[#00FFCD]/30 animate-ping' />
@@ -180,7 +189,7 @@ export default function VideosShowcase({ initialVideos }: { initialVideos: Video
             {/* ── 2. Category Filters & Search Bar ── */}
             <div className='flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 mb-10 pb-5 border-b border-gray-100'>
                 
-                {/* Category Pills */}
+                {/* Dynamic Category Pills */}
                 <div className='flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-none'>
                     <button
                         onClick={() => setSelectedCategory('all')}
@@ -190,14 +199,14 @@ export default function VideosShowcase({ initialVideos }: { initialVideos: Video
                         <span className='ms-1.5 opacity-70 text-xs font-normal'>({initialVideos.length})</span>
                     </button>
 
-                    {VIDEO_CATEGORIES.map((cat) => {
-                        const count = initialVideos.filter((v) => v.category === cat.key).length
-                        if (count === 0 && selectedCategory !== cat.key) return null
+                    {categories.map((cat) => {
+                        const count = initialVideos.filter((v) => v.category === cat.value).length
+                        if (count === 0 && selectedCategory !== cat.value) return null
                         return (
                             <button
-                                key={cat.key}
-                                onClick={() => setSelectedCategory(cat.key)}
-                                className={`text-xs md:text-sm px-4 py-2 rounded-full font-semibold whitespace-nowrap transition-all ${selectedCategory === cat.key ? 'bg-[#1E7D67] text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                key={cat.value}
+                                onClick={() => setSelectedCategory(cat.value)}
+                                className={`text-xs md:text-sm px-4 py-2 rounded-full font-semibold whitespace-nowrap transition-all ${selectedCategory === cat.value ? 'bg-[#1E7D67] text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                             >
                                 {isAr ? cat.labelAr : cat.labelEn}
                                 <span className='ms-1.5 opacity-70 text-xs font-normal'>({count})</span>
@@ -250,14 +259,14 @@ export default function VideosShowcase({ initialVideos }: { initialVideos: Video
                     {filteredVideos.map((video) => {
                         const parsed = parseVideoUrl(video.videoUrl)
                         const thumb = video.thumbnailUrl || parsed.thumbnailUrl || '/assets/default_thumb.jpg'
-                        const categoryObj = VIDEO_CATEGORIES.find((c) => c.key === video.category)
+                        const categoryObj = categories.find((c) => c.value === video.category)
 
                         return (
                             <article
                                 key={video.id}
                                 className='group bg-white rounded-2xl border border-gray-200/80 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col'
                             >
-                                {/* Thumbnail Image + Hover Play Button */}
+                                {/* Thumbnail Image */}
                                 <div
                                     onClick={() => setActiveVideo(video)}
                                     className='relative aspect-video bg-black overflow-hidden cursor-pointer'
@@ -268,24 +277,20 @@ export default function VideosShowcase({ initialVideos }: { initialVideos: Video
                                         className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-500'
                                     />
 
-                                    {/* Hover Dark Vignette */}
                                     <div className='absolute inset-0 bg-black/30 group-hover:bg-black/45 transition-colors' />
 
-                                    {/* Center Play Button Overlay */}
                                     <div className='absolute inset-0 flex items-center justify-center'>
                                         <div className='size-12 rounded-full bg-white/90 group-hover:bg-[#00FFB2] text-gray-900 flex items-center justify-center shadow-lg group-hover:scale-110 transition-all'>
                                             <LuPlay className='size-5 fill-current translate-x-0.5' />
                                         </div>
                                     </div>
 
-                                    {/* Category Pill (Top Left) */}
                                     <div className='absolute top-3 left-3'>
                                         <span className='px-2.5 py-1 rounded-md text-[11px] font-bold bg-black/75 backdrop-blur-sm text-white'>
                                             {categoryObj ? (isAr ? categoryObj.labelAr : categoryObj.labelEn) : video.category}
                                         </span>
                                     </div>
 
-                                    {/* Duration Pill (Bottom Right) */}
                                     {video.duration && (
                                         <div className='absolute bottom-3 right-3 px-2 py-0.5 rounded bg-black/80 backdrop-blur-sm text-white text-[11px] font-mono flex items-center gap-1'>
                                             <LuClock className='size-3 text-[#00FFB2]' />
@@ -311,7 +316,6 @@ export default function VideosShowcase({ initialVideos }: { initialVideos: Video
                                         )}
                                     </div>
 
-                                    {/* Action row */}
                                     <div className='pt-4 mt-4 border-t border-gray-100 flex items-center justify-between'>
                                         <button
                                             onClick={() => setActiveVideo(video)}
@@ -337,35 +341,42 @@ export default function VideosShowcase({ initialVideos }: { initialVideos: Video
                 </div>
             )}
 
-            {/* ── 4. Interactive Cinema Theater Modal / Lightbox ── */}
-            {activeVideo && (
+            {/* ── 4. Interactive Cinema Theater Lightbox Modal (Portaled to body to escape any parent stacking contexts) ── */}
+            {mounted && activeVideo && createPortal(
                 <div
-                    className='fixed inset-0 z-[999] bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200'
-                    onClick={() => setActiveVideo(null)}
+                    className='fixed inset-0 z-[2147483647] flex overflow-y-auto bg-black/92 backdrop-blur-md p-3 sm:p-6'
+                    onMouseDown={(e) => { if (e.target === e.currentTarget) setActiveVideo(null) }}
+                    dir={isAr ? 'rtl' : 'ltr'}
                 >
+                    {/* Floating Top-Right Close Button (Always visible and accessible) */}
+                    <button
+                        onClick={() => setActiveVideo(null)}
+                        className='fixed top-4 right-4 sm:top-6 sm:right-6 z-[2147483648] size-11 rounded-full bg-black/70 hover:bg-black border border-white/20 text-white flex items-center justify-center transition-all shadow-xl hover:scale-105 active:scale-95'
+                        aria-label='Close video player'
+                        title='Close (Esc)'
+                    >
+                        <LuX className='size-6' />
+                    </button>
+
                     <div
-                        className='bg-[#0F1922] border border-white/10 rounded-2xl sm:rounded-3xl max-w-5xl w-full overflow-hidden shadow-2xl relative flex flex-col max-h-[95svh]'
+                        className='m-auto w-full max-w-[min(1060px,calc((100svh_-_140px)*16/9))] min-w-[min(100%,300px)] flex flex-col rounded-2xl sm:rounded-3xl overflow-hidden bg-[#0F1922] border border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.85)] animate-in fade-in zoom-in-95 duration-200'
                         onClick={(e) => e.stopPropagation()}
                     >
-                        {/* Modal Header */}
+                        {/* Header bar */}
                         <div className='px-5 py-3.5 border-b border-white/10 flex items-center justify-between bg-black/40'>
-                            <div className='flex items-center gap-2'>
-                                <span className='size-2.5 rounded-full bg-[#00FFCD] animate-pulse' />
-                                <h4 className='text-white font-bold text-sm sm:text-base truncate max-w-[70vw]'>
+                            <div className='flex items-center gap-2.5 min-w-0'>
+                                <span className='size-2.5 rounded-full bg-[#00FFCD] animate-pulse flex-shrink-0' />
+                                <h4 className='text-white font-bold text-sm sm:text-base truncate'>
                                     {getLocalizedTitle(activeVideo)}
                                 </h4>
                             </div>
-                            <button
-                                onClick={() => setActiveVideo(null)}
-                                className='p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-colors'
-                                aria-label='Close video'
-                            >
-                                <LuX className='size-5' />
-                            </button>
+                            <span className='text-xs font-semibold px-2.5 py-1 rounded-md bg-white/10 text-[#00FFCD] uppercase flex-shrink-0'>
+                                {categories.find((c) => c.value === activeVideo.category)?.[isAr ? 'labelAr' : 'labelEn'] || activeVideo.category}
+                            </span>
                         </div>
 
-                        {/* Video Player */}
-                        <div className='relative w-full aspect-video bg-black'>
+                        {/* Video Player Frame - Constrained to 16:9 ratio and maximum height */}
+                        <div className='relative w-full aspect-video bg-black flex items-center justify-center overflow-hidden'>
                             {(() => {
                                 const parsed = parseVideoUrl(activeVideo.videoUrl)
                                 if (parsed.type === 'youtube' || parsed.type === 'vimeo') {
@@ -391,15 +402,15 @@ export default function VideosShowcase({ initialVideos }: { initialVideos: Video
                             })()}
                         </div>
 
-                        {/* Video Details & CTA below player */}
-                        <div className='p-5 sm:p-6 bg-[#0B141B] space-y-4 overflow-y-auto'>
+                        {/* Footer description & CTA */}
+                        <div className='p-5 sm:p-6 bg-[#0B141B] space-y-4'>
                             <div className='flex flex-col sm:flex-row justify-between sm:items-center gap-4'>
-                                <div>
-                                    <h3 className='text-lg sm:text-xl font-bold text-white'>
+                                <div className='min-w-0'>
+                                    <h3 className='text-base sm:text-lg font-bold text-white leading-snug'>
                                         {getLocalizedTitle(activeVideo)}
                                     </h3>
                                     {getLocalizedDesc(activeVideo) && (
-                                        <p className='text-white/70 text-xs sm:text-sm mt-1 leading-relaxed max-w-3xl'>
+                                        <p className='text-white/70 text-xs sm:text-sm mt-1 leading-relaxed max-w-2xl line-clamp-3'>
                                             {getLocalizedDesc(activeVideo)}
                                         </p>
                                     )}
@@ -418,6 +429,7 @@ export default function VideosShowcase({ initialVideos }: { initialVideos: Video
                                         onClick={() => copyShareLink(activeVideo)}
                                         className='p-2.5 bg-white/10 hover:bg-white/15 text-white rounded-xl transition-colors text-xs flex items-center gap-1.5'
                                         title='Share'
+                                        aria-label='Share Video Link'
                                     >
                                         {copied ? <LuCheck className='size-4 text-[#00FFB2]' /> : <LuShare2 className='size-4' />}
                                     </button>
@@ -426,7 +438,8 @@ export default function VideosShowcase({ initialVideos }: { initialVideos: Video
                         </div>
 
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
         </section>

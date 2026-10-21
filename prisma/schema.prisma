@@ -472,3 +472,12 @@ model Video {
   @@index([order])
   @@index([createdAt])
 }
+
+model VideoCategory {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  value     String   @unique
+  labelAr   String
+  labelEn   String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+}

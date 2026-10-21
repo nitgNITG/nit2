@@ -1,12 +1,25 @@
-export type VideoCategory = 'showcase' | 'promo' | 'tutorial' | 'review' | 'other'
+export interface CategoryItem {
+    id?: string
+    key?: string
+    value: string
+    labelAr: string
+    labelEn: string
+    order?: number
+}
 
-export const VIDEO_CATEGORIES: { key: VideoCategory; labelAr: string; labelEn: string; icon?: string }[] = [
-    { key: 'showcase', labelAr: 'استعراض المشاريع', labelEn: 'Project Showcase' },
-    { key: 'promo', labelAr: 'فيديوهات ترويجية', labelEn: 'Promos & Reels' },
-    { key: 'tutorial', labelAr: 'شروحات واستعراض أنظمة', labelEn: 'Tutorials & Systems' },
-    { key: 'review', labelAr: 'آراء وتجارب العملاء', labelEn: 'Client Testimonials' },
-    { key: 'other', labelAr: 'أخرى', labelEn: 'Other' },
+export const DEFAULT_VIDEO_CATEGORIES: CategoryItem[] = [
+    { value: 'showcase', labelAr: 'استعراض المشاريع', labelEn: 'Project Showcase' },
+    { value: 'promo', labelAr: 'فيديوهات ترويجية', labelEn: 'Promos & Reels' },
+    { value: 'tutorial', labelAr: 'شروحات واستعراض أنظمة', labelEn: 'Tutorials & Systems' },
+    { value: 'review', labelAr: 'آراء وتجارب العملاء', labelEn: 'Client Testimonials' },
 ]
+
+export const VIDEO_CATEGORIES = DEFAULT_VIDEO_CATEGORIES.map(c => ({
+    key: c.value,
+    value: c.value,
+    labelAr: c.labelAr,
+    labelEn: c.labelEn,
+}))
 
 export type VideoSourceType = 'youtube' | 'vimeo' | 'direct'
 
