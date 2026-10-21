@@ -57,20 +57,26 @@ net (box was down when CI called, image pushed by hand). Pinned stores (`clients
 are skipped as always; a failed rollout is retried hourly. `sha-*` / `latest` are never
 auto-followed. Set `AUTO_UPDATE=0` to move stores only via CI or the dashboard.
 
-**Image channels (a client on its own branch and server).** `IMAGE_CHANNEL` in
-`provision.env` (blank = the fleet) decides which tags this host lists in `/images`,
-auto-follows and accepts on `/provision` · `/update-image` (a wrong-channel tag is a 400).
-Nile Mall runs the `nile-mall` branch of saas-commerce on its own server:
+**Image channels (a client on its own branch).** Every store has an image channel —
+`IMAGE_CHANNEL` in its `store.env` (blank = the fleet; `create-store.sh` writes it from the
+store's first tag) — and only ever moves to tags of it: `update-image` refuses another
+channel's tag (400), and `POST /update-image {tag}` / `bump-image.sh --all` roll only the
+stores of the tag's channel. `IMAGE_CHANNEL` in `provision.env` is the host's own channel:
+what `/images` lists, new stores default to and the release auto-update follows.
+Stores of another channel on a moving tag (`nile`, `nile-dev`) follow it by themselves
+(auto-update pulls it and queues `update-image` per store when it moved); on an exact
+release (`nile-1.2.0`) only CI moves them.
+
+Nile Mall runs the `nile-mall` branch of saas-commerce:
 
 | CI event | images (`saas-store-{api,site,dash}`) | rollout |
 |---|---|---|
-| push to `nile-mall` | `nile-dev`, `nile-dev-<sha7>` | `POST /update-image/$NILE_STAGING_SLUG` on the Nile host (when set) |
-| tag `nile-vX.Y.Z` | `nile-X.Y.Z`, `nile`, `sha-…` | `POST /update-image` (every Nile store) |
+| push to `nile-mall` | `nile-dev`, `nile-dev-<sha7>` | `POST /update-image/$NILE_STAGING_SLUG` (when the repo variable is set) |
+| tag `nile-vX.Y.Z` | `nile-X.Y.Z`, `nile`, `sha-…` | `POST /update-image` → every non-pinned `nile` store |
 
-That server's `provision.env`: `IMAGE_CHANNEL=nile`, `IMAGE_TAG=nile`, `AUTO_UPDATE_TAG=nile`
-(follow the newest Nile release; the CI callback is the fast path). A staging store on the
-same box is pinned (`clients/<slug>/pin`) so release rollouts skip it, and CI moves it to
-`nile-dev` by slug. Fleet hosts never list, follow or accept `nile*` tags.
+On the shared fleet host: switch the store once (`IMAGE_CHANNEL=nile` in its `store.env`, then
+`update-image <slug> nile-dev`), and fleet rollouts skip it from then on. On a server of its own:
+`IMAGE_CHANNEL=nile IMAGE_TAG=nile AUTO_UPDATE_TAG=nile` in `provision.env`.
 
 Every queued job reports each step to nit2 — `POST $CALLBACK_URL/api/tenants/<slug>/progress`
 with `x-worker-secret: $WORKER_SECRET` and `{product:"store", job, kind, state, step, total,

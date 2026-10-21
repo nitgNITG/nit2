@@ -463,8 +463,6 @@ def _build_create_job(data: dict) -> tuple[str, list, dict]:
     tag = str(data.get("image_tag") or platform_tag())
     if not TAG_RE.match(tag):
         raise ValueError("invalid image_tag")
-    if channel_error(tag):
-        raise ValueError(channel_error(tag))
     env = {"BOOTSTRAP_JSON": json.dumps(bootstrap, ensure_ascii=False), "IMAGE_TAG": tag}
     if data.get("force") is True:
         env["FORCE_RECREATE"] = "1"   # create-store.sh destroys leftovers first
@@ -659,10 +657,13 @@ def _tag_key(t: str):
 ALIAS_RE   = re.compile(r"^(?:[a-z]+-)*(?:sha|dev)-[0-9a-f]{7,}$")
 
 # Image channels. The fleet (channel "") runs X.Y.Z releases, `dev` and `latest`. A
-# client with its own branch, images and server runs a channel of its own: the
-# nile-mall branch builds `nile-X.Y.Z` releases, the moving `nile` (newest release)
-# and `nile-dev`. A host lists, follows and accepts only the tags of IMAGE_CHANNEL
-# (provision.env), so a fleet store can never be rolled onto a client build or back.
+# client with its own branch and images runs a channel of its own: the nile-mall
+# branch builds `nile-X.Y.Z` releases, the moving `nile` (newest release) and
+# `nile-dev`. Every store has one channel (IMAGE_CHANNEL in its store.env, blank =
+# the fleet, written by create-store.sh from its first tag) and only ever moves to a
+# tag of that channel; a rollout of a tag touches only the stores of its channel.
+# IMAGE_CHANNEL in provision.env is the host's own channel: the one /images lists,
+# new stores default to and the release auto-update follows (a client's own server).
 _FLEET_WORDS = {"sha", "dev", "latest"}
 
 
@@ -676,11 +677,46 @@ def tag_channel(tag: str) -> str:
     return m.group(1) if m and m.group(1) not in _FLEET_WORDS else ""
 
 
-def channel_error(tag: str) -> str | None:
-    want, got = image_channel(), tag_channel(tag)
-    if want == got:
+def store_channel(slug: str) -> str:
+    try:
+        with open(os.path.join(STORE_ROOT, "clients", slug, "store.env")) as f:
+            for line in f:
+                if line.startswith("IMAGE_CHANNEL="):
+                    return line.split("=", 1)[1].strip().strip("'\"").lower()
+    except OSError:
+        pass
+    return ""
+
+
+def store_tags() -> dict:
+    """slug -> (channel, IMAGE_TAG) of every store on this host."""
+    out = {}
+    for envf in glob.glob(os.path.join(STORE_ROOT, "clients", "*", "store.env")):
+        slug = os.path.basename(os.path.dirname(envf))
+        tag = ""
+        try:
+            with open(envf) as f:
+                for line in f:
+                    if line.startswith("IMAGE_TAG="):
+                        tag = line.split("=", 1)[1].strip()
+        except OSError:
+            continue
+        out[slug] = (store_channel(slug), tag)
+    return out
+
+
+def channel_error(tag: str, slug: str | None = None) -> str | None:
+    """A store only moves to tags of its own channel; a host-wide rollout needs a
+    channel this host runs (its own, or one of its stores')."""
+    got = tag_channel(tag)
+    if slug is not None:
+        want = store_channel(slug)
+        if want == got:
+            return None
+        return f"{slug} runs {want or 'fleet'} images; {tag} is a {got or 'fleet'} tag"
+    if got == image_channel() or got in {c for c, _ in store_tags().values()}:
         return None
-    return f"tag {tag} belongs to the {got or 'fleet'} image channel; this host runs {want or 'the fleet'} images"
+    return f"no store on this host runs {got or 'fleet'} images ({tag})"
 
 
 def is_release(tag: str) -> bool:
@@ -703,7 +739,8 @@ def collect_images(force: bool = False) -> dict:
     local = set.intersection(*(set(_local_tags(f"saas-store-{a}")) for a in ("api", "site", "dash")))
     ch = image_channel()
     tags = sorted((t for t in remote | local if not ALIAS_RE.match(t) and tag_channel(t) == ch), key=_tag_key, reverse=True)
-    data = {"registry": REGISTRY, "channel": ch or None, "current": platform_tag(), "latest": newest_release(remote),
+    data = {"registry": REGISTRY, "channel": ch or None,
+            "store_channels": sorted({c for c, _ in store_tags().values() if c != ch}), "current": platform_tag(), "latest": newest_release(remote),
             "tags": [{"tag": t, "remote": t in remote, "local": t in local} for t in tags],
             "auto_update": {"enabled": auto_update_enabled(), "interval_min": auto_update_minutes(), "tag": auto_update_tag() or None,
                             "last_check": int(_AUTO["last_check"]), "last_error": _AUTO["last_error"]},
@@ -750,14 +787,46 @@ def _follow_moving_tag(tag: str) -> str | None:
     return None
 
 
+def _follow_store_moving_tags():
+    """Stores of ANOTHER channel than the host's (a client store on the shared fleet
+    box) that run a moving tag (`nile`, `nile-dev`) follow it one by one: pull, and
+    when what the tag points at changed, queue update-image for each store on it.
+    Stores on an exact release (nile-1.2.0) are moved by CI only."""
+    host = image_channel()
+    by_tag: dict = {}
+    for slug, (ch, tag) in store_tags().items():
+        if ch != host and tag and not ALIAS_RE.match(tag) and not re.search(r"\d+\.\d+\.\d+$", tag):
+            by_tag.setdefault(tag, []).append(slug)
+    for tag, slugs in by_tag.items():
+        before = _local_image_ids(tag)
+        for app in ("api", "site", "dash"):
+            subprocess.run(["docker", "pull", "-q", f"{REGISTRY}/saas-store-{app}:{tag}"],
+                           capture_output=True, text=True, timeout=600)
+        after = _local_image_ids(tag)
+        if not any(after.values()) or before == after:
+            continue
+        for slug in slugs:
+            if os.path.exists(os.path.join(STORE_ROOT, "clients", slug, "pin")) or job_active(slug):
+                continue
+            job_id = job_create(slug, "update-image")
+            enqueue(job_id, [BASH, script("update-image.sh"), slug, tag], {}, slug)
+            print(f"[auto-update] {tag} moved - updating {slug}", flush=True)
+
+
 def auto_update_tick() -> str | None:
     """One check. Returns the tag a rollout was started for, else None."""
     _AUTO["last_check"] = time.time()
-    if not auto_update_enabled() or bump_running():
+    if not auto_update_enabled():
+        return None
+    try:
+        _follow_store_moving_tags()
+    except Exception as e:  # noqa: BLE001
+        _AUTO["last_error"] = f"store channels: {e}"
+    if bump_running():
         return None
     follow = auto_update_tag()
-    if follow and channel_error(follow):
-        _AUTO["last_error"] = channel_error(follow)
+    if follow and tag_channel(follow) != image_channel():
+        _AUTO["last_error"] = f"AUTO_UPDATE_TAG {follow} is not a {image_channel() or 'fleet'} tag"
         return None
     if follow and not is_release(follow):
         return _follow_moving_tag(follow)
@@ -917,8 +986,8 @@ class Handler(BaseHTTPRequestHandler):
                 tag = str(self._json().get("tag", "")).strip()
                 if not TAG_RE.match(tag):
                     return self._send(400, {"error": "invalid tag"})
-                if channel_error(tag):
-                    return self._send(400, {"error": channel_error(tag)})
+                if channel_error(tag, slug):
+                    return self._send(400, {"error": channel_error(tag, slug)})
                 return self._queue_job(slug, "update-image", [BASH, script("update-image.sh"), slug, tag], {"FORCE": "1"})
 
             if path.startswith("/bind-domain/"):
