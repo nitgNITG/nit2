@@ -23,7 +23,8 @@ Store provisioning endpoint — the store counterpart of provisioning/provision-
 Auto-update (AUTO_UPDATE=1, every AUTO_UPDATE_MINUTES): the fleet follows
 AUTO_UPDATE_TAG - a moving tag like `dev` (rolled out whenever the tag points at
 a new image: staging) or, when empty, the newest X.Y.Z release on the registry
-(production). The CI callback (POST /update-image) is the fast path, this is the
+(production). A client host with IMAGE_CHANNEL=nile only ever sees nile-* tags
+(AUTO_UPDATE_TAG=nile follows its newest release). The CI callback (POST /update-image) is the fast path, this is the
 safety net.
 
 Differences from the academy service, on purpose:
@@ -402,6 +403,14 @@ def _license_doc(data: dict) -> dict:
     return doc
 
 
+LOCALES = ("ar", "en", "fr")
+
+
+def _locale(v, default: str = "ar") -> str:
+    v = str(v or default).lower()
+    return v if v in LOCALES else default
+
+
 def _build_create_job(data: dict) -> tuple[str, list, dict]:
     slug = str(data.get("slug", "")).strip().lower()
     if not SLUG_RE.match(slug):
@@ -420,11 +429,11 @@ def _build_create_job(data: dict) -> tuple[str, list, dict]:
         "country": str(store.get("country", "EG")).upper()[:2],
         "currency": str(store.get("currency", "EGP")).upper()[:3],
         "timezone": str(store.get("timezone", "Africa/Cairo"))[:64],
-        "default_locale": "en" if str(store.get("default_locale", "ar")).lower() == "en" else "ar",
+        "default_locale": _locale(store.get("default_locale")),
         "owner": {
             "email": email,
             "name": str(owner.get("name", "")).strip()[:100] or email.split("@")[0],
-            "locale": "en" if str(owner.get("locale", "ar")).lower() == "en" else "ar",
+            "locale": _locale(owner.get("locale")),
         },
         "send_welcome": data.get("send_welcome", True) is not False,
     }
@@ -436,6 +445,13 @@ def _build_create_job(data: dict) -> tuple[str, list, dict]:
     na = data.get("nit_admin") or {}
     if isinstance(na, dict) and EMAIL_RE.match(str(na.get("email", ""))) and isinstance(na.get("password"), str) and len(na["password"]) >= 8:
         bootstrap["nit_admin"] = {"email": str(na["email"]).strip(), "name": str(na.get("name") or "NIT Support")[:100], "password": na["password"]}
+    # Storefront languages (ar, en, fr); the api requires the default to be one of them.
+    enabled = store.get("enabled_locales")
+    if isinstance(enabled, list):
+        langs = [l for l in LOCALES if l in {str(x).lower() for x in enabled}]
+        if bootstrap["default_locale"] not in langs:
+            langs = [l for l in LOCALES if l in langs or l == bootstrap["default_locale"]]
+        bootstrap["enabled_locales"] = langs
     for k in ("vat_rate", "prices_include_vat", "theme", "contact", "social", "seo_title", "seo_title_ar", "logo_url", "favicon_url"):
         if k in store and store[k] is not None:
             bootstrap[k] = store[k]
@@ -447,6 +463,8 @@ def _build_create_job(data: dict) -> tuple[str, list, dict]:
     tag = str(data.get("image_tag") or platform_tag())
     if not TAG_RE.match(tag):
         raise ValueError("invalid image_tag")
+    if channel_error(tag):
+        raise ValueError(channel_error(tag))
     env = {"BOOTSTRAP_JSON": json.dumps(bootstrap, ensure_ascii=False), "IMAGE_TAG": tag}
     if data.get("force") is True:
         env["FORCE_RECREATE"] = "1"   # create-store.sh destroys leftovers first
@@ -636,14 +654,43 @@ def _tag_key(t: str):
     return (0 if t == "latest" else 1, [int(p) for p in parts[:4]] + [0] * (4 - len(parts[:4])), t)
 
 
-RELEASE_RE = re.compile(r"^\d+\.\d+\.\d+$")   # only real releases are auto-followed (never sha-*/latest)
-# CI also pushes sha-<commit> and dev-<commit> aliases of the same images (traceability);
-# they are noise in a version picker, so /images lists releases, `dev` and `latest` only.
-ALIAS_RE   = re.compile(r"^(sha-[0-9a-f]{7,}|dev-[0-9a-f]{7,})$")
+# CI also pushes sha-<commit> and [<channel>-]dev-<commit> aliases of the same images
+# (traceability); they are noise in a version picker, so /images leaves them out.
+ALIAS_RE   = re.compile(r"^(?:[a-z]+-)*(?:sha|dev)-[0-9a-f]{7,}$")
+
+# Image channels. The fleet (channel "") runs X.Y.Z releases, `dev` and `latest`. A
+# client with its own branch, images and server runs a channel of its own: the
+# nile-mall branch builds `nile-X.Y.Z` releases, the moving `nile` (newest release)
+# and `nile-dev`. A host lists, follows and accepts only the tags of IMAGE_CHANNEL
+# (provision.env), so a fleet store can never be rolled onto a client build or back.
+_FLEET_WORDS = {"sha", "dev", "latest"}
+
+
+def image_channel() -> str:
+    return env_file_get("IMAGE_CHANNEL", os.environ.get("IMAGE_CHANNEL", "")).strip().lower()
+
+
+def tag_channel(tag: str) -> str:
+    """'nile-1.2.0' / 'nile-dev' / 'nile' -> 'nile'; '1.2.0' / 'dev' / 'latest' / 'sha-…' -> ''."""
+    m = re.match(r"^([a-z]+)(?:-|$)", tag)
+    return m.group(1) if m and m.group(1) not in _FLEET_WORDS else ""
+
+
+def channel_error(tag: str) -> str | None:
+    want, got = image_channel(), tag_channel(tag)
+    if want == got:
+        return None
+    return f"tag {tag} belongs to the {got or 'fleet'} image channel; this host runs {want or 'the fleet'} images"
+
+
+def is_release(tag: str) -> bool:
+    """Only real releases of this host's channel are auto-followed (never sha-*/latest/dev)."""
+    ch = image_channel()
+    return re.fullmatch((re.escape(ch + "-") if ch else "") + r"\d+\.\d+\.\d+", tag) is not None
 
 
 def newest_release(tags) -> str | None:
-    rel = [t for t in tags if RELEASE_RE.match(t)]
+    rel = [t for t in tags if is_release(t)]
     return max(rel, key=_tag_key) if rel else None
 
 
@@ -654,8 +701,9 @@ def collect_images(force: bool = False) -> dict:
     # A tag is usable only when all three images carry it.
     remote = set.intersection(*(set(_ghcr_tags(f"saas-store-{a}")) for a in ("api", "site", "dash"))) if REGISTRY.startswith("ghcr.io") else set()
     local = set.intersection(*(set(_local_tags(f"saas-store-{a}")) for a in ("api", "site", "dash")))
-    tags = sorted((t for t in remote | local if not ALIAS_RE.match(t)), key=_tag_key, reverse=True)
-    data = {"registry": REGISTRY, "current": platform_tag(), "latest": newest_release(remote),
+    ch = image_channel()
+    tags = sorted((t for t in remote | local if not ALIAS_RE.match(t) and tag_channel(t) == ch), key=_tag_key, reverse=True)
+    data = {"registry": REGISTRY, "channel": ch or None, "current": platform_tag(), "latest": newest_release(remote),
             "tags": [{"tag": t, "remote": t in remote, "local": t in local} for t in tags],
             "auto_update": {"enabled": auto_update_enabled(), "interval_min": auto_update_minutes(), "tag": auto_update_tag() or None,
                             "last_check": int(_AUTO["last_check"]), "last_error": _AUTO["last_error"]},
@@ -708,7 +756,10 @@ def auto_update_tick() -> str | None:
     if not auto_update_enabled() or bump_running():
         return None
     follow = auto_update_tag()
-    if follow and not RELEASE_RE.match(follow):
+    if follow and channel_error(follow):
+        _AUTO["last_error"] = channel_error(follow)
+        return None
+    if follow and not is_release(follow):
         return _follow_moving_tag(follow)
     data = collect_images(force=True)
     latest = follow or data.get("latest")
@@ -854,6 +905,8 @@ class Handler(BaseHTTPRequestHandler):
                 tag = str(self._json().get("tag", "")).strip()
                 if not TAG_RE.match(tag):
                     return self._send(400, {"error": "invalid tag"})
+                if channel_error(tag):
+                    return self._send(400, {"error": channel_error(tag)})
                 if not run_bump_all(tag, source="api"):
                     return self._send(409, {"error": f"a rollout to {_BUMP['tag']} is still running"})
                 _IMAGES_CACHE["data"] = None
@@ -864,6 +917,8 @@ class Handler(BaseHTTPRequestHandler):
                 tag = str(self._json().get("tag", "")).strip()
                 if not TAG_RE.match(tag):
                     return self._send(400, {"error": "invalid tag"})
+                if channel_error(tag):
+                    return self._send(400, {"error": channel_error(tag)})
                 return self._queue_job(slug, "update-image", [BASH, script("update-image.sh"), slug, tag], {"FORCE": "1"})
 
             if path.startswith("/bind-domain/"):

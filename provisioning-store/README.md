@@ -57,6 +57,21 @@ net (box was down when CI called, image pushed by hand). Pinned stores (`clients
 are skipped as always; a failed rollout is retried hourly. `sha-*` / `latest` are never
 auto-followed. Set `AUTO_UPDATE=0` to move stores only via CI or the dashboard.
 
+**Image channels (a client on its own branch and server).** `IMAGE_CHANNEL` in
+`provision.env` (blank = the fleet) decides which tags this host lists in `/images`,
+auto-follows and accepts on `/provision` · `/update-image` (a wrong-channel tag is a 400).
+Nile Mall runs the `nile-mall` branch of saas-commerce on its own server:
+
+| CI event | images (`saas-store-{api,site,dash}`) | rollout |
+|---|---|---|
+| push to `nile-mall` | `nile-dev`, `nile-dev-<sha7>` | `POST /update-image/$NILE_STAGING_SLUG` on the Nile host (when set) |
+| tag `nile-vX.Y.Z` | `nile-X.Y.Z`, `nile`, `sha-…` | `POST /update-image` (every Nile store) |
+
+That server's `provision.env`: `IMAGE_CHANNEL=nile`, `IMAGE_TAG=nile`, `AUTO_UPDATE_TAG=nile`
+(follow the newest Nile release; the CI callback is the fast path). A staging store on the
+same box is pinned (`clients/<slug>/pin`) so release rollouts skip it, and CI moves it to
+`nile-dev` by slug. Fleet hosts never list, follow or accept `nile*` tags.
+
 Every queued job reports each step to nit2 — `POST $CALLBACK_URL/api/tenants/<slug>/progress`
 with `x-worker-secret: $WORKER_SECRET` and `{product:"store", job, kind, state, step, total,
 label, url?, error?, image_tag?, owner_email?, owner_password?}` — and always ends with an
