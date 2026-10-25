@@ -42,6 +42,10 @@ export const FEATURES: Record<Product, FeatureDef[]> = {
         { key: "reports", label: { en: "Reports", ar: "التقارير" } },
         { key: "reviews", label: { en: "Product reviews", ar: "تقييمات المنتجات" }, pending: true },
         { key: "custom_domain", label: { en: "Custom domain", ar: "دومين خاص" } },
+        // Card gateways (Paymob / Kashier). Enforced only by the nile-mall store images
+        // so far; switch it ON for every existing store licence (and re-push) before the
+        // gate merges into the fleet's dev/main, or those stores lose card checkout.
+        { key: "online_payments", label: { en: "Online payments", ar: "الدفع الإلكتروني" }, pending: true },
     ],
 };
 

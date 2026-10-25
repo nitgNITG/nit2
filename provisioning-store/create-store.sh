@@ -78,6 +78,8 @@ cp "$SCRIPTS_DIR/compose.store.yml" "$COMPOSE_FILE"
 cat > "$ENV_FILE" <<ENV
 # store: $SLUG — generated $(date -u +%FT%TZ) by create-store.sh. Secrets inside; keep 0600.
 IMAGE_TAG=$IMAGE_TAG
+# Image channel (blank = the fleet): this store only ever moves to tags of it.
+IMAGE_CHANNEL=$(tag_channel "$IMAGE_TAG")
 REGISTRY=$REGISTRY
 P_SITE=$P_SITE
 P_DASH=$P_DASH

@@ -163,6 +163,9 @@ AUTO_UPDATE_MINUTES=$(_val AUTO_UPDATE_MINUTES 15)
 # Tag the fleet follows: blank = newest X.Y.Z release (production), dev = every
 # new dev build (staging). nit2's Platform Settings -> Stores tab writes this.
 AUTO_UPDATE_TAG=$(_val AUTO_UPDATE_TAG "")
+# Host image channel: blank = the fleet (X.Y.Z / dev / latest). Stores carry their own
+# (store.env IMAGE_CHANNEL); a client's own server sets it (nile -> nile-* tags).
+IMAGE_CHANNEL=$(_val IMAGE_CHANNEL "")
 PROXY=$PROXY
 TLS_MODE=$TLS_MODE
 LE_EMAIL=$(_val LE_EMAIL admin@nitg-eg.com)
