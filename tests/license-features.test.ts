@@ -26,7 +26,8 @@ describe("licence feature catalogue", () => {
 
     it("marks only the toggles the products do not gate on yet", () => {
         const pending = (p: "academy" | "store") => FEATURES[p].filter((f) => f.pending).map((f) => f.key);
-        expect(pending("store")).toEqual(["offers", "reviews"]);
+        // online_payments: enforced only by the nile-mall store images so far
+        expect(pending("store")).toEqual(["offers", "reviews", "online_payments"]);
         expect(pending("academy")).toEqual(["blog", "ads"]);
     });
 
