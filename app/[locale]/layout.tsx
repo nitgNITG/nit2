@@ -164,6 +164,10 @@ export default async function LocaleLayout({
             }),
           }}
         />
+        {/* Cloudflare Web Analytics — one token per hostname so www and dev report separately; nothing loads on localhost. */}
+        <Script id="cf-web-analytics" strategy="afterInteractive">
+          {`(function(){var t={"www.nitg-eg.com":"f8f5ad5cf83e4318bad0b316fa3df080","nitg-eg.com":"f8f5ad5cf83e4318bad0b316fa3df080","dev.nitg-eg.com":"541e854387564348986adbd1e207de55"}[location.hostname];if(!t)return;var s=document.createElement("script");s.defer=true;s.src="https://static.cloudflareinsights.com/beacon.min.js";s.setAttribute("data-cf-beacon",JSON.stringify({token:t}));document.body.appendChild(s);})();`}
+        </Script>
         <Script
           strategy="afterInteractive"
           id="IsharatJSWidget"
