@@ -17,6 +17,17 @@ async function uniqueSlug(title: string): Promise<string> {
     return slug;
 }
 
+const DEFAULT_PAGE_SIZE = 12
+const MAX_PAGE_SIZE = 50
+
+/** page is 0 when the caller didn't ask for paging; bad numbers fall back to sane values. */
+function readPaging(params: URLSearchParams) {
+    if (!params.has('page')) return { page: 0, pageSize: DEFAULT_PAGE_SIZE }
+    const page = Math.max(1, Math.floor(Number(params.get('page'))) || 1)
+    const size = Math.floor(Number(params.get('pageSize'))) || DEFAULT_PAGE_SIZE
+    return { page, pageSize: Math.min(MAX_PAGE_SIZE, Math.max(1, size)) }
+}
+
 const optional = (v: FormDataEntryValue | null) => (typeof v === 'string' && v.trim() ? v.trim() : null);
 
 export async function POST(req: NextRequest) {
@@ -62,24 +73,34 @@ export async function POST(req: NextRequest) {
 }
 
 // Visitors only get published articles; the dashboard (admin) also sees scheduled ones.
+// With ?page=N (and optional pageSize, max 50) the list is paginated and the response adds
+// total/page/pageSize/pages; without it the whole list comes back as before.
 export async function GET(req: NextRequest) {
     try {
         const isAdmin = await authAdmin(req)
-        const articles = await prisma.article.findMany({
-            where: isAdmin ? undefined : publishedWhere(),
-            orderBy: { publishedAt: 'desc' },
-            select: {
-                id: true,
-                slug: true,
-                img: true,
-                title: true,
-                titleEn: true,
-                content: true,
-                contentEn: true,
-                publishedAt: true,
-            }
-        })
-        return NextResponse.json({ articles }, { status: 200 })
+        const where = isAdmin ? undefined : publishedWhere()
+        const { page, pageSize } = readPaging(new URL(req.url).searchParams)
+        const [total, articles] = await Promise.all([
+            page ? prisma.article.count({ where }) : Promise.resolve(0),
+            prisma.article.findMany({
+                where,
+                // id breaks publishedAt ties so pages never repeat or skip an article
+                orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
+                ...(page ? { skip: (page - 1) * pageSize, take: pageSize } : {}),
+                select: {
+                    id: true,
+                    slug: true,
+                    img: true,
+                    title: true,
+                    titleEn: true,
+                    content: true,
+                    contentEn: true,
+                    publishedAt: true,
+                },
+            }),
+        ])
+        if (!page) return NextResponse.json({ articles }, { status: 200 })
+        return NextResponse.json({ articles, total, page, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)) }, { status: 200 })
     } catch (error: any) {
         return NextResponse.json({ error: error.message, message: "There is error in server!!" }, { status: 400 })
     }

@@ -1,8 +1,8 @@
-import Link from "next/link"
 import Articles from "../components/Articles"
 import LocaleLink from "../../components/LocaleLink"
 
-const Blog = () => {
+const Blog = ({ searchParams }: { searchParams: { page?: string } }) => {
+    const page = Math.max(1, Math.floor(Number(searchParams.page)) || 1)
 
     return (
         <div className='dashboard-container py-5 lg:py-10 space-y-10'>
@@ -14,9 +14,7 @@ const Blog = () => {
                     Add article
                 </LocaleLink>
             </div>
-            <div className=' '>
-                <Articles />
-            </div>
+            <Articles page={page} />
         </div>
     )
 }

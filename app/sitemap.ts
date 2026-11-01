@@ -2,6 +2,9 @@ import { MetadataRoute } from "next";
 import { publishedWhere } from "@/lib/blog";
 import prisma from "@/prisma/client";
 
+// Rebuilt hourly so new and newly-due scheduled articles get listed without a redeploy.
+export const revalidate = 3600;
+
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.nitg-eg.com";
 const locales = ["ar", "en"];
 

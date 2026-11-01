@@ -14,6 +14,7 @@ vi.mock("react-hot-toast", () => ({ default: toast }));
 
 import Articles from "@/app/[locale]/dashboard/components/Articles";
 import ArticleEditor from "@/app/[locale]/dashboard/components/ArticleEditor";
+import { pageWindow } from "@/app/[locale]/dashboard/components/Pagination";
 import { useStore } from "@/lib/zustand";
 
 const FUTURE = new Date(Date.now() + 5 * 24 * 3600 * 1000).toISOString();
@@ -58,6 +59,55 @@ describe("dashboard blog list", () => {
         expect(edits.map((l) => l.getAttribute("href"))).toEqual(["/en/dashboard/blog/article/a1", "/en/dashboard/blog/article/a2"]);
         expect(screen.getByText("Scheduled")).toBeTruthy();
         expect(screen.getByText("رابط نص")).toBeTruthy();
+    });
+});
+
+describe("dashboard blog pagination", () => {
+    const card = (i: number) => ({ id: `a${i}`, title: `مقال ${i}`, content: "x", img: `/uploads/${i}.webp`, publishedAt: PAST });
+
+    it("asks the API for the page in the URL and links to its neighbours", async () => {
+        axios.get.mockResolvedValue({ data: { articles: Array.from({ length: 12 }, (_, i) => card(13 + i)), total: 30, page: 2, pageSize: 12, pages: 3 } });
+        render(<Articles page={2} />);
+        expect(await screen.findByText("Showing 13–24 of 30")).toBeTruthy();
+        expect(axios.get).toHaveBeenCalledWith("/api/blog/article?page=2&pageSize=12");
+        const nav = screen.getByRole("navigation", { name: "Articles pages" });
+        expect(within(nav).getByText("2").getAttribute("aria-current")).toBe("page");
+        expect(within(nav).getByRole("link", { name: "Previous" }).getAttribute("href")).toBe("/en/dashboard/blog");
+        expect(within(nav).getByRole("link", { name: "Next" }).getAttribute("href")).toBe("/en/dashboard/blog?page=3");
+        expect(within(nav).getByRole("link", { name: "3" }).getAttribute("href")).toBe("/en/dashboard/blog?page=3");
+    });
+
+    it("has no pager when everything fits on one page", async () => {
+        axios.get.mockResolvedValue({ data: { articles: [card(1)], total: 1, page: 1, pageSize: 12, pages: 1 } });
+        render(<Articles />);
+        expect(await screen.findByText("Showing 1–1 of 1")).toBeTruthy();
+        expect(screen.queryByRole("navigation")).toBeNull();
+    });
+
+    it("explains a page past the end instead of saying there are no articles", async () => {
+        axios.get.mockResolvedValue({ data: { articles: [], total: 30, page: 9, pageSize: 12, pages: 3 } });
+        render(<Articles page={9} />);
+        expect(await screen.findByText(/There's no page 9/)).toBeTruthy();
+        expect(screen.queryByText("No articles found")).toBeNull();
+        expect(screen.getByRole("link", { name: "Go to the first page" }).getAttribute("href")).toBe("/en/dashboard/blog");
+    });
+
+    it("steps back a page after deleting the last article on the last page", async () => {
+        axios.get
+            .mockResolvedValueOnce({ data: { articles: [card(25)], total: 25, page: 3, pageSize: 12, pages: 3 } })
+            .mockResolvedValueOnce({ data: { articles: [], total: 24, page: 3, pageSize: 12, pages: 2 } });
+        axios.delete.mockResolvedValue({ data: { message: "Successfully deleted" } });
+        render(<Articles page={3} />);
+        fireEvent.click(await screen.findByRole("button", { name: "Delete مقال 25" }));
+        fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+        await waitFor(() => expect(replace).toHaveBeenCalledWith("/dashboard/blog?page=2"));
+        expect(axios.delete).toHaveBeenCalledWith("/api/blog/article/a25");
+    });
+
+    it("pageWindow keeps first, last and the current page's neighbours", () => {
+        expect(pageWindow(5, 10)).toEqual([1, "gap", 4, 5, 6, "gap", 10]);
+        expect(pageWindow(1, 3)).toEqual([1, 2, 3]);
+        expect(pageWindow(1, 1)).toEqual([1]);
     });
 });
 

@@ -47,6 +47,24 @@ describe("GET /api/blog/article", () => {
         expect(articles.map((a: { slug: string }) => a.slug)).toEqual(["live"]);
     });
 
+    it("pages the list when asked, counting only what the caller may see", async () => {
+        const p1 = await (await listArticles(req("/api/blog/article?page=1&pageSize=1"))).json();
+        const p2 = await (await listArticles(req("/api/blog/article?page=2&pageSize=1"))).json();
+        expect([p1.articles[0].slug, p2.articles[0].slug]).toEqual(["soon", "live"]);
+        expect(p2).toMatchObject({ total: 2, page: 2, pageSize: 1, pages: 2 });
+        authAdmin.mockResolvedValue(false);
+        const visitor = await (await listArticles(req("/api/blog/article?page=1&pageSize=1"))).json();
+        expect(visitor).toMatchObject({ total: 1, pages: 1 });
+    });
+
+    it("clamps bad paging input and keeps the unpaged response unchanged", async () => {
+        expect(await (await listArticles(req("/api/blog/article?page=abc&pageSize=1000"))).json()).toMatchObject({ page: 1, pageSize: 50 });
+        expect(await (await listArticles(req("/api/blog/article?page=-3&pageSize=0"))).json()).toMatchObject({ page: 1, pageSize: 12 });
+        const all = await (await listArticles(req("/api/blog/article"))).json();
+        expect(all).not.toHaveProperty("total");
+        expect(all.articles).toHaveLength(2);
+    });
+
     it("shows scheduled articles to the admin dashboard", async () => {
         const { articles } = await (await listArticles(req("/api/blog/article"))).json();
         expect(articles.map((a: { slug: string }) => a.slug).sort()).toEqual(["live", "soon"]);
