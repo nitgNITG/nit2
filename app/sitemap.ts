@@ -1,4 +1,5 @@
 import { MetadataRoute } from "next";
+import { publishedWhere } from "@/lib/blog";
 import prisma from "@/prisma/client";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.nitg-eg.com";
@@ -43,6 +44,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     let articleEntries: MetadataRoute.Sitemap = [];
     try {
         const articles = await prisma.article.findMany({
+            where: publishedWhere(),
             select: { id: true, slug: true, publishedAt: true },
             orderBy: { publishedAt: "desc" },
         });

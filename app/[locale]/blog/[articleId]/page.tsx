@@ -4,6 +4,8 @@ import Image from 'next/image'
 import prisma from '@/prisma/client'
 import Footer from '../../components/Footer'
 import Navbar from '../../components/Navbar'
+import RichText from '../../components/RichText'
+import { isScheduled, SECTION_ORDER, stripRichText } from '@/lib/blog'
 
 const ARTICLE_SELECT = {
     id: true,
@@ -24,12 +26,19 @@ const ARTICLE_SELECT = {
             content: true,
             contentEn: true,
             list: true,
-        }
+        },
+        orderBy: SECTION_ORDER,
     }
 }
 
-// ── Data fetcher — tries slug first, then falls back to MongoDB id ─────────
+// ── Data fetcher — visitors never see an article before its publish time ───
 async function getArticle(slugOrId: string) {
+    const article = await findArticle(slugOrId)
+    return article && !isScheduled(article.publishedAt) ? article : null
+}
+
+// Tries slug first, then falls back to MongoDB id
+async function findArticle(slugOrId: string) {
     // Next.js may or may not decode the URL param — normalise to be safe
     let decoded = slugOrId;
     try { decoded = decodeURIComponent(slugOrId); } catch { /* already decoded */ }
@@ -59,8 +68,8 @@ export async function generateMetadata(
     const isAr = params.locale === 'ar'
     const title = isAr ? article.title : (article.titleEn || article.title)
     const desc = isAr
-        ? (article.metaDesc || article.content.slice(0, 155) + '…')
-        : (article.metaDescEn || (article.contentEn || article.content).slice(0, 155) + '…')
+        ? (article.metaDesc || stripRichText(article.content).slice(0, 155) + '…')
+        : (article.metaDescEn || stripRichText(article.contentEn || article.content).slice(0, 155) + '…')
 
     return {
         title,
@@ -150,7 +159,7 @@ export default async function ArticlePage(
 
                 {/* ── Intro paragraph ── */}
                 <p className={`text-base lg:text-lg text-gray-700 leading-relaxed mb-10 ${isAr ? 'text-right' : 'text-left'}`}>
-                    {displayContent}
+                    <RichText text={displayContent} />
                 </p>
 
                 {/* ── Sections ── */}
@@ -167,7 +176,7 @@ export default async function ArticlePage(
 
                                 {sectionContent && (
                                     <p className={`text-base lg:text-lg text-gray-700 leading-relaxed mb-5 ${isAr ? 'text-right' : 'text-left'}`}>
-                                        {sectionContent}
+                                        <RichText text={sectionContent} />
                                     </p>
                                 )}
 
@@ -183,7 +192,7 @@ export default async function ArticlePage(
                                                         {itemTitle}
                                                     </h3>
                                                     {itemContent && (
-                                                        <p className="text-gray-600 text-base leading-relaxed">{itemContent}</p>
+                                                        <p className="text-gray-600 text-base leading-relaxed"><RichText text={itemContent} /></p>
                                                     )}
                                                 </li>
                                             )

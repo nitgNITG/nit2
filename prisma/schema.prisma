@@ -197,6 +197,8 @@ model Section {
   titleEn   String?
   contentEn String?
   list      Listsection[]
+  // Position in the article; sections saved before this field sort by id
+  order     Int?
   article   Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
   articleId String        @db.ObjectId
 }

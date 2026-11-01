@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/prisma/client'
 import { authAdmin } from "@/lib/predict";
 import { slugify } from "@/utils/slugify";
+import { parsePublishedAt, publishedWhere, stripRichText } from "@/lib/blog";
+import { revalidateBlog } from "@/lib/blogRevalidate";
 
 /** Generate a slug that doesn't already exist in the DB */
 async function uniqueSlug(title: string): Promise<string> {
@@ -15,22 +17,24 @@ async function uniqueSlug(title: string): Promise<string> {
     return slug;
 }
 
+const optional = (v: FormDataEntryValue | null) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+
 export async function POST(req: NextRequest) {
     try {
         const isPredict = await authAdmin(req)
-        if (!isPredict) return NextResponse.json({ message: 'Not allow' }, { status: 400 })
+        if (!isPredict) return NextResponse.json({ message: 'Not allow' }, { status: 401 })
 
         const body = await req.formData()
         const img = body.get('img');
-        const title = body.get('title') as string | null;
-        const content = body.get('content') as string | null;
-        const metaDesc = body.get('metaDesc') as string | null;
-        const titleEn = body.get('titleEn') as string | null;
-        const contentEn = body.get('contentEn') as string | null;
-        const metaDescEn = body.get('metaDescEn') as string | null;
+        const title = optional(body.get('title'));
+        const content = optional(body.get('content'));
+        const metaDesc = optional(body.get('metaDesc'));
+        const publishedAt = parsePublishedAt(body.get('publishedAt'));
 
         if (!img || !title || !content)
             return NextResponse.json({ message: 'Missing required fields' }, { status: 400 })
+        if (publishedAt === null)
+            return NextResponse.json({ message: 'Invalid publish date' }, { status: 400 })
 
         const url = await uploadImage(img as File, 'articles');
         if (!url) return NextResponse.json({ message: 'Failed to upload image' }, { status: 500 })
@@ -43,21 +47,26 @@ export async function POST(req: NextRequest) {
                 img: url,
                 title,
                 content,
-                metaDesc: metaDesc || content.slice(0, 155),
-                titleEn: titleEn || null,
-                contentEn: contentEn || null,
-                metaDescEn: metaDescEn || null,
+                metaDesc: metaDesc || stripRichText(content).slice(0, 155),
+                titleEn: optional(body.get('titleEn')),
+                contentEn: optional(body.get('contentEn')),
+                metaDescEn: optional(body.get('metaDescEn')),
+                ...(publishedAt ? { publishedAt } : {}),
             }
         })
+        revalidateBlog(article.slug)
         return NextResponse.json({ article, message: "Successfully Created" }, { status: 201 })
     } catch (error: any) {
         return NextResponse.json({ error: error.message, message: "There is error in server!!" }, { status: 400 })
     }
 }
 
-export async function GET() {
+// Visitors only get published articles; the dashboard (admin) also sees scheduled ones.
+export async function GET(req: NextRequest) {
     try {
+        const isAdmin = await authAdmin(req)
         const articles = await prisma.article.findMany({
+            where: isAdmin ? undefined : publishedWhere(),
             orderBy: { publishedAt: 'desc' },
             select: {
                 id: true,

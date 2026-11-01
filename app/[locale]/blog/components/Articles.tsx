@@ -3,6 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import prisma from '@/prisma/client'
 import { getLocale } from 'next-intl/server'
+import { publishedWhere, stripRichText } from '@/lib/blog'
 
 const PAGE_SIZE = 9
 
@@ -13,9 +14,11 @@ async function getArticlesPage(page: number) {
         )
         return await Promise.race([
             (async () => {
+                const where = publishedWhere()
                 const [total, articles] = await Promise.all([
-                    prisma.article.count(),
+                    prisma.article.count({ where }),
                     prisma.article.findMany({
+                        where,
                         orderBy: { publishedAt: 'desc' },
                         skip: (page - 1) * PAGE_SIZE,
                         take: PAGE_SIZE,
@@ -98,7 +101,7 @@ export default async function Articles({ page = 1 }: { page?: number }) {
                                         {title}
                                     </h2>
                                     <p className="text-sm text-gray-500 leading-relaxed line-clamp-3">
-                                        {sliceText(content, 130)}
+                                        {sliceText(stripRichText(content), 130)}
                                     </p>
                                     <span className="text-sm font-semibold text-[#1E7D67] mt-auto">
                                         {isAr ? 'اقرأ المزيد ←' : 'Read more →'}
