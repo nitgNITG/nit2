@@ -54,6 +54,60 @@ afterEach(() => {
     delete process.env.STORE_PROVISION_URL; delete process.env.STORE_PROVISION_SECRET; delete process.env.WORKER_SECRET;
 });
 
+describe("/api/stores/[slug] — public website", () => {
+    const calledProvisioner = () => fetchMock.mock.calls.some(([url]) => String(url).includes("/storefront/"));
+
+    it("is admin only, and refuses before reaching the provisioner", async () => {
+        getCurrentUser.mockResolvedValue(OWNER);
+        expect((await patch({ storefront: "closed" })).status).toBe(403);
+        expect(calledProvisioner()).toBe(false);
+    });
+
+    it("refuses anything but open or closed", async () => {
+        getCurrentUser.mockResolvedValue(ADMIN);
+        for (const storefront of [true, "close", null, ""]) {
+            expect((await patch({ storefront })).status).toBe(400);
+        }
+        expect(calledProvisioner()).toBe(false);
+    });
+
+    it("refuses a store that is not live yet", async () => {
+        getCurrentUser.mockResolvedValue(ADMIN);
+        db.tenant.findUnique.mockResolvedValue({ ...STORE, status: "provisioning" });
+        expect((await patch({ storefront: "open" })).status).toBe(409);
+        expect(calledProvisioner()).toBe(false);
+    });
+
+    it("sends open/close to the provisioner, reports the host's state, and writes nothing to the database", async () => {
+        getCurrentUser.mockResolvedValue(ADMIN);
+        for (const [storefront, open] of [["open", true], ["closed", false]] as const) {
+            fetchMock.mockClear();
+            fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ ok: true, storefront }) });
+            const res = await patch({ storefront });
+            expect(res.status).toBe(200);
+            expect((await res.json()).storefront).toBe(storefront);
+            const [url, init] = fetchMock.mock.calls[0];
+            expect(String(url)).toBe("http://127.0.0.1:9098/storefront/ziad");
+            expect(JSON.parse(init.body)).toEqual({ open });
+        }
+        expect(db.tenant.update).not.toHaveBeenCalled();
+        expect(notifyTelegram).toHaveBeenCalledTimes(2);
+    });
+
+    it("passes on a busy store as 409 and a failed script as 502, with no 'done' message", async () => {
+        getCurrentUser.mockResolvedValue(ADMIN);
+        fetchMock.mockResolvedValueOnce({ ok: false, status: 409, json: async () => ({ error: "a job is already running for this slug" }) });
+        const busy = await patch({ storefront: "open" });
+        expect(busy.status).toBe(409);
+        expect((await busy.json()).error).toContain("already running");
+        fetchMock.mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ ok: false, error: "ERROR: nginx refused the new config" }) });
+        const failed = await patch({ storefront: "open" });
+        expect(failed.status).toBe(502);
+        expect((await failed.json()).error).toContain("nginx refused");
+        expect(notifyTelegram).not.toHaveBeenCalled();
+    });
+});
+
 describe("/api/stores/[slug] — ownership", () => {
     it("GET: owner and admin may read, another client may not, academy rows are not stores", async () => {
         getCurrentUser.mockResolvedValue(OWNER);

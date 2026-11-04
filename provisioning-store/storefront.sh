@@ -2,6 +2,7 @@
 # ============================================================================
 #  storefront.sh <slug> open|close|status — show or hide the public website of
 #  one store. The API, the dashboard and the mobile app keep working either way.
+#  Run as root over SSH, or from nit2 (Dashboard → Stores → Open/Close website).
 #
 #    close   /            → 302 /dashboard
 #            /pages/...   → still the website (legal pages for the app stores)
@@ -153,6 +154,11 @@ if [[ "$ACTION" == "status" ]]; then
 fi
 
 if [[ "$ACTION" == "close" ]]; then WANT=closed; else WANT=open; fi
+
+# The dashboard button and SSH can both run this: one at a time per store.
+[[ -w "$CLIENT_DIR" ]] || die "run this as root (sudo)"
+exec 9>"$CLIENT_DIR/.storefront.lock"
+flock -n 9 || die "already running for $SLUG; try again in a minute"
 
 TODO=()
 for conf in "${CONFS[@]}"; do

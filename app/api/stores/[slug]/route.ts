@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 // /api/stores/<slug> — mirror of /api/academies/<slug> for the store product.
 //   GET     owner or admin: the row (+ url)
-//   PATCH   admin: { tier } | { suspend } | { validUntil } | { updateImage, tag? } | { retry } | { issueTls }
+//   PATCH   admin: { tier } | { suspend } | { validUntil } | { updateImage, tag? } | { retry } | { issueTls } | { storefront: "open" | "closed" }
 //   DELETE  owner or admin: deprovision + delete row + cancel subscriptions
 
 const TAG_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
@@ -100,6 +100,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
         if (!r.ok) return NextResponse.json({ error: `certbot: ${r.error}` }, { status: 502 });
         const updated = await prisma.tenant.update({ where: { slug }, data: { lastError: null } });
         return NextResponse.json({ ok: true, store: publicRow(updated) });
+    }
+
+    // ── Show or hide the public website. The host's nginx is the truth, so no DB column. ──
+    if (body?.storefront !== undefined) {
+        if (body.storefront !== "open" && body.storefront !== "closed") return NextResponse.json({ error: "storefront must be open or closed" }, { status: 400 });
+        if (!["live", "suspended"].includes(store.status)) return NextResponse.json({ error: "store is not live yet" }, { status: 409 });
+        const open = body.storefront === "open";
+        const r = await storeOps.setStorefront(slug, open);
+        if (!r.ok) return NextResponse.json({ error: `provisioner: ${r.error}` }, { status: r.status === 409 ? 409 : 502 });
+        await notifyTelegram(`${open ? "🌐" : "🚧"} Store ${slug} website ${open ? "opened" : "closed"} (admin)`);
+        return NextResponse.json({ ok: true, slug, storefront: r.data?.storefront ?? body.storefront });
     }
 
     // ── Retry a failed creation (free/comp stores; paid ones use /api/payments/<order>/retry-provision) ──

@@ -1,7 +1,7 @@
 "use client";
 // Admin: every STORE tenant with its provisioning state and the day-2 actions
 // (/api/stores/[slug]): change plan, suspend/resume, extend, move to an image
-// tag, retry a failed creation, reveal/reset the owner's dashboard password,
+// tag, open/close the public website, retry a failed creation, reveal/reset the owner's dashboard password,
 // delete. Rows in flight poll /status so the step label updates live.
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
@@ -32,6 +32,8 @@ export default function StoresPage() {
   const [filter, setFilter] = useState("");
   const [host, setHost] = useState<{ disk?: { free_pct: number; free_bytes: number }; memory?: { used_pct: number }; docker?: { running: number; mariadb_up: boolean }; image_tag?: string | null } | null>(null);
   const [dbBytes, setDbBytes] = useState<Record<string, number>>({});
+  // Public website per store, from the host's nginx (missing: unknown, no button).
+  const [website, setWebsite] = useState<Record<string, "open" | "closed" | "mixed">>({});
   const [rolling, setRolling] = useState(false);
   // Versions the host can run (registry + local), from the provisioner.
   type Images = {
@@ -64,6 +66,7 @@ export default function StoresPage() {
       axios.get("/api/stores/usage").then(({ data }) => {
         setHost(data.host ?? null);
         setDbBytes(Object.fromEntries(Object.entries(data.stores ?? {}).map(([k, v]: [string, any]) => [k, Number(v?.db_bytes ?? 0)])));
+        setWebsite(Object.fromEntries(Object.entries(data.stores ?? {}).flatMap(([k, v]: [string, any]) => (v?.storefront ? [[k, v.storefront]] : []))));
         // The host knows what each store really runs (fleet rollouts never report per store).
         const live: Record<string, string> = Object.fromEntries(Object.entries(data.stores ?? {}).flatMap(([k, v]: [string, any]) => (v?.image_tag ? [[k, String(v.image_tag)]] : [])));
         setStores((cur) => cur.map((s) => (live[s.slug] && live[s.slug] !== s.imageTag ? { ...s, imageTag: live[s.slug] } : s)));
@@ -100,6 +103,23 @@ export default function StoresPage() {
     } catch (e: any) {
       toast.error(e?.response?.data?.error || "Request failed");
     } finally {
+      setBusy(null);
+    }
+  };
+  const setStorefront = async (slug: string, open: boolean) => {
+    const question = open
+      ? `Open the public website of "${slug}"?\n\nCustomers can browse and order. Check that the store's payment gateway is on live keys first.`
+      : `Close the public website of "${slug}"?\n\nThe home page goes to the dashboard. The dashboard, API and mobile app keep working.`;
+    if (!confirm(question)) return;
+    setBusy(slug);
+    try {
+      await axios.patch(`/api/stores/${slug}`, { storefront: open ? "open" : "closed" });
+      toast.success(open ? "Website opened" : "Website closed");
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || "Request failed");
+    } finally {
+      // Also after a failure: the change may have applied even though its checks failed.
+      await load();
       setBusy(null);
     }
   };
@@ -228,6 +248,11 @@ export default function StoresPage() {
                         <div className="mt-1 text-xs text-gray-500">{p.label} {p.total ? `(${p.step}/${p.total})` : ""}</div>
                       )}
                       {(s.status === "failed" || s.status === "live") && s.lastError && <div className={`mt-1 max-w-[260px] break-words font-mono text-[11px] ${s.status === "failed" ? "text-red-700" : "text-amber-700"}`} dir="ltr">{s.lastError.slice(0, 160)}</div>}
+                      {["live", "suspended"].includes(s.status) && website[s.slug] && (
+                        <div className={`mt-1 text-xs ${website[s.slug] === "open" ? "text-gray-500" : "font-semibold text-amber-700"}`}>
+                          {website[s.slug] === "open" ? "🌐 Website open" : website[s.slug] === "closed" ? "🚧 Website closed" : "🚧 Website partly closed (a domain is still open)"}
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-xs">
                       <div>from {fmt(s.subscribedAt)}</div>
@@ -255,6 +280,11 @@ export default function StoresPage() {
                         {s.status === "live" && s.lastError?.startsWith("TLS certificate pending") && <button disabled={isBusy} onClick={() => patch(s.slug, { issueTls: true }, "Certificate issued")} className="rounded bg-purple-600 px-2 py-1 text-xs text-white">Issue TLS</button>}
                         {s.status === "live" && <button disabled={isBusy} onClick={() => patch(s.slug, { suspend: true }, "Suspended")} className="rounded bg-amber-500 px-2 py-1 text-xs text-white">Suspend</button>}
                         {s.status === "suspended" && <button disabled={isBusy} onClick={() => patch(s.slug, { suspend: false }, "Resumed")} className="rounded bg-green-600 px-2 py-1 text-xs text-white">Resume</button>}
+                        {["live", "suspended"].includes(s.status) && website[s.slug] && (
+                          website[s.slug] === "closed"
+                            ? <button disabled={isBusy} onClick={() => setStorefront(s.slug, true)} className="rounded bg-green-600 px-2 py-1 text-xs text-white disabled:opacity-50">{isBusy ? "Working…" : "Open website"}</button>
+                            : <button disabled={isBusy} onClick={() => setStorefront(s.slug, false)} className="rounded bg-amber-600 px-2 py-1 text-xs text-white disabled:opacity-50">{isBusy ? "Working…" : "Close website"}</button>
+                        )}
                         <button disabled={isBusy} onClick={() => showCred(s.slug)} className="rounded bg-gray-700 px-2 py-1 text-xs text-white">Credentials</button>
                         <button disabled={isBusy} onClick={() => remove(s.slug)} className="rounded bg-red-600 px-2 py-1 text-xs text-white">Delete</button>
                       </div>
