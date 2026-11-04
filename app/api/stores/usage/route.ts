@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prismaMysql";
-import { fetchStoreHealth, storeOps } from "@/lib/products/store";
+import { fetchStoreHealth, storeOps, type StorefrontState } from "@/lib/products/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     if (user.role !== "admin") return NextResponse.json({ error: "forbidden" }, { status: 403 });
     const [usage, health] = await Promise.all([storeOps.usage(), fetchStoreHealth()]);
-    const stores: Record<string, { image_tag?: string | null; db_bytes?: number }> = usage.ok ? usage.data?.stores ?? {} : {};
+    const stores: Record<string, { image_tag?: string | null; db_bytes?: number; storefront?: StorefrontState }> = usage.ok ? usage.data?.stores ?? {} : {};
     const synced = await syncImageTags(stores);
     return NextResponse.json({
         ok: usage.ok,

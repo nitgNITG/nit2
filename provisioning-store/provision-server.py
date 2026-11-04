@@ -8,6 +8,7 @@ Store provisioning endpoint — the store counterpart of provisioning/provision-
   POST   /suspend/<slug>            {suspended: bool} → sync
   POST   /reset-owner/<slug>        {email?} → sync, returns the CLI JSON (contains the new password)
   POST   /tls/<slug>                (re)issue the Let's Encrypt certificate for <slug>.<STORE_DOMAIN> → sync
+  POST   /storefront/<slug>         {open: bool} → storefront.sh open|close, sync; /usage reports the state per store
   POST   /update-image/<slug>       {tag} → queued job
   POST   /update-image              {tag} → bump-image.sh --all, detached (rollout of every store)
   POST   /bind-domain/<slug>        {domain} → queued job     POST /unbind-domain/<slug> → queued job
@@ -577,6 +578,36 @@ def collect_health() -> dict:
     return data
 
 
+NGINX_CONF_DIR = os.environ.get("NGINX_CONF_DIR", "/etc/nginx/conf.d")
+# Same test as is_closed() in storefront.sh, which writes these files.
+_STOREFRONT_CLOSED = re.compile(r"^[ \t]*location[ \t]*=[ \t]*/[ \t]*\{[ \t]*return[ \t]+302[ \t]+/dashboard;", re.M)
+
+
+def storefront_state(slug: str):
+    """Is the public website up? The host's nginx files are the truth, so the
+    dashboard button and storefront.sh over SSH can never disagree.
+    open | closed | mixed (a bound domain differs) | None (no nginx file: PROXY=apache/none)."""
+    p_api = ""
+    for line in _read(os.path.join(STORE_ROOT, "clients", slug, "store.env")).splitlines():
+        if line.startswith("P_API="):
+            p_api = line.split("=", 1)[1].strip()
+    if not p_api:
+        return None
+    states = set()
+    for conf in glob.glob(os.path.join(NGINX_CONF_DIR, "saas-store-*.conf")):
+        # Explicit encoding: hand-edited files hold non-ASCII comments, and _read() turns a decode error into "".
+        try:
+            with open(conf, encoding="utf-8", errors="replace") as f:
+                text = f.read()
+        except OSError:
+            continue
+        if f"127.0.0.1:{p_api};" in text:
+            states.add("closed" if _STOREFRONT_CLOSED.search(text) else "open")
+    if not states:
+        return None
+    return states.pop() if len(states) == 1 else "mixed"
+
+
 def collect_usage() -> dict:
     at, data = _CACHE["usage"]
     if data and time.time() - at < 30:
@@ -590,7 +621,7 @@ def collect_usage() -> dict:
         for line in _read(envf).splitlines():
             if line.startswith("IMAGE_TAG="):
                 tag = line.split("=", 1)[1].strip()
-        stores[slug] = {"image_tag": tag}
+        stores[slug] = {"image_tag": tag, "storefront": storefront_state(slug)}
     # Per-schema sizes from the shared MariaDB (one query for all).
     try:
         pw = os.environ.get("DB_ROOT_PW", "")
@@ -939,6 +970,19 @@ class Handler(BaseHTTPRequestHandler):
                 rc, out = _run_sync(argv)
                 res = _last_json_line(out) or {}
                 return self._send(200 if rc == 0 else 500, {"ok": rc == 0, "slug": slug, **res, **({} if rc == 0 else {"error": out[-800:]})})
+
+            if path.startswith("/storefront/"):
+                slug = self._slug_from("/storefront/")
+                want_open = self._json().get("open")
+                if not isinstance(want_open, bool):   # never guess between opening and closing a live store
+                    return self._send(400, {"error": "open must be true or false"})
+                if job_active(slug):
+                    return self._send(409, {"error": "a job is already running for this slug"})
+                # Up to ~1 min: open may start the site container, then both verify through nginx.
+                rc, out = _run_sync([BASH, script("storefront.sh"), slug, "open" if want_open else "close"], timeout=150)
+                _CACHE["usage"] = (0.0, None)   # /usage must show the new state on the next read
+                state = storefront_state(slug)
+                return self._send(200 if rc == 0 else 500, {"ok": rc == 0, "slug": slug, "storefront": state, **({} if rc == 0 else {"error": out[-400:]})})
 
             if path.startswith("/tls/"):
                 slug = self._slug_from("/tls/")

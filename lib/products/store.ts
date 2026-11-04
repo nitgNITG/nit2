@@ -155,6 +155,9 @@ export type StoreProvisionRequest = {
     force?: boolean;
 };
 
+/** From the host's nginx files. "mixed": a bound domain differs. null: no nginx file (PROXY=apache/none). */
+export type StorefrontState = "open" | "closed" | "mixed" | null;
+
 export const storeOps = {
     provision: (req: StoreProvisionRequest) =>
         storeProvisionerCall<{ ok: true; job: number; status: string; slug: string }>("/provision", { body: req }),
@@ -168,6 +171,9 @@ export const storeOps = {
     updateImage: (slug: string, tag: string) => storeProvisionerCall(`/update-image/${slug}`, { body: { tag } }),
     /** (Re)issue the store's Let's Encrypt certificate (after the DNS record exists). Sync, up to 3 min. */
     issueTls: (slug: string) => storeProvisionerCall(`/tls/${slug}`, { body: {}, timeoutMs: 180_000 }),
+    /** Show or hide the public website (nginx only; dashboard, API and mobile app stay up). Sync, up to ~2.5 min. */
+    setStorefront: (slug: string, open: boolean) =>
+        storeProvisionerCall<{ ok: boolean; storefront: StorefrontState }>(`/storefront/${slug}`, { body: { open }, timeoutMs: 160_000 }),
     deprovision: (slug: string) => storeProvisionerCall(`/deprovision/${slug}`, { method: "DELETE" }),
     bindDomain: (slug: string, domain: string) => storeProvisionerCall(`/bind-domain/${slug}`, { body: { domain } }),
     unbindDomain: (slug: string) => storeProvisionerCall(`/unbind-domain/${slug}`, { body: {} }),
