@@ -24,6 +24,7 @@ listens on `127.0.0.1:9098` and nit2 calls it over localhost.
 | `apply-license.sh` · `apply-suspend.sh` · `reset-owner.sh` | day-2 ops through the api CLI (sync) |
 | `update-image.sh` · `bump-image.sh` | move one / every store to an image tag; compose recreates only changed services |
 | `bind-domain.sh` · `unbind-domain.sh` | merchant custom domain (vhost + cert + `PUBLIC_URL`) |
+| `storefront.sh` | show or hide a store's public website (`open\|close\|status`); API, dashboard and mobile app stay up. Run by hand as root; nginx only |
 | `proxy/proxy.sh` + templates | host web-server adapter (`PROXY=nginx\|apache`), reload-only, per-host certbot |
 | `upload-image.sh` | signed Cloudinary upload (store logo at creation) |
 | `compose.store.yml` | **copy of `saas-commerce/deploy/compose.store.yml`** — keep in sync when that file changes |
