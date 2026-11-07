@@ -46,6 +46,10 @@ export const FEATURES: Record<Product, FeatureDef[]> = {
         // so far; switch it ON for every existing store licence (and re-push) before the
         // gate merges into the fleet's dev/main, or those stores lose card checkout.
         { key: "online_payments", label: { en: "Online payments", ar: "الدفع الإلكتروني" }, pending: true },
+        // AI customer-support agent (store-api src/modules/ai-chat). The store uses its own
+        // Anthropic key and budget. Only the nile-mall store images have the module so far,
+        // so the toggle does nothing on fleet stores yet. Off by default: a new module.
+        { key: "ai_chat", label: { en: "AI support agent", ar: "المساعد الذكي لخدمة العملاء" }, pending: true },
     ],
 };
 
