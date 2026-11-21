@@ -24,49 +24,69 @@ const destroyCmd = (product, slug) => product === 'store'
     ? `sudo bash /var/www/html/saas-stores/destroy-store.sh ${slug}`
     : `sudo bash /root/destroy.sh ${slug}`
 const vhostCmd = (file, names) => {
-    const base = file.split('/').pop()
     const nginx = file.includes('/nginx/')
+    // Apache keeps <name>.conf + <name>-le-ssl.conf (certbot's copy): remove both, whichever was found.
+    const stem = file.replace(/(-le-ssl)?\.conf$/, '')
+    const base = stem.split('/').pop()
     const drop = nginx ? `sudo rm ${file} && sudo nginx -t && sudo systemctl reload nginx`
-        : `sudo a2dissite ${base} ${base.replace(/\.conf$/, '-le-ssl.conf')}; sudo rm -f ${file} ${file.replace(/\.conf$/, '-le-ssl.conf')}; sudo apache2ctl configtest && sudo systemctl reload apache2`
+        : `sudo a2dissite ${base}.conf ${base}-le-ssl.conf; sudo rm -f ${stem}.conf ${stem}-le-ssl.conf; sudo apache2ctl configtest && sudo systemctl reload apache2`
     return `${drop}${names.length ? `; ${names.map((n) => `sudo certbot delete --cert-name ${n}`).join('; ')}` : ''}`
 }
 
+const tenantRangePort = (p) => p >= ACADEMY_PORT_MIN && !PROVISIONER_PORTS.has(p)
+const portOwners = (inventories) => {
+    const owner = new Map() // port → { product, slug }
+    for (const [product, inv] of Object.entries(inventories)) {
+        if (!inv) continue
+        for (const [slug, ports] of Object.entries(inv.ports ?? {})) for (const p of ports) owner.set(p, { product, slug })
+    }
+    return owner
+}
+const uniqueVhosts = (inventories) => {
+    const seen = new Set()
+    return Object.values(inventories).filter(Boolean).flatMap((inv) => inv.vhosts ?? [])
+        .filter((v) => !seen.has(v.file) && seen.add(v.file)) // a shared host is scanned by both provisioners
+}
+/** A vhost no tenant owns but that proxies into the tenant port range: a leftover OR one of your own sites. */
+const unownedTenantRange = (v, owner) => v.ports.some(tenantRangePort) && !v.ports.some((p) => owner.has(p))
+
+/**
+ * Host names to probe over public HTTPS before analyze(): the vhosts no tenant owns.
+ * The inventory cannot tell a leftover from one of your own sites on a tenant-range
+ * port (a meeting server, a hand-made Moodle…) — what the name serves can.
+ */
+export function namesToProbe(inventories) {
+    const owner = portOwners(inventories)
+    return [...new Set(uniqueVhosts(inventories).filter((v) => unownedTenantRange(v, owner)).flatMap((v) => v.names))]
+}
+
+/** 502/503/504 = the proxy has nothing behind it. 0 / missing = could not tell. */
+const DEAD = new Set([502, 503, 504])
+
 /**
  * Compare host inventories with the tenant rows.
- * tenants: [{ slug, product, status, customDomain }]
+ * tenants: [{ slug, product, status, customDomain, lastError? }]
  * inventories: { academy?: inv, store?: inv } — the JSON of GET /inventory
+ * probes: { "<host name>": HTTP status of https://<name>/ (0 = unreachable) } for namesToProbe()
  * Returns findings sorted by severity: { severity, kind, product?, slug?, text, fix? }.
  */
-export function analyze({ tenants, inventories, ignore = [] }) {
+export function analyze({ tenants, inventories, ignore = [], probes = {} }) {
     const ignored = new Set(ignore.map((s) => s.toLowerCase()))
     const findings = []
     const rows = new Map(tenants.map((t) => [`${t.product}:${t.slug}`, t]))
-    const subdomainRe = {}
-    const portOwner = new Map() // port → { product, slug }
-
+    const owner = portOwners(inventories)
+    const domains = {}
     for (const [product, inv] of Object.entries(inventories)) {
         if (!inv) continue
-        subdomainRe[product] = new RegExp(`^([a-z0-9-]+)\\.${escapeRe(inv.domain)}$`)
-        for (const [slug, ports] of Object.entries(inv.ports ?? {})) for (const p of ports) portOwner.set(p, { product, slug })
+        domains[product] = inv.domain
         for (const e of inv.errors ?? []) findings.push({ severity: 'info', kind: 'partial', product, text: `${product} host: ${e} — that part was not checked` })
     }
-    // Host names whose vhosts proxy only to non-tenant ports (a provisioner's own site,
-    // nit2…): never a tenant, and neither is their certificate.
-    const tenantPort = (p) => p >= ACADEMY_PORT_MIN && !PROVISIONER_PORTS.has(p)
-    const infraNames = new Set(Object.values(inventories).filter(Boolean).flatMap((inv) => inv.vhosts ?? [])
-        .filter((v) => !v.ports.some(tenantPort)).flatMap((v) => v.names))
-    const subdomainOf = (name) => {
-        for (const [product, re] of Object.entries(subdomainRe)) {
-            const m = re.exec(name)
-            if (m) return { product, slug: m[1] }
-        }
-        return null
-    }
+    const vhosts = uniqueVhosts(inventories)
 
-    // 1) Per slug: everything a product keeps on its host.
+    // 1) Per slug: what each product keeps on its host for a tenant.
     for (const [product, inv] of Object.entries(inventories)) {
         if (!inv) continue
-        const pieces = new Map() // slug → { container, dir, database, media, vhost, cert }
+        const pieces = new Map() // slug → { container, dir, database, media, vhost }
         const add = (slug, what, val = true) => {
             if (ignored.has(slug)) return
             if (!pieces.has(slug)) pieces.set(slug, {})
@@ -76,30 +96,23 @@ export function analyze({ tenants, inventories, ignore = [] }) {
         for (const d of inv.dirs ?? []) add(d, 'dir')
         for (const d of inv.databases ?? []) add(d, 'database')
         for (const d of inv.media ?? []) add(d, 'media')
-        for (const v of inv.vhosts ?? []) for (const n of v.names) {
-            if (infraNames.has(n)) continue
-            const s = subdomainOf(n)
-            if (s?.product === product) add(s.slug, 'vhost')
-        }
-        for (const c of inv.certs ?? []) {
-            if (infraNames.has(c)) continue
-            const s = subdomainOf(c)
-            if (s?.product === product) add(s.slug, 'cert')
+        // A vhost belongs to a slug when that slug's container owns its port.
+        for (const v of vhosts) {
+            const o = v.ports.map((p) => owner.get(p)).find(Boolean)
+            if (o?.product === product) add(o.slug, 'vhost')
         }
 
         for (const [slug, p] of pieces) {
             const row = rows.get(`${product}:${slug}`)
             const list = [
                 p.container && `container (${p.container})`, p.database && 'database', p.dir && 'files',
-                p.media && 'Cloudinary media', p.vhost && 'vhost', p.cert && 'certificate',
+                p.media && 'Cloudinary media', p.vhost && 'vhost',
             ].filter(Boolean).join(', ')
             if (!row) {
-                const substantial = p.container || p.database || p.dir || p.media
                 findings.push({
-                    severity: p.container === 'running' ? 'high' : substantial ? 'medium' : 'low',
+                    severity: p.container === 'running' ? 'high' : 'medium',
                     kind: 'orphan', product, slug,
-                    text: `${product} "${slug}" has no tenant in nit2 but still has: ${list}`
-                        + (substantial ? '' : ' (if this is one of your own sites, pass --ignore)'),
+                    text: `${product} "${slug}" has no tenant in nit2 but still has: ${list}`,
                     fix: destroyCmd(product, slug),
                 })
             } else if (row.status === 'deleting') {
@@ -123,49 +136,48 @@ export function analyze({ tenants, inventories, ignore = [] }) {
         }
     }
 
-    // 3) Custom-domain vhosts (any host): who does each one actually serve?
-    const seenFiles = new Set()
-    const allVhosts = Object.values(inventories).filter(Boolean).flatMap((inv) => inv.vhosts ?? [])
-    const vhostNames = new Set(allVhosts.flatMap((v) => v.names))
-    for (const v of allVhosts) {
-        if (seenFiles.has(v.file)) continue // the same host scanned by both provisioners
-        seenFiles.add(v.file)
-        const custom = v.names.filter((n) => !subdomainOf(n) && !ignored.has(n))
-        if (!custom.length) continue
-        const tenantPorts = v.ports.filter(tenantPort)
-        if (!tenantPorts.length) continue // proxies to something that is not a tenant (nit2 itself, a provisioner…)
-        const owners = tenantPorts.map((p) => portOwner.get(p)).filter(Boolean)
-        if (!owners.length) {
-            findings.push({
-                severity: 'high', kind: 'dangling-vhost',
-                text: `${custom.join(', ')} (${v.file}) proxies to 127.0.0.1:${tenantPorts.join(',')}, which no academy or store uses now — the next new one may get that port and be served under this domain`,
-                fix: vhostCmd(v.file, custom),
-            })
+    // 3) Vhosts: does each host name serve the tenant it should?
+    for (const v of vhosts) {
+        const names = v.names.filter((n) => !ignored.has(n))
+        if (!names.length) continue
+        const o = v.ports.map((p) => owner.get(p)).find(Boolean)
+        if (o) {
+            // Owned: every name must be that tenant's own subdomain or its current custom domain.
+            const row = rows.get(`${o.product}:${o.slug}`)
+            const own = new Set([`${o.slug}.${domains[o.product]}`, (row?.customDomain ?? '').toLowerCase()].filter(Boolean))
+            for (const name of names.filter((n) => !own.has(n))) {
+                findings.push({
+                    severity: 'high', kind: 'stale-domain', product: o.product, slug: o.slug,
+                    text: row
+                        ? `${name} (${v.file}) serves ${o.product} "${o.slug}", whose domain in nit2 is ${row.customDomain || 'none'} — visitors of ${name} land on someone else's site`
+                        : `${name} (${v.file}) serves ${o.product} "${o.slug}", which has no tenant in nit2`,
+                    fix: vhostCmd(v.file, [name]),
+                })
+            }
             continue
         }
-        const { product, slug } = owners[0]
-        const row = rows.get(`${product}:${slug}`)
-        for (const name of custom) {
-            if (row && (row.customDomain ?? '').toLowerCase() === name) continue
+        if (!unownedTenantRange(v, owner)) continue // proxies to something that is not a tenant (nit2, a provisioner…)
+        const ports = v.ports.filter(tenantRangePort).join(',')
+        const statuses = names.map((n) => probes[n])
+        if (statuses.some((st) => DEAD.has(st))) {
             findings.push({
-                severity: 'high', kind: 'stale-domain', product, slug,
-                text: row
-                    ? `${name} (${v.file}) still serves ${product} "${slug}", whose domain in nit2 is ${row.customDomain || 'none'}`
-                    : `${name} (${v.file}) serves ${product} "${slug}", which has no tenant in nit2`,
-                fix: vhostCmd(v.file, [name]),
+                severity: 'high', kind: 'dangling-vhost',
+                text: `${names.join(', ')} (${v.file}) proxies to 127.0.0.1:${ports}, where nothing runs now (it answers ${statuses.find((st) => DEAD.has(st))}) — the next new academy or store that gets that port would be served under this domain`,
+                fix: vhostCmd(v.file, names),
             })
-        }
+        } else if (statuses.every((st) => !st)) {
+            findings.push({
+                severity: 'low', kind: 'unchecked-vhost',
+                text: `${names.join(', ')} (${v.file}) proxies to 127.0.0.1:${ports}, which is no tenant's — it could not be reached to tell a leftover from one of your own sites; check it by hand`,
+            })
+        } // else: it serves something — one of your own sites on that port, left alone.
     }
 
-    // 4) Certificates for a custom domain no vhost and no tenant uses any more.
-    const certNames = new Set(Object.values(inventories).filter(Boolean).flatMap((inv) => inv.certs ?? []))
-    const domains = new Set(tenants.map((t) => (t.customDomain ?? '').toLowerCase()).filter(Boolean))
-    for (const c of certNames) {
-        if (subdomainOf(c) || vhostNames.has(c) || domains.has(c) || infraNames.has(c) || ignored.has(c)) continue
-        findings.push({ severity: 'low', kind: 'unused-cert', text: `certificate ${c} is not used by any vhost or tenant`, fix: `sudo certbot delete --cert-name ${c}` })
-    }
-
-    return findings.sort((a, b) => RANK[a.severity] - RANK[b.severity] || (a.slug ?? '').localeCompare(b.slug ?? ''))
+    // <name>.conf and certbot's <name>-le-ssl.conf are one site: one finding, one fix.
+    const seen = new Set()
+    return findings
+        .filter((f) => !f.fix || (!seen.has(`${f.kind}|${f.fix}`) && seen.add(`${f.kind}|${f.fix}`)))
+        .sort((a, b) => RANK[a.severity] - RANK[b.severity] || (a.slug ?? '').localeCompare(b.slug ?? ''))
 }
 
 /** checked: the products whose host answered — the report never claims more than that. */
@@ -174,7 +186,7 @@ export function formatReport(findings, { hosts, checked = [] }) {
     if (!checked.length) return [...lines, '✖ no host could be checked — nothing was compared (see "hosts" above).'].join('\n')
     if (!findings.length) {
         const scope = checked.length === 2 ? 'both hosts' : `the ${checked[0]} host (the other one was NOT checked)`
-        return [...lines, `✔ nothing left behind on ${scope}: every container, database, file, vhost, certificate and media folder belongs to a tenant.`].join('\n')
+        return [...lines, `✔ nothing left behind on ${scope}: every container, database, file, vhost and media folder belongs to a tenant.`].join('\n')
     }
     for (const sev of ['high', 'medium', 'low', 'info']) {
         const group = findings.filter((f) => f.severity === sev)
@@ -188,6 +200,16 @@ export function formatReport(findings, { hosts, checked = [] }) {
     }
     lines.push('Nothing was changed. Run a fix on the host that holds the piece (destroy*.sh are safe to re-run).')
     return lines.join('\n')
+}
+
+/** HTTP status of https://<name>/ (no redirects followed); 0 when it cannot be reached. Read-only. */
+async function probe(name) {
+    try {
+        const r = await fetch(`https://${name}/`, { redirect: 'manual', signal: AbortSignal.timeout(15_000) })
+        return r.status
+    } catch {
+        return 0
+    }
 }
 
 async function inventory(base, secret, label) {
@@ -220,8 +242,10 @@ async function main() {
     } finally {
         await mysql.$disconnect()
     }
+    const inventories = { academy: academy.inv, store: store.inv }
+    const probes = Object.fromEntries(await Promise.all(namesToProbe(inventories).map(async (name) => [name, await probe(name)])))
     const findings = analyze({
-        tenants, inventories: { academy: academy.inv, store: store.inv },
+        tenants, inventories, probes,
         ignore: String(args.ignore ?? '').split(',').map((s) => s.trim()).filter(Boolean),
     })
     const hosts = `${academy.note} · ${store.note}`

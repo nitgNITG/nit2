@@ -1,10 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import { analyze, formatReport } from "../scripts/orphan-check.mjs";
+import { analyze, formatReport, namesToProbe } from "../scripts/orphan-check.mjs";
 
-// What the orphan check reports from the two host inventories + the tenant rows —
-// and, just as important, what it must NOT report (live tenants, our own sites).
+// What the orphan check reports from the host inventories + the tenant rows — and,
+// just as important, what it must NOT report: live tenants, and your own sites that
+// share the tenant port range on server B (the main site, meet., lae…).
 const SB = "/etc/apache2/sites-available";
 const academyInv = (over: Record<string, unknown> = {}) => ({
     product: "academy", domain: "academy2026.nitg-eg.com", errors: [],
@@ -14,10 +15,12 @@ const academyInv = (over: Record<string, unknown> = {}) => ({
     vhosts: [
         { file: `${SB}/live-one.academy2026.nitg-eg.com.conf`, names: ["live-one.academy2026.nitg-eg.com"], ports: [8101] },
         { file: `${SB}/learn.live.com.conf`, names: ["learn.live.com"], ports: [8101] },
-        // the provisioner's own site: never a tenant
+        { file: `${SB}/learn.live.com-le-ssl.conf`, names: ["learn.live.com"], ports: [8101] },
+        // the provisioner's own site and a non-tenant service: never a tenant
         { file: `${SB}/saas-provision.academy2026.nitg-eg.com.conf`, names: ["saas-provision.academy2026.nitg-eg.com"], ports: [9099] },
+        { file: `${SB}/meet.nitg-eg.com.conf`, names: ["meet.nitg-eg.com"], ports: [8210] },
     ],
-    certs: ["live-one.academy2026.nitg-eg.com", "learn.live.com", "saas-provision.academy2026.nitg-eg.com"],
+    certs: ["live-one.academy2026.nitg-eg.com", "learn.live.com"],
     ...over,
 });
 const storeInv = (over: Record<string, unknown> = {}) => ({
@@ -32,14 +35,20 @@ const tenants = [
     { slug: "live-one", product: "academy", status: "live", customDomain: "learn.live.com" },
     { slug: "shop", product: "store", status: "live", customDomain: null },
 ];
-const run = (inv: { academy?: unknown; store?: unknown }, t = tenants, ignore: string[] = []) =>
-    analyze({ tenants: t, inventories: { academy: inv.academy ?? academyInv(), store: inv.store ?? storeInv() }, ignore });
+const LIVE_SITES = { "meet.nitg-eg.com": 302 }; // what the public probe of meet. answers
+const run = (inv: { academy?: unknown; store?: unknown }, t = tenants, probes: Record<string, number> = LIVE_SITES, ignore: string[] = []) =>
+    analyze({ tenants: t, inventories: { academy: inv.academy ?? academyInv(), store: inv.store ?? storeInv() }, probes, ignore });
+const withVhost = (v: Record<string, unknown>) => academyInv({ vhosts: [...academyInv().vhosts, v] });
 
 describe("orphan check", () => {
-    it("a clean fleet → nothing to report", () => {
+    it("a clean fleet → nothing to report (own sites on the tenant port range included)", () => {
         const f = run({});
         expect(f).toEqual([]);
         expect(formatReport(f, { hosts: "academy: ok · store: ok", checked: ["academy", "store"] })).toContain("nothing left behind on both hosts");
+    });
+
+    it("probes only the vhosts no tenant owns", () => {
+        expect(namesToProbe({ academy: academyInv(), store: storeInv() })).toEqual(["meet.nitg-eg.com"]);
     });
 
     it("a deleted academy still running on server B → HIGH, with every piece and the fix", () => {
@@ -47,11 +56,11 @@ describe("orphan check", () => {
             containers: [{ slug: "live-one", state: "running" }, { slug: "gone", state: "running" }],
             ports: { "live-one": [8101], gone: [8102] },
             dirs: ["live-one", "gone"], databases: ["live-one", "gone"],
-            certs: ["live-one.academy2026.nitg-eg.com", "learn.live.com", "gone.academy2026.nitg-eg.com"],
+            vhosts: [...academyInv().vhosts, { file: `${SB}/gone.academy2026.nitg-eg.com.conf`, names: ["gone.academy2026.nitg-eg.com"], ports: [8102] }],
         }) });
         expect(f).toHaveLength(1);
         expect(f[0]).toMatchObject({ severity: "high", kind: "orphan", product: "academy", slug: "gone", fix: "sudo bash /root/destroy.sh gone" });
-        expect(f[0].text).toContain("container (running), database, files, certificate");
+        expect(f[0].text).toContain("container (running), database, files, vhost");
     });
 
     it("a stopped leftover is MEDIUM; leftover store media alone is still reported with its fix", () => {
@@ -63,16 +72,27 @@ describe("orphan check", () => {
         expect(f.find((x) => x.slug === "ex-shop")!.fix).toBe("sudo bash /var/www/html/saas-stores/destroy-store.sh ex-shop");
     });
 
-    it("a custom-domain vhost left pointing at a port nothing uses → HIGH (the next academy would be served under it)", () => {
-        const f = run({ academy: academyInv({ vhosts: [...academyInv().vhosts, { file: `${SB}/old-customer.com.conf`, names: ["old-customer.com"], ports: [8105] }] }) });
+    it("an unowned vhost whose site is DOWN (502/503/504) → HIGH dangling, one finding for .conf + -le-ssl.conf", () => {
+        const inv = academyInv({ vhosts: [...academyInv().vhosts,
+            { file: `${SB}/old-customer.com.conf`, names: ["old-customer.com"], ports: [8105] },
+            { file: `${SB}/old-customer.com-le-ssl.conf`, names: ["old-customer.com"], ports: [8105] }] });
+        const f = run({ academy: inv }, tenants, { ...LIVE_SITES, "old-customer.com": 503 });
         expect(f).toHaveLength(1);
         expect(f[0]).toMatchObject({ severity: "high", kind: "dangling-vhost" });
-        expect(f[0].fix).toContain("a2dissite old-customer.com.conf old-customer.com-le-ssl.conf");
-        expect(f[0].fix).toContain("certbot delete --cert-name old-customer.com");
+        expect(f[0].fix).toBe("sudo a2dissite old-customer.com.conf old-customer.com-le-ssl.conf; sudo rm -f "
+            + `${SB}/old-customer.com.conf ${SB}/old-customer.com-le-ssl.conf; sudo apache2ctl configtest && sudo systemctl reload apache2; `
+            + "sudo certbot delete --cert-name old-customer.com");
     });
 
-    it("an old domain still pointing at a live academy after a rebind → HIGH stale-domain", () => {
-        const f = run({ academy: academyInv({ vhosts: [...academyInv().vhosts, { file: `${SB}/old.live.com.conf`, names: ["old.live.com"], ports: [8101] }] }) });
+    it("an unowned vhost that SERVES something is one of your own sites → left alone; unreachable → LOW, check by hand", () => {
+        const v = { file: `${SB}/lae.nitg-eg.com.conf`, names: ["lae.nitg-eg.com"], ports: [8212] };
+        expect(run({ academy: withVhost(v) }, tenants, { ...LIVE_SITES, "lae.nitg-eg.com": 200 })).toEqual([]);
+        expect(run({ academy: withVhost(v) }, tenants, { ...LIVE_SITES, "lae.nitg-eg.com": 0 }))
+            .toEqual([expect.objectContaining({ severity: "low", kind: "unchecked-vhost" })]);
+    });
+
+    it("an old domain still pointing at a live academy (its port was reused) → HIGH stale-domain", () => {
+        const f = run({ academy: withVhost({ file: `${SB}/newacademy2.nitg-eg.com.conf`, names: ["newacademy2.nitg-eg.com"], ports: [8101] }) });
         expect(f).toEqual([expect.objectContaining({ severity: "high", kind: "stale-domain", slug: "live-one" })]);
         expect(f[0].text).toContain("whose domain in nit2 is learn.live.com");
     });
@@ -89,22 +109,22 @@ describe("orphan check", () => {
         expect(f).toEqual([expect.objectContaining({ severity: "medium", kind: "missing", slug: "shop" })]);
     });
 
-    it("a store vhost on a shared host is the store's, not a dangling academy vhost; non-tenant sites are ignored", () => {
-        const shared = {
-            file: `${SB}/myshop.com.conf`, names: ["myshop.com"], ports: [9100],
-        };
-        const nit2Site = { file: `${SB}/www.nitg-eg.com.conf`, names: ["www.nitg-eg.com"], ports: [3000] };
+    it("a store's custom domain on a shared host is the store's; a site proxying below the tenant range is ignored", () => {
         const f = run({
-            academy: academyInv({ vhosts: [...academyInv().vhosts, shared, nit2Site], certs: [...academyInv().certs, "www.nitg-eg.com"] }),
+            academy: academyInv({ vhosts: [...academyInv().vhosts,
+                { file: `${SB}/myshop.com.conf`, names: ["myshop.com"], ports: [9100] },
+                { file: `${SB}/www.nitg-eg.com.conf`, names: ["www.nitg-eg.com"], ports: [3000] }] }),
         }, [tenants[0], { ...tenants[1], customDomain: "myshop.com" }]);
         expect(f).toEqual([]);
     });
 
-    it("an unused custom-domain certificate is LOW; --ignore silences your own names and slugs", () => {
-        const inv = academyInv({ certs: [...academyInv().certs, "forgotten.com"], containers: [...academyInv().containers, { slug: "demo", state: "running" }] });
-        const f = run({ academy: inv });
-        expect(f.map((x) => [x.severity, x.kind])).toEqual([["high", "orphan"], ["low", "unused-cert"]]);
-        expect(run({ academy: inv }, tenants, ["forgotten.com", "demo"])).toEqual([]);
+    it("--ignore silences your own slugs and host names", () => {
+        const inv = academyInv({
+            containers: [...academyInv().containers, { slug: "demo", state: "running" }],
+            vhosts: [...academyInv().vhosts, { file: `${SB}/old.com.conf`, names: ["old.com"], ports: [8105] }],
+        });
+        expect(run({ academy: inv }, tenants, { ...LIVE_SITES, "old.com": 503 }).map((x) => x.kind).sort()).toEqual(["dangling-vhost", "orphan"]);
+        expect(run({ academy: inv }, tenants, { ...LIVE_SITES, "old.com": 503 }, ["demo", "old.com"])).toEqual([]);
     });
 
     it("a host that could not read part of its inventory says so", () => {
@@ -113,7 +133,7 @@ describe("orphan check", () => {
     });
 
     it("only one host reachable: the other product is simply not checked — and the report says so", () => {
-        const f = analyze({ tenants, inventories: { academy: academyInv(), store: null } });
+        const f = analyze({ tenants, inventories: { academy: academyInv(), store: null }, probes: LIVE_SITES });
         expect(f).toEqual([]);
         expect(formatReport(f, { hosts: "", checked: ["academy"] })).toContain("the other one was NOT checked");
     });
