@@ -44,6 +44,14 @@ change adds or updates a test there.
   `bash provisioning/deploy-provisioning.sh` — **editing a script here does nothing until
   it's deployed.** `provisioning/deploy-provisioning.sh` lists every file that gets copied;
   add new scripts to that list.
+- **Deleting a tenant.** Every delete (owner/admin DELETE, the expiry cron's auto-delete)
+  goes through `lib/tenants/teardown.ts`: the row is set to `status: "deleting"` (billing
+  cancelled, hidden from its owner, PATCH refused) and is removed **only once the
+  provisioner confirms the teardown** — `GET /deprovision/<slug>` on server B, the
+  `destroy` progress callback for stores. Failed or unreached teardowns stay "deleting",
+  alert the admins and are retried by the daily cron. Never delete a Tenant row directly:
+  that orphans a running site. `destroy.sh` / `destroy-store.sh` exit non-zero when any
+  step fails; keep it that way when adding a step.
 - **Store provisioning (commerce).** `provisioning-store/` is the store counterpart of
   `provisioning/`: a self-contained host agent (`provision-server.py` + bash scripts +
   `provision.env` + systemd, port 9098) that runs **one docker compose project per

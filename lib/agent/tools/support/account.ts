@@ -17,7 +17,7 @@ function requireUser(ctx: ToolContext): string | null {
 
 /** The tenant only if this user owns it. */
 async function ownedTenant(userId: string, slug: string) {
-    return mysql.tenant.findFirst({ where: { slug, ownerId: userId } });
+    return mysql.tenant.findFirst({ where: { slug, ownerId: userId, status: { not: "deleting" } } });
 }
 
 export const getMyTenants = defineTool({
@@ -29,7 +29,7 @@ export const getMyTenants = defineTool({
     async run(ctx) {
         const userId = requireUser(ctx);
         if (!userId) return fail("not_authorized", "The visitor must be signed in.");
-        const tenants = await mysql.tenant.findMany({ where: { ownerId: userId }, orderBy: { createdAt: "asc" }, take: 50 });
+        const tenants = await mysql.tenant.findMany({ where: { ownerId: userId, status: { not: "deleting" } }, orderBy: { createdAt: "asc" }, take: 50 });
         const keys = Array.from(new Set(tenants.map((t) => t.tier)));
         const plans = keys.length ? await mysql.license.findMany({ where: { key: { in: keys } }, select: { key: true, name: true } }) : [];
         return ok(tenants.map((t) => ({

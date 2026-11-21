@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { notifyTelegram } from "@/lib/telegram";
 import { STORE_PRODUCT, storeLiveUrl, storeOps, pushStoreLicense } from "@/lib/products/store";
 import { createStore } from "@/lib/tenants/createStore";
+import { DELETING, beginTenantDelete, deleteResponse } from "@/lib/tenants/teardown";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 // /api/stores/<slug> — mirror of /api/academies/<slug> for the store product.
 //   GET     owner or admin: the row (+ url)
 //   PATCH   admin: { tier } | { suspend } | { validUntil } | { updateImage, tag? } | { retry } | { issueTls } | { storefront: "open" | "closed" }
-//   DELETE  owner or admin: deprovision + delete row + cancel subscriptions
+//   DELETE  owner or admin: cancel billing + teardown; the row goes once the teardown is confirmed
 
 const TAG_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 
@@ -42,6 +43,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
     const slug = params.slug;
     const store = await loadStore(slug);
     if (!store) return NextResponse.json({ error: "not found" }, { status: 404 });
+    // A store on its way out (lib/tenants/teardown.ts): a retry or image update now
+    // would rebuild what the teardown is removing.
+    if (store.status === DELETING) return NextResponse.json({ error: "being deleted — nothing can change it any more" }, { status: 409 });
 
     // ── Plan change: fresh term from the new licence, pushed to the live store ──
     if (body?.tier !== undefined) {
@@ -144,24 +148,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: { slug: st
     if (!store) return NextResponse.json({ error: "not found" }, { status: 404 });
     if (user.role !== "admin" && store.ownerId !== user.id) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
-    // Best-effort teardown on the provisioner (queued); never block the delete over it.
-    const r = await storeOps.deprovision(slug);
-    if (!r.ok) console.error("[stores] deprovision request failed", slug, r.error);
-
-    try {
-        await prisma.tenant.delete({ where: { slug } });
-    } catch (e) {
-        console.error("[stores] db delete failed", slug, e);
-        return NextResponse.json({ error: "delete failed" }, { status: 500 });
-    }
-    try {
-        await prisma.subscription.updateMany({
-            where: { tenantSlug: slug, status: { in: ["active", "past_due"] } },
-            data: { status: "canceled", autoRenew: false, nextAttemptAt: null, lastError: "store deleted" },
-        });
-    } catch (e) {
-        console.error("[stores] subscription cancel on delete failed", slug, e);
-    }
-    await notifyTelegram(`🗑 Store deleted: ${slug}`);
-    return NextResponse.json({ ok: true, slug });
+    // The row goes only once the provisioner confirms the teardown (its progress
+    // callback, or the poll below); until then the store is "deleting" — see
+    // lib/tenants/teardown.ts.
+    const r = await beginTenantDelete(slug, { by: user.role === "admin" ? "admin" : "owner", waitMs: 20_000 });
+    return deleteResponse(slug, r);
 }

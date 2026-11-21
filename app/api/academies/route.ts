@@ -253,7 +253,7 @@ export async function POST(req: NextRequest) {
             const limit = row ? parseInt(row.value, 10) : 1;
             if (Number.isFinite(limit) && limit >= 0) {
                 const freeKeys = (await prisma.license.findMany({ where: { price: 0 }, select: { key: true } })).map((l) => l.key);
-                const owned = await prisma.tenant.count({ where: { ownerId: user.id, tier: { in: freeKeys } } });
+                const owned = await prisma.tenant.count({ where: { ownerId: user.id, tier: { in: freeKeys }, status: { not: "deleting" } } });
                 if (owned >= limit) {
                     return NextResponse.json(
                         { error: `وصلت للحد الأقصى من الأكاديميات المجانية (${limit}) لحسابك. اختر باقة مدفوعة لإضافة المزيد.` },

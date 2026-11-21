@@ -196,25 +196,3 @@ export async function pushStoreLicense(slug: string): Promise<StoreCallResult> {
         upgradable: computeUpgradable(tenant.tier, rank),
     }));
 }
-
-/** Auto-delete after the retention period (expiry cron): teardown + row + subscriptions. */
-export async function deprovisionAndDeleteStore(slug: string): Promise<boolean> {
-    const r = await storeOps.deprovision(slug);
-    if (!r.ok) {
-        console.error("[stores] auto-delete: deprovision request failed", slug, r.error);
-        return false;
-    }
-    try {
-        await prisma.tenant.delete({ where: { slug } });
-        await prisma.subscription.updateMany({
-            where: { tenantSlug: slug, status: { in: ["active", "past_due"] } },
-            data: { status: "canceled", autoRenew: false, nextAttemptAt: null, lastError: "store auto-deleted" },
-        }).catch(() => {});
-        const { notifyTelegram } = await import("@/lib/telegram");
-        await notifyTelegram(`🗑 Store auto-deleted (expired past retention): ${slug}`);
-        return true;
-    } catch (e) {
-        console.error("[stores] auto-delete: row delete failed", slug, e);
-        return false;
-    }
-}

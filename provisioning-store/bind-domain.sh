@@ -22,6 +22,14 @@ write_status(){ # state error
 }
 fail(){ write_status failed "$*"; report_failed "$*"; die "$*"; }
 
+# A domain bound before this one (a rebind): its vhost + cert go once this one is
+# active. Read it BEFORE write_status overwrites the file, or it is never removed.
+PREV=""
+if [[ -f "$STATUS" ]]; then
+    PREV="$(json_get "$(cat "$STATUS")" domain)"
+    [[ "$PREV" == "$CUSTOM" || ! "$PREV" =~ ^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$ ]] && PREV=""
+fi
+
 TOTAL=4
 write_status verifying ""
 report_step 1 $TOTAL "Checking DNS for $CUSTOM"
@@ -43,5 +51,9 @@ wait_api_health "$P_API" 90 || fail "api not healthy after domain switch"
 
 report_step 4 $TOTAL "Active"
 write_status active ""
+if [[ -n "$PREV" ]]; then
+    log "removing the previous domain $PREV"
+    bash "$SCRIPTS_DIR/proxy/proxy.sh" remove "$SLUG" "$PREV" || warn "could not remove the previous domain $PREV"
+fi
 report_done "$SCHEME://$CUSTOM" "\"domain\":$(json_escape "$CUSTOM")"
 log "$SLUG now canonical at $SCHEME://$CUSTOM"

@@ -7,15 +7,20 @@ Minimal provisioning endpoint for server B.
       /var/www/html/saas/logs/<slug>.log, returns 202 immediately.
   GET  /status/<slug>   header X-Provision-Secret
     → returns the tail of that client's provisioning log.
-  DELETE /deprovision/<slug>   header X-Provision-Secret
-    → runs destroy.sh <slug> in the BACKGROUND (container + db + files + vhosts),
-      logs to /var/www/html/saas/logs/<slug>.log, returns 202 immediately.
+  DELETE /deprovision/<slug>[?domain=<custom domain>]   header X-Provision-Secret
+    → runs destroy.sh <slug> in the BACKGROUND (container + db + files + vhosts +
+      certs, the custom domain's too), logs to logs/teardown/<slug>.log, 202.
+      409 while a create is still running for the slug.
+  GET  /deprovision/<slug>   header X-Provision-Secret
+    → {state: running|done|failed|none, error?} — nit2 deletes its tenant row
+      only after "done".
 
 Security: shared-secret auth, strict slug validation, args passed as a list
 (never a shell string), bound to 127.0.0.1 (reached only via the Apache vhost).
 No third-party dependencies — Python 3 stdlib only.
 """
 import os, re, json, hmac, base64, shutil, subprocess, threading, time, glob
+from urllib.parse import urlsplit, parse_qs
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 SECRET           = os.environ.get("PROVISION_SECRET", "")
@@ -275,16 +280,88 @@ def run_create(slug: str, name: str, brand: dict, tier: str = "demo", settings: 
         shutil.rmtree(stage, ignore_errors=True)
 
 
-def run_destroy(slug: str) -> None:
-    """Run destroy.sh detached, appending its output to the client's log file."""
-    logpath = os.path.join(LOG_DIR, f"{slug}.log")
-    with open(logpath, "ab", buffering=0) as log:
-        log.write(f"\n===== deprovisioning {slug} =====\n".encode())
-        subprocess.run(
-            ["bash", DESTROY_SH, slug],
-            stdout=log, stderr=subprocess.STDOUT,
-            env={**os.environ},
-        )
+# ── One create OR destroy per slug at a time ─────────────────────────────────
+# A delete that lands while create.sh is still running used to race it: create
+# could rebuild the container/vhost/cert after destroy.sh had removed them.
+_ACTIVE: dict = {}                  # slug -> "create" | "destroy"
+_ACTIVE_LOCK = threading.Lock()
+
+
+def _claim(slug: str, kind: str):
+    """Mark slug busy with kind. Returns the kind already running, or None when claimed."""
+    with _ACTIVE_LOCK:
+        if slug in _ACTIVE:
+            return _ACTIVE[slug]
+        _ACTIVE[slug] = kind
+        return None
+
+
+def _release(slug: str) -> None:
+    with _ACTIVE_LOCK:
+        _ACTIVE.pop(slug, None)
+
+
+def _claimed(slug: str, fn, *args) -> None:
+    """Thread target: run fn, then free the slug whatever happened."""
+    try:
+        fn(*args)
+    finally:
+        _release(slug)
+
+
+# Teardown outcomes, kept after destroy.sh has deleted everything else (it deletes
+# the client's provisioning log too): teardown/<slug>.json + teardown/<slug>.log.
+# nit2 reads them through GET /deprovision/<slug> before it deletes its own row.
+TEARDOWN_DIR = os.path.join(LOG_DIR, "teardown")
+
+
+def teardown_result(slug: str) -> dict:
+    """running | done | failed | none (no teardown on record for this slug)."""
+    with _ACTIVE_LOCK:
+        if _ACTIVE.get(slug) == "destroy":
+            return {"state": "running"}
+    try:
+        with open(os.path.join(TEARDOWN_DIR, f"{slug}.json")) as f:
+            data = json.load(f)
+        return data if data.get("state") in ("done", "failed") else {"state": "none"}
+    except Exception:
+        return {"state": "none"}
+
+
+def _failure_lines(logpath: str) -> str:
+    """The '    - <step>' summary destroy.sh prints when steps failed (else the last lines)."""
+    try:
+        with open(logpath, "r", errors="replace") as f:
+            tail = f.read()[-6000:].splitlines()
+    except Exception:
+        return ""
+    run = tail[max((i for i, l in enumerate(tail) if l.startswith("===== deprovisioning")), default=0):]
+    picked = [l.strip()[2:] for l in run if l.startswith("    - ")]
+    return "; ".join(picked or [l.strip() for l in run if l.strip()][-3:])[:1500]
+
+
+def run_destroy(slug: str, domain: str = "") -> None:
+    """Run destroy.sh and record its outcome in teardown/<slug>.json."""
+    os.makedirs(TEARDOWN_DIR, exist_ok=True)
+    logpath = os.path.join(TEARDOWN_DIR, f"{slug}.log")
+    started = int(time.time())
+    rc = -1
+    error = ""
+    try:
+        with open(logpath, "ab", buffering=0) as log:
+            log.write(f"\n===== deprovisioning {slug} {time.strftime('%F %T')} =====\n".encode())
+            argv = ["bash", DESTROY_SH, slug] + ([domain] if domain else [])
+            rc = subprocess.run(argv, stdout=log, stderr=subprocess.STDOUT, env={**os.environ}).returncode
+    except Exception as e:  # noqa: BLE001
+        error = f"could not run destroy.sh: {e}"
+    if rc != 0 and not error:
+        error = _failure_lines(logpath) or f"destroy.sh exited {rc}"
+    result = {"state": "done" if rc == 0 else "failed", "rc": rc, "started_at": started,
+              "finished_at": int(time.time()), **({"error": error} if rc != 0 else {})}
+    tmp = os.path.join(TEARDOWN_DIR, f".{slug}.json.tmp")
+    with open(tmp, "w") as f:
+        json.dump(result, f)
+    os.replace(tmp, os.path.join(TEARDOWN_DIR, f"{slug}.json"))
 
 
 def run_apply_license(slug: str, tier: str, definition: str = "") -> None:
@@ -851,14 +928,26 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, {"error": "invalid slug"})
         if not name:
             return self._send(400, {"error": "name required"})
+        busy = _claim(slug, "create")
+        if busy:
+            return self._send(409, {"error": f"a {busy} is already running for this slug"})
         threading.Thread(
-            target=run_create,
-            args=(slug, name, brand, tier, settings, definition, owner_email, owner_name, locale, platform_lang, owner_pass, integrations, admin_pass, homepage_template, homepage_content),
+            target=_claimed,
+            args=(slug, run_create, slug, name, brand, tier, settings, definition, owner_email, owner_name, locale, platform_lang, owner_pass, integrations, admin_pass, homepage_template, homepage_content),
             daemon=True,
         ).start()
         return self._send(202, {"ok": True, "status": "provisioning", "slug": slug})
 
     def do_GET(self):
+        # GET /deprovision/<slug> — outcome of the last teardown (see teardown_result).
+        if self.path.startswith("/deprovision/"):
+            if not self._authed():
+                return self._send(401, {"error": "unauthorized"})
+            slug = urlsplit(self.path).path[len("/deprovision/"):]
+            if not SLUG_RE.match(slug):
+                return self._send(400, {"error": "invalid slug"})
+            return self._send(200, {"slug": slug, **teardown_result(slug)})
+
         # GET /usage — per-academy moodledata size + host disk headroom.
         if self.path == "/usage":
             if not self._authed():
@@ -905,10 +994,19 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(404, {"error": "not found"})
         if not self._authed():
             return self._send(401, {"error": "unauthorized"})
-        slug = self.path[len("/deprovision/"):]
+        parts = urlsplit(self.path)
+        slug = parts.path[len("/deprovision/"):]
         if not SLUG_RE.match(slug):
             return self._send(400, {"error": "invalid slug"})
-        threading.Thread(target=run_destroy, args=(slug,), daemon=True).start()
+        domain = (parse_qs(parts.query).get("domain") or [""])[0].strip().lower()
+        if domain and not DOMAIN_RE.match(domain):
+            return self._send(400, {"error": "invalid domain"})
+        busy = _claim(slug, "destroy")
+        if busy == "destroy":
+            return self._send(202, {"ok": True, "status": "deprovisioning", "slug": slug})  # already on it
+        if busy:
+            return self._send(409, {"error": f"a {busy} is still running for this slug — retry when it ends"})
+        threading.Thread(target=_claimed, args=(slug, run_destroy, slug, domain), daemon=True).start()
         return self._send(202, {"ok": True, "status": "deprovisioning", "slug": slug})
 
     def log_message(self, *a):

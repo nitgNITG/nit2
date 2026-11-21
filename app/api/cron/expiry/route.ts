@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prismaMysql";
 import { Prisma } from "prismamysql";
-import { triggerSuspend, triggerExpiryReminder, deprovisionAndDeleteAcademy } from "@/lib/provisionAcademy";
+import { triggerSuspend, triggerExpiryReminder } from "@/lib/provisionAcademy";
+import { beginTenantDelete, reconcileAllDeleting } from "@/lib/tenants/teardown";
 import { notifyTelegram } from "@/lib/telegram";
-import { storeOps, deprovisionAndDeleteStore } from "@/lib/products/store";
+import { storeOps } from "@/lib/products/store";
 import { sendStoreExpiryEmail, type StoreExpiryStage } from "@/lib/tenants/storeExpiryEmail";
 import { runBillingCycle, runPreRenewNotices, weeklyBillingSummary } from "@/lib/billing";
 
@@ -205,16 +206,22 @@ export async function POST(req: NextRequest) {
             .catch((e) => { console.error("[cron/expiry] delete query failed", e); return []; });
         for (const a of toDelete) {
             try {
-                if (a.product === "store") {
-                    if (await deprovisionAndDeleteStore(a.slug)) deleted.push(a.slug);
-                } else if (await deprovisionAndDeleteAcademy(a.slug)) {
-                    deleted.push(a.slug);
-                }
+                // Same flow as a manual delete: billing cancelled, teardown started, the
+                // row removed once the provisioner confirms (now or on a later run).
+                const r = await beginTenantDelete(a.slug, { by: "auto-delete: expired past retention", waitMs: 0 });
+                if (r.state === "deleted" || r.state === "deleting") deleted.push(a.slug);
             } catch (e) {
                 console.error("[cron/expiry] auto-delete failed", a.slug, e);
             }
         }
     }
+
+    // 1d) Tenants left in "deleting": finish the confirmed teardowns, resend the
+    // ones the provisioner never got, alert on failed ones.
+    const teardowns = await reconcileAllDeleting().catch((e) => {
+        console.error("[cron/expiry] teardown reconcile failed", e);
+        return {};
+    });
 
     // 2) Abandoned checkouts → mark expired so they stop showing as pending.
     const staleBefore = new Date(now - 60 * 60_000);
@@ -234,5 +241,5 @@ export async function POST(req: NextRequest) {
         await weeklyBillingSummary().catch((e) => console.error("[cron/expiry] weekly summary failed", e));
     }
 
-    return NextResponse.json({ ok: true, graceDays, preRenew, billing, suspended, reminded, deleted, autoDeleteDays, expiredPayments });
+    return NextResponse.json({ ok: true, graceDays, preRenew, billing, suspended, reminded, deleted, teardowns, autoDeleteDays, expiredPayments });
 }

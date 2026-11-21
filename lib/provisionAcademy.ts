@@ -298,50 +298,82 @@ export async function fetchDomainStatus(
     }
 }
 
-/** Tell server B to tear the live site down (container + db + files + vhost + cert).
- * Best-effort, fire-and-forget. */
-export async function triggerDeprovision(slug: string): Promise<void> {
+// ── Teardown on server B (used by lib/tenants/teardown.ts) ──────────────────
+
+export type TeardownStart = { ok: true } | { ok: false; status: number; error: string };
+/** running | done | failed — what server B reports for its last destroy of this slug;
+ * none = it has no record of one (never received, or lost in a restart);
+ * unsupported = server B predates GET /deprovision (deploy provisioning/ to fix). */
+export type TeardownState = "running" | "done" | "failed" | "none" | "unsupported";
+
+function provisionerCall(path: string): { url: URL; secret: string } | null {
     const base = process.env.PROVISION_URL;
     const secret = process.env.PROVISION_SECRET;
-    if (!base || !secret) return;
+    if (!base || !secret) return null;
     try {
         const url = new URL(base);
-        url.pathname = `/deprovision/${slug}`;
-        await fetch(url.toString(), { method: "DELETE", headers: { "X-Provision-Secret": secret } });
-    } catch (e) {
-        console.error("[provision] deprovision trigger failed", slug, e);
+        url.pathname = path;
+        return { url, secret };
+    } catch {
+        return null;
     }
 }
 
-/** Full teardown used by the expiry cron's auto-delete: tear down the live site,
- * delete the client GitHub branch (so the slug frees up), and remove the
- * control-plane row. Best-effort per step; returns whether the row was removed. */
-export async function deprovisionAndDeleteAcademy(slug: string): Promise<boolean> {
-    let branch = "";
+/** Ask server B to tear the academy down (container, db, files, vhosts, certs, the
+ * custom domain too). ok only when server B ACCEPTED the job; never throws. */
+export async function startAcademyTeardown(slug: string, customDomain?: string | null): Promise<TeardownStart> {
+    const call = provisionerCall(`/deprovision/${slug}`);
+    if (!call) return { ok: false, status: 0, error: "PROVISION_URL / PROVISION_SECRET not set" };
+    // Server B reads the domain from its domain-status.json; this is the fallback
+    // for when that file is already gone.
+    if (customDomain) call.url.searchParams.set("domain", customDomain);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 15_000);
     try {
-        const a = await prisma.tenant.findUnique({ where: { slug }, select: { branch: true } });
-        branch = a?.branch ?? "";
-    } catch { /* fall through — still attempt teardown */ }
-
-    await triggerDeprovision(slug);
-
-    const token = process.env.GITHUB_TOKEN;
-    if (token && branch) {
-        try {
-            await fetch(`${GH_API}/repos/${OWNER}/${REPO}/git/refs/heads/${branch}`, {
-                method: "DELETE", headers: ghHeaders(token),
-            });
-        } catch (e) {
-            console.error("[provision] branch delete failed", slug, e);
-        }
+        const res = await fetch(call.url.toString(), {
+            method: "DELETE", headers: { "X-Provision-Secret": call.secret }, cache: "no-store", signal: ctrl.signal,
+        });
+        if (res.ok) return { ok: true };
+        const data = await res.json().catch(() => ({}));
+        return { ok: false, status: res.status, error: String(data?.error ?? `HTTP ${res.status}`) };
+    } catch (e: any) {
+        return { ok: false, status: 0, error: e?.name === "AbortError" ? "timeout" : String(e?.message ?? e) };
+    } finally {
+        clearTimeout(timer);
     }
+}
+
+/** Outcome of the last teardown on server B. null = unreachable (try again later). */
+export async function academyTeardownStatus(slug: string): Promise<{ state: TeardownState; error?: string } | null> {
+    const call = provisionerCall(`/deprovision/${slug}`);
+    if (!call) return null;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8_000);
     try {
-        await prisma.tenant.delete({ where: { slug } });
-        await notifyTelegram(`🗑 Academy auto-deleted (expired past retention): ${slug}`);
-        return true;
+        const res = await fetch(call.url.toString(), {
+            headers: { "X-Provision-Secret": call.secret }, cache: "no-store", signal: ctrl.signal,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 404 && !data?.state) return { state: "unsupported" };
+        if (!res.ok) return null;
+        const state = String(data?.state ?? "");
+        if (!["running", "done", "failed", "none"].includes(state)) return null;
+        return { state: state as TeardownState, ...(data?.error ? { error: String(data.error) } : {}) };
+    } catch {
+        return null;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+/** Drop the academy's client branch so the slug is reusable. Best-effort (404 is fine). */
+export async function deleteAcademyBranch(branch: string | null | undefined): Promise<void> {
+    const token = process.env.GITHUB_TOKEN;
+    if (!token || !branch) return;
+    try {
+        await fetch(`${GH_API}/repos/${OWNER}/${REPO}/git/refs/heads/${branch}`, { method: "DELETE", headers: ghHeaders(token) });
     } catch (e) {
-        console.error("[provision] row delete failed", slug, e);
-        return false;
+        console.error("[provision] branch delete failed", branch, e);
     }
 }
 
