@@ -217,7 +217,7 @@ describe.skipIf(!hasBash || spawnSync(PY, ["--version"]).status !== 0)("provisio
 
 describe.skipIf(spawnSync(PY, ["--version"]).status !== 0)("provisioning/provision-server.py teardown bookkeeping", { timeout: 60_000 }, () => {
     it("records done / failed (with the failed steps), runs one create-or-destroy per slug, always frees the lock", () => {
-        const r = spawnSync(PY, ["-I", `${REPO}/tests/helpers/check_provision_server.py`, `${REPO}/provisioning/provision-server.py`], { encoding: "utf8" });
+        const r = spawnSync(PY, ["-I", "-X", "utf8", `${REPO}/tests/helpers/check_provision_server.py`, `${REPO}/provisioning/provision-server.py`], { encoding: "utf8" });
         expect(r.stdout + r.stderr).toContain("ALL PASS");
         expect(r.status).toBe(0);
     });

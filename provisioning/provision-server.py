@@ -11,6 +11,9 @@ Minimal provisioning endpoint for server B.
     → runs destroy.sh <slug> in the BACKGROUND (container + db + files + vhosts +
       certs, the custom domain's too), logs to logs/teardown/<slug>.log, 202.
       409 while a create is still running for the slug.
+  GET  /inventory   header X-Provision-Secret
+    → read-only list of containers / dirs / databases / vhosts / certs on this
+      host, for nit2's scripts/orphan-check.mjs.
   GET  /deprovision/<slug>   header X-Provision-Secret
     → {state: running|done|failed|none, error?} — nit2 deletes its tenant row
       only after "done".
@@ -681,6 +684,101 @@ def collect_health() -> dict:
     return data
 
 
+# ── Inventory (read-only): what is on this host, for nit2's orphan check ─────
+# scripts/orphan-check.mjs compares it with the tenant rows. Nothing here
+# changes anything; a piece that cannot be read is null + a note in "errors".
+APACHE_SITES_DIR = os.environ.get("APACHE_SITES_DIR", "/etc/apache2/sites-available")
+CLIENT_DOMAIN = os.environ.get("SAAS_CLIENT_DOMAIN", "academy2026.nitg-eg.com")
+_LOCAL_PORT_RE = re.compile(r"127\.0\.0\.1:(\d+)")
+_SERVER_NAME_RE = re.compile(r"^\s*(?:ServerName|ServerAlias|server_name)\s+([^;\n]+)", re.I | re.M)
+
+
+def _sh(argv: list, timeout: int = 60):
+    """(returncode, stdout) of a read-only command; never raises."""
+    try:
+        p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+        return p.returncode, p.stdout
+    except Exception:  # noqa: BLE001
+        return -1, ""
+
+
+def _env_file_value(path: str, key: str) -> str:
+    for line in _read_file(path).splitlines():
+        if line.startswith(key + "="):
+            return line.split("=", 1)[1].strip().strip("'\"")
+    return ""
+
+
+def vhost_inventory(paths) -> list:
+    """Every site that proxies to a local port: its file, host names and ports."""
+    out = []
+    for path in sorted(paths):
+        text = _read_file(path)
+        ports = sorted({int(p) for p in _LOCAL_PORT_RE.findall(text)})
+        if not ports:
+            continue  # not a proxy to a local container — never a tenant's
+        names = sorted({n.lower() for line in _SERVER_NAME_RE.findall(text) for n in line.split()})
+        out.append({"file": path, "names": names, "ports": ports})
+    return out
+
+
+def cert_inventory():
+    code, out = _sh(["certbot", "certificates"])
+    return sorted(set(re.findall(r"Certificate Name:\s*(\S+)", out))) if code == 0 else None
+
+
+def schema_inventory(prefix: str, pw: str):
+    """Slugs of the <prefix>_<slug> schemas in the shared MariaDB (None = unreadable)."""
+    if not pw:
+        return None
+    code, out = _sh(["docker", "exec", DB_CONTAINER, "mariadb", "-uroot", f"-p{pw}", "-N", "-e",
+                     f"SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE '{prefix}\\_%'"])
+    if code != 0:
+        return None
+    return sorted(s[len(prefix) + 1:].replace("_", "-") for s in out.split())
+
+
+def collect_inventory() -> dict:
+    errors = []
+    containers, ports = [], {}
+    code, out = _sh(["docker", "ps", "-a", "--filter", "name=^saas_moodle_", "--format", "{{.Names}}\t{{.State}}"])
+    if code != 0:
+        errors.append("docker ps failed")
+    names = []
+    for line in out.splitlines():
+        name, _, state = line.partition("\t")
+        slug = name[len("saas_moodle_"):]
+        if name.startswith("saas_moodle_") and SLUG_RE.match(slug):
+            containers.append({"slug": slug, "state": state.strip()})
+            names.append(name)
+    if names:
+        # Published ports of stopped containers too (docker ps shows none for those).
+        _, insp = _sh(["docker", "inspect", "--format", "{{.Name}}|{{json .HostConfig.PortBindings}}", *names])
+        for line in insp.splitlines():
+            name, _, raw = line.partition("|")
+            try:
+                bindings = json.loads(raw) or {}
+            except Exception:
+                bindings = {}
+            found = sorted({int(b.get("HostPort")) for bs in bindings.values() for b in (bs or []) if b.get("HostPort")})
+            if found:
+                ports[name.lstrip("/")[len("saas_moodle_"):]] = found
+    dirs = sorted(d for d in os.listdir(os.path.join(SAAS_ROOT, "clients"))
+                  if SLUG_RE.match(d) and os.path.isdir(os.path.join(SAAS_ROOT, "clients", d))) \
+        if os.path.isdir(os.path.join(SAAS_ROOT, "clients")) else []
+    pw = os.environ.get("DB_ROOT_PW") or _env_file_value(os.path.join(SAAS_ROOT, "saas.env"), "DB_ROOT_PW")
+    databases = schema_inventory("moodle", pw)
+    if databases is None:
+        errors.append("database list unavailable (DB_ROOT_PW / saas_mariadb)")
+    certs = cert_inventory()
+    if certs is None:
+        errors.append("certbot certificates failed")
+    return {"product": "academy", "domain": CLIENT_DOMAIN, "generated_at": int(time.time()),
+            "containers": containers, "ports": ports, "dirs": dirs, "databases": databases,
+            "vhosts": vhost_inventory(glob.glob(os.path.join(APACHE_SITES_DIR, "*.conf"))),
+            "certs": certs, "errors": errors}
+
+
 class Handler(BaseHTTPRequestHandler):
     def _send(self, code, obj):
         body = json.dumps(obj, ensure_ascii=False).encode()
@@ -947,6 +1045,12 @@ class Handler(BaseHTTPRequestHandler):
             if not SLUG_RE.match(slug):
                 return self._send(400, {"error": "invalid slug"})
             return self._send(200, {"slug": slug, **teardown_result(slug)})
+
+        # GET /inventory — read-only list of what is on this host (orphan check).
+        if self.path == "/inventory":
+            if not self._authed():
+                return self._send(401, {"error": "unauthorized"})
+            return self._send(200, collect_inventory())
 
         # GET /usage — per-academy moodledata size + host disk headroom.
         if self.path == "/usage":

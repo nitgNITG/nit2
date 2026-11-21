@@ -15,6 +15,8 @@ Store provisioning endpoint — the store counterpart of provisioning/provision-
   GET    /domain-status/<slug>
   DELETE /deprovision/<slug>        → queued job (destroy-store.sh)
   GET    /health · GET /usage       host snapshot / per-store sizes
+  GET    /inventory                 read-only list of stores / dbs / vhosts / certs / Cloudinary
+                                    folders on this host, for nit2's scripts/orphan-check.mjs
   GET    /images                    image tags on the registry (GHCR) and locally, platform tag, newest release,
                                     auto-update + rollout state
   GET/POST /config                  host settings nit2 manages (mail, Cloudinary, Google, memory, auto-update):
@@ -39,6 +41,7 @@ Security: shared-secret header (constant-time compare), strict slug/tag/domain
 validation, args passed as lists, bound to 127.0.0.1. Python 3 stdlib only.
 """
 import base64, hmac, json, os, queue, re, shutil, sqlite3, subprocess, threading, time, glob
+import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -889,6 +892,119 @@ def _auto_update_loop():
 
 
 # ── HTTP ─────────────────────────────────────────────────────────────────────
+# ── Inventory (read-only): what is on this host, for nit2's orphan check ─────
+# scripts/orphan-check.mjs compares it with the tenant rows. Nothing here
+# changes anything; a piece that cannot be read is null + a note in "errors".
+APACHE_SITES_DIR = os.environ.get("APACHE_SITES_DIR", "/etc/apache2/sites-available")
+NGINX_CONF_DIR = os.environ.get("NGINX_CONF_DIR", "/etc/nginx/conf.d")
+_LOCAL_PORT_RE = re.compile(r"127\.0\.0\.1:(\d+)")
+_SERVER_NAME_RE = re.compile(r"^\s*(?:ServerName|ServerAlias|server_name)\s+([^;\n]+)", re.I | re.M)
+
+
+def _sh(argv: list, timeout: int = 60):
+    """(returncode, stdout) of a read-only command; never raises."""
+    try:
+        p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+        return p.returncode, p.stdout
+    except Exception:  # noqa: BLE001
+        return -1, ""
+
+
+def vhost_inventory(paths) -> list:
+    """Every site that proxies to a local port: its file, host names and ports."""
+    out = []
+    for path in sorted(paths):
+        text = _read(path)
+        ports = sorted({int(p) for p in _LOCAL_PORT_RE.findall(text)})
+        if not ports:
+            continue  # not a proxy to a local container — never a tenant's
+        names = sorted({n.lower() for line in _SERVER_NAME_RE.findall(text) for n in line.split()})
+        out.append({"file": path, "names": names, "ports": ports})
+    return out
+
+
+def store_ports(env_text: str) -> list:
+    """The host ports a store publishes (P_SITE / P_DASH / P_API in its store.env)."""
+    found = set()
+    for line in env_text.splitlines():
+        key, _, val = line.partition("=")
+        if key.strip() in ("P_SITE", "P_DASH", "P_API") and val.strip().strip("'\"").isdigit():
+            found.add(int(val.strip().strip("'\"")))
+    return sorted(found)
+
+
+def _cloudinary_store_folders():
+    """Slugs with a stores/<slug>/ folder on the platform Cloudinary (None = not configured / unreadable)."""
+    cloud, key, secret = (os.environ.get(k, "") for k in ("CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET"))
+    if not (cloud and key and secret):
+        return None
+    base = os.environ.get("CLOUDINARY_API_BASE", "https://api.cloudinary.com").rstrip("/")
+    auth = "Basic " + base64.b64encode(f"{key}:{secret}".encode()).decode()
+    slugs, cursor = [], ""
+    for _ in range(50):
+        url = f"{base}/v1_1/{cloud}/folders/stores?max_results=500" + (f"&next_cursor={cursor}" if cursor else "")
+        try:
+            req = urllib.request.Request(url, headers={"Authorization": auth})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                body = json.loads(r.read() or b"{}")
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return slugs  # no stores/ folder at all
+            return None
+        except Exception:  # noqa: BLE001
+            return None
+        slugs += [f.get("name", "") for f in body.get("folders", []) if SLUG_RE.match(f.get("name", ""))]
+        cursor = body.get("next_cursor") or ""
+        if not cursor:
+            break
+    return sorted(slugs)
+
+
+def collect_inventory() -> dict:
+    errors = []
+    code, out = _sh(["docker", "ps", "-a", "--filter", "label=com.docker.compose.project",
+                     "--format", '{{.Label "com.docker.compose.project"}}\t{{.State}}'])
+    if code != 0:
+        errors.append("docker ps failed")
+    projects = {}
+    for line in out.splitlines():
+        project, _, state = line.partition("\t")
+        slug = project[len("store_"):].replace("_", "-")
+        if project.startswith("store_") and SLUG_RE.match(slug):
+            projects[slug] = "running" if (state.strip() == "running" or projects.get(slug) == "running") else state.strip()
+    clients = os.path.join(STORE_ROOT, "clients")
+    dirs = sorted(d for d in os.listdir(clients) if SLUG_RE.match(d) and os.path.isdir(os.path.join(clients, d))) \
+        if os.path.isdir(clients) else []
+    ports = {d: store_ports(_read(os.path.join(clients, d, "store.env"))) for d in dirs}
+    databases = schema_inventory("store", os.environ.get("DB_ROOT_PW", ""))
+    if databases is None:
+        errors.append("database list unavailable (DB_ROOT_PW / saas_mariadb)")
+    code, certs_out = _sh(["certbot", "certificates"])
+    certs = sorted(set(re.findall(r"Certificate Name:\s*(\S+)", certs_out))) if code == 0 else None
+    if certs is None:
+        errors.append("certbot certificates failed")
+    media = _cloudinary_store_folders()
+    if media is None:
+        errors.append("Cloudinary folders unavailable (not configured or unreachable)")
+    vhost_files = glob.glob(os.path.join(NGINX_CONF_DIR, "saas-store-*.conf")) + glob.glob(os.path.join(APACHE_SITES_DIR, "*.conf"))
+    return {"product": "store", "domain": os.environ.get("STORE_DOMAIN", "commerce.nitg-eg.com"),
+            "generated_at": int(time.time()),
+            "containers": [{"slug": k, "state": v} for k, v in sorted(projects.items())],
+            "ports": {k: v for k, v in ports.items() if v}, "dirs": dirs, "databases": databases,
+            "media": media, "vhosts": vhost_inventory(vhost_files), "certs": certs, "errors": errors}
+
+
+def schema_inventory(prefix: str, pw: str):
+    """Slugs of the <prefix>_<slug> schemas in the shared MariaDB (None = unreadable)."""
+    if not pw:
+        return None
+    code, out = _sh(["docker", "exec", DB_CONTAINER, "mariadb", "-uroot", f"-p{pw}", "-N", "-e",
+                     f"SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE '{prefix}\\_%'"])
+    if code != 0:
+        return None
+    return sorted(s[len(prefix) + 1:].replace("_", "-") for s in out.split())
+
+
 class Handler(BaseHTTPRequestHandler):
     def _send(self, code, obj):
         body = json.dumps(obj, ensure_ascii=False).encode()
@@ -1058,6 +1174,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(401, {"error": "unauthorized"})
         try:
             path = self.path.split("?", 1)[0]
+            if path == "/inventory":  # read-only, for nit2's orphan check
+                return self._send(200, collect_inventory())
             if path == "/health":
                 return self._send(200, collect_health())
             if path == "/usage":
