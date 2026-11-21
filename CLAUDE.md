@@ -44,6 +44,11 @@ change adds or updates a test there.
   `bash provisioning/deploy-provisioning.sh` — **editing a script here does nothing until
   it's deployed.** `provisioning/deploy-provisioning.sh` lists every file that gets copied;
   add new scripts to that list.
+  **Server B is shared with the public site repo** (`nitPage/nit`, nitgNITG/nit), which
+  deploys its own copy of this folder — whichever repo deploys last decides what runs
+  there. This folder is the source of truth: after changing it, copy it to nit's
+  `provisioning/` too, or a deploy from nit rolls server B back. Run the orphan check
+  (`node scripts/orphan-check.mjs`) from here only — nit2's Tenant table knows every academy.
 - **Deleting a tenant.** Every delete (owner/admin DELETE, the expiry cron's auto-delete)
   goes through `lib/tenants/teardown.ts`: the row is set to `status: "deleting"` (billing
   cancelled, hidden from its owner, PATCH refused) and is removed **only once the
