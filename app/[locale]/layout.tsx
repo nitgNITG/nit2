@@ -9,6 +9,8 @@ import Script from "next/script";
 import SocialMedia from "./components/SocialMedia";
 import ChatWidgetLoader from "./components/ChatWidget/ChatWidgetLoader";
 import LeadClickTracker from "./components/LeadClickTracker";
+import GoogleAnalytics from "./components/GoogleAnalytics";
+import { siteVerification } from "@/lib/seoIntegrations";
 
 const cairo = Cairo({ subsets: ["latin", "arabic"], display: "swap" });
 
@@ -43,6 +45,8 @@ export const metadata: Metadata = {
     site: "@nitgEgypt",
   },
   robots: { index: true, follow: true },
+  // Search Console / Bing Webmaster / Yandex ownership tags — only those set in env.
+  verification: siteVerification(),
 };
 
 export default async function LocaleLayout({
@@ -80,6 +84,9 @@ export default async function LocaleLayout({
           <ChatWidgetLoader locale={locale} />
           {/* First-party WhatsApp / tel: click tracking (renders nothing). */}
           <LeadClickTracker />
+          {/* GA4 + Consent Mode v2; renders nothing without NEXT_PUBLIC_GA_MEASUREMENT_ID
+              and nothing on the dashboard / account / payment pages. */}
+          <GoogleAnalytics measurementId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
           <Toaster
             toastOptions={{ position: "top-right" }}
             containerStyle={{ zIndex: 9999999 }}
@@ -106,6 +113,11 @@ export default async function LocaleLayout({
                 "Restaurant Apps & POS Systems",
                 "Customer Loyalty & Rewards Systems",
                 "Mobile App Development",
+                "Moodle",
+                "Learning management systems",
+                "E-learning platform development",
+                "E-commerce development",
+                "Arabic RTL",
               ],
               address: {
                 "@type": "PostalAddress",
