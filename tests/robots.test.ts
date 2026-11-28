@@ -10,16 +10,35 @@ import robots from "@/app/robots";
 // all of /api/, which would hide the projects/sponsors/pricing that public pages
 // load from /api at render time.
 
-type Rule = { allow?: string | string[]; disallow?: string | string[] };
+type Rule = { userAgent?: string | string[]; allow?: string | string[]; disallow?: string | string[] };
 const list = (v?: string | string[]) => (v == null ? [] : Array.isArray(v) ? v : [v]);
 
-// Google's rule: the longest matching path prefix wins; on a tie, Allow wins.
-function crawlable(urlPath: string): boolean {
+// AI-search / AI-assistant crawlers and AI-use tokens the business wants to be cited by,
+// plus Bingbot (which also feeds Copilot and ChatGPT search). Each gets its own group.
+const NAMED_BOTS = [
+    "GPTBot", "OAI-SearchBot", "ChatGPT-User",
+    "ClaudeBot", "Claude-SearchBot", "Claude-User",
+    "PerplexityBot", "Perplexity-User",
+    "Google-Extended", "Applebot-Extended", "Bingbot",
+];
+// Every crawler the guarantees below must hold for: the catch-all, each named group,
+// and one with no group of its own (falls back to "*").
+const AGENTS = ["*", ...NAMED_BOTS, "SomeOtherBot"];
+
+const groups = (): Rule[] => {
     const rules = robots().rules;
-    const star = (Array.isArray(rules) ? rules : [rules]).find(r => list(r.userAgent).includes("*")) as Rule;
+    return Array.isArray(rules) ? rules : [rules];
+};
+
+// RFC 9309 / Google: a crawler obeys ONLY the most specific group naming it (case-insensitive),
+// else "*". Within that group the longest matching path prefix wins; on a tie, Allow wins.
+function crawlable(urlPath: string, agent = "*"): boolean {
+    const all = groups();
+    const named = all.find(r => list(r.userAgent).some(ua => ua.toLowerCase() === agent.toLowerCase()));
+    const group = named ?? all.find(r => list(r.userAgent).includes("*"))!;
     const match = (patterns: string[]) =>
         Math.max(-1, ...patterns.filter(p => p && urlPath.startsWith(p)).map(p => p.length));
-    return match(list(star.allow)) >= match(list(star.disallow));
+    return match(list(group.allow)) >= match(list(group.disallow));
 }
 
 describe("robots.txt", () => {
@@ -33,33 +52,44 @@ describe("robots.txt", () => {
         expect(existsSync(path.resolve(__dirname, "../public/robots.txt"))).toBe(false);
     });
 
-    it("keeps the public site crawlable in both languages", () => {
-        for (const p of ["/", "/ar", "/en", "/ar/blog/some-article", "/en/our-services/moodle-lms", "/ar/videos", "/uploads/x.webp"]) {
-            expect(crawlable(p), p).toBe(true);
+    it.each(AGENTS)("keeps the public site crawlable in both languages — %s", (agent) => {
+        for (const p of ["/", "/ar", "/en", "/ar/blog/some-article", "/en/our-services/moodle-lms", "/ar/videos", "/uploads/x.webp", "/llms.txt"]) {
+            expect(crawlable(p, agent), p).toBe(true);
         }
     });
 
-    it("blocks the admin dashboard at its real localized paths", () => {
+    it.each(AGENTS)("blocks the admin dashboard at its real localized paths — %s", (agent) => {
         for (const p of ["/ar/dashboard/", "/en/dashboard/", "/ar/dashboard/blog", "/en/dashboard/contacts"]) {
-            expect(crawlable(p), p).toBe(false);
+            expect(crawlable(p, agent), p).toBe(false);
         }
     });
 
-    it("blocks signed-in account and payment pages", () => {
+    it.each(AGENTS)("blocks signed-in account and payment pages — %s", (agent) => {
         for (const p of ["/ar/account", "/en/account", "/ar/payment/callback", "/en/payment/callback"]) {
-            expect(crawlable(p), p).toBe(false);
+            expect(crawlable(p, agent), p).toBe(false);
         }
     });
 
-    it("blocks private API routes", () => {
+    it.each(AGENTS)("blocks private API routes — %s", (agent) => {
         for (const p of ["/api/payments", "/api/me", "/api/academies", "/api/contact", "/api/users"]) {
-            expect(crawlable(p), p).toBe(false);
+            expect(crawlable(p, agent), p).toBe(false);
         }
     });
 
-    it("still lets crawlers fetch the public data the pages render from /api", () => {
+    it.each(AGENTS)("still lets crawlers fetch the public data the pages render from /api — %s", (agent) => {
         for (const p of ["/api/project?type=lms&lang=ar", "/api/sponser", "/api/plans?service=ios", "/api/licenses", "/api/public-settings"]) {
-            expect(crawlable(p), p).toBe(true);
+            expect(crawlable(p, agent), p).toBe(true);
+        }
+    });
+
+    it("gives every AI-search crawler its own group, allowed, repeating exactly the \"*\" rules", () => {
+        const star = groups().find(r => list(r.userAgent).includes("*"))!;
+        for (const bot of NAMED_BOTS) {
+            const own = groups().filter(r => list(r.userAgent).includes(bot));
+            expect(own, bot).toHaveLength(1);
+            expect(list(own[0].userAgent), bot).toEqual([bot]);
+            expect(list(own[0].allow), bot).toEqual(list(star.allow));
+            expect(list(own[0].disallow), bot).toEqual(list(star.disallow));
         }
     });
 
