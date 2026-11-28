@@ -128,6 +128,14 @@ model Contact {
   notes                String?
   isReaded             Boolean   @default(false)
   createdAt            DateTime  @default(now())
+  // WhatsApp reverse verification (lib/whatsappVerify.ts, app/api/whatsapp/webhook).
+  // Optional on purpose: leads saved before this field existed have no value in
+  // Mongo, and Prisma refuses to read a document missing a *required* field.
+  // null / missing = "none".
+  waStatus     String?   @default("none")   // "none" | "pending" | "verified"
+  waCode       String?   // one-time code the visitor sends us; cleared once verified
+  waNumber     String?   // sender's number as WhatsApp reports it (digits, e.g. 9665…)
+  waVerifiedAt DateTime?
   // ── AI agent (all optional so existing rows still read) ──
   company              String?
   orgType              String? // individual | company | government | education

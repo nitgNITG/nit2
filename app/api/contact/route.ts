@@ -4,6 +4,8 @@ import { authAdmin } from "@/lib/predict";
 import { computeLeadScore } from "@/utils/leadScore";
 // Disposable / known-spam email domains — shared with the AI agent's capture_lead.
 import { BLOCKED_DOMAINS } from "@/lib/spamRules";
+import { whatsappVerifyConfig, newVerifyCode, verifyLink, isPlausibleLeadPhone } from "@/lib/whatsappVerify";
+import { localeFromPath } from "@/lib/leadTracking";
 
 // ── Simple in-memory rate limiter: max 3 submissions per IP per 10 min ────────
 const ipCache = new Map<string, { count: number; resetAt: number }>();
@@ -22,11 +24,20 @@ function checkRateLimit(ip: string): boolean {
     return true;
 }
 
+/** A code no other lead holds (a clash in 32^6 is vanishingly rare, but cheap to rule out). */
+async function uniqueVerifyCode(): Promise<string> {
+    for (let i = 0; i < 4; i++) {
+        const code = newVerifyCode();
+        if (!(await prisma.contact.findFirst({ where: { waCode: code }, select: { id: true } }))) return code;
+    }
+    return newVerifyCode();
+}
+
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
         const { name, email, phone, subject, message, country, service, budget, timeline, role, pain, _hp,
-                sourcePage, sourceRef, utmSource, utmMedium, utmCampaign } = body;
+                sourcePage, sourceRef, utmSource, utmMedium, utmCampaign, locale } = body;
 
         // ── Honeypot check (bots fill hidden fields, humans don't) ────────────
         if (_hp) {
@@ -56,12 +67,20 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: 'يرجى كتابة رسالة أكثر تفصيلاً' }, { status: 400 });
         }
 
+        // ── WhatsApp verification (dormant unless WHATSAPP_* env vars are set) ─
+        const waConfig = whatsappVerifyConfig();
+        if (waConfig && !isPlausibleLeadPhone(phone)) {
+            return NextResponse.json({ message: 'يرجى التأكد من رقم الهاتف وكود الدولة', code: 'invalid_phone' }, { status: 400 });
+        }
+        const waCode = waConfig ? await uniqueVerifyCode() : undefined;
+
         const { score, stage } = computeLeadScore({ email, phone, role, service, budget, timeline, pain, message });
 
         await prisma.contact.create({
             data: {
                 name, email, phone, subject, message, country, service, budget, timeline, role, pain, score, stage,
                 sourcePage, sourceRef, utmSource, utmMedium, utmCampaign,
+                ...(waCode ? { waStatus: 'pending', waCode } : {}),
             },
         });
 
@@ -77,6 +96,13 @@ export async function POST(req: NextRequest) {
                 // Log the WhatsApp link — can be used with any WA gateway/webhook
                 console.log(`[Contact] 🔔 Hot lead WA link: https://wa.me/${NOTIFY_NUMBER.replace('+','')}?text=${msg}`);
             }
+        }
+        if (waConfig && waCode) {
+            const lang = locale === 'en' || locale === 'ar' ? locale : localeFromPath(typeof sourcePage === 'string' ? sourcePage : '');
+            return NextResponse.json({
+                message: 'تم الارسال بنجاح',
+                whatsappVerify: { url: verifyLink(waCode, lang, waConfig.number), code: waCode },
+            }, { status: 201 });
         }
         return NextResponse.json({ message: 'تم الارسال بنجاح' }, { status: 201 });
     } catch (error: any) {
@@ -128,6 +154,8 @@ export async function GET(req: NextRequest) {
         const skip    = parseInt(searchParams.get('skip') || '0');
         const stage   = searchParams.get('stage')    || undefined;
         const status  = searchParams.get('status')   || undefined;
+        const rawWa   = searchParams.get('waStatus');
+        const waStatus = rawWa === 'verified' || rawWa === 'pending' ? rawWa : undefined;
         const rawSort = searchParams.get('orderBy')  || 'createdAt';
         const rawDir  = searchParams.get('orderDir') || 'desc';
 
@@ -136,7 +164,7 @@ export async function GET(req: NextRequest) {
         const sortDir   = rawDir === 'asc' ? 'asc' : 'desc';
 
         const contacts = await prisma.contact.findMany({
-            where: { ...(stage ? { stage } : {}), ...(status ? { status } : {}) },
+            where: { ...(stage ? { stage } : {}), ...(status ? { status } : {}), ...(waStatus ? { waStatus } : {}) },
             skip,
             take: 20,
             orderBy: { [sortField]: sortDir },
