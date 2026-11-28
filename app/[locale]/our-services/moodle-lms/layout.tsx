@@ -8,7 +8,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const isAr = locale === "ar";
     return {
-        title: "إنشاء منصة تعليمية | Moodle LMS Development",
+        title: isAr ? "إنشاء منصة تعليمية Moodle في مصر والخليج" : "Moodle LMS Development in Egypt & the Gulf",
         description: isAr
             ? "تطوير منصات Moodle التعليمية في مصر والخليج منذ 2013. منصات مخصصة للجامعات والمدارس والشركات مع دعم اللغة العربية RTL وتطبيقات الجوال والاستضافة المُدارة."
             : "Custom Moodle LMS development in Egypt and Gulf countries since 2013. Universities, schools & corporate training platforms with Arabic RTL support, mobile apps, and managed hosting.",
