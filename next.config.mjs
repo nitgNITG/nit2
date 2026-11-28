@@ -15,11 +15,15 @@ const nextConfig = {
         serverComponentsExternalPackages: ['prismamysql'],
     },
     async redirects() {
-        return MOVED_SERVICE_SLUGS.map((slug) => ({
-            source: `/:locale(ar|en)/${slug}`,
-            destination: `/:locale/our-services/${slug}`,
-            permanent: true,
-        }));
+        return [
+            ...MOVED_SERVICE_SLUGS.map((slug) => ({
+                source: `/:locale(ar|en)/${slug}`,
+                destination: `/:locale/our-services/${slug}`,
+                permanent: true,
+            })),
+            // Article content links to /contact-us, which never existed (404).
+            { source: '/:locale(ar|en)/contact-us', destination: '/:locale/contact', permanent: true },
+        ];
     },
     async rewrites() {
         return [
