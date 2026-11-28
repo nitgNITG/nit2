@@ -324,3 +324,23 @@ describe("linking the app to the WhatsApp account (settings card)", () => {
         delete process.env.WHATSAPP_WABA_ID;
     });
 });
+
+describe("contact-form WhatsApp verification through the agent's webhook", () => {
+    // One Meta app = one webhook URL. When the AI agent's WhatsApp channel owns it,
+    // a lead's "NIT-XXXXXX" verification message must still verify the lead.
+    it("a code sent to the agent's number verifies the pending lead and stores the sender's number", async () => {
+        await setConfig({ enabled: { web: true, whatsapp: false } });
+        const lead = await mongo.contact.create({ data: { name: "Lead", email: "l@example.com", subject: "s", message: "m", waStatus: "pending", waCode: "NIT-ABC234" } });
+        const res = await wa("تأكيد طلبي NIT-ABC234");
+        expect(res.status).toBe(200);
+        const after = await mongo.contact.findFirst({ where: { id: lead.id } });
+        expect(after).toMatchObject({ waStatus: "verified", waNumber: PHONE.slice(1), waCode: null });
+    });
+
+    it("an ordinary message changes no lead", async () => {
+        await setConfig({ enabled: { web: true, whatsapp: false } });
+        const lead = await mongo.contact.create({ data: { name: "Lead", email: "l@example.com", subject: "s", message: "m", waStatus: "pending", waCode: "NIT-ABC234" } });
+        await wa("مرحبا، عايز أعرف الأسعار");
+        expect(await mongo.contact.findFirst({ where: { id: lead.id } })).toMatchObject({ waStatus: "pending", waCode: "NIT-ABC234" });
+    });
+});

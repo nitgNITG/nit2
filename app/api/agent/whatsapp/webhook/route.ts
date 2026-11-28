@@ -5,6 +5,7 @@
 // agent replies in the background (Meta retries slow webhooks).
 import { claimInbound, enqueueInbound } from "@/lib/agent/channels/whatsapp/inbound";
 import { getWaConfig, parseWebhook, verifySignature } from "@/lib/agent/channels/whatsapp/cloud";
+import { applyVerifyCodes } from "@/lib/whatsappVerifyApply";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,6 +32,13 @@ export async function POST(req: Request) {
 
     const { messages, failedStatuses } = parseWebhook(body);
     for (const s of failedStatuses) console.error("[agent] whatsapp delivery failed", s.id, s.error);
+    // Contact-form leads confirm their number by sending "NIT-XXXXXX" here (one Meta app =
+    // one webhook URL, so this endpoint must verify them too). Never blocks the agent.
+    try {
+        await applyVerifyCodes(messages.flatMap((m) => (m.text ? [{ from: m.from.replace(/^\+/, ""), body: m.text }] : [])));
+    } catch (error) {
+        console.error("[agent] whatsapp: lead verification update failed", (error as Error)?.name ?? "error");
+    }
     const cfg = await getWaConfig();
     if (messages.length) console.log(`[agent] whatsapp webhook: ${messages.length} message(s)`);
     for (const m of messages) {

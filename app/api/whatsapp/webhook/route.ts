@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/prisma/client";
-import { whatsappVerifyConfig, isValidSignature, extractVerifyCodes, VERIFY_TTL_MS } from "@/lib/whatsappVerify";
+import { whatsappVerifyConfig, isValidSignature } from "@/lib/whatsappVerify";
+import { applyVerifyCodes } from "@/lib/whatsappVerifyApply";
 
 // Meta WhatsApp Cloud API webhook — completes the contact form's reverse WhatsApp
 // verification (lib/whatsappVerify.ts). Server-to-server: no auth middleware, no
@@ -57,20 +57,7 @@ export async function POST(req: NextRequest) {
     let verified = 0;
     let unmatched = 0;
     try {
-        for (const msg of textMessages(payload)) {
-            let hit = false;
-            for (const code of extractVerifyCodes(msg.body).slice(0, 5)) {
-                const now = new Date();
-                // One conditional update: only a still-pending lead, issued within the TTL,
-                // can be verified — and only once, since the code is cleared in the same step.
-                const { count } = await prisma.contact.updateMany({
-                    where: { waCode: code, waStatus: "pending", createdAt: { gte: new Date(now.getTime() - VERIFY_TTL_MS) } },
-                    data: { waStatus: "verified", waNumber: msg.from, waVerifiedAt: now, waCode: null },
-                });
-                if (count > 0) { verified += count; hit = true; break; }
-            }
-            if (!hit) unmatched++;
-        }
+        ({ verified, unmatched } = await applyVerifyCodes(textMessages(payload)));
     } catch (error) {
         // The one non-200 for a signed payload: a DB outage. Meta's retry then delivers
         // the code again later (the update is conditional, so a retry can't double-apply).
