@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { localeAlternates } from "@/lib/seo/alternates";
 
 export async function generateMetadata({
     params: { locale },
@@ -13,13 +14,7 @@ export async function generateMetadata({
         description: isAr
             ? "تطوير تطبيقات توصيل طلبات في مصر والخليج — مثل مرسول وهنقرستيشن وجاهز. تطبيق عميل وسائق، تتبع مباشر بالخريطة، بوابات دفع، ولوحة تحكم متكاملة."
             : "Custom delivery app development in Egypt & the Gulf — like Mrsool, HungerStation & Jahez. Customer & driver apps, live GPS tracking, payment gateways and a full admin dashboard.",
-        alternates: {
-            canonical: `https://www.nitg-eg.com/${locale}/our-services/delivery-app`,
-            languages: {
-                ar: "https://www.nitg-eg.com/ar/our-services/delivery-app",
-                en: "https://www.nitg-eg.com/en/our-services/delivery-app",
-            },
-        },
+        alternates: localeAlternates(locale, "/our-services/delivery-app"),
         openGraph: {
             title: "Delivery App Development | N.I.T Egypt",
             description: "On-demand delivery apps like Mrsool, HungerStation & Jahez — customer & driver apps, live tracking and admin dashboard. Built in Egypt since 2013.",

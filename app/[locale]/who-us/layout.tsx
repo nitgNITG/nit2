@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import SocialMedia from "../components/SocialMedia";
+import { localeAlternates } from "@/lib/seo/alternates";
 
 export async function generateMetadata({
     params: { locale },
@@ -12,13 +13,7 @@ export async function generateMetadata({
         description: isAr
             ? "تعرف على الشركة الوطنية لهندسة البرمجيات وتكنولوجيا المعلومات. شركة مصرية تأسست عام 2013 في القاهرة، متخصصة في تطوير منصات Moodle التعليمية وتطبيقات التجارة الإلكترونية لمصر والخليج."
             : "Learn about N.I.T Egypt — National Software Engineering & IT company founded in Cairo 2013. Specialists in Moodle LMS, eCommerce apps, and educational platforms for Egypt and the Gulf.",
-        alternates: {
-            canonical: `https://www.nitg-eg.com/${locale}/who-us`,
-            languages: {
-                ar: "https://www.nitg-eg.com/ar/who-us",
-                en: "https://www.nitg-eg.com/en/who-us",
-            },
-        },
+        alternates: localeAlternates(locale, "/who-us"),
         openGraph: {
             title: isAr ? "من نحن | الشركة الوطنية لهندسة البرمجيات" : "About N.I.T Egypt | National Software Engineering",
             description: isAr

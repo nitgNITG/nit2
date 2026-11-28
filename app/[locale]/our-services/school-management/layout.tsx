@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { localeAlternates } from "@/lib/seo/alternates";
 
 export async function generateMetadata({
     params: { locale },
@@ -13,13 +14,7 @@ export async function generateMetadata({
         description: isAr
             ? "تطوير نظام إدارة مدارس متكامل للمدارس والحضانات في مصر والخليج. معلومات الطلاب، الحضور، الجداول، الدرجات، الرسوم والمدفوعات الإلكترونية، وتطبيق لأولياء الأمور والمعلمين."
             : "Custom school management system development for schools & nurseries in Egypt & the Gulf. Student information, attendance, timetables, grades, fees & online payments, and a parent & teacher app.",
-        alternates: {
-            canonical: `https://www.nitg-eg.com/${locale}/our-services/school-management`,
-            languages: {
-                ar: "https://www.nitg-eg.com/ar/our-services/school-management",
-                en: "https://www.nitg-eg.com/en/our-services/school-management",
-            },
-        },
+        alternates: localeAlternates(locale, "/our-services/school-management"),
         openGraph: {
             title: isAr ? "نظام إدارة المدارس | N.I.T Egypt" : "School Management System | N.I.T Egypt",
             description: "Custom school management systems with student records, fees, grades and a parent app — built in Egypt since 2013.",

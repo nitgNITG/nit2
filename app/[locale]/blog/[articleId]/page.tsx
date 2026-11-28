@@ -6,6 +6,7 @@ import Footer from '../../components/Footer'
 import Navbar from '../../components/Navbar'
 import RichText from '../../components/RichText'
 import { isScheduled, SECTION_ORDER, stripRichText } from '@/lib/blog'
+import { localeAlternates } from '@/lib/seo/alternates'
 
 const ARTICLE_SELECT = {
     id: true,
@@ -74,13 +75,9 @@ export async function generateMetadata(
     return {
         title,
         description: desc,
-        alternates: {
-            canonical: `https://www.nitg-eg.com/${params.locale}/blog/${params.articleId}`,
-            languages: {
-                ar: `https://www.nitg-eg.com/ar/blog/${params.articleId}`,
-                en: `https://www.nitg-eg.com/en/blog/${params.articleId}`,
-            },
-        },
+        // Page metadata overrides the layout's, so this must also point at the
+        // slug — an article opened by its old id URL is a duplicate of the slug URL.
+        alternates: localeAlternates(params.locale, `/blog/${article.slug ?? params.articleId}`),
         openGraph: {
             title,
             description: desc,

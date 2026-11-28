@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { localeAlternates } from "@/lib/seo/alternates";
 
 export async function generateMetadata({
     params: { locale },
@@ -11,13 +12,7 @@ export async function generateMetadata({
         description: isAr
             ? "تطوير منصات Moodle التعليمية في مصر والخليج منذ 2013. منصات مخصصة للجامعات والمدارس والشركات مع دعم اللغة العربية RTL وتطبيقات الجوال والاستضافة المُدارة."
             : "Custom Moodle LMS development in Egypt and Gulf countries since 2013. Universities, schools & corporate training platforms with Arabic RTL support, mobile apps, and managed hosting.",
-        alternates: {
-            canonical: `https://www.nitg-eg.com/${locale}/our-services/moodle-lms`,
-            languages: {
-                ar: "https://www.nitg-eg.com/ar/our-services/moodle-lms",
-                en: "https://www.nitg-eg.com/en/our-services/moodle-lms",
-            },
-        },
+        alternates: localeAlternates(locale, "/our-services/moodle-lms"),
         openGraph: {
             title: "Moodle LMS Development | N.I.T Egypt",
             description: "Expert Moodle LMS development since 2013. Live platforms for universities, schools & enterprises in Egypt and the Gulf. Arabic RTL, mobile apps, managed hosting.",

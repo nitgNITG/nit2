@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { localeAlternates } from "@/lib/seo/alternates";
 
 export async function generateMetadata({
     params: { locale },
@@ -13,13 +14,7 @@ export async function generateMetadata({
         description: isAr
             ? "تطوير تطبيقات التجارة الإلكترونية في مصر والخليج. تطبيقات iOS وAndroid على Google Play وApp Store. متاجر متعددة البائعين، تكامل فوري وباي موب وسترايب، أنظمة نقاط البيع."
             : "Custom eCommerce app development in Egypt. Native iOS & Android shopping apps on Google Play & App Store. Multivendor marketplaces, Fawry/PayMob/Stripe payment integration, POS systems.",
-        alternates: {
-            canonical: `https://www.nitg-eg.com/${locale}/our-services/ecommerce-app`,
-            languages: {
-                ar: "https://www.nitg-eg.com/ar/our-services/ecommerce-app",
-                en: "https://www.nitg-eg.com/en/our-services/ecommerce-app",
-            },
-        },
+        alternates: localeAlternates(locale, "/our-services/ecommerce-app"),
         openGraph: {
             title: "eCommerce App Development | N.I.T Egypt",
             description: "Live eCommerce apps on Google Play & App Store. Multivendor, single-store, POS and payment gateway solutions built in Egypt since 2013.",

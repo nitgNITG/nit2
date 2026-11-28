@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { localeAlternates } from "@/lib/seo/alternates";
 
 export async function generateMetadata({
     params: { locale },
@@ -13,13 +14,7 @@ export async function generateMetadata({
         description: isAr
             ? "تطوير وبرمجة تطبيقات الأندرويد في مصر والخليج. تطبيقات بـ Flutter منشورة على Google Play، بواجهات Material Design ودعم عربي كامل وأداء عالٍ."
             : "Custom Android app development in Egypt & the Gulf. Flutter apps published on Google Play, with Material Design UI, full Arabic support and high performance.",
-        alternates: {
-            canonical: `https://www.nitg-eg.com/${locale}/our-services/android-app`,
-            languages: {
-                ar: "https://www.nitg-eg.com/ar/our-services/android-app",
-                en: "https://www.nitg-eg.com/en/our-services/android-app",
-            },
-        },
+        alternates: localeAlternates(locale, "/our-services/android-app"),
         openGraph: {
             title: "Android App Development | N.I.T Egypt",
             description: "Android apps on Google Play — built with Flutter, Material Design, made in Egypt since 2013.",

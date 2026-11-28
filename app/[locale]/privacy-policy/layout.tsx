@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { localeAlternates } from "@/lib/seo/alternates";
 
 export async function generateMetadata({
     params: { locale },
@@ -11,13 +12,7 @@ export async function generateMetadata({
         description: isAr
             ? "سياسة الخصوصية لشركة N.I.T Egypt — كيف نجمع بياناتك ونحميها ونستخدمها."
             : "Privacy Policy for N.I.T Egypt — how we collect, protect, and use your data.",
-        alternates: {
-            canonical: `https://www.nitg-eg.com/${locale}/privacy-policy`,
-            languages: {
-                ar: "https://www.nitg-eg.com/ar/privacy-policy",
-                en: "https://www.nitg-eg.com/en/privacy-policy",
-            },
-        },
+        alternates: localeAlternates(locale, "/privacy-policy"),
         robots: { index: true, follow: true },
     };
 }

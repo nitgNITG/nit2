@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import prisma from "@/prisma/client";
 import { isScheduled } from "@/lib/blog";
+import { localeAlternates } from "@/lib/seo/alternates";
 
 export async function generateMetadata({
     params: { articleId, locale },
@@ -39,13 +40,7 @@ export async function generateMetadata({
         return {
             title,
             description,
-            alternates: {
-                canonical: `https://www.nitg-eg.com/${locale}/blog/${canonical}`,
-                languages: {
-                    ar: `https://www.nitg-eg.com/ar/blog/${canonical}`,
-                    en: `https://www.nitg-eg.com/en/blog/${canonical}`,
-                },
-            },
+            alternates: localeAlternates(locale, `/blog/${canonical}`),
             openGraph: {
                 title,
                 description,

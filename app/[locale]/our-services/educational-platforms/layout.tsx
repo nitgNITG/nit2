@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { localeAlternates } from "@/lib/seo/alternates";
 
 export async function generateMetadata({
     params: { locale },
@@ -13,13 +14,7 @@ export async function generateMetadata({
         description: isAr
             ? "تطوير منصات تعليمية مخصصة للجامعات والمدارس والمؤسسات في مصر والخليج. أنظمة إدارة التعلم LMS، بث مباشر، اختبارات إلكترونية وشهادات."
             : "Custom educational platform development for universities, schools & institutions in Egypt & the Gulf. LMS systems, live streaming, e-assessments & certificates.",
-        alternates: {
-            canonical: `https://www.nitg-eg.com/${locale}/our-services/educational-platforms`,
-            languages: {
-                ar: "https://www.nitg-eg.com/ar/our-services/educational-platforms",
-                en: "https://www.nitg-eg.com/en/our-services/educational-platforms",
-            },
-        },
+        alternates: localeAlternates(locale, "/our-services/educational-platforms"),
         openGraph: {
             title: isAr ? "تطوير منصات تعليمية احترافية | N.I.T Egypt" : "Educational Platform Development | N.I.T Egypt",
             description: "Custom LMS & educational platforms for universities, schools & enterprises — built in Egypt since 2013.",

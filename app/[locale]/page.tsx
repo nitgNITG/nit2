@@ -9,6 +9,7 @@ import DownSide from "./components/DownSide";
 import ServiceCards from "./components/ServiceCards";
 import HomepageServices from "./components/HomepageServices";
 import ScrollReveal from "./components/ScrollReveal";
+import { localeAlternates } from "@/lib/seo/alternates";
 
 // Lazy-load heavy below-the-fold client components to reduce initial JS bundle
 const Sponsors = dynamic(() => import("./components/Sponsors"), { ssr: false });
@@ -30,10 +31,7 @@ export async function generateMetadata({ params: { locale } }: { params: { local
     description: isAr
       ? "الشركة الوطنية لهندسة البرمجيات وتكنولوجيا المعلومات — أفضل شركة برمجة في مصر. نطوّر منصات Moodle التعليمية، تطبيقات التوصيل والمطاعم، المتاجر الإلكترونية، وأنظمة ولاء العملاء لمصر والخليج منذ 2013."
       : "Egypt's leading software company building Moodle LMS platforms, delivery & restaurant apps, eCommerce stores and customer loyalty systems for Egypt and the Gulf. 100+ projects, 12+ years since 2013.",
-    alternates: {
-      canonical: `https://www.nitg-eg.com/${locale}`,
-      languages: { ar: "https://www.nitg-eg.com/ar", en: "https://www.nitg-eg.com/en" },
-    },
+    alternates: localeAlternates(locale, ""),
     openGraph: {
       title: isAr ? "الشركة الوطنية لهندسة البرمجيات | N.I.T Egypt" : "N.I.T Egypt — Moodle LMS & eCommerce App Development",
       description: isAr

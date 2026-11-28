@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { localeAlternates } from "@/lib/seo/alternates";
 
 export async function generateMetadata({
     params: { locale },
@@ -13,13 +14,7 @@ export async function generateMetadata({
         description: isAr
             ? "تصميم تطبيق مطعم في مصر والخليج — تطبيق طلب ودليفري باسم مطعمك، قائمة رقمية، نقاط بيع POS، ونظام إدارة مطاعم متعدد الفروع."
             : "Restaurant app development in Egypt & the Gulf — your own-brand ordering & delivery app, digital menu, POS, and a multi-branch restaurant management system.",
-        alternates: {
-            canonical: `https://www.nitg-eg.com/${locale}/our-services/restaurant-app`,
-            languages: {
-                ar: "https://www.nitg-eg.com/ar/our-services/restaurant-app",
-                en: "https://www.nitg-eg.com/en/our-services/restaurant-app",
-            },
-        },
+        alternates: localeAlternates(locale, "/our-services/restaurant-app"),
         openGraph: {
             title: "Restaurant App Development | N.I.T Egypt",
             description: "Own-brand restaurant ordering & delivery apps with digital menus, POS and multi-branch management. Built in Egypt since 2013.",

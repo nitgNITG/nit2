@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { localeAlternates } from "@/lib/seo/alternates";
 
 export async function generateMetadata({
     params: { locale },
@@ -13,13 +14,7 @@ export async function generateMetadata({
         description: isAr
             ? "تطوير منصات تعليمية تعتمد على الذكاء الاصطناعي في مصر والخليج. توفير مسارات تعلم ذكية، تحليل أداء الطلاب ومساعدين افتراضيين للتعليم."
             : "AI-powered educational platform development in Egypt & the Gulf. Smart learning paths, student performance analytics, and virtual teaching assistants.",
-        alternates: {
-            canonical: `https://www.nitg-eg.com/${locale}/our-services/ai-educational-platforms`,
-            languages: {
-                ar: "https://www.nitg-eg.com/ar/our-services/ai-educational-platforms",
-                en: "https://www.nitg-eg.com/en/our-services/ai-educational-platforms",
-            },
-        },
+        alternates: localeAlternates(locale, "/our-services/ai-educational-platforms"),
         openGraph: {
             title: isAr ? "منصات تعليم بالذكاء الاصطناعي | N.I.T Egypt" : "AI Educational Platforms | N.I.T Egypt",
             description: "Next-gen AI educational platforms with smart learning paths and virtual assistants — built in Egypt.",

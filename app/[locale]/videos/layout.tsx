@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import SocialMedia from "../components/SocialMedia";
+import { localeAlternates } from "@/lib/seo/alternates";
 
 export async function generateMetadata({
     params: { locale },
@@ -14,13 +15,7 @@ export async function generateMetadata({
         description: isAr
             ? "شاهد بالفيديو عروضاً حية ومشاريع واقعية لمنصات Moodle وتطبيقات التجارة الإلكترونية والتوصيل وأنظمة الولاء التي طورتها شركة N.I.T."
             : "Watch real project promos, video walk-throughs, and live demos of Moodle LMS, eCommerce mobile apps, and enterprise systems by N.I.T.",
-        alternates: {
-            canonical: `https://www.nitg-eg.com/${locale}/videos`,
-            languages: {
-                ar: "https://www.nitg-eg.com/ar/videos",
-                en: "https://www.nitg-eg.com/en/videos",
-            },
-        },
+        alternates: localeAlternates(locale, "/videos"),
         openGraph: {
             title: isAr ? "معرض الفيديوهات | N.I.T Egypt" : "Videos & Promos | N.I.T Egypt",
             description: isAr

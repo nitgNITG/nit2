@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import SocialMedia from "../components/SocialMedia";
+import { localeAlternates } from "@/lib/seo/alternates";
 
 export async function generateMetadata({
     params: { locale },
@@ -14,13 +15,7 @@ export async function generateMetadata({
         description: isAr
             ? "احصل على عرض سعر مجاني لمشروعك من الشركة الوطنية N.I.T Egypt. تطوير منصات Moodle، تطبيقات التجارة الإلكترونية، وبرمجة مخصصة لمصر والخليج."
             : "Get a free project quote from N.I.T Egypt. We develop Moodle LMS platforms, eCommerce apps, and custom software for Egypt and the Gulf region.",
-        alternates: {
-            canonical: `https://www.nitg-eg.com/${locale}/get-quote`,
-            languages: {
-                ar: "https://www.nitg-eg.com/ar/get-quote",
-                en: "https://www.nitg-eg.com/en/get-quote",
-            },
-        },
+        alternates: localeAlternates(locale, "/get-quote"),
         openGraph: {
             title: isAr ? "طلب عرض سعر | N.I.T Egypt" : "Get a Quote | N.I.T Egypt",
             description: isAr

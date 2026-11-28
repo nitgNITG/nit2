@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { localeAlternates } from "@/lib/seo/alternates";
 
 export async function generateMetadata({
     params: { locale },
@@ -13,13 +14,7 @@ export async function generateMetadata({
         description: isAr
             ? "تطوير وبرمجة تطبيقات الآيفون في مصر والخليج. تطبيقات iOS بـ Flutter منشورة على App Store، وفق معايير Apple وتكامل Apple Pay والإشعارات."
             : "Custom iPhone app development in Egypt & the Gulf. iOS apps built with Flutter published on the App Store, following Apple HIG with Apple Pay & push notifications.",
-        alternates: {
-            canonical: `https://www.nitg-eg.com/${locale}/our-services/ios-app`,
-            languages: {
-                ar: "https://www.nitg-eg.com/ar/our-services/ios-app",
-                en: "https://www.nitg-eg.com/en/our-services/ios-app",
-            },
-        },
+        alternates: localeAlternates(locale, "/our-services/ios-app"),
         openGraph: {
             title: "iPhone (iOS) App Development | N.I.T Egypt",
             description: "iOS apps on the App Store — built with Flutter, Apple HIG, made in Egypt since 2013.",

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import SocialMedia from "../components/SocialMedia";
+import { localeAlternates } from "@/lib/seo/alternates";
 
 export async function generateMetadata({
     params: { locale },
@@ -14,13 +15,7 @@ export async function generateMetadata({
         description: isAr
             ? "شاهد أعمال الشركة الوطنية لهندسة البرمجيات: منصات Moodle التعليمية، تطبيقات التجارة الإلكترونية على Google Play وApp Store. خبرة 12+ سنة وأكثر من 100 مشروع ناجح."
             : "Explore N.I.T Egypt's portfolio: live Moodle LMS platforms, eCommerce apps on Google Play & App Store, custom software solutions for Egypt and Gulf markets. 12+ years, 100+ projects.",
-        alternates: {
-            canonical: `https://www.nitg-eg.com/${locale}/our-projects`,
-            languages: {
-                ar: "https://www.nitg-eg.com/ar/our-projects",
-                en: "https://www.nitg-eg.com/en/our-projects",
-            },
-        },
+        alternates: localeAlternates(locale, "/our-projects"),
         openGraph: {
             title: isAr ? "مشاريعنا | الشركة الوطنية NIT" : "Our Projects | Moodle LMS & eCommerce Apps | N.I.T Egypt",
             description: isAr

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import SocialMedia from "../components/SocialMedia";
+import { localeAlternates } from "@/lib/seo/alternates";
 
 export async function generateMetadata({
     params: { locale },
@@ -12,13 +13,7 @@ export async function generateMetadata({
         description: isAr
             ? "مقالات ودليل شامل حول منصات Moodle التعليمية، تطبيقات التجارة الإلكترونية، التعلم الإلكتروني والتحول الرقمي في مصر والخليج."
             : "Articles and guides on Moodle LMS development, eCommerce apps, e-learning platforms, and digital transformation for Egypt and Gulf businesses.",
-        alternates: {
-            canonical: `https://www.nitg-eg.com/${locale}/blog`,
-            languages: {
-                ar: "https://www.nitg-eg.com/ar/blog",
-                en: "https://www.nitg-eg.com/en/blog",
-            },
-        },
+        alternates: localeAlternates(locale, "/blog"),
         openGraph: {
             title: isAr ? "المدونة | N.I.T Egypt" : "Blog | N.I.T Egypt",
             description: isAr

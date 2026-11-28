@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import SocialMedia from "../components/SocialMedia";
+import { localeAlternates } from "@/lib/seo/alternates";
 
 export async function generateMetadata({
     params: { locale },
@@ -12,13 +13,7 @@ export async function generateMetadata({
         description: isAr
             ? "تواصل مع الشركة الوطنية لهندسة البرمجيات. اتصل على 201091568240+ أو راسلنا على info@nitg-eg.com. 168 شارع الملك فيصل، الجيزة، مصر."
             : "Contact N.I.T Egypt for Moodle LMS development, eCommerce apps, and website programming. Call +201091568240 or email info@nitg-eg.com. 168 King Faisal St, Giza.",
-        alternates: {
-            canonical: `https://www.nitg-eg.com/${locale}/contact`,
-            languages: {
-                ar: "https://www.nitg-eg.com/ar/contact",
-                en: "https://www.nitg-eg.com/en/contact",
-            },
-        },
+        alternates: localeAlternates(locale, "/contact"),
         openGraph: {
             title: isAr ? "تواصل معنا | N.I.T Egypt" : "Contact N.I.T Egypt",
             description: isAr

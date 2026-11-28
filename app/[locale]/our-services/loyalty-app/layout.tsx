@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { localeAlternates } from "@/lib/seo/alternates";
 
 export async function generateMetadata({
     params: { locale },
@@ -13,13 +14,7 @@ export async function generateMetadata({
         description: isAr
             ? "تطوير برامج ولاء العملاء وأنظمة النقاط والمكافآت في مصر والخليج — تطبيق نقاط وكوبونات وبطاقات عضوية رقمية مع لوحة تحليلات وتكامل نقاط البيع."
             : "Customer loyalty program & rewards app development in Egypt & the Gulf — points, coupons and digital membership cards with an analytics dashboard and POS integration.",
-        alternates: {
-            canonical: `https://www.nitg-eg.com/${locale}/our-services/loyalty-app`,
-            languages: {
-                ar: "https://www.nitg-eg.com/ar/our-services/loyalty-app",
-                en: "https://www.nitg-eg.com/en/our-services/loyalty-app",
-            },
-        },
+        alternates: localeAlternates(locale, "/our-services/loyalty-app"),
         openGraph: {
             title: "Customer Loyalty & Rewards App Development | N.I.T Egypt",
             description: "Loyalty apps with points, coupons, digital cards and a CRM analytics dashboard. Built in Egypt since 2013.",
