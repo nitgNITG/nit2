@@ -13,7 +13,7 @@
 // against the selected market's national format (EG/SA/AE/KW/QA/OM/BH), and
 // re-validated automatically whenever the market changes.
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -393,8 +393,10 @@ export default function BuildStoreForm() {
   const locale = useLocale();
   const isAr = locale === "ar";
 
-  const tr = (ar: string, en: string) =>
-    isAr ? ar : en;
+  const tr = useCallback(
+    (ar: string, en: string) => (isAr ? ar : en),
+    [isAr],
+  );
 
   const me = useMe();
   const isAdmin = me?.role === "admin";
@@ -607,7 +609,7 @@ export default function BuildStoreForm() {
         ),
       )
       .catch(() => {});
-  }, [setValue]);
+  }, [setValue, tr]);
 
   // Load users for admin creation.
   useEffect(() => {
