@@ -25,6 +25,19 @@ const nextConfig = {
             { source: '/:locale(ar|en)/contact-us', destination: '/:locale/contact', permanent: true },
         ];
     },
+    // dev.nitg-eg.com runs the dev copy (nit2) and was being indexed next to the real
+    // site. A noindex header (not a robots.txt Disallow, which would hide the noindex
+    // from Google) keeps it out. Matches only that exact host, so www / the apex / the
+    // academy subdomains are never affected — even behind a proxy that rewrites Host.
+    async headers() {
+        return [
+            {
+                source: '/:path*',
+                has: [{ type: 'host', value: 'dev\\.nitg-eg\\.com' }],
+                headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+            },
+        ];
+    },
     async rewrites() {
         return [
             {
