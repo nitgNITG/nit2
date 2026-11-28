@@ -18,7 +18,8 @@ type Call = { url: string; method: string; body?: unknown };
 function fakeFetch(routes: Record<string, { status?: number; body?: string }>, postStatus: number | number[] = 202) {
     const calls: Call[] = [];
     const statuses = Array.isArray(postStatus) ? [...postStatus] : null;
-    const fn = vi.fn(async (url: string, init?: RequestInit) => {
+    const fn = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
         const method = init?.method ?? "GET";
         calls.push({ url, method, body: init?.body ? JSON.parse(init.body as string) : undefined });
         if (method === "POST") return new Response(null, { status: statuses ? statuses.shift() ?? 202 : (postStatus as number) });
