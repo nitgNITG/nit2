@@ -37,6 +37,7 @@ const PAGE_LABELS: Record<string, string> = {
 
 const Contacts = () => {
     const [activeStage, setActiveStage] = useState('');
+    const [waVerifiedOnly, setWaVerifiedOnly] = useState(false);
     const [summary, setSummary] = useState<any>(null);
 
     useEffect(() => {
@@ -173,10 +174,21 @@ const Contacts = () => {
                         {s.label}
                     </button>
                 ))}
+                {/* WhatsApp-verified only (contact form's reverse WhatsApp verification) */}
+                <button
+                    aria-pressed={waVerifiedOnly}
+                    onClick={() => setWaVerifiedOnly(v => !v)}
+                    className={`px-4 py-1.5 rounded-full text-sm font-semibold border transition-all
+                        ${waVerifiedOnly
+                            ? 'border-[#1E7D67] ring-2 ring-[#1E7D67]/30 bg-green-100 text-green-800'
+                            : 'border-gray-200 bg-white text-gray-500 hover:border-gray-400'}`}
+                >
+                    ✓ WhatsApp verified
+                </button>
             </div>
 
             {/* ContactRows — renders table on desktop, cards on mobile */}
-            <ContactRows stageFilter={activeStage} />
+            <ContactRows stageFilter={activeStage} waFilter={waVerifiedOnly ? 'verified' : ''} />
         </div>
     );
 };

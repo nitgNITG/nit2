@@ -237,7 +237,7 @@
         "form": {
             "name":    { "label": "Name",    "error": "Please enter your name" },
             "email":   { "label": "Email",   "error": "Please enter your email" },
-            "phone":   { "label": "Phone / WhatsApp", "error": "Phone number is required", "other": "Other" },
+            "phone":   { "label": "Phone / WhatsApp", "error": "Phone number is required", "other": "Other", "invalid": "This phone number doesn't look right — please check the number and country code" },
             "subject": { "label": "Subject", "error": "Please enter the subject" },
             "message": { "label": "Message", "error": "Please enter the message" },
             "country": {
@@ -298,7 +298,13 @@
             },
             "pain": { "label": "What is your biggest challenge right now? (optional)", "placeholder": "Describe the problem or opportunity you want to address..." },
             "btn": "Send",
-            "qualify": "Help us understand your needs better"
+            "qualify": "Help us understand your needs better",
+            "waVerify": {
+                "title": "Confirm your number on WhatsApp so we can reply faster",
+                "body": "Tap the button and send the ready-made message as it is — it takes seconds.",
+                "btn": "Confirm on WhatsApp",
+                "code": "Or send us this code on WhatsApp:"
+            }
         }
     },
     "footer": {
