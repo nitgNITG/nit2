@@ -16,7 +16,7 @@ function useClickOutside(close: () => void, open?: boolean) {
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [close]);
+    }, [close, open]);
     return ref;
 }
 export default useClickOutside

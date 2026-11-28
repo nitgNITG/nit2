@@ -214,7 +214,7 @@ export default function AcademyCard({ academy, domain }: { academy: ClientAcadem
         }
         const first = setTimeout(check, 3000)
         return () => { stopped = true; clearTimeout(first) }
-    }, [live, academy.slug])
+    }, [live, suspended, academy.slug])
 
     // QR encodes the deep link (per TENANT_CONNECT_LINKS.md). Built client-side once live.
     useEffect(() => {

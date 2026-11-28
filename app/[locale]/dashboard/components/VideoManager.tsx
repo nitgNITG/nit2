@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 'use client'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 import {
@@ -44,7 +44,7 @@ export default function VideoManager() {
     const [categoryFilter, setCategoryFilter] = useState('all')
     const [previewVideo, setPreviewVideo] = useState<VideoItem | null>(null)
 
-    const fetchVideos = async () => {
+    const fetchVideos = useCallback(async () => {
         try {
             setLoading(true)
             const { data } = await axios.get('/api/videos')
@@ -57,9 +57,9 @@ export default function VideoManager() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [setVideos])
 
-    const fetchCategories = async () => {
+    const fetchCategories = useCallback(async () => {
         try {
             const { data } = await axios.get('/api/video-categories')
             if (data?.categories?.length) {
@@ -68,12 +68,12 @@ export default function VideoManager() {
         } catch (error: any) {
             console.error('Failed to load categories:', error)
         }
-    }
+    }, [])
 
     useEffect(() => {
         fetchVideos()
         fetchCategories()
-    }, [])
+    }, [fetchVideos, fetchCategories])
 
     const handleDelete = async () => {
         if (!deleteId) return

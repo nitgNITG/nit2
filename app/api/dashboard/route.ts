@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/prisma/client'
 import { authAdmin } from "@/lib/predict";
 
+// Reads the admin cookie — never prerender at build time.
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
     try {
         const isPredict = await authAdmin(req)
