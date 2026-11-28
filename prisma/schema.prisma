@@ -151,6 +151,23 @@ model Contact {
   @@index([email])
 }
 
+// First-party lead tracking (app/api/track): one row per WhatsApp / phone click
+// or contact / quote form submit. Deliberately no personal data — no IP, no user
+// agent, nothing typed into the form.
+model LeadEvent {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  type         String   // "whatsapp_click" | "phone_click" | "contact_submit" | "quote_submit"
+  page         String   // pathname, e.g. /ar/our-services/moodle-lms
+  locale       String   // "ar" | "en"
+  referrerHost String?  // document.referrer host (e.g. www.google.com)
+  utmSource    String?
+  utmMedium    String?
+  utmCampaign  String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 model ServicePlan {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   service    String // "moodle" | "ecommerce" | "mobile"
