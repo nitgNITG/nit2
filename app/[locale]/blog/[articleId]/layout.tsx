@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import prisma from "@/prisma/client";
-import { isScheduled } from "@/lib/blog";
+import { isScheduled, isThinArticle } from "@/lib/blog";
 import { localeAlternates } from "@/lib/seo/alternates";
 
 export async function generateMetadata({
@@ -15,12 +15,12 @@ export async function generateMetadata({
 
         let article = await prisma.article.findFirst({
             where: { slug: decoded },
-            select: { slug: true, title: true, titleEn: true, metaDesc: true, metaDescEn: true, img: true, publishedAt: true },
+            select: { slug: true, title: true, titleEn: true, metaDesc: true, metaDescEn: true, img: true, publishedAt: true, Section: { select: { id: true } } },
         }).catch(() => null);
         if (!article) {
             article = await prisma.article.findUnique({
                 where: { id: articleId },
-                select: { slug: true, title: true, titleEn: true, metaDesc: true, metaDescEn: true, img: true, publishedAt: true },
+                select: { slug: true, title: true, titleEn: true, metaDesc: true, metaDescEn: true, img: true, publishedAt: true, Section: { select: { id: true } } },
             }).catch(() => null);
         }
 
@@ -41,6 +41,7 @@ export async function generateMetadata({
             title,
             description,
             alternates: localeAlternates(locale, `/blog/${canonical}`),
+            ...(isThinArticle(article) && { robots: { index: false, follow: true } }),
             openGraph: {
                 title,
                 description,

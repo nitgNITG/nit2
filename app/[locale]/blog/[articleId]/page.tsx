@@ -5,7 +5,7 @@ import prisma from '@/prisma/client'
 import Footer from '../../components/Footer'
 import Navbar from '../../components/Navbar'
 import RichText from '../../components/RichText'
-import { isScheduled, SECTION_ORDER, stripRichText } from '@/lib/blog'
+import { isScheduled, isThinArticle, SECTION_ORDER, stripRichText } from '@/lib/blog'
 import { localeAlternates } from '@/lib/seo/alternates'
 
 const ARTICLE_SELECT = {
@@ -78,6 +78,8 @@ export async function generateMetadata(
         // Page metadata overrides the layout's, so this must also point at the
         // slug — an article opened by its old id URL is a duplicate of the slug URL.
         alternates: localeAlternates(params.locale, `/blog/${article.slug ?? params.articleId}`),
+        // Intro-only article (no sections) — keep it out of the index until it's completed.
+        ...(isThinArticle(article) && { robots: { index: false, follow: true } }),
         openGraph: {
             title,
             description: desc,

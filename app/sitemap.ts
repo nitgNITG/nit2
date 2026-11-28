@@ -1,5 +1,5 @@
 import { MetadataRoute } from "next";
-import { publishedWhere } from "@/lib/blog";
+import { isThinArticle, publishedWhere } from "@/lib/blog";
 import prisma from "@/prisma/client";
 
 // Rebuilt hourly so new and newly-due scheduled articles get listed without a redeploy.
@@ -48,11 +48,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     try {
         const articles = await prisma.article.findMany({
             where: publishedWhere(),
-            select: { id: true, slug: true, publishedAt: true },
+            select: { id: true, slug: true, publishedAt: true, Section: { select: { id: true } } },
             orderBy: { publishedAt: "desc" },
         });
 
-        articleEntries = articles.flatMap((article) =>
+        // Intro-only articles are noindex — listing them would ask Google to crawl them.
+        articleEntries = articles.filter((a) => !isThinArticle(a)).flatMap((article) =>
             locales.map((locale) => ({
                 // Use SEO-friendly slug when available, fall back to MongoDB id
                 url: `${BASE_URL}/${locale}/blog/${article.slug ?? article.id}`,

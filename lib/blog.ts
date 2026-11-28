@@ -6,6 +6,15 @@ export const publishedWhere = (now: Date = new Date()) => ({ publishedAt: { lte:
 /** Sections in their saved position; older sections without `order` keep creation order. */
 export const SECTION_ORDER = [{ order: "asc" as const }, { id: "asc" as const }];
 
+/**
+ * An article with no sections is only its title + intro paragraph — too thin to index.
+ * (Audit 2026-11-28: 39 such stubs, published Jul → Oct 2026 when the daily publisher's
+ * sections never arrived.) Such articles get noindex,follow and stay out of the sitemap.
+ */
+export function isThinArticle(article: { Section?: readonly unknown[] | null }): boolean {
+    return (article.Section?.length ?? 0) === 0;
+}
+
 export const isScheduled =(publishedAt: Date | string | null | undefined, now: Date = new Date()) =>
     !!publishedAt && new Date(publishedAt).getTime() > now.getTime();
 
