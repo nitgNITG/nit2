@@ -117,6 +117,49 @@ describe("trackLead", () => {
     });
 });
 
+describe("trackLead → GA4", () => {
+    type GtagWindow = { gtag?: (...args: unknown[]) => void };
+    afterEach(() => { delete (window as GtagWindow).gtag; });
+
+    it.each([
+        ["contact_submit", "generate_lead", "/en/contact", "en"],
+        ["quote_submit", "generate_lead", "/ar/get-quote", "ar"],
+        ["whatsapp_click", "whatsapp_click", "/ar/our-services/moodle-lms", "ar"],
+        ["phone_click", "phone_click", "/en", "en"],
+    ] as const)("%s also goes to GA4 as %s, with page and locale", (type, event, page, locale) => {
+        const gtag = vi.fn();
+        (window as GtagWindow).gtag = gtag;
+        window.history.pushState({}, "", `${page}?utm_source=x`);
+        trackLead(type);
+        expect(gtag).toHaveBeenCalledTimes(1);
+        expect(gtag).toHaveBeenCalledWith("event", event, { lead_type: type, page_path: page, locale, transport_type: "beacon" });
+        // the first-party record is still sent
+        expect(sentPayloads().map((p) => p.body.type)).toEqual([type]);
+    });
+
+    it("sends only the first-party record when GA is not on the page", () => {
+        expect((window as GtagWindow).gtag).toBeUndefined();
+        expect(() => trackLead("contact_submit")).not.toThrow();
+        expect(sentPayloads()).toHaveLength(1);
+    });
+
+    it("a broken gtag neither throws nor stops the first-party record", () => {
+        (window as GtagWindow).gtag = () => { throw new Error("gtag exploded"); };
+        expect(() => trackLead("quote_submit")).not.toThrow();
+        expect(sentPayloads().map((p) => p.body.type)).toEqual(["quote_submit"]);
+    });
+
+    it("a failing first-party transport does not stop the GA4 event", () => {
+        const gtag = vi.fn();
+        (window as GtagWindow).gtag = gtag;
+        beacon.mockImplementation(() => { throw new Error("blocked"); });
+        vi.stubGlobal("fetch", vi.fn(() => { throw new Error("offline"); }));
+        expect(() => trackLead("whatsapp_click")).not.toThrow();
+        vi.unstubAllGlobals();
+        expect(gtag).toHaveBeenCalledWith("event", "whatsapp_click", expect.objectContaining({ lead_type: "whatsapp_click" }));
+    });
+});
+
 describe("LeadClickTracker", () => {
     it("records a whatsapp_click when the floating WhatsApp button is clicked", () => {
         window.history.pushState({}, "", "/ar/our-services/moodle-lms");

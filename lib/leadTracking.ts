@@ -72,14 +72,46 @@ export function buildLeadPayload(
     return payload;
 }
 
+// GA4 event names: form submits are GA's recommended `generate_lead` (mark it as a
+// key event in GA4); clicks are custom events.
+const GA_EVENT: Record<LeadEventType, string> = {
+    contact_submit: "generate_lead",
+    quote_submit: "generate_lead",
+    whatsapp_click: "whatsapp_click",
+    phone_click: "phone_click",
+};
+
+/** The same lead, mirrored to GA4 when gtag is on the page (components/GoogleAnalytics). */
+function sendToGa(payload: LeadPayload): void {
+    try {
+        const gtag = (window as { gtag?: (...args: unknown[]) => void }).gtag;
+        if (typeof gtag !== "function") return;
+        gtag("event", GA_EVENT[payload.type], {
+            lead_type: payload.type,
+            page_path: payload.page,
+            locale: payload.locale,
+            transport_type: "beacon", // WhatsApp / tel: links navigate away
+        });
+    } catch {
+        // GA is optional — never let it break the click or the form
+    }
+}
+
 /**
  * Fire-and-forget: survives the page unloading (WhatsApp links navigate away)
  * and never throws — tracking must not break a click or a form.
  */
 export function trackLead(type: LeadEventType): void {
+    if (typeof window === "undefined") return;
+    let payload: LeadPayload;
     try {
-        if (typeof window === "undefined") return;
-        const body = JSON.stringify(buildLeadPayload(type, window.location, document.referrer));
+        payload = buildLeadPayload(type, window.location, document.referrer);
+    } catch {
+        return;
+    }
+    sendToGa(payload);
+    try {
+        const body = JSON.stringify(payload);
         // A string body goes as text/plain — no CORS preflight, which a beacon can't do.
         if (typeof navigator.sendBeacon === "function" && navigator.sendBeacon(TRACK_URL, body)) return;
         void fetch(TRACK_URL, { method: "POST", body, keepalive: true, headers: { "Content-Type": "text/plain;charset=UTF-8" } })
