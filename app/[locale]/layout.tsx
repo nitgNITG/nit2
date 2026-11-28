@@ -8,6 +8,7 @@ import clsx from "clsx";
 import Script from "next/script";
 import SocialMedia from "./components/SocialMedia";
 import ChatWidgetLoader from "./components/ChatWidget/ChatWidgetLoader";
+import LeadClickTracker from "./components/LeadClickTracker";
 
 const cairo = Cairo({ subsets: ["latin", "arabic"], display: "swap" });
 
@@ -77,6 +78,8 @@ export default async function LocaleLayout({
           <SocialMedia />
           {/* AI assistant — loads after the page is idle; hidden on dashboard/payment/sign-in. */}
           <ChatWidgetLoader locale={locale} />
+          {/* First-party WhatsApp / tel: click tracking (renders nothing). */}
+          <LeadClickTracker />
           <Toaster
             toastOptions={{ position: "top-right" }}
             containerStyle={{ zIndex: 9999999 }}

@@ -7,6 +7,7 @@ import axios from 'axios';
 import { LoadingIcon } from './icons';
 import { useTranslations, useLocale } from 'next-intl';
 import clsx from 'clsx';
+import { trackLead } from '@/lib/leadTracking';
 
 const inputCls = 'w-full py-2 rounded-lg outline-none px-3 bg-white';
 const selectCls = 'w-full py-2 rounded-lg outline-none px-3 bg-white appearance-none cursor-pointer';
@@ -47,7 +48,8 @@ function useTrackingData() {
     return tracking;
 }
 
-const ContactForm = () => {
+/** `leadType` says which lead a successful submit counts as (the get-quote page reuses this form). */
+const ContactForm = ({ leadType = 'contact_submit' }: { leadType?: 'contact_submit' | 'quote_submit' }) => {
     const t = useTranslations('contact.form');
     const locale = useLocale();
     const isAr = locale === 'ar';
@@ -96,6 +98,7 @@ const ContactForm = () => {
             };
             const { data } = await axios.post('/api/contact', payload);
             toast.success(data.message as string);
+            trackLead(leadType);
             reset();
             setDialCode('+20');
             setCustomDial('');

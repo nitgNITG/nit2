@@ -102,7 +102,7 @@ const GetQuotePage = () => {
 
                     {/* Form */}
                     <div className='lg:col-span-3'>
-                        <ContactForm />
+                        <ContactForm leadType='quote_submit' />
                     </div>
                 </div>
             </section>
