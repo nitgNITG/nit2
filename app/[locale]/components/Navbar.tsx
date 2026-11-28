@@ -173,6 +173,7 @@ const Navbar = () => {
         { name: t('services'), children: services },
         { name: isAr ? 'الأسعار' : 'Pricing', links: pricingLinks },
         { name: t('item4'), href: '/blog' },
+        { name: t('item_videos'), href: '/videos' },
         { name: t('item2'), href: '/who-us' },
         { name: t('item5'), href: '/contact' },
         // No guest "Log in"/"Build Your Product" item — Pricing is the entry point;

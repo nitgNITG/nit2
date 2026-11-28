@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prismaMysql";
 import { alertAdmins } from "@/lib/adminAlert";
 import { encryptSecret } from "@/lib/secretBox";
+import { DELETING, finalizeTenantDelete } from "@/lib/tenants/teardown";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,8 +32,21 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
 
     const tenant = await prisma.tenant.findUnique({ where: { slug } }).catch(() => null);
     if (!tenant) {
-        // A destroy job for a row we already deleted, or a job for an unknown slug.
+        // A job for a slug with no row. A FAILED teardown here means something is
+        // still running on the box with nothing in nit2 pointing at it — say so.
+        if (kind === "destroy" && state === "failed") {
+            await alertAdmins(
+                `❌ teardown of ${slug} failed (no tenant row)`,
+                `${String(body?.error ?? "").slice(0, 1500)}\n\nClean it up on the provisioner by hand.`,
+            );
+        }
         return NextResponse.json({ ok: true, ignored: true });
+    }
+
+    // Teardown confirmed: the delete that was waiting for it completes now.
+    if (kind === "destroy" && state === "done" && tenant.status === DELETING) {
+        await finalizeTenantDelete(tenant, "teardown confirmed");
+        return NextResponse.json({ ok: true, deleted: true });
     }
 
     const progress = {

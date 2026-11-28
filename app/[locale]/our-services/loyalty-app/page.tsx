@@ -6,6 +6,7 @@ import LoyaltyHeader from './components/LoyaltyHeader'
 import LoyaltyFeatures from './components/LoyaltyFeatures'
 import LoyaltyMarkets from './components/LoyaltyMarkets'
 import ServiceOfferings from '../../components/ServiceOfferings'
+import ProjectShowcaseSection from '../../components/promo/ProjectShowcaseSection'
 import LoyaltyProcess from './components/LoyaltyProcess'
 import LoyaltyPricing from './components/LoyaltyPricing'
 import Contact from '../../components/Contact'
@@ -23,6 +24,7 @@ export default function LoyaltyPage() {
             <ScrollReveal><LoyaltyFeatures /></ScrollReveal>
             <ScrollReveal><LoyaltyMarkets /></ScrollReveal>
             <ScrollReveal><ServiceOfferings service="loyalty" /></ScrollReveal>
+            <ProjectShowcaseSection service='loyalty-app' />
             <ScrollReveal><LoyaltyProcess /></ScrollReveal>
             <ScrollReveal><LoyaltyPricing /></ScrollReveal>
             <ScrollReveal><FAQSection page="loyalty" /></ScrollReveal>

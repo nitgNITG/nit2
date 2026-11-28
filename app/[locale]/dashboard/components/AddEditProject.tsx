@@ -9,6 +9,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import toast from 'react-hot-toast'
+import type { StoredPromo } from '@/lib/promo'
+import { PromoVideoField, ShowcaseExtraFields } from './ShowcaseFields'
 
 type ProjectType = { id: string; value: string; labelEn: string; labelAr: string }
 
@@ -17,6 +19,7 @@ const AddEditProject = ({ defaultType }: { defaultType?: string }) => {
     const [image, setImage] = useState('')
     const [loading, setLoading] = useState(false)
     const [projectTypes, setProjectTypes] = useState<ProjectType[]>([])
+    const [promo, setPromo] = useState<StoredPromo | null>(editProject?.promo ?? null)
 
     // Fetch types from DB
     useEffect(() => {
@@ -40,6 +43,12 @@ const AddEditProject = ({ defaultType }: { defaultType?: string }) => {
             links: (editProject?.links?.length > 0)
                 ? editProject.links
                 : [{ headerEn: '', headerAr: '', link: '' }],
+            services: (editProject?.services ?? []) as string[],
+            featuredOrder: editProject?.featuredOrder ? String(editProject.featuredOrder) : '',
+            categoryEn: editProject?.categoryEn || '',
+            categoryAr: editProject?.categoryAr || '',
+            features: [0, 1, 2].map((i) => editProject?.features?.[i] ?? { en: '', ar: '' }),
+            keyResults: (editProject?.keyResults ?? []) as { value: string; labelEn: string; labelAr: string }[],
         }
     })
 
@@ -70,6 +79,14 @@ const AddEditProject = ({ defaultType }: { defaultType?: string }) => {
         formData.append('types', JSON.stringify(types))
         const cleanLinks = (dataForm.links || []).filter((l: any) => l.link?.trim())
         formData.append('links', JSON.stringify(cleanLinks))
+        // Promo video + showcase (validated server-side by lib/promo.ts)
+        formData.append('promo', promo ? JSON.stringify(promo) : '')
+        formData.append('featuredOrder', dataForm.featuredOrder || '')
+        formData.append('services', JSON.stringify(Array.isArray(dataForm.services) ? dataForm.services : []))
+        formData.append('categoryEn', dataForm.categoryEn || '')
+        formData.append('categoryAr', dataForm.categoryAr || '')
+        formData.append('features', JSON.stringify(dataForm.features || []))
+        formData.append('keyResults', JSON.stringify(dataForm.keyResults || []))
         return formData
     }
 
@@ -235,6 +252,13 @@ const AddEditProject = ({ defaultType }: { defaultType?: string }) => {
                                 </div>
                             ))}
                         </div>
+                    </div>
+
+                    {/* ── Promo video & showcase ── */}
+                    <div className='p-3 rounded-lg border space-y-4'>
+                        <p className='text-xs text-gray-400 uppercase tracking-wide'>Promo video &amp; showcase</p>
+                        <PromoVideoField value={promo} onChange={setPromo} />
+                        <ShowcaseExtraFields register={register as any} control={control as any} />
                     </div>
 
                     {/* ── Important ── */}

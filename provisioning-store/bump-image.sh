@@ -3,7 +3,9 @@
 #  bump-image.sh <tag> --all — roll every store to <tag> (CI calls
 #  POST /update-image after pushing the images). Pulls the three images once,
 #  then updates stores one by one; a failing store is logged and skipped.
-#  Pinned stores (clients/<slug>/pin) are left alone. Telegram summary at the end.
+#  Pinned stores (clients/<slug>/pin) and stores of another image channel
+#  (IMAGE_CHANNEL in store.env: a nile-* tag moves only nile stores, a fleet tag
+#  only fleet stores) are left alone. Telegram summary at the end.
 #  No service restart is involved (unlike the academy rollout).
 # ============================================================================
 set -uo pipefail
@@ -20,18 +22,22 @@ for app in api site dash; do
         docker image inspect "$img" >/dev/null 2>&1 && warn "pull failed for $img — using the local image" || die "pull failed and no local image for $img"
     fi
 done
-# Stores created from now on get this tag too.
-[[ -f "$STORE_ROOT/provision.env" ]] && env_set "$STORE_ROOT/provision.env" IMAGE_TAG "$TAG"
+CHANNEL="$(tag_channel "$TAG")"
+# Stores created from now on get this tag too — only when it is this host's own channel.
+if [[ -f "$STORE_ROOT/provision.env" && "$CHANNEL" == "$(store_channel "$STORE_ROOT/provision.env")" ]]; then
+    env_set "$STORE_ROOT/provision.env" IMAGE_TAG "$TAG"
+fi
 
-OK=(); FAILED=(); SKIPPED=()
+OK=(); FAILED=(); SKIPPED=(); OTHER=()
 for envf in "$STORE_ROOT"/clients/*/store.env; do
     [[ -f "$envf" ]] || continue
     slug="$(basename "$(dirname "$envf")")"
+    if [[ "$(store_channel "$envf")" != "$CHANNEL" ]]; then OTHER+=("$slug"); continue; fi
     if [[ -f "$(dirname "$envf")/pin" ]]; then SKIPPED+=("$slug"); continue; fi
     log "----- $slug"
     if STORE_JOB= bash "$SCRIPTS_DIR/update-image.sh" "$slug" "$TAG"; then OK+=("$slug"); else FAILED+=("$slug"); fi
 done
-SUMMARY="🛒 stores → $TAG: ok=${#OK[@]} failed=${#FAILED[@]} pinned=${#SKIPPED[@]}"
+SUMMARY="🛒 ${CHANNEL:-fleet} stores → $TAG: ok=${#OK[@]} failed=${#FAILED[@]} pinned=${#SKIPPED[@]} other-channel=${#OTHER[@]}"
 [[ ${#FAILED[@]} -gt 0 ]] && SUMMARY="$SUMMARY · failed: ${FAILED[*]}"
 log "$SUMMARY"
 telegram "$SUMMARY"

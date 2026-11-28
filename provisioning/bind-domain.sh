@@ -45,6 +45,15 @@ fail(){ echo "ERROR: $*" >&2; write_status "failed" "$*"; exit 1; }
 docker ps --format '{{.Names}}' | grep -qx "$CONTAINER" || fail "container $CONTAINER not running"
 [[ -f "$CONF" ]] || fail "config.php not found for $SLUG"
 
+# A domain bound before this one (a rebind): its vhost + cert go once this one is
+# active. Read it BEFORE write_status overwrites the file — otherwise the old
+# vhost keeps proxying to this container's port forever.
+PREV=""
+if [[ -f "$STATUS" ]]; then
+    PREV="$(sed -nE 's/.*"domain":"([^"]*)".*/\1/p' "$STATUS" 2>/dev/null | head -1)"
+    [[ "$PREV" == "$CUSTOM" || ! "$PREV" =~ ^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$ ]] && PREV=""
+fi
+
 write_status "verifying" ""
 
 # Which host port does this academy's container publish (127.0.0.1:PORT->80)?
@@ -88,4 +97,16 @@ grep -q "https://$CUSTOM" "$CONF" || fail "wwwroot did not update"
 docker exec "$CONTAINER" php /var/www/html/admin/cli/purge_caches.php >/dev/null 2>&1 || true
 
 write_status "active" ""
+
+if [[ -n "$PREV" ]]; then
+    log "removing the previous domain $PREV"
+    for conf in "${PREV}.conf" "${PREV}-le-ssl.conf"; do
+        if [[ -f "/etc/apache2/sites-available/$conf" ]]; then
+            a2dissite "$conf" >/dev/null 2>&1 || true
+            rm -f "/etc/apache2/sites-available/$conf"
+        fi
+    done
+    apache2ctl configtest >/dev/null 2>&1 && systemctl reload apache2 || echo "!! apache reload after removing $PREV failed"
+    certbot delete --cert-name "$PREV" --non-interactive >/dev/null 2>&1 || true
+fi
 log "done — $CUSTOM is now canonical for $SLUG"

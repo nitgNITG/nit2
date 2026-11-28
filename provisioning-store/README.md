@@ -24,6 +24,7 @@ listens on `127.0.0.1:9098` and nit2 calls it over localhost.
 | `apply-license.sh` · `apply-suspend.sh` · `reset-owner.sh` | day-2 ops through the api CLI (sync) |
 | `update-image.sh` · `bump-image.sh` | move one / every store to an image tag; compose recreates only changed services |
 | `bind-domain.sh` · `unbind-domain.sh` | merchant custom domain (vhost + cert + `PUBLIC_URL`) |
+| `storefront.sh` | show or hide a store's public website (`open\|close\|status`); API, dashboard and mobile app stay up. Run as root over SSH or from nit2's Stores page; nginx only |
 | `proxy/proxy.sh` + templates | host web-server adapter (`PROXY=nginx\|apache`), reload-only, per-host certbot |
 | `upload-image.sh` | signed Cloudinary upload (store logo at creation) |
 | `compose.store.yml` | **copy of `saas-commerce/deploy/compose.store.yml`** — keep in sync when that file changes |
@@ -43,6 +44,7 @@ On the host: `STORE_ROOT=/var/www/html/saas-stores` holds `provision.env`, the s
 | `POST /suspend/<slug>` | `{suspended}` | sync |
 | `POST /reset-owner/<slug>` | `{email?}` | sync; returns the new temporary password (nit2 stores it encrypted) |
 | `POST /tls/<slug>` | — | (re)issue the Let's Encrypt certificate; a creation whose certbot failed (DNS not ready) goes live over HTTP with `tls:"pending"` |
+| `POST /storefront/<slug>` | `{open: bool}` | sync `storefront.sh open\|close`; returns `storefront: open\|closed\|mixed`. 409 while a job runs for the store. `GET /usage` reports the same state per store |
 | `POST /update-image/<slug>` · `POST /update-image` | `{tag}` | one store (queued) · every store (detached `bump-image.sh --all`; 409 while one is running) |
 | `GET /config` · `POST /config` | `{values}` | host settings nit2's Platform Settings → Stores tab manages (mail, Cloudinary, Google, memory, auto-update). POST rewrites `provision.env` (shell-quoted) and runs `apply-config.sh` to re-apply the per-store keys to every running store |
 | `GET /images` | — | tags on the registry ∩ local, `current` platform tag, `latest` release, `auto_update` + `rollout` state (the dashboard version picker) |
@@ -56,6 +58,27 @@ from `IMAGE_TAG` in `provision.env` — the CI callback is the fast path, this i
 net (box was down when CI called, image pushed by hand). Pinned stores (`clients/<slug>/pin`)
 are skipped as always; a failed rollout is retried hourly. `sha-*` / `latest` are never
 auto-followed. Set `AUTO_UPDATE=0` to move stores only via CI or the dashboard.
+
+**Image channels (a client on its own branch).** Every store has an image channel —
+`IMAGE_CHANNEL` in its `store.env` (blank = the fleet; `create-store.sh` writes it from the
+store's first tag) — and only ever moves to tags of it: `update-image` refuses another
+channel's tag (400), and `POST /update-image {tag}` / `bump-image.sh --all` roll only the
+stores of the tag's channel. `IMAGE_CHANNEL` in `provision.env` is the host's own channel:
+what `/images` lists, new stores default to and the release auto-update follows.
+Stores of another channel on a moving tag (`nile`, `nile-dev`) follow it by themselves
+(auto-update pulls it and queues `update-image` per store when it moved); on an exact
+release (`nile-1.2.0`) only CI moves them.
+
+Nile Mall runs the `nile-mall` branch of saas-commerce:
+
+| CI event | images (`saas-store-{api,site,dash}`) | rollout |
+|---|---|---|
+| push to `nile-mall` | `nile-dev`, `nile-dev-<sha7>` | `POST /update-image/$NILE_STAGING_SLUG` (when the repo variable is set) |
+| tag `nile-vX.Y.Z` | `nile-X.Y.Z`, `nile`, `sha-…` | `POST /update-image` → every non-pinned `nile` store |
+
+On the shared fleet host: switch the store once (`IMAGE_CHANNEL=nile` in its `store.env`, then
+`update-image <slug> nile-dev`), and fleet rollouts skip it from then on. On a server of its own:
+`IMAGE_CHANNEL=nile IMAGE_TAG=nile AUTO_UPDATE_TAG=nile` in `provision.env`.
 
 Every queued job reports each step to nit2 — `POST $CALLBACK_URL/api/tenants/<slug>/progress`
 with `x-worker-secret: $WORKER_SECRET` and `{product:"store", job, kind, state, step, total,

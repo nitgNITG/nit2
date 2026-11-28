@@ -38,6 +38,19 @@ store_paths(){ # $1=slug → exports the variables every script needs
 env_get(){ # $1=file $2=key
     [[ -f "$1" ]] && sed -n "s/^$2=//p" "$1" | tail -1 || true
 }
+# Image channel of a tag (same rule as provision-server.py tag_channel):
+# nile-1.2.0 / nile-dev / nile -> nile;  1.2.0 / dev / latest / sha-… -> "" (the fleet).
+tag_channel(){ # $1=tag
+    local w=""
+    [[ "$1" =~ ^([a-z]+)(-|$) ]] && w="${BASH_REMATCH[1]}"
+    case "$w" in sha|dev|latest) w="" ;; esac
+    printf '%s' "$w"
+}
+# A store's channel: IMAGE_CHANNEL in its store.env (blank = the fleet).
+store_channel(){ # $1=store.env (default: $ENV_FILE)
+    env_get "${1:-$ENV_FILE}" IMAGE_CHANNEL | tr -d "'\"" | tr '[:upper:]' '[:lower:]'
+}
+
 # Set KEY=value in a store.env in place (adds it when missing).
 env_set(){ # $1=file $2=key $3=value
     if grep -q "^$2=" "$1" 2>/dev/null; then

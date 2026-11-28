@@ -4,7 +4,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 // provisioner → nit2 progress callback /api/tenants/[slug]/progress.
 const { db, getCurrentUser, notifyTelegram, alertAdmins, encryptSecret } = vi.hoisted(() => ({
     db: {
-        tenant: { findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
+        tenant: { findUnique: vi.fn(), update: vi.fn(), delete: vi.fn(), deleteMany: vi.fn() },
         license: { findUnique: vi.fn(), findMany: vi.fn() },
         subscription: { updateMany: vi.fn() },
         user: { findUnique: vi.fn() },
@@ -44,6 +44,7 @@ beforeEach(() => {
     db.tenant.findUnique.mockResolvedValue(STORE);
     db.tenant.update.mockImplementation(async ({ data }: any) => ({ ...STORE, ...data }));
     db.tenant.delete.mockResolvedValue(STORE);
+    db.tenant.deleteMany.mockResolvedValue({ count: 1 });
     db.subscription.updateMany.mockResolvedValue({ count: 0 });
     encryptSecret.mockImplementation((v: string) => `enc(${v})`);
     fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ ok: true }) }));
@@ -52,6 +53,60 @@ beforeEach(() => {
 afterEach(() => {
     vi.unstubAllGlobals();
     delete process.env.STORE_PROVISION_URL; delete process.env.STORE_PROVISION_SECRET; delete process.env.WORKER_SECRET;
+});
+
+describe("/api/stores/[slug] — public website", () => {
+    const calledProvisioner = () => fetchMock.mock.calls.some(([url]) => String(url).includes("/storefront/"));
+
+    it("is admin only, and refuses before reaching the provisioner", async () => {
+        getCurrentUser.mockResolvedValue(OWNER);
+        expect((await patch({ storefront: "closed" })).status).toBe(403);
+        expect(calledProvisioner()).toBe(false);
+    });
+
+    it("refuses anything but open or closed", async () => {
+        getCurrentUser.mockResolvedValue(ADMIN);
+        for (const storefront of [true, "close", null, ""]) {
+            expect((await patch({ storefront })).status).toBe(400);
+        }
+        expect(calledProvisioner()).toBe(false);
+    });
+
+    it("refuses a store that is not live yet", async () => {
+        getCurrentUser.mockResolvedValue(ADMIN);
+        db.tenant.findUnique.mockResolvedValue({ ...STORE, status: "provisioning" });
+        expect((await patch({ storefront: "open" })).status).toBe(409);
+        expect(calledProvisioner()).toBe(false);
+    });
+
+    it("sends open/close to the provisioner, reports the host's state, and writes nothing to the database", async () => {
+        getCurrentUser.mockResolvedValue(ADMIN);
+        for (const [storefront, open] of [["open", true], ["closed", false]] as const) {
+            fetchMock.mockClear();
+            fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ ok: true, storefront }) });
+            const res = await patch({ storefront });
+            expect(res.status).toBe(200);
+            expect((await res.json()).storefront).toBe(storefront);
+            const [url, init] = fetchMock.mock.calls[0];
+            expect(String(url)).toBe("http://127.0.0.1:9098/storefront/ziad");
+            expect(JSON.parse(init.body)).toEqual({ open });
+        }
+        expect(db.tenant.update).not.toHaveBeenCalled();
+        expect(notifyTelegram).toHaveBeenCalledTimes(2);
+    });
+
+    it("passes on a busy store as 409 and a failed script as 502, with no 'done' message", async () => {
+        getCurrentUser.mockResolvedValue(ADMIN);
+        fetchMock.mockResolvedValueOnce({ ok: false, status: 409, json: async () => ({ error: "a job is already running for this slug" }) });
+        const busy = await patch({ storefront: "open" });
+        expect(busy.status).toBe(409);
+        expect((await busy.json()).error).toContain("already running");
+        fetchMock.mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ ok: false, error: "ERROR: nginx refused the new config" }) });
+        const failed = await patch({ storefront: "open" });
+        expect(failed.status).toBe(502);
+        expect((await failed.json()).error).toContain("nginx refused");
+        expect(notifyTelegram).not.toHaveBeenCalled();
+    });
 });
 
 describe("/api/stores/[slug] — ownership", () => {
@@ -149,15 +204,39 @@ describe("PATCH issueTls", () => {
 });
 
 describe("DELETE /api/stores/[slug]", () => {
-    it("owner: deprovisions on the provisioner, deletes the row and cancels subscriptions", async () => {
+    it("owner: marks it deleting, cancels billing, deprovisions, and drops the row once the teardown is confirmed", async () => {
+        vi.useFakeTimers();
+        try {
+            getCurrentUser.mockResolvedValue(OWNER);
+            fetchMock.mockImplementation(async (url: string) => String(url).includes("/status/")
+                ? { ok: true, status: 200, json: async () => ({ kind: "destroy", state: "done" }) }
+                : { ok: true, status: 202, json: async () => ({ ok: true, job: 9 }) });
+            const pending = DELETE(new Request("http://localhost") as any, params);
+            await vi.advanceTimersByTimeAsync(3000);
+            const res = await pending;
+            expect(res.status).toBe(200);
+            expect(await res.json()).toMatchObject({ state: "deleted" });
+            const [url, init] = fetchMock.mock.calls[0];
+            expect(String(url)).toBe("http://127.0.0.1:9098/deprovision/ziad");
+            expect(init.method).toBe("DELETE");
+            expect(db.tenant.update.mock.calls[0][0].data.status).toBe("deleting");
+            expect(db.subscription.updateMany.mock.calls[0][0].where.tenantSlug).toBe("ziad");
+            expect(db.tenant.deleteMany).toHaveBeenCalledWith({ where: { slug: "ziad", status: "deleting" } });
+            expect(db.tenant.delete).not.toHaveBeenCalled();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("provisioner down: 202, the row stays (deleting) and admins are alerted", async () => {
         getCurrentUser.mockResolvedValue(OWNER);
+        fetchMock.mockRejectedValue(new Error("ECONNREFUSED"));
         const res = await DELETE(new Request("http://localhost") as any, params);
-        expect(res.status).toBe(200);
-        const [url, init] = fetchMock.mock.calls[0];
-        expect(String(url)).toBe("http://127.0.0.1:9098/deprovision/ziad");
-        expect(init.method).toBe("DELETE");
-        expect(db.tenant.delete).toHaveBeenCalledWith({ where: { slug: "ziad" } });
-        expect(db.subscription.updateMany.mock.calls[0][0].where.tenantSlug).toBe("ziad");
+        expect(res.status).toBe(202);
+        expect(await res.json()).toMatchObject({ state: "deleting" });
+        expect(db.tenant.deleteMany).not.toHaveBeenCalled();
+        expect(db.tenant.delete).not.toHaveBeenCalled();
+        expect(alertAdmins).toHaveBeenCalled();
     });
 });
 

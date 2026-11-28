@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import prisma from "@/prisma/client";
+import { isScheduled } from "@/lib/blog";
 
 export async function generateMetadata({
     params: { articleId, locale },
@@ -22,7 +23,8 @@ export async function generateMetadata({
             }).catch(() => null);
         }
 
-        if (!article) {
+        // A scheduled article doesn't exist for visitors yet — don't leak its title.
+        if (!article || isScheduled(article.publishedAt)) {
             return { title: "Article | N.I.T Egypt Blog" };
         }
 

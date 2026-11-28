@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 // /api/cron/expiry — store expiry reminders (7/3/1/0 days, once per stage) and
 // the suspension mail, sent by nit2's own SMTP to the store owner. Academies keep
 // their Moodle-sent path (triggerExpiryReminder) untouched.
-const { db, sendEmail, mailerConfigured, triggerExpiryReminder, triggerSuspend, storeOps, notifyTelegram } = vi.hoisted(() => ({
+const { db, sendEmail, mailerConfigured, triggerExpiryReminder, triggerSuspend, storeOps, notifyTelegram, weeklyBillingSummary, beginTenantDelete, reconcileAllDeleting } = vi.hoisted(() => ({
     db: {
         tenant: { findMany: vi.fn(), update: vi.fn() },
         user: { findMany: vi.fn() },
@@ -17,16 +17,20 @@ const { db, sendEmail, mailerConfigured, triggerExpiryReminder, triggerSuspend, 
     triggerSuspend: vi.fn(),
     storeOps: { suspend: vi.fn() },
     notifyTelegram: vi.fn(),
+    weeklyBillingSummary: vi.fn(),
+    beginTenantDelete: vi.fn(),
+    reconcileAllDeleting: vi.fn(),
 }));
 vi.mock("@/lib/prismaMysql", () => ({ default: db }));
 vi.mock("@/lib/mailer", () => ({ sendEmail, mailerConfigured }));
 vi.mock("@/lib/telegram", () => ({ notifyTelegram }));
-vi.mock("@/lib/provisionAcademy", () => ({ triggerExpiryReminder, triggerSuspend, deprovisionAndDeleteAcademy: vi.fn() }));
-vi.mock("@/lib/products/store", () => ({ storeOps, deprovisionAndDeleteStore: vi.fn(), STORE_DOMAIN: "commerce.nitg-eg.com" }));
+vi.mock("@/lib/provisionAcademy", () => ({ triggerExpiryReminder, triggerSuspend }));
+vi.mock("@/lib/products/store", () => ({ storeOps, STORE_DOMAIN: "commerce.nitg-eg.com" }));
+vi.mock("@/lib/tenants/teardown", () => ({ beginTenantDelete, reconcileAllDeleting }));
 vi.mock("@/lib/billing", () => ({
     runBillingCycle: vi.fn(async () => ({ attempted: 0, renewed: [], failed: [], needsAuth: [] })),
     runPreRenewNotices: vi.fn(async () => ({ notified: [] })),
-    weeklyBillingSummary: vi.fn(),
+    weeklyBillingSummary,
 }));
 
 import { POST } from "@/app/api/cron/expiry/route";
@@ -49,9 +53,9 @@ function run() {
 }
 
 /** tenant.findMany is called 3× per run: expired (1), reminders (1b), auto-delete (1c). */
-function seed({ expired = [] as any[], soon = [] as any[] }) {
+function seed({ expired = [] as any[], soon = [] as any[], toDelete = [] as any[] }) {
     db.tenant.findMany.mockImplementation(async ({ where }: any) => {
-        if (where.status === "suspended") return [];
+        if (where.status === "suspended") return toDelete;
         if (where.validUntil?.lt) return expired;
         return soon;
     });
@@ -65,6 +69,10 @@ beforeEach(() => {
     db.subscription.findMany.mockResolvedValue([]);
     db.platformSetting.findUnique.mockResolvedValue({ key: "auto_delete_days", value: "30" });
     db.payment.updateMany.mockResolvedValue({ count: 0 });
+    // The route awaits weeklyBillingSummary().catch(...) on Mondays — it must return a promise.
+    weeklyBillingSummary.mockResolvedValue(undefined);
+    beginTenantDelete.mockResolvedValue({ state: "deleting" });
+    reconcileAllDeleting.mockResolvedValue({});
     db.tenant.update.mockImplementation(async ({ where, data }: any) => ({ slug: where.slug, ...data }));
     seed({});
 });
@@ -148,5 +156,47 @@ describe("store suspension", () => {
         const body = await (await run()).json();
         expect(body.suspended).toEqual([]);
         expect(sendEmail).not.toHaveBeenCalled();
+    });
+});
+
+// The route also sends a weekly billing summary on Mondays (UTC). Pin the clock so
+// the suite behaves the same on every day of the week.
+describe("weekly billing summary", () => {
+    afterEach(() => vi.useRealTimers());
+    const at = (iso: string) => {
+        vi.useFakeTimers({ toFake: ["Date"] });
+        vi.setSystemTime(new Date(iso));
+    };
+
+    it("runs on Mondays (UTC) alongside the store reminders", async () => {
+        at("2026-10-05T03:00:00Z"); // Monday
+        seed({ soon: [store()] });
+        const res = await run();
+        expect(res.status).toBe(200);
+        expect(weeklyBillingSummary).toHaveBeenCalledTimes(1);
+        expect((await res.json()).reminded).toEqual(["ziad"]);
+    });
+
+    it("does not run on other days", async () => {
+        at("2026-10-06T03:00:00Z"); // Tuesday
+        expect((await run()).status).toBe(200);
+        expect(weeklyBillingSummary).not.toHaveBeenCalled();
+    });
+});
+
+describe("auto-delete (expired past retention)", () => {
+    it("goes through the same teardown flow as a manual delete — academies and stores alike", async () => {
+        seed({ toDelete: [academy({ slug: "old-acad", status: "suspended" }), store({ slug: "old-shop", status: "suspended" })] });
+        const body = await (await run()).json();
+        expect(beginTenantDelete.mock.calls.map((c) => c[0])).toEqual(["old-acad", "old-shop"]);
+        expect(beginTenantDelete.mock.calls[0][1]).toMatchObject({ by: expect.stringContaining("auto-delete"), waitMs: 0 });
+        expect(body.deleted).toEqual(["old-acad", "old-shop"]);
+    });
+
+    it("every run finishes / retries the tenants still being deleted", async () => {
+        reconcileAllDeleting.mockResolvedValue({ "half-gone": "restarted" });
+        const body = await (await run()).json();
+        expect(reconcileAllDeleting).toHaveBeenCalledTimes(1);
+        expect(body.teardowns).toEqual({ "half-gone": "restarted" });
     });
 });

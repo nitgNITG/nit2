@@ -5,6 +5,7 @@ import BreadcrumbsJsonLd from '../../components/BreadcrumbsJsonLd'
 import IosHeader from './components/IosHeader'
 import IosFeatures from './components/IosFeatures'
 import ServiceOfferings from '../../components/ServiceOfferings'
+import ProjectShowcaseSection from '../../components/promo/ProjectShowcaseSection'
 import IosMarkets from './components/IosMarkets'
 import IosProcess from './components/IosProcess'
 import IosPricing from './components/IosPricing'
@@ -23,6 +24,7 @@ export default function IosPage() {
             <ScrollReveal><IosFeatures /></ScrollReveal>
             <ScrollReveal><IosMarkets /></ScrollReveal>
             <ScrollReveal><ServiceOfferings service="ios" /></ScrollReveal>
+            <ProjectShowcaseSection service='ios-app' />
             <ScrollReveal><IosProcess /></ScrollReveal>
             <ScrollReveal><IosPricing /></ScrollReveal>
             <ScrollReveal><FAQSection page="ios" /></ScrollReveal>

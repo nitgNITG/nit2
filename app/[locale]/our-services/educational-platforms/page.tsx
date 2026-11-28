@@ -8,6 +8,7 @@ import SocialMedia from '../../components/SocialMedia'
 import DownSide from '../../components/DownSide'
 import ScrollReveal from '../../components/ScrollReveal'
 import ServiceOfferings from '../../components/ServiceOfferings'
+import ProjectShowcaseSection from '../../components/promo/ProjectShowcaseSection'
 import EduHeader from './components/EduHeader'
 import EduFeatures from './components/EduFeatures'
 import EduMarkets from './components/EduMarkets'
@@ -23,6 +24,7 @@ export default function EducationalPlatformsPage() {
             <ScrollReveal><EduFeatures /></ScrollReveal>
             <ScrollReveal><EduMarkets /></ScrollReveal>
             <ScrollReveal><ServiceOfferings service="edu" /></ScrollReveal>
+            <ProjectShowcaseSection service='educational-platforms' />
             <ScrollReveal><EduProcess /></ScrollReveal>
             <ScrollReveal><EduPricing /></ScrollReveal>
             <ScrollReveal><FAQSection page="edu" /></ScrollReveal>

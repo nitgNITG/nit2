@@ -18,7 +18,7 @@ export async function GET() {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     const rows = await prisma.tenant.findMany({
-        where: { product: STORE_PRODUCT, ...(user.role === "admin" ? {} : { ownerId: user.id }) },
+        where: { product: STORE_PRODUCT, ...(user.role === "admin" ? {} : { ownerId: user.id, status: { not: "deleting" } }) },
         orderBy: { createdAt: "desc" },
     });
     return NextResponse.json({

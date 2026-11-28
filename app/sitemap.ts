@@ -1,5 +1,9 @@
 import { MetadataRoute } from "next";
+import { publishedWhere } from "@/lib/blog";
 import prisma from "@/prisma/client";
+
+// Rebuilt hourly so new and newly-due scheduled articles get listed without a redeploy.
+export const revalidate = 3600;
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.nitg-eg.com";
 const locales = ["ar", "en"];
@@ -19,6 +23,7 @@ const staticPages = [
     { path: "/our-services/ios-app", priority: 0.9, changeFrequency: "monthly" as const },
     { path: "/our-services/website-design", priority: 0.9, changeFrequency: "monthly" as const },
     { path: "/blog", priority: 0.8, changeFrequency: "daily" as const },
+    { path: "/videos", priority: 0.8, changeFrequency: "weekly" as const },
     { path: "/who-us", priority: 0.7, changeFrequency: "monthly" as const },
     { path: "/contact", priority: 0.7, changeFrequency: "monthly" as const },
     { path: "/get-quote", priority: 0.8, changeFrequency: "monthly" as const },
@@ -42,6 +47,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     let articleEntries: MetadataRoute.Sitemap = [];
     try {
         const articles = await prisma.article.findMany({
+            where: publishedWhere(),
             select: { id: true, slug: true, publishedAt: true },
             orderBy: { publishedAt: "desc" },
         });

@@ -5,6 +5,7 @@ import BreadcrumbsJsonLd from '../../components/BreadcrumbsJsonLd'
 import AndroidHeader from './components/AndroidHeader'
 import AndroidFeatures from './components/AndroidFeatures'
 import ServiceOfferings from '../../components/ServiceOfferings'
+import ProjectShowcaseSection from '../../components/promo/ProjectShowcaseSection'
 import AndroidMarkets from './components/AndroidMarkets'
 import AndroidProcess from './components/AndroidProcess'
 import AndroidPricing from './components/AndroidPricing'
@@ -23,6 +24,7 @@ export default function AndroidPage() {
             <ScrollReveal><AndroidFeatures /></ScrollReveal>
             <ScrollReveal><AndroidMarkets /></ScrollReveal>
             <ScrollReveal><ServiceOfferings service="android" /></ScrollReveal>
+            <ProjectShowcaseSection service='android-app' />
             <ScrollReveal><AndroidProcess /></ScrollReveal>
             <ScrollReveal><AndroidPricing /></ScrollReveal>
             <ScrollReveal><FAQSection page="android" /></ScrollReveal>

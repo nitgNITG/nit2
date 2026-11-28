@@ -8,12 +8,15 @@ Store provisioning endpoint — the store counterpart of provisioning/provision-
   POST   /suspend/<slug>            {suspended: bool} → sync
   POST   /reset-owner/<slug>        {email?} → sync, returns the CLI JSON (contains the new password)
   POST   /tls/<slug>                (re)issue the Let's Encrypt certificate for <slug>.<STORE_DOMAIN> → sync
+  POST   /storefront/<slug>         {open: bool} → storefront.sh open|close, sync; /usage reports the state per store
   POST   /update-image/<slug>       {tag} → queued job
   POST   /update-image              {tag} → bump-image.sh --all, detached (rollout of every store)
   POST   /bind-domain/<slug>        {domain} → queued job     POST /unbind-domain/<slug> → queued job
   GET    /domain-status/<slug>
   DELETE /deprovision/<slug>        → queued job (destroy-store.sh)
   GET    /health · GET /usage       host snapshot / per-store sizes
+  GET    /inventory                 read-only list of stores / dbs / vhosts / certs / Cloudinary
+                                    folders on this host, for nit2's scripts/orphan-check.mjs
   GET    /images                    image tags on the registry (GHCR) and locally, platform tag, newest release,
                                     auto-update + rollout state
   GET/POST /config                  host settings nit2 manages (mail, Cloudinary, Google, memory, auto-update):
@@ -23,7 +26,8 @@ Store provisioning endpoint — the store counterpart of provisioning/provision-
 Auto-update (AUTO_UPDATE=1, every AUTO_UPDATE_MINUTES): the fleet follows
 AUTO_UPDATE_TAG - a moving tag like `dev` (rolled out whenever the tag points at
 a new image: staging) or, when empty, the newest X.Y.Z release on the registry
-(production). The CI callback (POST /update-image) is the fast path, this is the
+(production). A client host with IMAGE_CHANNEL=nile only ever sees nile-* tags
+(AUTO_UPDATE_TAG=nile follows its newest release). The CI callback (POST /update-image) is the fast path, this is the
 safety net.
 
 Differences from the academy service, on purpose:
@@ -37,6 +41,7 @@ Security: shared-secret header (constant-time compare), strict slug/tag/domain
 validation, args passed as lists, bound to 127.0.0.1. Python 3 stdlib only.
 """
 import base64, hmac, json, os, queue, re, shutil, sqlite3, subprocess, threading, time, glob
+import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -402,6 +407,14 @@ def _license_doc(data: dict) -> dict:
     return doc
 
 
+LOCALES = ("ar", "en", "fr")
+
+
+def _locale(v, default: str = "ar") -> str:
+    v = str(v or default).lower()
+    return v if v in LOCALES else default
+
+
 def _build_create_job(data: dict) -> tuple[str, list, dict]:
     slug = str(data.get("slug", "")).strip().lower()
     if not SLUG_RE.match(slug):
@@ -420,11 +433,11 @@ def _build_create_job(data: dict) -> tuple[str, list, dict]:
         "country": str(store.get("country", "EG")).upper()[:2],
         "currency": str(store.get("currency", "EGP")).upper()[:3],
         "timezone": str(store.get("timezone", "Africa/Cairo"))[:64],
-        "default_locale": "en" if str(store.get("default_locale", "ar")).lower() == "en" else "ar",
+        "default_locale": _locale(store.get("default_locale")),
         "owner": {
             "email": email,
             "name": str(owner.get("name", "")).strip()[:100] or email.split("@")[0],
-            "locale": "en" if str(owner.get("locale", "ar")).lower() == "en" else "ar",
+            "locale": _locale(owner.get("locale")),
         },
         "send_welcome": data.get("send_welcome", True) is not False,
     }
@@ -436,6 +449,13 @@ def _build_create_job(data: dict) -> tuple[str, list, dict]:
     na = data.get("nit_admin") or {}
     if isinstance(na, dict) and EMAIL_RE.match(str(na.get("email", ""))) and isinstance(na.get("password"), str) and len(na["password"]) >= 8:
         bootstrap["nit_admin"] = {"email": str(na["email"]).strip(), "name": str(na.get("name") or "NIT Support")[:100], "password": na["password"]}
+    # Storefront languages (ar, en, fr); the api requires the default to be one of them.
+    enabled = store.get("enabled_locales")
+    if isinstance(enabled, list):
+        langs = [l for l in LOCALES if l in {str(x).lower() for x in enabled}]
+        if bootstrap["default_locale"] not in langs:
+            langs = [l for l in LOCALES if l in langs or l == bootstrap["default_locale"]]
+        bootstrap["enabled_locales"] = langs
     for k in ("vat_rate", "prices_include_vat", "theme", "contact", "social", "seo_title", "seo_title_ar", "logo_url", "favicon_url"):
         if k in store and store[k] is not None:
             bootstrap[k] = store[k]
@@ -561,6 +581,36 @@ def collect_health() -> dict:
     return data
 
 
+NGINX_CONF_DIR = os.environ.get("NGINX_CONF_DIR", "/etc/nginx/conf.d")
+# Same test as is_closed() in storefront.sh, which writes these files.
+_STOREFRONT_CLOSED = re.compile(r"^[ \t]*location[ \t]*=[ \t]*/[ \t]*\{[ \t]*return[ \t]+302[ \t]+/dashboard;", re.M)
+
+
+def storefront_state(slug: str):
+    """Is the public website up? The host's nginx files are the truth, so the
+    dashboard button and storefront.sh over SSH can never disagree.
+    open | closed | mixed (a bound domain differs) | None (no nginx file: PROXY=apache/none)."""
+    p_api = ""
+    for line in _read(os.path.join(STORE_ROOT, "clients", slug, "store.env")).splitlines():
+        if line.startswith("P_API="):
+            p_api = line.split("=", 1)[1].strip()
+    if not p_api:
+        return None
+    states = set()
+    for conf in glob.glob(os.path.join(NGINX_CONF_DIR, "saas-store-*.conf")):
+        # Explicit encoding: hand-edited files hold non-ASCII comments, and _read() turns a decode error into "".
+        try:
+            with open(conf, encoding="utf-8", errors="replace") as f:
+                text = f.read()
+        except OSError:
+            continue
+        if f"127.0.0.1:{p_api};" in text:
+            states.add("closed" if _STOREFRONT_CLOSED.search(text) else "open")
+    if not states:
+        return None
+    return states.pop() if len(states) == 1 else "mixed"
+
+
 def collect_usage() -> dict:
     at, data = _CACHE["usage"]
     if data and time.time() - at < 30:
@@ -574,7 +624,7 @@ def collect_usage() -> dict:
         for line in _read(envf).splitlines():
             if line.startswith("IMAGE_TAG="):
                 tag = line.split("=", 1)[1].strip()
-        stores[slug] = {"image_tag": tag}
+        stores[slug] = {"image_tag": tag, "storefront": storefront_state(slug)}
     # Per-schema sizes from the shared MariaDB (one query for all).
     try:
         pw = os.environ.get("DB_ROOT_PW", "")
@@ -636,14 +686,81 @@ def _tag_key(t: str):
     return (0 if t == "latest" else 1, [int(p) for p in parts[:4]] + [0] * (4 - len(parts[:4])), t)
 
 
-RELEASE_RE = re.compile(r"^\d+\.\d+\.\d+$")   # only real releases are auto-followed (never sha-*/latest)
-# CI also pushes sha-<commit> and dev-<commit> aliases of the same images (traceability);
-# they are noise in a version picker, so /images lists releases, `dev` and `latest` only.
-ALIAS_RE   = re.compile(r"^(sha-[0-9a-f]{7,}|dev-[0-9a-f]{7,})$")
+# CI also pushes sha-<commit> and [<channel>-]dev-<commit> aliases of the same images
+# (traceability); they are noise in a version picker, so /images leaves them out.
+ALIAS_RE   = re.compile(r"^(?:[a-z]+-)*(?:sha|dev)-[0-9a-f]{7,}$")
+
+# Image channels. The fleet (channel "") runs X.Y.Z releases, `dev` and `latest`. A
+# client with its own branch and images runs a channel of its own: the nile-mall
+# branch builds `nile-X.Y.Z` releases, the moving `nile` (newest release) and
+# `nile-dev`. Every store has one channel (IMAGE_CHANNEL in its store.env, blank =
+# the fleet, written by create-store.sh from its first tag) and only ever moves to a
+# tag of that channel; a rollout of a tag touches only the stores of its channel.
+# IMAGE_CHANNEL in provision.env is the host's own channel: the one /images lists,
+# new stores default to and the release auto-update follows (a client's own server).
+_FLEET_WORDS = {"sha", "dev", "latest"}
+
+
+def image_channel() -> str:
+    return env_file_get("IMAGE_CHANNEL", os.environ.get("IMAGE_CHANNEL", "")).strip().lower()
+
+
+def tag_channel(tag: str) -> str:
+    """'nile-1.2.0' / 'nile-dev' / 'nile' -> 'nile'; '1.2.0' / 'dev' / 'latest' / 'sha-…' -> ''."""
+    m = re.match(r"^([a-z]+)(?:-|$)", tag)
+    return m.group(1) if m and m.group(1) not in _FLEET_WORDS else ""
+
+
+def store_channel(slug: str) -> str:
+    try:
+        with open(os.path.join(STORE_ROOT, "clients", slug, "store.env")) as f:
+            for line in f:
+                if line.startswith("IMAGE_CHANNEL="):
+                    return line.split("=", 1)[1].strip().strip("'\"").lower()
+    except OSError:
+        pass
+    return ""
+
+
+def store_tags() -> dict:
+    """slug -> (channel, IMAGE_TAG) of every store on this host."""
+    out = {}
+    for envf in glob.glob(os.path.join(STORE_ROOT, "clients", "*", "store.env")):
+        slug = os.path.basename(os.path.dirname(envf))
+        tag = ""
+        try:
+            with open(envf) as f:
+                for line in f:
+                    if line.startswith("IMAGE_TAG="):
+                        tag = line.split("=", 1)[1].strip()
+        except OSError:
+            continue
+        out[slug] = (store_channel(slug), tag)
+    return out
+
+
+def channel_error(tag: str, slug: str | None = None) -> str | None:
+    """A store only moves to tags of its own channel; a host-wide rollout needs a
+    channel this host runs (its own, or one of its stores')."""
+    got = tag_channel(tag)
+    if slug is not None:
+        want = store_channel(slug)
+        if want == got:
+            return None
+        return f"{slug} runs {want or 'fleet'} images; {tag} is a {got or 'fleet'} tag"
+    if got == image_channel() or got in {c for c, _ in store_tags().values()}:
+        return None
+    return f"no store on this host runs {got or 'fleet'} images ({tag})"
+
+
+def is_release(tag: str) -> bool:
+    """Only real releases of this host's channel are auto-followed (never sha-*/latest/dev)."""
+    ch = image_channel()
+    return re.fullmatch((re.escape(ch + "-") if ch else "") + r"\d+\.\d+\.\d+", tag) is not None
 
 
 def newest_release(tags) -> str | None:
-    rel = [t for t in tags if RELEASE_RE.match(t)]
+    rel = [t for t in tags if is_release(t)]
     return max(rel, key=_tag_key) if rel else None
 
 
@@ -654,8 +771,10 @@ def collect_images(force: bool = False) -> dict:
     # A tag is usable only when all three images carry it.
     remote = set.intersection(*(set(_ghcr_tags(f"saas-store-{a}")) for a in ("api", "site", "dash"))) if REGISTRY.startswith("ghcr.io") else set()
     local = set.intersection(*(set(_local_tags(f"saas-store-{a}")) for a in ("api", "site", "dash")))
-    tags = sorted((t for t in remote | local if not ALIAS_RE.match(t)), key=_tag_key, reverse=True)
-    data = {"registry": REGISTRY, "current": platform_tag(), "latest": newest_release(remote),
+    ch = image_channel()
+    tags = sorted((t for t in remote | local if not ALIAS_RE.match(t) and tag_channel(t) == ch), key=_tag_key, reverse=True)
+    data = {"registry": REGISTRY, "channel": ch or None,
+            "store_channels": sorted({c for c, _ in store_tags().values() if c != ch}), "current": platform_tag(), "latest": newest_release(remote),
             "tags": [{"tag": t, "remote": t in remote, "local": t in local} for t in tags],
             "auto_update": {"enabled": auto_update_enabled(), "interval_min": auto_update_minutes(), "tag": auto_update_tag() or None,
                             "last_check": int(_AUTO["last_check"]), "last_error": _AUTO["last_error"]},
@@ -702,13 +821,48 @@ def _follow_moving_tag(tag: str) -> str | None:
     return None
 
 
+def _follow_store_moving_tags():
+    """Stores of ANOTHER channel than the host's (a client store on the shared fleet
+    box) that run a moving tag (`nile`, `nile-dev`) follow it one by one: pull, and
+    when what the tag points at changed, queue update-image for each store on it.
+    Stores on an exact release (nile-1.2.0) are moved by CI only."""
+    host = image_channel()
+    by_tag: dict = {}
+    for slug, (ch, tag) in store_tags().items():
+        if ch != host and tag and not ALIAS_RE.match(tag) and not re.search(r"\d+\.\d+\.\d+$", tag):
+            by_tag.setdefault(tag, []).append(slug)
+    for tag, slugs in by_tag.items():
+        before = _local_image_ids(tag)
+        for app in ("api", "site", "dash"):
+            subprocess.run(["docker", "pull", "-q", f"{REGISTRY}/saas-store-{app}:{tag}"],
+                           capture_output=True, text=True, timeout=600)
+        after = _local_image_ids(tag)
+        if not any(after.values()) or before == after:
+            continue
+        for slug in slugs:
+            if os.path.exists(os.path.join(STORE_ROOT, "clients", slug, "pin")) or job_active(slug):
+                continue
+            job_id = job_create(slug, "update-image")
+            enqueue(job_id, [BASH, script("update-image.sh"), slug, tag], {}, slug)
+            print(f"[auto-update] {tag} moved - updating {slug}", flush=True)
+
+
 def auto_update_tick() -> str | None:
     """One check. Returns the tag a rollout was started for, else None."""
     _AUTO["last_check"] = time.time()
-    if not auto_update_enabled() or bump_running():
+    if not auto_update_enabled():
+        return None
+    try:
+        _follow_store_moving_tags()
+    except Exception as e:  # noqa: BLE001
+        _AUTO["last_error"] = f"store channels: {e}"
+    if bump_running():
         return None
     follow = auto_update_tag()
-    if follow and not RELEASE_RE.match(follow):
+    if follow and tag_channel(follow) != image_channel():
+        _AUTO["last_error"] = f"AUTO_UPDATE_TAG {follow} is not a {image_channel() or 'fleet'} tag"
+        return None
+    if follow and not is_release(follow):
         return _follow_moving_tag(follow)
     data = collect_images(force=True)
     latest = follow or data.get("latest")
@@ -738,6 +892,119 @@ def _auto_update_loop():
 
 
 # ── HTTP ─────────────────────────────────────────────────────────────────────
+# ── Inventory (read-only): what is on this host, for nit2's orphan check ─────
+# scripts/orphan-check.mjs compares it with the tenant rows. Nothing here
+# changes anything; a piece that cannot be read is null + a note in "errors".
+APACHE_SITES_DIR = os.environ.get("APACHE_SITES_DIR", "/etc/apache2/sites-available")
+NGINX_CONF_DIR = os.environ.get("NGINX_CONF_DIR", "/etc/nginx/conf.d")
+_LOCAL_PORT_RE = re.compile(r"127\.0\.0\.1:(\d+)")
+_SERVER_NAME_RE = re.compile(r"^\s*(?:ServerName|ServerAlias|server_name)\s+([^;\n]+)", re.I | re.M)
+
+
+def _sh(argv: list, timeout: int = 60):
+    """(returncode, stdout) of a read-only command; never raises."""
+    try:
+        p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+        return p.returncode, p.stdout
+    except Exception:  # noqa: BLE001
+        return -1, ""
+
+
+def vhost_inventory(paths) -> list:
+    """Every site that proxies to a local port: its file, host names and ports."""
+    out = []
+    for path in sorted(paths):
+        text = _read(path)
+        ports = sorted({int(p) for p in _LOCAL_PORT_RE.findall(text)})
+        if not ports:
+            continue  # not a proxy to a local container — never a tenant's
+        names = sorted({n.lower() for line in _SERVER_NAME_RE.findall(text) for n in line.split()})
+        out.append({"file": path, "names": names, "ports": ports})
+    return out
+
+
+def store_ports(env_text: str) -> list:
+    """The host ports a store publishes (P_SITE / P_DASH / P_API in its store.env)."""
+    found = set()
+    for line in env_text.splitlines():
+        key, _, val = line.partition("=")
+        if key.strip() in ("P_SITE", "P_DASH", "P_API") and val.strip().strip("'\"").isdigit():
+            found.add(int(val.strip().strip("'\"")))
+    return sorted(found)
+
+
+def _cloudinary_store_folders():
+    """Slugs with a stores/<slug>/ folder on the platform Cloudinary (None = not configured / unreadable)."""
+    cloud, key, secret = (os.environ.get(k, "") for k in ("CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET"))
+    if not (cloud and key and secret):
+        return None
+    base = os.environ.get("CLOUDINARY_API_BASE", "https://api.cloudinary.com").rstrip("/")
+    auth = "Basic " + base64.b64encode(f"{key}:{secret}".encode()).decode()
+    slugs, cursor = [], ""
+    for _ in range(50):
+        url = f"{base}/v1_1/{cloud}/folders/stores?max_results=500" + (f"&next_cursor={cursor}" if cursor else "")
+        try:
+            req = urllib.request.Request(url, headers={"Authorization": auth})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                body = json.loads(r.read() or b"{}")
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return slugs  # no stores/ folder at all
+            return None
+        except Exception:  # noqa: BLE001
+            return None
+        slugs += [f.get("name", "") for f in body.get("folders", []) if SLUG_RE.match(f.get("name", ""))]
+        cursor = body.get("next_cursor") or ""
+        if not cursor:
+            break
+    return sorted(slugs)
+
+
+def collect_inventory() -> dict:
+    errors = []
+    code, out = _sh(["docker", "ps", "-a", "--filter", "label=com.docker.compose.project",
+                     "--format", '{{.Label "com.docker.compose.project"}}\t{{.State}}'])
+    if code != 0:
+        errors.append("docker ps failed")
+    projects = {}
+    for line in out.splitlines():
+        project, _, state = line.partition("\t")
+        slug = project[len("store_"):].replace("_", "-")
+        if project.startswith("store_") and SLUG_RE.match(slug):
+            projects[slug] = "running" if (state.strip() == "running" or projects.get(slug) == "running") else state.strip()
+    clients = os.path.join(STORE_ROOT, "clients")
+    dirs = sorted(d for d in os.listdir(clients) if SLUG_RE.match(d) and os.path.isdir(os.path.join(clients, d))) \
+        if os.path.isdir(clients) else []
+    ports = {d: store_ports(_read(os.path.join(clients, d, "store.env"))) for d in dirs}
+    databases = schema_inventory("store", os.environ.get("DB_ROOT_PW", ""))
+    if databases is None:
+        errors.append("database list unavailable (DB_ROOT_PW / saas_mariadb)")
+    code, certs_out = _sh(["certbot", "certificates"])
+    certs = sorted(set(re.findall(r"Certificate Name:\s*(\S+)", certs_out))) if code == 0 else None
+    if certs is None:
+        errors.append("certbot certificates failed")
+    media = _cloudinary_store_folders()
+    if media is None:
+        errors.append("Cloudinary folders unavailable (not configured or unreachable)")
+    vhost_files = glob.glob(os.path.join(NGINX_CONF_DIR, "saas-store-*.conf")) + glob.glob(os.path.join(APACHE_SITES_DIR, "*.conf"))
+    return {"product": "store", "domain": os.environ.get("STORE_DOMAIN", "commerce.nitg-eg.com"),
+            "generated_at": int(time.time()),
+            "containers": [{"slug": k, "state": v} for k, v in sorted(projects.items())],
+            "ports": {k: v for k, v in ports.items() if v}, "dirs": dirs, "databases": databases,
+            "media": media, "vhosts": vhost_inventory(vhost_files), "certs": certs, "errors": errors}
+
+
+def schema_inventory(prefix: str, pw: str):
+    """Slugs of the <prefix>_<slug> schemas in the shared MariaDB (None = unreadable)."""
+    if not pw:
+        return None
+    code, out = _sh(["docker", "exec", DB_CONTAINER, "mariadb", "-uroot", f"-p{pw}", "-N", "-e",
+                     f"SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE '{prefix}\\_%'"])
+    if code != 0:
+        return None
+    return sorted(s[len(prefix) + 1:].replace("_", "-") for s in out.split())
+
+
 class Handler(BaseHTTPRequestHandler):
     def _send(self, code, obj):
         body = json.dumps(obj, ensure_ascii=False).encode()
@@ -820,6 +1087,19 @@ class Handler(BaseHTTPRequestHandler):
                 res = _last_json_line(out) or {}
                 return self._send(200 if rc == 0 else 500, {"ok": rc == 0, "slug": slug, **res, **({} if rc == 0 else {"error": out[-800:]})})
 
+            if path.startswith("/storefront/"):
+                slug = self._slug_from("/storefront/")
+                want_open = self._json().get("open")
+                if not isinstance(want_open, bool):   # never guess between opening and closing a live store
+                    return self._send(400, {"error": "open must be true or false"})
+                if job_active(slug):
+                    return self._send(409, {"error": "a job is already running for this slug"})
+                # Up to ~1 min: open may start the site container, then both verify through nginx.
+                rc, out = _run_sync([BASH, script("storefront.sh"), slug, "open" if want_open else "close"], timeout=150)
+                _CACHE["usage"] = (0.0, None)   # /usage must show the new state on the next read
+                state = storefront_state(slug)
+                return self._send(200 if rc == 0 else 500, {"ok": rc == 0, "slug": slug, "storefront": state, **({} if rc == 0 else {"error": out[-400:]})})
+
             if path.startswith("/tls/"):
                 slug = self._slug_from("/tls/")
                 host = f"{slug}.{os.environ.get('STORE_DOMAIN', 'commerce.nitg-eg.com')}"
@@ -854,6 +1134,8 @@ class Handler(BaseHTTPRequestHandler):
                 tag = str(self._json().get("tag", "")).strip()
                 if not TAG_RE.match(tag):
                     return self._send(400, {"error": "invalid tag"})
+                if channel_error(tag):
+                    return self._send(400, {"error": channel_error(tag)})
                 if not run_bump_all(tag, source="api"):
                     return self._send(409, {"error": f"a rollout to {_BUMP['tag']} is still running"})
                 _IMAGES_CACHE["data"] = None
@@ -864,6 +1146,8 @@ class Handler(BaseHTTPRequestHandler):
                 tag = str(self._json().get("tag", "")).strip()
                 if not TAG_RE.match(tag):
                     return self._send(400, {"error": "invalid tag"})
+                if channel_error(tag, slug):
+                    return self._send(400, {"error": channel_error(tag, slug)})
                 return self._queue_job(slug, "update-image", [BASH, script("update-image.sh"), slug, tag], {"FORCE": "1"})
 
             if path.startswith("/bind-domain/"):
@@ -890,6 +1174,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(401, {"error": "unauthorized"})
         try:
             path = self.path.split("?", 1)[0]
+            if path == "/inventory":  # read-only, for nit2's orphan check
+                return self._send(200, collect_inventory())
             if path == "/health":
                 return self._send(200, collect_health())
             if path == "/usage":

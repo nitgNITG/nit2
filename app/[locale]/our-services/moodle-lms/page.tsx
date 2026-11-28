@@ -5,6 +5,7 @@ import BreadcrumbsJsonLd from '../../components/BreadcrumbsJsonLd'
 import MoodleHeader from './components/MoodleHeader'
 import MoodleFeatures from './components/MoodleFeatures'
 import ServiceOfferings from '../../components/ServiceOfferings'
+import ProjectShowcaseSection from '../../components/promo/ProjectShowcaseSection'
 import MoodleMarkets from './components/MoodleMarkets'
 import MoodleProcess from './components/MoodleProcess'
 import MoodlePricing from './components/MoodlePricing'
@@ -23,6 +24,7 @@ export default function MoodlePage() {
             <ScrollReveal><MoodleFeatures /></ScrollReveal>
             <ScrollReveal><MoodleMarkets /></ScrollReveal>
             <ScrollReveal><ServiceOfferings service="moodle" /></ScrollReveal>
+            <ProjectShowcaseSection service='moodle-lms' />
             <ScrollReveal><MoodleProcess /></ScrollReveal>
             <ScrollReveal><MoodlePricing /></ScrollReveal>
             <ScrollReveal><FAQSection page="moodle" /></ScrollReveal>

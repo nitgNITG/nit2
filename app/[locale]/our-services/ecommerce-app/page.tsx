@@ -5,6 +5,7 @@ import BreadcrumbsJsonLd from '../../components/BreadcrumbsJsonLd'
 import EcommerceHeader from './components/EcommerceHeader'
 import EcommerceFeatures from './components/EcommerceFeatures'
 import ServiceOfferings from '../../components/ServiceOfferings'
+import ProjectShowcaseSection from '../../components/promo/ProjectShowcaseSection'
 import EcommerceMarkets from './components/EcommerceMarkets'
 import EcommerceProcess from './components/EcommerceProcess'
 import EcommercePricing from './components/EcommercePricing'
@@ -23,6 +24,7 @@ export default function EcommercePage() {
             <ScrollReveal><EcommerceFeatures /></ScrollReveal>
             <ScrollReveal><EcommerceMarkets /></ScrollReveal>
             <ScrollReveal><ServiceOfferings service="ecommerce" /></ScrollReveal>
+            <ProjectShowcaseSection service='ecommerce-app' />
             <ScrollReveal><EcommerceProcess /></ScrollReveal>
             <ScrollReveal><EcommercePricing /></ScrollReveal>
             <ScrollReveal><FAQSection page="ecommerce" /></ScrollReveal>

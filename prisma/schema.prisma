@@ -30,6 +30,32 @@ type ProjectLink {
   link     String
 }
 
+// Promo video (docs/promo-videos-dev-spec.md). The full promo lives on Cloudinary;
+// the muted teaser and the poster are derived from it by URL transforms
+// (lib/promo.ts), so a project "has a promo" when videoUrl is set.
+type ProjectPromo {
+  videoUrl    String // Cloudinary secure_url of the full promo (with sound)
+  publicId    String? // Cloudinary public_id — lets the dashboard delete it
+  durationSec Float?
+  teaserStart Float     @default(0) // where the 8 s muted loop starts
+  posterAt    Float? // poster frame (seconds); defaults to teaserStart + 1
+  uploadDate  DateTime?
+  captionsEn  String? // Cloudinary raw .vtt URLs (only when captions aren't burned in)
+  captionsAr  String?
+}
+
+type ProjectFeature {
+  en String
+  ar String
+}
+
+// "Real numbers only" — hidden when empty.
+type ProjectKeyResult {
+  value   String
+  labelEn String
+  labelAr String
+}
+
 model Project {
   id            String        @id @default(auto()) @map("_id") @db.ObjectId
   img           String
@@ -41,11 +67,24 @@ model Project {
   types         String[]
   links         ProjectLink[]
   order         Int           @default(0)
+  // Promo videos / "Built by N.I.T" showcase (lib/promo.ts)
+  promo         ProjectPromo?
+  featuredOrder Int? // 1–3 = Featured band on Our Projects
+  services      String[] // service page slugs, e.g. "ecommerce-app"
+  categoryEn    String? // short label, e.g. "Delivery app · Egypt"
+  categoryAr    String?
+  features      ProjectFeature[]
+  keyResults    ProjectKeyResult[]
+  // AI agent (search_projects): null/absent = visible; false hides it from the agent.
+  aiVisible     Boolean?
+  aiSummary     String?
+
+  @@index([aiVisible])
 }
 
 model ProjectType {
   id      String @id @default(auto()) @map("_id") @db.ObjectId
-  value   String @unique  // slug used in Project.types[] e.g. "lms", "ecommerce"
+  value   String @unique // slug used in Project.types[] e.g. "lms", "ecommerce"
   labelEn String
   labelAr String
 }
@@ -61,79 +100,107 @@ model Sponser {
 // that User.id as a plain string — no cross-database relation.)
 
 model Contact {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  id                   String    @id @default(auto()) @map("_id") @db.ObjectId
   // Core fields
-  name      String
-  email     String
-  phone     String?
-  subject   String
-  message   String
+  name                 String
+  email                String
+  phone                String?
+  subject              String
+  message              String
   // Qualifying fields
-  country   String?   // "sa" | "ae" | "qa" | "kw" | "bh" | "om" | "jo" | "eg" | "other"
-  service   String?   // "moodle" | "ecommerce" | "custom" | "other"
-  budget    String?   // "under5k" | "5to20k" | "20to50k" | "above50k" | "unknown"
-  timeline  String?   // "immediate" | "1to3months" | "3to6months" | "exploring"
-  role      String?   // "owner" | "manager" | "employee" | "other"
-  pain      String?
+  country              String? // "sa" | "ae" | "qa" | "kw" | "bh" | "om" | "jo" | "eg" | "other"
+  service              String? // "moodle" | "ecommerce" | "custom" | "other"
+  budget               String? // "under5k" | "5to20k" | "20to50k" | "above50k" | "unknown"
+  timeline             String? // "immediate" | "1to3months" | "3to6months" | "exploring"
+  role                 String? // "owner" | "manager" | "employee" | "other"
+  pain                 String?
   // Traffic tracking
-  sourcePage    String?   // page where form was submitted (/contact | /moodle-lms | /)
-  sourceRef     String?   // document.referrer (e.g. google.com)
-  utmSource     String?   // ?utm_source=
-  utmMedium     String?   // ?utm_medium=
-  utmCampaign   String?   // ?utm_campaign=
+  sourcePage           String? // page where form was submitted (/contact | /moodle-lms | /)
+  sourceRef            String? // document.referrer (e.g. google.com)
+  utmSource            String? // ?utm_source=
+  utmMedium            String? // ?utm_medium=
+  utmCampaign          String? // ?utm_campaign=
   // Auto-scored
-  score     Int      @default(0)
-  stage     String   @default("lead")   // "lead" | "mql" | "sql" | "opportunity"
+  score                Int       @default(0)
+  stage                String    @default("lead") // "lead" | "mql" | "sql" | "opportunity"
   // Admin
-  status    String   @default("new")    // "new" | "contacted" | "won" | "lost"
-  notes     String?
-  isReaded  Boolean  @default(false)
-  createdAt DateTime @default(now())
+  status               String    @default("new") // "new" | "contacted" | "won" | "lost"
+  notes                String?
+  isReaded             Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  // ── AI agent (all optional so existing rows still read) ──
+  company              String?
+  orgType              String? // individual | company | government | education
+  whatsapp             String?
+  requirements         Json? // LeadRequirements (lib/agent/qualification/schemas.ts)
+  tier                 String? // HOT | WARM | COLD (lead score v2)
+  scoreBreakdown       Json? // [{ factor, points }]
+  scoreVersion         Int? // algorithm version (v2 = 2)
+  scoringConfigVersion Int? // settings version the score was computed with
+  scoredAt             DateTime?
+  aiSummary            String? // AI-generated sales brief (labelled as AI in the UI)
+  nextAction           String? // CALL_TODAY | CALL_WITHIN_24H | SEND_PROPOSAL | REQUEST_MORE_INFO | HANDOFF_TO_TECHNICAL | WAIT_FOR_CLIENT
+  consentContact       Boolean?
+  consentAt            DateTime?
+  conversationId       String?   @db.ObjectId // conversation that captured the lead
+  nextFollowUpAt       DateTime? // sales sets it; the daily job drafts a follow-up that day (FR-F1)
+
+  @@index([tier, createdAt])
+  @@index([nextFollowUpAt])
+  @@index([whatsapp])
+  @@index([email])
 }
 
 model ServicePlan {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  service   String   // "moodle" | "ecommerce" | "mobile"
-  nameAr    String
-  nameEn    String
-  price     Int      // starting price in USD
-  currency  String   @default("USD")
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  service    String // "moodle" | "ecommerce" | "mobile"
+  nameAr     String
+  nameEn     String
+  price      Int // starting price in USD
+  currency   String   @default("USD")
   featuresAr String[] // Arabic feature list
   featuresEn String[] // English feature list
-  isActive  Boolean  @default(true)
-  order     Int      @default(0)
-  createdAt DateTime @default(now())
+  isActive   Boolean  @default(true)
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
 }
 
 model Article {
-  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
   // SEO-friendly URL slug (auto-generated from Arabic title)
-  slug              String?   @unique
+  slug        String?   @unique
   // Arabic (primary)
-  title             String
-  content           String           // intro paragraph AR
-  metaDesc          String?          // ≤160 chars for <meta description> AR
+  title       String
+  content     String // intro paragraph AR
+  metaDesc    String? // ≤160 chars for <meta description> AR
   // English
-  titleEn           String?
-  contentEn         String?          // intro paragraph EN
-  metaDescEn        String?          // ≤160 chars for <meta description> EN
+  titleEn     String?
+  contentEn   String? // intro paragraph EN
+  metaDescEn  String? // ≤160 chars for <meta description> EN
   // Media & meta
-  img               String
-  publishedAt       DateTime @default(now())
-  Section           Section[]
+  img         String
+  publishedAt DateTime  @default(now())
+  Section     Section[]
+  // AI agent (search_knowledge): null/absent = visible; false hides it from the agent.
+  aiVisible   Boolean?
+  aiSummary   String?
+
+  @@index([aiVisible])
 }
 
 model Section {
-  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  id        String        @id @default(auto()) @map("_id") @db.ObjectId
   // Arabic
-  title       String
-  content     String?
+  title     String
+  content   String?
   // English
-  titleEn     String?
-  contentEn   String?
-  list        Listsection[]
-  article     Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  articleId   String        @db.ObjectId
+  titleEn   String?
+  contentEn String?
+  list      Listsection[]
+  // Position in the article; sections saved before this field sort by id
+  order     Int?
+  article   Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId String        @db.ObjectId
 }
 
 type Listsection {
@@ -141,4 +208,278 @@ type Listsection {
   titleEn   String?
   content   String?
   contentEn String?
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI agent (lib/agent/**, SRS §5 and §13.3). Chat, audit and counters live here
+// next to Contact; the agent settings live in the MySQL PlatformSetting key
+// `ai_agent_config`. TTL indexes (AgentSession, ToolAudit, IdempotencyRecord,
+// RateLimitBucket) can't be expressed in Prisma — create them once with
+// `node scripts/agent-indexes.mjs` after `npm run mongo:push`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Conversation {
+  id               String        @id @default(auto()) @map("_id") @db.ObjectId
+  channel          String        @default("web") // web | whatsapp
+  mode             String        @default("sales") // sales | support — informational only, never grants access
+  status           String        @default("open") // open | waiting_human | human | closed
+  locale           String        @default("ar") // ar | en
+  userId           String? // MySQL User.id when a client is signed in
+  contactId        String?       @db.ObjectId
+  sessionId        String?       @db.ObjectId // anonymous AgentSession (web)
+  phoneE164        String? // WhatsApp number (phase 3)
+  assignedTo       String? // staff User.id who took over
+  sourcePage       String?
+  utmSource        String?
+  utmMedium        String?
+  utmCampaign      String?
+  ipHash           String?
+  summary          String?
+  rating           Int? // 1 | -1
+  ratingComment    String?
+  tokensIn         Int           @default(0)
+  tokensOut        Int           @default(0)
+  messageCount     Int           @default(0)
+  stateVersion     Int           @default(0) // bumped on every status transition
+  qualification    Json? // QualificationSession + the lead draft before a Contact exists
+  verification     Json? // WhatsApp: pending account verification { email, at } (FR-WA5)
+  knowledgeVersion Int?
+  nextAction       String?
+  tags             Json? // analytics tags by the fast model (FR-N1): service, country, intent, questions, unknownQuestions…
+  taggedAt         DateTime?
+  turnLockUntil    DateTime      @default(now()) // one running turn per conversation
+  lastMessageAt    DateTime      @default(now())
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  messages         ChatMessage[]
+
+  @@index([status, lastMessageAt])
+  @@index([channel, status])
+  @@index([userId, status])
+  @@index([sessionId])
+  @@index([contactId])
+  @@index([createdAt])
+  @@index([assignedTo, status])
+  @@index([phoneE164, channel, status])
+}
+
+model ChatMessage {
+  id                String       @id @default(auto()) @map("_id") @db.ObjectId
+  conversationId    String       @db.ObjectId
+  conversation      Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role              String // visitor | assistant | staff | tool | system
+  content           String // text shown to the person, or redacted JSON for tool rows
+  toolName          String?
+  status            String       @default("sent") // sent | draft | discarded | failed
+  staffId           String?
+  model             String?
+  tokensIn          Int?
+  tokensOut         Int?
+  latencyMs         Int?
+  turnId            String?
+  toolUseId         String?
+  idempotencyKey    String? // uniqueness is enforced by IdempotencyRecord, not here (Mongo unique + missing field = collisions)
+  // Phase 4 follow-up (status draft → sent | discarded): { kind, channel, to, locale, contactId, … }
+  followup          Json?
+  // Queryable copies (Prisma/Mongo can't filter a Json field by "is set").
+  followupKind      String? // due | checkout | abandoned
+  followupContactId String?      @db.ObjectId
+  createdAt         DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([idempotencyKey])
+  @@index([status, createdAt])
+  @@index([followupContactId])
+  @@index([followupKind, status])
+}
+
+model AgentSession {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  ipHash     String?
+  userId     String?
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@index([lastSeenAt]) // TTL 30 days
+}
+
+model ToolAudit {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  conversationId String   @db.ObjectId
+  turnId         String
+  tool           String
+  argsRedacted   Json?
+  authContext    Json? // { mode, channel, signedIn }
+  status         String // ok | error
+  errorCode      String?
+  latencyMs      Int
+  createdAt      DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([createdAt]) // TTL 180 days
+}
+
+model IdempotencyRecord {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  key        String   @unique
+  tool       String
+  resultJson Json
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt]) // TTL 7 days
+}
+
+// One row per model call (cost per visitor, per model; reconciles with the
+// Anthropic console, which reports UTC days). The createdAt index is the TTL
+// index from scripts/agent-indexes.mjs (180 days), so Prisma declares none.
+model AgentUsageEvent {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  date             String // Africa/Cairo day, same as UsageDaily
+  kind             String // chat | brief | tags | followup
+  model            String // as returned by the API
+  conversationId   String?  @db.ObjectId
+  inputTokens      Int
+  outputTokens     Int
+  cacheReadTokens  Int
+  cacheWriteTokens Int
+  costUsd          Float
+  createdAt        DateTime @default(now())
+
+  @@index([conversationId])
+}
+
+model UsageDaily {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  date              String   @unique // YYYY-MM-DD in Africa/Cairo
+  reservedUsd       Float    @default(0) // outstanding reservations
+  spentUsd          Float    @default(0) // settled cost
+  // reservedUsd + spentUsd in one field, so a reservation is ONE atomic
+  // conditional update (`committedUsd <= budget - estimate`) — no $expr needed.
+  committedUsd      Float    @default(0)
+  inputTokens       Int      @default(0)
+  outputTokens      Int      @default(0)
+  cacheReadTokens   Int      @default(0)
+  cacheWriteTokens  Int      @default(0)
+  priceTableVersion String?
+  budgetAlerted     Boolean  @default(false)
+  updatedAt         DateTime @updatedAt
+}
+
+model RateLimitBucket {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  key         String
+  windowStart DateTime
+  count       Int      @default(0)
+  expiresAt   DateTime
+
+  @@unique([key, windowStart])
+  @@index([expiresAt]) // TTL (expireAfterSeconds: 0)
+}
+
+model CustomPriceRange {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  category  String   @unique // custom_lms | lms_mobile_apps | ecommerce_app | custom_software | …
+  labelAr   String
+  labelEn   String
+  minUsd    Int
+  maxUsd    Int? // null = "from"
+  // Optional EGP range entered by sales for Egyptian clients — never converted from USD.
+  minEgp    Int?
+  maxEgp    Int? // null with minEgp set = "from"
+  notesAr   String?
+  notesEn   String?
+  active    Boolean  @default(true)
+  version   Int      @default(1) // optimistic concurrency → 409 config_version_conflict
+  updatedBy String
+  updatedAt DateTime @updatedAt
+}
+
+model MeetingRequest {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  contactId      String?  @db.ObjectId
+  conversationId String   @db.ObjectId
+  preferredAt    DateTime // requested Africa/Cairo wall time, stored as the UTC instant
+  channel        String // call | online | visit
+  status         String   @default("requested") // requested | confirmed | done | cancelled
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status, preferredAt])
+}
+
+model Ticket {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  conversationId String   @db.ObjectId
+  userId         String
+  tenantSlug     String?
+  category       String // billing | provisioning | technical | other
+  summary        String
+  status         String   @default("open") // open | in_progress | resolved
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+// CRM timeline on a lead (FR-I4, §13.12): conversation-level events only.
+model Activity {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  contactId      String   @db.ObjectId
+  type           String   @default("chat")
+  event          String // AI_CONVERSATION_STARTED | AI_LEAD_QUALIFIED | AI_HANDOFF | HUMAN_TAKEOVER | AI_FOLLOWUP_APPROVED
+  channel        String   @default("web") // web | whatsapp
+  conversationId String   @db.ObjectId
+  score          Int?
+  tier           String?
+  summary        String?
+  createdBy      String // "AI" or the staff User.id
+  createdAt      DateTime @default(now())
+
+  @@index([contactId, createdAt])
+  @@index([conversationId])
+}
+
+model WhatsAppIdentity {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  phoneE164  String   @unique
+  userId     String
+  verifiedAt DateTime
+  expiresAt  DateTime
+
+  @@index([expiresAt])
+}
+
+model Video {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  title         String    // Arabic title
+  titleEn       String?   // English title
+  description   String?   // Arabic description
+  descriptionEn String?   // English description
+  videoUrl      String    // Cloudinary URL, uploaded mp4, YouTube, Vimeo, etc.
+  thumbnailUrl  String?   // Poster/thumbnail image URL
+  duration      String?   // Display duration e.g. "02:15"
+  durationSec   Float?    // Seconds
+  category      String?   @default("showcase") // showcase | promo | tutorial | review | other
+  categoryAr    String?
+  categoryEn    String?
+  publicId      String?   // Cloudinary publicId if stored on Cloudinary
+  order         Int       @default(0)
+  isFeatured    Boolean   @default(false)
+  views         Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([order])
+  @@index([createdAt])
+}
+
+model VideoCategory {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  value     String   @unique
+  labelAr   String
+  labelEn   String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
 }

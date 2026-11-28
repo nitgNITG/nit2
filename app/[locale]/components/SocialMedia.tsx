@@ -25,8 +25,9 @@ const SocialMedia = () => {
     ]
     return (
         <div className='fixed right-7 bottom-20 md:bottom-24 z-[999] hidden sm:block'>
-            <div className='group space-y-3 transition duration-200'>
-                <div className='hidden group-hover:block space-y-2'>
+            {/* The links open to the LEFT of the share button: the AI chat launcher sits right above it. */}
+            <div className='group relative transition duration-200'>
+                <div className='absolute bottom-0 right-full hidden group-hover:flex group-focus-within:flex flex-row-reverse gap-2 pr-3'>
                     {socailMedia.map((socail => {
                         return (
                             <Link href={socail.href} target='_blank' key={socail.id} aria-label={socail.label} className='bg-gradient-to-l from-[#1E7D67] to-[#0B2923] size-14 flex justify-center items-center rounded-full cursor-pointer'>

@@ -1,10 +1,9 @@
 'use client'
 import axios from 'axios';
-import Image from 'next/image'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import LoadingCard from '../../dashboard/components/LoadingCard';
 import { useLocale, useTranslations } from 'next-intl';
-import { cloudinaryOptimized, isCloudinaryUrl, skipOptimization } from '@/utils/cloudinaryUrl';
+import ProjectCardMedia, { promoPlaylist } from './ProjectCardMedia';
 
 const Learingprojects = () => {
     const [projects, setProjects] = useState([]);
@@ -24,6 +23,7 @@ const Learingprojects = () => {
     }, [locale])
 
     useEffect(() => { fetchProjects() }, [fetchProjects])
+    const playlist = useMemo(() => promoPlaylist(projects, locale), [projects, locale])
 
     return (
         <section className='p-container py-10 lg:py-16'>
@@ -46,18 +46,8 @@ const Learingprojects = () => {
                     : projects.map((project: any, index: number) => (
                         <div key={project.id} className='col-span-12 md:col-span-6 lg:col-span-4 flex'>
                             <div className='flex flex-col w-full border rounded-3xl overflow-hidden bg-white group hover:shadow-lg transition-shadow duration-200'>
-                                {/* Fixed-height image — all cards share the same image row */}
-                                <div className='overflow-hidden bg-gray-100 h-56 flex-shrink-0'>
-                                    <Image
-                                        src={cloudinaryOptimized(project.img, 600)}
-                                        alt={locale === 'en' ? project.titleEn : project.title}
-                                        unoptimized={skipOptimization(project.img)}
-                                        width={600}
-                                        height={400}
-                                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                        className='w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300'
-                                    />
-                                </div>
+                                {/* Fixed-height image — all cards share the same image row; promo badge + hover preview when the project has a video */}
+                                <ProjectCardMedia project={project} locale={locale} playlist={playlist} />
                                 {/* Content flex-col: title + description grow, buttons pinned to bottom */}
                                 <div className='flex flex-col flex-1 px-4 pt-4 pb-5'>
                                     <h3 className='font-bold text-xl'>{locale === 'en' ? project.titleEn : project.title}</h3>

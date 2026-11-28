@@ -1,0 +1,29 @@
+name: AI Agent Daily Cron
+
+# Hits the AI agent's daily endpoint (SRS E18, docs/ai-agent-runbook.md): closes
+# conversations idle for 24 h (with an AI summary) and applies the agent's data
+# retention (chat 12 months, tool audit 180 days, idempotency 7 days, sessions
+# 30 days, usage 24 months). Idempotent — safe to run repeatedly / trigger manually.
+on:
+  schedule:
+    - cron: '30 0 * * *'  # 00:30 UTC daily (03:30 Cairo) — quiet hours
+  workflow_dispatch: {}    # allow a manual run from the Actions tab
+
+jobs:
+  ping-agent-daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10    # summaries for idle conversations call the model
+    steps:
+      - name: POST /api/cron/agent-daily
+        env:
+          BASE_URL: ${{ vars.NIT_BASE_URL }}        # e.g. https://dev.nitg-eg.com
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$BASE_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::error::NIT_BASE_URL (variable) and CRON_SECRET (secret) must be set on the repo."
+            exit 1
+          fi
+          echo "POST ${BASE_URL%/}/api/cron/agent-daily"
+          curl -fsS -X POST "${BASE_URL%/}/api/cron/agent-daily" \
+            -H "x-cron-secret: $CRON_SECRET" | tee /tmp/out.json
+          echo

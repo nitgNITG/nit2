@@ -1,7 +1,11 @@
 import { uploadImage } from "@/utils/cloudinary";
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import prisma from '@/prisma/client';
 import { authAdmin } from "@/lib/predict";
+import { parseShowcaseForm } from "@/lib/promo";
+import { promoCloudName } from "@/lib/promoCloudinary";
+import { PROJECTS_TAG } from "@/lib/projectShowcase";
 
 export async function POST(req: NextRequest) {
     console.log('[POST /api/project]');
@@ -22,6 +26,9 @@ export async function POST(req: NextRequest) {
         if (!img || !title || !description || !titleEn || !descriptionEn)
             return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
 
+        const showcase = parseShowcaseForm(body, promoCloudName());
+        if (!showcase.ok) return NextResponse.json({ message: showcase.error }, { status: 400 });
+
         const url = await uploadImage(img, 'projects');
         if (!url) return NextResponse.json({ message: 'Failed to upload image' }, { status: 500 });
 
@@ -36,8 +43,9 @@ export async function POST(req: NextRequest) {
         const nextOrder = (lastProject?.order ?? -1) + 1;
 
         const project = await prisma.project.create({
-            data: { img: url, title, description, titleEn, descriptionEn, types, important: important === 'true', links, order: nextOrder }
+            data: { img: url, title, description, titleEn, descriptionEn, types, important: important === 'true', links, order: nextOrder, ...showcase.data }
         });
+        revalidateTag(PROJECTS_TAG);
         console.log('[POST /api/project] ✅ Created:', project.id);
         return NextResponse.json({ project, message: 'Successfully Created' }, { status: 201 });
     } catch (error: any) {
@@ -55,7 +63,8 @@ export async function GET(req: NextRequest) {
         const lang = searchParams.get('lang');
         const dashboard = searchParams.get('dashboard');
 
-        const select: any = { img: true, id: true, types: true };
+        // promo is public: the Our Projects cards show the "Watch promo" badge from it.
+        const select: any = { img: true, id: true, types: true, promo: true };
         if (dashboard === 'true') {
             select.title = true;
             select.description = true;
@@ -63,14 +72,22 @@ export async function GET(req: NextRequest) {
             select.descriptionEn = true;
             select.important = true;
             select.links = true;
+            select.featuredOrder = true;
+            select.services = true;
+            select.categoryEn = true;
+            select.categoryAr = true;
+            select.features = true;
+            select.keyResults = true;
         } else if (lang === 'en') {
             select.titleEn = true;
             select.descriptionEn = true;
             select.links = true;
+            select.categoryEn = true;
         } else {
             select.title = true;
             select.description = true;
             select.links = true;
+            select.categoryAr = true;
         }
 
         const where: any = {};

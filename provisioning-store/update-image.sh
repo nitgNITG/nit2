@@ -13,6 +13,8 @@ store_paths "${1:-}"
 TAG="${2:-}"
 [[ -n "$TAG" ]] || die "usage: update-image.sh <slug> <tag>"
 [[ -f "$ENV_FILE" ]] || die "store $SLUG not found"
+CHANNEL="$(store_channel)"
+[[ "$(tag_channel "$TAG")" == "$CHANNEL" ]]     || die "$SLUG runs ${CHANNEL:-fleet} images; $TAG is a $(t="$(tag_channel "$TAG")"; echo "${t:-fleet}") tag (set IMAGE_CHANNEL in its store.env to switch)"
 if [[ -f "$CLIENT_DIR/pin" && "${FORCE:-0}" != "1" ]]; then
     log "$SLUG is pinned to $(cat "$CLIENT_DIR/pin") — skipping (FORCE=1 to override)"
     report_done "" '"skipped":"pinned"'

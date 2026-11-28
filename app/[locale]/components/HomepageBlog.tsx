@@ -2,6 +2,7 @@ import { getLocale, getTranslations } from 'next-intl/server'
 import prisma from '@/prisma/client'
 import Link from 'next/link'
 import Image from 'next/image'
+import { publishedWhere, stripRichText } from '@/lib/blog'
 
 // Fetch the 3 most recent articles at build/request time (Server Component)
 async function getLatestArticles() {
@@ -11,6 +12,7 @@ async function getLatestArticles() {
         )
         return await Promise.race([
             prisma.article.findMany({
+                where: publishedWhere(),
                 take: 3,
                 orderBy: { publishedAt: 'desc' },
                 select: {
@@ -62,7 +64,7 @@ export default async function HomepageBlog() {
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
                 {articles.map((article) => {
                     const title = isAr ? article.title : (article.titleEn || article.title)
-                    const excerpt = isAr ? article.content : (article.contentEn || article.content)
+                    const excerpt = stripRichText(isAr ? article.content : (article.contentEn || article.content))
                     const href = `/${locale}/blog/${article.slug || article.id}`
                     const date = article.publishedAt
                         ? new Date(article.publishedAt).toLocaleDateString(

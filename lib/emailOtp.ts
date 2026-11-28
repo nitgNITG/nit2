@@ -6,7 +6,7 @@ import bcrypt from "bcrypt";
 import prisma from "@/lib/prismaMysql";
 import { sendEmail, mailerConfigured } from "@/lib/mailer";
 
-export type OtpPurpose = "verify" | "reset";
+export type OtpPurpose = "verify" | "reset" | "whatsapp_link";
 
 const CODE_TTL_MIN = Math.max(1, Number(process.env.OTP_TTL_MINUTES ?? 10) || 10);
 const RESEND_COOLDOWN_SEC = Math.max(0, Number(process.env.OTP_RESEND_SECONDS ?? 60) || 60);
@@ -91,10 +91,14 @@ function buildEmail(purpose: OtpPurpose, code: string, name: string, lang: "ar" 
     const isAR = lang === "ar";
     const title = purpose === "reset"
         ? (isAR ? "إعادة تعيين كلمة المرور" : "Reset your password")
-        : (isAR ? "تأكيد بريدك الإلكتروني" : "Verify your email");
+        : purpose === "whatsapp_link"
+            ? (isAR ? "ربط واتساب بحسابك" : "Link WhatsApp to your account")
+            : (isAR ? "تأكيد بريدك الإلكتروني" : "Verify your email");
     const lead = purpose === "reset"
         ? (isAR ? "رمز إعادة تعيين كلمة المرور الخاص بك هو:" : "Your password reset code is:")
-        : (isAR ? "رمز تأكيد حسابك هو:" : "Your verification code is:");
+        : purpose === "whatsapp_link"
+            ? (isAR ? "اكتب هذا الرمز في محادثة واتساب مع مساعد N.I.T لربط رقمك بحسابك:" : "Type this code in your WhatsApp chat with the N.I.T assistant to link your number to your account:")
+            : (isAR ? "رمز تأكيد حسابك هو:" : "Your verification code is:");
     const subject = isAR ? `${title} — N.I.T` : `${title} — N.I.T`;
     const greet = isAR ? `مرحباً ${name || ""}،` : `Hi ${name || "there"},`;
     const note = isAR

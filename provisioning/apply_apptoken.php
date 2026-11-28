@@ -7,14 +7,14 @@
 //  site / a rotated token). Run inside an academy container:
 //     php <dataroot>/apply_apptoken.php
 //
-//  Idempotent: enables web services + REST + the mobile service, then reuses the
-//  admin's existing permanent mobile token or mints one.
+//  Idempotent: enables web services + REST + the mobile service, then publishes
+//  the read-only guest-browsing token built by the image's
+//  local/multitopics/cli/app_guest_token.php.
 //
-//  SECURITY NOTE: this token is an ADMIN mobile token and getsettings.php returns
-//  it anonymously (the app's pre-login contract). It grants mobile-WS access at
-//  admin level — acceptable per the app design, but rotate/scope it if that
-//  changes. A dedicated least-privilege WS user would be the harder-but-safer
-//  long-term option.
+//  SECURITY NOTE: getsettings.php returns admin_token to ANYONE, so it must never
+//  be an admin's (or any real member's) token. It used to be the site admin's
+//  mobile token; this script now revokes that token if it is still published and
+//  publishes the least-privilege guest token instead.
 // ============================================================================
 define('CLI_SCRIPT', true);
 require('/var/www/html/config.php');
@@ -116,36 +116,34 @@ if (!empty($service->restrictedusers)) {
     echo "cleared restrictedusers on service #{$service->id}\n";
 }
 
-// 3. Reuse the admin's permanent mobile token, or mint one.
-$admin = get_admin();
-if (!$admin) {
-    fwrite(STDERR, "no site admin found\n");
-    exit(1);
-}
-$existing = $DB->get_records('external_tokens', [
-    'userid'            => $admin->id,
-    'externalserviceid' => $service->id,
-    'tokentype'         => EXTERNAL_TOKEN_PERMANENT,
-], 'timecreated DESC', '*', 0, 1);
-$existing = $existing ? reset($existing) : null;
-
-if ($existing) {
-    $token = $existing->token;
-} else {
-    $ctx = context_system::instance();
-    // Moodle 4.4+ moved token generation to \core_external\util::generate_token
-    // (service object); older cores expose the global external_generate_token
-    // (service id). Support both so this works across point releases.
-    if (class_exists('\core_external\util') && method_exists('\core_external\util', 'generate_token')) {
-        $token = \core_external\util::generate_token(
-            EXTERNAL_TOKEN_PERMANENT, $service, $admin->id, $ctx, 0, '');
-    } else {
-        $token = external_generate_token(
-            EXTERNAL_TOKEN_PERMANENT, $service->id, $admin->id, $ctx, 0, '');
+// 3. Retire the old published token.
+// The published token used to be the SITE ADMIN's mobile token, which
+// getsettings.php hands to anyone. If that is still what admin_token holds,
+// delete that token row: it has been public, so it must not keep working.
+$published = trim((string) get_config('local_multitopics', 'admin_token'));
+if ($published !== '') {
+    $old = $DB->get_record('external_tokens', ['token' => $published]);
+    if ($old && is_siteadmin($old->userid)) {
+        $DB->delete_records('external_tokens', ['id' => $old->id]);
+        echo "revoked the previously published site-admin token (" . substr($published, 0, 6) . "…)\n";
     }
 }
+set_config('admin_token', '', 'local_multitopics');
 
-// 4. Publish it for the app.
-set_config('admin_token', $token, 'local_multitopics');
+// 4. Build the read-only guest-browsing token (dedicated `appguest` account on
+// the restricted `nit_app_guest` service) and publish THAT instead. The builder
+// ships in the academy image; an image older than it publishes nothing, which
+// is safe (the app then uses its compiled-in fallback).
+$builder = $CFG->dirroot . '/local/multitopics/cli/app_guest_token.php';
+if (!is_readable($builder)) {
+    fwrite(STDERR, "guest-token builder missing from this image ({$builder}) - admin_token left empty\n");
+    purge_all_caches();
+    exit(0);
+}
+passthru(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($builder) . ' --create --save', $rc);
 purge_all_caches();
-echo "admin_token set (" . substr($token, 0, 6) . "…, service #{$service->id})\n";
+if ($rc !== 0) {
+    fwrite(STDERR, "guest-token builder failed (exit {$rc}) - admin_token left empty\n");
+    exit(1);
+}
+echo "admin_token set to the guest-browsing token\n";

@@ -67,7 +67,8 @@ export default async function AccountPage({ searchParams }: { searchParams?: { n
     } else {
         // Clients get their own academies.
         const rows = await prismaMysql.tenant.findMany({
-            where: { ownerId: user.id },
+            // A tenant being torn down is gone as far as its owner is concerned.
+            where: { ownerId: user.id, status: { not: 'deleting' } },
             orderBy: { createdAt: 'desc' },
         })
         const academies = rows.filter((a) => a.product !== 'store').map((a) => ({

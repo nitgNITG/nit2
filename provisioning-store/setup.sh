@@ -114,7 +114,7 @@ log "installing scripts to $STORE_ROOT"
 mkdir -p "$STORE_ROOT"/{clients,logs,staging,proxy}
 chmod 750 "$STORE_ROOT/clients"
 for f in provision-server.py lib.sh create-store.sh destroy-store.sh apply-license.sh apply-suspend.sh \
-         reset-owner.sh update-image.sh bump-image.sh bind-domain.sh unbind-domain.sh upload-image.sh apply-config.sh compose.store.yml; do
+         reset-owner.sh update-image.sh bump-image.sh bind-domain.sh unbind-domain.sh upload-image.sh delete-media.sh apply-config.sh storefront.sh compose.store.yml; do
     cp "$SRC/$f" "$STORE_ROOT/$f"
 done
 cp "$SRC"/proxy/* "$STORE_ROOT/proxy/"
@@ -163,6 +163,9 @@ AUTO_UPDATE_MINUTES=$(_val AUTO_UPDATE_MINUTES 15)
 # Tag the fleet follows: blank = newest X.Y.Z release (production), dev = every
 # new dev build (staging). nit2's Platform Settings -> Stores tab writes this.
 AUTO_UPDATE_TAG=$(_val AUTO_UPDATE_TAG "")
+# Host image channel: blank = the fleet (X.Y.Z / dev / latest). Stores carry their own
+# (store.env IMAGE_CHANNEL); a client's own server sets it (nile -> nile-* tags).
+IMAGE_CHANNEL=$(_val IMAGE_CHANNEL "")
 PROXY=$PROXY
 TLS_MODE=$TLS_MODE
 LE_EMAIL=$(_val LE_EMAIL admin@nitg-eg.com)
