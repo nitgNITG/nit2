@@ -5,9 +5,13 @@ const intl = createMiddleware({
     // A list of all locales that are supported
     locales: ['en', 'ar'],
 
-    // Used when no locale matches
+    // Used when no locale matches — and for crawlers, which send no Accept-Language
     defaultLocale: 'ar',
-    localeDetection: false
+
+    // Where "/" sends a visitor: the language they last picked (NEXT_LOCALE cookie,
+    // refreshed on every /ar|/en page they open), else their browser language, else
+    // Arabic. A URL that already has /ar or /en is never redirected.
+    localeDetection: true
 });
 
 // The dashboard layout needs the requested path server-side to decide which pages
