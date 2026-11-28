@@ -1,5 +1,5 @@
 import { MetadataRoute } from "next";
-import { isThinArticle, publishedWhere } from "@/lib/blog";
+import { isThinArticle, publishedWhere, slugSegment } from "@/lib/blog";
 import prisma from "@/prisma/client";
 
 // Rebuilt hourly so new and newly-due scheduled articles get listed without a redeploy.
@@ -55,8 +55,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         // Intro-only articles are noindex — listing them would ask Google to crawl them.
         articleEntries = articles.filter((a) => !isThinArticle(a)).flatMap((article) =>
             locales.map((locale) => ({
-                // Use SEO-friendly slug when available, fall back to MongoDB id
-                url: `${BASE_URL}/${locale}/blog/${article.slug ?? article.id}`,
+                // SEO slug when available (else the MongoDB id), percent-encoded: Arabic slugs
+                // must be RFC 3986 in a sitemap.
+                url: `${BASE_URL}/${locale}/blog/${slugSegment(article.slug ?? article.id)}`,
                 lastModified: article.publishedAt ?? now,
                 changeFrequency: "monthly" as const,
                 priority: 0.6,

@@ -75,3 +75,14 @@ export function stripRichText(text: string | null | undefined): string {
         .replace(/\s+/g, " ")
         .trim();
 }
+
+/**
+ * A slug as one RFC 3986 path segment: Arabic and other non-ASCII letters
+ * percent-encoded, and a slug that is already percent-encoded left as it is
+ * (decoded first, so it is never encoded twice). For sitemap / feed URLs.
+ */
+export function slugSegment(slug: string): string {
+    let decoded = slug;
+    try { decoded = decodeURIComponent(slug); } catch { /* not valid %-encoding — encode as is */ }
+    return encodeURIComponent(decoded);
+}
